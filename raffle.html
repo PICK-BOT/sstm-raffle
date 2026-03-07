@@ -142,13 +142,18 @@
     if (!segs.length) return;
     // 防呆：index 越界時夾回合法範圍
     if (idx < 0 || idx >= segs.length) idx = 0;
+    // 把目前角度壓回 0~2π，避免累積太大導致反向旋轉
+    angle = angle % (2*Math.PI);
+    if (angle < 0) angle += 2*Math.PI;
     spinning = true; document.getElementById('spinBtn').disabled = true;
     var w = segs[idx], mid = w.start + w.sweep/2;
     // 取消大幅抖動，讓指針更精準地指向該格中心，避免視覺上「指到隔壁格」
     var jitter = 0;
-    // 關鍵修正：扣掉目前角度 angle（base），確保每次最終都把該格中心對準指針
-    var target = (-angle - mid - jitter) + (5 + Math.floor(Math.random()*3)) * 2 * Math.PI;
-    var t0 = performance.now(), dur = 4200, base = angle;
+    // 固定正轉兩圈：在目前角度的基礎上，再加上 2 圈再對準目標格中心
+    var turns = 2;
+    var base = angle;
+    var target = (-base - mid - jitter) + turns * 2 * Math.PI;
+    var t0 = performance.now(), dur = 4200;
     function ease(t){ return 1 - Math.pow(1-t, 4); }
     function step(ts){
       var p = Math.min((ts-t0)/dur, 1);
