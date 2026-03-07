@@ -48,7 +48,7 @@
     <button id="spinBtn" onclick="triggerSpin()">🎯 开始抽奖</button>
     <div id="quota-msg" style="font-size:.85rem;opacity:.9;margin-top:6px;min-height:18px"></div>
     <div id="chips"></div>
-    <div id="ver-label" style="margin-top:6px;font-size:10px;opacity:.5">ver 2026-03-07-fix3-2turns</div>
+    <div id="ver-label" style="margin-top:6px;font-size:10px;opacity:.5">ver 2026-03-07-fix4-2turns-strict</div>
   </div>
   <div id="overlay">
     <div class="card">
@@ -147,12 +147,19 @@
     if (angle < 0) angle += 2*Math.PI;
     spinning = true; document.getElementById('spinBtn').disabled = true;
     var w = segs[idx], mid = w.start + w.sweep/2;
-    // 取消大幅抖動，讓指針更精準地指向該格中心，避免視覺上「指到隔壁格」
+    // 取消大幅抖動，讓指針更精準地指向該格中心
     var jitter = 0;
-    // 固定正轉兩圈：在目前角度的基礎上，再加上 2 圈再對準目標格中心
-    var turns = 2;
+    var TAU = 2*Math.PI;
     var base = angle;
-    var target = (-base - mid - jitter) + turns * 2 * Math.PI;
+    // 目標角度（讓該格中心對準指針）先壓到 0~2π
+    var desired = (-mid - jitter) % TAU;
+    if (desired < 0) desired += TAU;
+    // 從目前角度 base 到 desired 的最小正向位移（0~2π）
+    var delta = (desired - base) % TAU;
+    if (delta < 0) delta += TAU;
+    // 至少再多轉 2 圈，保證每次都 > 4π
+    var turns = 2;
+    var target = delta + turns * TAU;
     var t0 = performance.now(), dur = 4200;
     function ease(t){ return 1 - Math.pow(1-t, 4); }
     function step(ts){
