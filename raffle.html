@@ -46,6 +46,7 @@
       <div id="pointer"></div>
     </div>
     <button id="spinBtn" onclick="triggerSpin()">🎯 开始抽奖</button>
+    <div id="quota-msg" style="font-size:.85rem;opacity:.9;margin-top:6px;min-height:18px"></div>
     <div id="chips"></div>
   </div>
   <div id="overlay">
@@ -59,6 +60,7 @@
 (function(){
   var params = new URLSearchParams(window.location.search);
   var RECORD_URL = params.get('record') || '';
+  var API_BASE = (params.get('api') || '').replace(/\/$/, '');
   var prizes = [
     { name: '30节操', weight: 60, color: '#FF6B6B' },
     { name: '10羽毛', weight: 40, color: '#4ECDC4' },
@@ -67,13 +69,29 @@
   var PAL = ['#FF6B6B','#4ECDC4','#FFD93D','#6BCB77','#FF9A3C','#A78BFA'];
   var segs = [], spinning = false, angle = 0, userId = '';
 
+  function updateQuotaUI(){
+    if (!API_BASE || !userId) return;
+    fetch(API_BASE + '/api/status?user_id=' + encodeURIComponent(userId)).then(function(r){ return r.json(); }).then(function(s){
+      var r = (s.raffle || {});
+      var rem = r.remaining != null ? r.remaining : 999;
+      var msg = document.getElementById('quota-msg');
+      var btn = document.getElementById('spinBtn');
+      if (msg) msg.textContent = rem <= 0 ? '無抽獎次數，請先完成評分任務' : '剩餘 ' + rem + ' 次';
+      if (btn) btn.disabled = rem <= 0;
+    }).catch(function(){});
+  }
   function confirmId(){
     var v = document.getElementById('id-input').value.trim();
     if (!v) { document.getElementById('id-err').textContent = '請輸入論壇 ID'; return; }
     userId = v;
     document.getElementById('id-screen').style.display = 'none';
     document.getElementById('main').style.display = 'flex';
-    initWheel();
+    if (API_BASE) {
+      fetch(API_BASE + '/api/prizes').then(function(r){ return r.json(); }).then(function(arr){ prizes = arr || prizes; initWheel(); updateQuotaUI(); }).catch(function(){ initWheel(); updateQuotaUI(); });
+    } else {
+      initWheel();
+      if (document.getElementById('quota-msg')) document.getElementById('quota-msg').textContent = '';
+    }
   }
   function buildSegs(arr){
     var tot = arr.reduce(function(s,p){ return s + p.weight; }, 0) || 1, a = 0;
@@ -120,8 +138,13 @@
   function closeResult(){ document.getElementById('overlay').style.display = 'none'; }
   function spinTo(idx, cb){
     if (spinning) return;
+    if (!segs.length) return;
+    // 防呆：index 越界時夾回合法範圍
+    if (idx < 0 || idx >= segs.length) idx = 0;
     spinning = true; document.getElementById('spinBtn').disabled = true;
-    var w = segs[idx], mid = w.start + w.sweep/2, jitter = (Math.random()-0.5) * w.sweep * 0.6;
+    var w = segs[idx], mid = w.start + w.sweep/2;
+    // 取消大幅抖動，讓指針更精準地指向該格中心，避免視覺上「指到隔壁格」
+    var jitter = 0;
     var target = (-mid - jitter) + (5 + Math.floor(Math.random()*3)) * 2 * Math.PI;
     var t0 = performance.now(), dur = 4200, base = angle;
     function ease(t){ return 1 - Math.pow(1-t, 4); }
@@ -141,6 +164,38 @@
   }
   function triggerSpin(){
     if (spinning || !userId) return;
+    if (API_BASE) {
+      fetch(API_BASE + '/api/draw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: userId }) })
+        .then(function(r){
+          if (r.status === 403) return r.json().then(function(d){ throw new Error(d.message || '沒有抽獎次數'); });
+          return r.json();
+        })
+        .then(function(d){
+          if (d.error === 'no_credits') { updateQuotaUI(); return; }
+          // 防呆：優先用後端給的 index，若超出範圍就用獎項名稱在 segs/prizes 裡重新找一次
+          var idx = (typeof d.index === 'number' && d.index >= 0 && d.index < segs.length) ? d.index : -1;
+          if (idx < 0 && d.prize && d.prize.name) {
+            for (var i=0;i<segs.length;i++) {
+              if (segs[i].name === d.prize.name) { idx = i; break; }
+            }
+          }
+          if (idx < 0) idx = 0;
+          var prize = d.prize || prizes[idx] || { name: '?' };
+          spinTo(idx, function(){
+            showResult(prize.name);
+            var now = new Date();
+            var dateStr = now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0')+'-'+now.getDate().toString().padStart(2,'0');
+            var timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0')+':'+now.getSeconds().toString().padStart(2,'0');
+            if (RECORD_URL && RECORD_URL.indexOf('http') === 0) {
+              var q = '?date='+encodeURIComponent(dateStr)+'&time='+encodeURIComponent(timeStr)+'&user_id='+encodeURIComponent(userId)+'&prize_name='+encodeURIComponent(prize.name);
+              var img = new Image(); img.src = RECORD_URL + q;
+            }
+            updateQuotaUI();
+          });
+        })
+        .catch(function(e){ document.getElementById('quota-msg').textContent = e.message || '抽獎失敗'; updateQuotaUI(); });
+      return;
+    }
     var idx = doDraw(), prize = prizes[idx];
     spinTo(idx, function(){
       showResult(prize.name);
