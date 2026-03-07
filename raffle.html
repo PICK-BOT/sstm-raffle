@@ -145,7 +145,8 @@
     var w = segs[idx], mid = w.start + w.sweep/2;
     // 取消大幅抖動，讓指針更精準地指向該格中心，避免視覺上「指到隔壁格」
     var jitter = 0;
-    var target = (-mid - jitter) + (5 + Math.floor(Math.random()*3)) * 2 * Math.PI;
+    // 關鍵修正：扣掉目前角度 angle（base），確保每次最終都把該格中心對準指針
+    var target = (-angle - mid - jitter) + (5 + Math.floor(Math.random()*3)) * 2 * Math.PI;
     var t0 = performance.now(), dur = 4200, base = angle;
     function ease(t){ return 1 - Math.pow(1-t, 4); }
     function step(ts){
