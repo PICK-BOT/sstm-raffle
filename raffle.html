@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>抽奖 - sstm 主题</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Microsoft YaHei',Arial,sans-serif;color:#fff;overflow-y:auto;user-select:none}
+    #id-screen{position:fixed;inset:0;z-index:600;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);display:flex;align-items:center;justify-content:center;flex-direction:column}
+    .id-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:24px;padding:48px 64px;text-align:center;backdrop-filter:blur(10px);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+    #id-input{width:100%;padding:13px 18px;font-size:1.1rem;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);border-radius:12px;color:#fff;outline:none;text-align:center}
+    #id-confirm{margin-top:18px;padding:13px 56px;font-size:1.1rem;background:linear-gradient(135deg,#f7971e,#ffd200);color:#1a1a1a;border:none;border-radius:50px;cursor:pointer;font-weight:700}
+    #main{display:none;flex-direction:column;align-items:center}
+    #wrap{position:relative;width:380px;height:380px}
+    #wheel{display:block;filter:drop-shadow(0 10px 40px rgba(0,0,0,.7))}
+    #pointer{position:absolute;top:-12px;left:50%;transform:translateX(-50%);border-left:14px solid transparent;border-right:14px solid transparent;border-top:40px solid #FF3333;z-index:10}
+    #spinBtn{margin-top:16px;padding:12px 56px;font-size:1.1rem;background:linear-gradient(135deg,#f7971e,#ffd200);color:#1a1a1a;border:none;border-radius:50px;cursor:pointer;font-weight:700}
+    #chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:480px;margin-top:12px}
+    .chip{padding:4px 12px;border-radius:20px;font-size:.8rem;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.09)}
+    #overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.82);z-index:200}
+    .card{background:linear-gradient(135deg,#1d6fa4,#6a0dad);border-radius:24px;padding:40px 60px;text-align:center}
+    .card-name{font-size:2.4rem;font-weight:800;margin:8px 0 20px}
+    .card-btn{padding:10px 40px;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.5);border-radius:24px;color:#fff;cursor:pointer}
+    .confetti{position:fixed;border-radius:2px;pointer-events:none;animation:fall linear forwards}
+    @keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
+    .back-link{position:fixed;top:12px;left:12px;font-size:13px;color:rgba(255,255,255,.7);text-decoration:none}
+    .back-link:hover{color:#ffd200}
+  </style>
+</head>
+<body>
+  <a class="back-link" href="javascript:history.back()">← 返回主题</a>
+  <div id="id-screen">
+    <div class="id-card">
+      <h2>🎯 抽奖</h2>
+      <p style="margin:8px 0 20px;opacity:.8">輸入論壇 ID 後抽獎，記錄會傳給主辦</p>
+      <input id="id-input" type="text" placeholder="论坛 ID" maxlength="50" onkeydown="if(event.key==='Enter')confirmId()">
+      <button id="id-confirm" onclick="confirmId()">进入抽奖</button>
+      <div id="id-err" style="color:#FF6B6B;font-size:.85rem;margin-top:10px"></div>
+    </div>
+  </div>
+  <div id="main">
+    <h1 style="font-size:1.6rem;margin-bottom:12px">✨ 抽奖</h1>
+    <div id="wrap">
+      <canvas id="wheel" width="380" height="380" onclick="triggerSpin()" style="cursor:pointer"></canvas>
+      <div id="pointer"></div>
+    </div>
+    <button id="spinBtn" onclick="triggerSpin()">🎯 开始抽奖</button>
+    <div id="chips"></div>
+  </div>
+  <div id="overlay">
+    <div class="card">
+      <div class="card-sub">🎉 恭喜！你抽到了</div>
+      <div class="card-name" id="res-name">—</div>
+      <button class="card-btn" onclick="closeResult()">关闭</button>
+    </div>
+  </div>
+  <script>
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var RECORD_URL = params.get('record') || '';
+  var prizes = [
+    { name: '30节操', weight: 60, color: '#FF6B6B' },
+    { name: '10羽毛', weight: 40, color: '#4ECDC4' },
+    { name: '30天勋章', weight: 20, color: '#FFD93D' }
+  ];
+  var PAL = ['#FF6B6B','#4ECDC4','#FFD93D','#6BCB77','#FF9A3C','#A78BFA'];
+  var segs = [], spinning = false, angle = 0, userId = '';
+
+  function confirmId(){
+    var v = document.getElementById('id-input').value.trim();
+    if (!v) { document.getElementById('id-err').textContent = '請輸入論壇 ID'; return; }
+    userId = v;
+    document.getElementById('id-screen').style.display = 'none';
+    document.getElementById('main').style.display = 'flex';
+    initWheel();
+  }
+  function buildSegs(arr){
+    var tot = arr.reduce(function(s,p){ return s + p.weight; }, 0) || 1, a = 0;
+    return arr.map(function(p,i){
+      var sw = (p.weight/tot) * 2 * Math.PI;
+      var s = { name: p.name, weight: p.weight, start: a, sweep: sw, color: p.color || PAL[i % PAL.length] };
+      a += sw; return s;
+    });
+  }
+  function draw(a){
+    var cv = document.getElementById('wheel'), c = cv.getContext('2d');
+    var cx = cv.width/2, cy = cv.height/2, r = Math.min(cx,cy) - 12;
+    c.clearRect(0,0,cv.width,cv.height);
+    if (!segs.length) return;
+    segs.forEach(function(s){
+      c.beginPath(); c.moveTo(cx,cy);
+      c.arc(cx,cy,r, a+s.start-Math.PI/2, a+s.start+s.sweep-Math.PI/2);
+      c.closePath(); c.fillStyle = s.color; c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 1.5; c.stroke();
+      var mid = a + s.start + s.sweep/2 - Math.PI/2;
+      c.save(); c.translate(cx,cy); c.rotate(mid);
+      c.textAlign = 'right'; c.fillStyle = '#fff';
+      var fs = Math.max(10, Math.min(16, r * s.sweep / (s.name.length+1) / 1.6));
+      c.font = 'bold ' + fs + 'px Microsoft YaHei,sans-serif';
+      c.fillText(s.name, r-10, fs*0.35); c.restore();
+    });
+    c.beginPath(); c.arc(cx,cy,r,0,2*Math.PI);
+    c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 4; c.stroke();
+    c.beginPath(); c.arc(cx,cy,22,0,2*Math.PI); c.fillStyle = '#333'; c.fill(); c.stroke();
+  }
+  function burst(){
+    for (var i=0;i<50;i++){
+      var el = document.createElement('div'); el.className = 'confetti';
+      el.style.cssText = 'left:'+Math.random()*100+'vw;top:-10px;background:'+PAL[i%PAL.length]+';width:8px;height:8px;animation:fall '+(1.5+Math.random()*1.5)+'s linear forwards';
+      document.body.appendChild(el);
+      el.addEventListener('animationend', function(){ this.remove(); });
+    }
+  }
+  function showResult(name){
+    document.getElementById('res-name').textContent = name;
+    document.getElementById('overlay').style.display = 'flex';
+    burst();
+  }
+  function closeResult(){ document.getElementById('overlay').style.display = 'none'; }
+  function spinTo(idx, cb){
+    if (spinning) return;
+    spinning = true; document.getElementById('spinBtn').disabled = true;
+    var w = segs[idx], mid = w.start + w.sweep/2, jitter = (Math.random()-0.5) * w.sweep * 0.6;
+    var target = (-mid - jitter) + (5 + Math.floor(Math.random()*3)) * 2 * Math.PI;
+    var t0 = performance.now(), dur = 4200, base = angle;
+    function ease(t){ return 1 - Math.pow(1-t, 4); }
+    function step(ts){
+      var p = Math.min((ts-t0)/dur, 1);
+      angle = base + ease(p) * target; draw(angle);
+      if (p < 1) requestAnimationFrame(step);
+      else { spinning = false; document.getElementById('spinBtn').disabled = false; if (cb) cb(); }
+    }
+    requestAnimationFrame(step);
+  }
+  function doDraw(){
+    var total = prizes.reduce(function(s,p){ return s + p.weight; }, 0);
+    var r = Math.random() * total, cum = 0, idx = prizes.length - 1;
+    for (var i = 0; i < prizes.length; i++) { cum += prizes[i].weight; if (r <= cum) { idx = i; break; } }
+    return idx;
+  }
+  function triggerSpin(){
+    if (spinning || !userId) return;
+    var idx = doDraw(), prize = prizes[idx];
+    spinTo(idx, function(){
+      showResult(prize.name);
+      var now = new Date();
+      var dateStr = now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0')+'-'+now.getDate().toString().padStart(2,'0');
+      var timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0')+':'+now.getSeconds().toString().padStart(2,'0');
+      if (RECORD_URL && RECORD_URL.indexOf('http') === 0) {
+        var q = '?date='+encodeURIComponent(dateStr)+'&time='+encodeURIComponent(timeStr)+'&user_id='+encodeURIComponent(userId)+'&prize_name='+encodeURIComponent(prize.name);
+        var img = new Image(); img.src = RECORD_URL + q;
+      }
+    });
+  }
+  function initWheel(){
+    segs = buildSegs(prizes); draw(angle);
+    document.getElementById('chips').innerHTML = prizes.map(function(p,i){
+      var c = p.color || PAL[i%PAL.length];
+      return '<span class="chip" style="border-color:'+c+';color:'+c+'">'+p.name+'</span>';
+    }).join('');
+  }
+  window.confirmId = confirmId;
+  window.triggerSpin = triggerSpin;
+  window.closeResult = closeResult;
+})();
+  </script>
+</body>
+</html>
