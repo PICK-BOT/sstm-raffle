@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>大富翁走格子 - sstm 主题</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Microsoft YaHei',Arial,sans-serif;color:#fff;padding:16px;user-select:none}
+    .back-link{position:fixed;top:10px;left:10px;font-size:12px;color:rgba(255,255,255,.7);text-decoration:none}
+    .back-link:hover{color:#ffd200}
+    #id-screen{position:fixed;inset:0;z-index:600;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);display:flex;align-items:center;justify-content:center;flex-direction:column}
+    .id-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:36px 48px;text-align:center}
+    #id-input{width:100%;padding:12px 16px;font-size:1rem;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);border-radius:10px;color:#fff;outline:none;text-align:center;margin-bottom:12px}
+    #id-confirm{padding:12px 40px;font-size:1rem;background:linear-gradient(135deg,#f7971e,#ffd200);color:#1a1a1a;border:none;border-radius:50px;cursor:pointer;font-weight:700}
+    #id-err{color:#FF6B6B;font-size:.85rem;margin-top:8px}
+    #main{display:none;flex-direction:column;align-items:center}
+    h1{font-size:1.4rem;margin-bottom:10px}
+    #board{display:grid;grid-template-columns:repeat(10,36px);grid-template-rows:repeat(10,36px);gap:1px;background:rgba(0,0,0,.4);border-radius:6px;padding:2px}
+    .cell{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;font-size:7px;text-align:center;line-height:1.2;overflow:hidden}
+    .c-奖励{background:#1b5e20;color:#fff}
+    .c-惩罚{background:#b71c1c;color:#fff}
+    .c-空格{background:#37474f;color:#ccc}
+    .c-跳转{background:#311b92;color:#fff}
+    .cell-hl{box-shadow:0 0 0 2px #FFD93D}
+    #center{grid-row:2/10;grid-column:2/10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(15,12,41,.9);border-radius:4px;gap:4px;padding:8px}
+    #dice-face{font-size:36px}
+    #dice-num{font-size:12px;color:#FFD93D}
+    #game-msg{font-size:10px;color:rgba(255,255,255,.8);text-align:center;min-height:20px}
+    #roll-btn{padding:8px 20px;font-size:.9rem;background:linear-gradient(135deg,#f7971e,#ffd200);color:#1a1a1a;border:none;border-radius:50px;cursor:pointer;font-weight:700}
+    #roll-btn:disabled{opacity:.5;cursor:not-allowed}
+    #overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.8);z-index:200}
+    .card{background:linear-gradient(135deg,#1d6fa4,#6a0dad);border-radius:20px;padding:24px 40px;text-align:center;max-width:90vw}
+    .card-name{font-size:1.5rem;font-weight:800;margin:6px 0}
+    .card-desc{font-size:.9rem;opacity:.9;margin-bottom:12px}
+    .card-btn{padding:8px 24px;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.5);border-radius:20px;color:#fff;cursor:pointer}
+  </style>
+</head>
+<body>
+  <a class="back-link" href="javascript:history.back()">← 返回主题</a>
+  <div id="id-screen">
+    <div class="id-card">
+      <h2 style="margin-bottom:8px">🎲 大富翁走格子</h2>
+      <p style="font-size:.9rem;opacity:.8;margin-bottom:16px">輸入論壇 ID 進入遊戲，記錄會寫入主辦試算表「大富翁」分頁</p>
+      <input id="id-input" type="text" placeholder="论坛 ID" maxlength="50" onkeydown="if(event.key==='Enter')confirmId()">
+      <button id="id-confirm" onclick="confirmId()">进入游戏</button>
+      <div id="id-err"></div>
+    </div>
+  </div>
+  <div id="main">
+    <h1>🎲 大富翁走格子</h1>
+    <div id="board"></div>
+    <div id="overlay">
+      <div class="card">
+        <div id="res-dice" style="font-size:.9rem;margin-bottom:4px"></div>
+        <div class="card-name" id="res-name">—</div>
+        <div class="card-desc" id="res-desc"></div>
+        <button class="card-btn" onclick="closeResult()">关闭</button>
+      </div>
+    </div>
+  </div>
+  <script>
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var RECORD_URL = params.get('record') || '';
+
+  var BOARD = [
+    {id:0,name:"起 点",type:"空格",desc:"起点，平安无事"},
+    {id:1,name:"节操+10",type:"奖励",desc:"获得10节操"},
+    {id:2,name:"空  格",type:"空格",desc:"无事发生"},
+    {id:3,name:"退后2格",type:"惩罚",desc:"退后2格",steps:-2},
+    {id:4,name:"羽毛+5",type:"奖励",desc:"获得5羽毛"},
+    {id:5,name:"冻结1回",type:"惩罚",desc:"跳过下1回合",freeze:1},
+    {id:6,name:"跳→15",type:"跳转",desc:"跳到格子15",jump_to:15},
+    {id:7,name:"节操+20",type:"奖励",desc:"获得20节操"},
+    {id:8,name:"空  格",type:"空格",desc:"无事发生"},
+    {id:9,name:"退后3格",type:"惩罚",desc:"退后3格",steps:-3},
+    {id:10,name:"羽毛+10",type:"奖励",desc:"获得10羽毛"},
+    {id:11,name:"空  格",type:"空格",desc:"无事发生"},
+    {id:12,name:"退后2格",type:"惩罚",desc:"退后2格",steps:-2},
+    {id:13,name:"节操+30",type:"奖励",desc:"获得30节操"},
+    {id:14,name:"冻结2回",type:"惩罚",desc:"跳过下2回合",freeze:2},
+    {id:15,name:"空  格",type:"空格",desc:"无事发生"},
+    {id:16,name:"节操+15",type:"奖励",desc:"获得15节操"},
+    {id:17,name:"跳→起点",type:"跳转",desc:"跳回起点(格0)",jump_to:0},
+    {id:18,name:"退后2格",type:"惩罚",desc:"退后2格",steps:-2},
+    {id:19,name:"空  格",type:"空格",desc:"无事发生"},
+    {id:20,name:"节操+10",type:"奖励",desc:"获得10节操"},
+    {id:21,name:"退后4格",type:"惩罚",desc:"退后4格",steps:-4},
+    {id:22,name:"空  格",type:"空格",desc:"无事发生"},
+    {id:23,name:"羽毛+5",type:"奖励",desc:"获得5羽毛"},
+    {id:24,name:"跳→30",type:"跳转",desc:"跳到格子30",jump_to:30},
+    {id:25,name:"空  格",type:"空格",desc:"无事发生"},
+    {id:26,name:"冻结1回",type:"惩罚",desc:"跳过下1回合",freeze:1},
+    {id:27,name:"节操+20",type:"奖励",desc:"获得20节操"},
+    {id:28,name:"空  格",type:"空格",desc:"无事发生"},
+    {id:29,name:"退后2格",type:"惩罚",desc:"退后2格",steps:-2},
+    {id:30,name:"节操+10",type:"奖励",desc:"获得10节操"},
+    {id:31,name:"空  格",type:"空格",desc:"无事发生"},
+    {id:32,name:"羽毛+30",type:"奖励",desc:"获得30羽毛"},
+    {id:33,name:"退后3格",type:"惩罚",desc:"退后3格",steps:-3},
+    {id:34,name:"跳→5",type:"跳转",desc:"跳到格子5",jump_to:5},
+    {id:35,name:"节操+50",type:"奖励",desc:"获得50节操"}
+  ];
+
+  var FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+  var pos = 0, skip = 0, userId = '', pending = false;
+
+  function cellPos(id){
+    if(id<=9) return [1, id+1];
+    if(id<=17) return [id-8, 10];
+    if(id<=27) return [10, 28-id];
+    return [37-id, 1];
+  }
+
+  function buildBoard(){
+    var container = document.getElementById('board');
+    container.innerHTML = '';
+    BOARD.forEach(function(c){
+      var p = cellPos(c.id);
+      var div = document.createElement('div');
+      div.className = 'cell c-' + c.type;
+      div.id = 'cell-' + c.id;
+      div.style.gridRow = p[0];
+      div.style.gridColumn = p[1];
+      div.title = '格' + c.id + ': ' + c.name + ' — ' + c.desc;
+      div.textContent = c.id + ' ' + c.name.replace(/\s/g,'');
+      container.appendChild(div);
+    });
+    var center = document.createElement('div');
+    center.id = 'center';
+    center.style.gridRow = '2/10';
+    center.style.gridColumn = '2/10';
+    center.innerHTML = '<div id="dice-face">🎲</div><div id="dice-num"></div><div id="game-msg">擲骰子走格子</div><button id="roll-btn" onclick="doRoll()">🎲 掷骰</button>';
+    container.appendChild(center);
+  }
+
+  function updateHighlight(){
+    document.querySelectorAll('.cell-hl').forEach(function(el){ el.classList.remove('cell-hl'); });
+    var el = document.getElementById('cell-' + pos);
+    if(el) el.classList.add('cell-hl');
+  }
+
+  function sendRecord(dice, from_pos, final_pos, cell){
+    if(!RECORD_URL || RECORD_URL.indexOf('http')!==0) return;
+    var now = new Date();
+    var dateStr = now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0')+'-'+now.getDate().toString().padStart(2,'0');
+    var timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0')+':'+now.getSeconds().toString().padStart(2,'0');
+    var q = '?sheet=大富翁&date='+encodeURIComponent(dateStr)+'&time='+encodeURIComponent(timeStr)+'&user_id='+encodeURIComponent(userId)+'&dice='+encodeURIComponent(dice)+'&from_pos='+from_pos+'&final_pos='+final_pos+'&cell_name='+encodeURIComponent(cell.name)+'&cell_type='+encodeURIComponent(cell.type)+'&cell_desc='+encodeURIComponent(cell.desc);
+    var img = new Image();
+    img.src = RECORD_URL + q;
+  }
+
+  function showResult(dice, from_pos, to_pos, final_pos, cell, skipped, skipLeft){
+    var resDice = document.getElementById('res-dice');
+    var resName = document.getElementById('res-name');
+    var resDesc = document.getElementById('res-desc');
+    if(skipped){
+      resDice.textContent = '❄️ 凍結，跳過本回合';
+      resName.textContent = '剩餘凍結 ' + skipLeft + ' 回';
+      resDesc.textContent = '';
+    } else {
+      resDice.textContent = FACES[dice-1] + ' 擲出 ' + dice + ' 點  格' + from_pos + '→格' + final_pos;
+      resName.textContent = cell.name;
+      resDesc.textContent = cell.desc;
+    }
+    document.getElementById('overlay').style.display = 'flex';
+  }
+
+  function closeResult(){
+    document.getElementById('overlay').style.display = 'none';
+    pending = false;
+    document.getElementById('roll-btn').disabled = false;
+    updateHighlight();
+  }
+
+  function doRoll(){
+    if(pending) return;
+    pending = true;
+    document.getElementById('roll-btn').disabled = true;
+    var from_pos = pos;
+    if(skip > 0){
+      skip--;
+      showResult(0, from_pos, from_pos, from_pos, BOARD[from_pos], true, skip);
+      document.getElementById('game-msg').textContent = userId + ' 凍結中，剩餘 ' + skip + ' 回';
+      return;
+    }
+    var dice = Math.floor(Math.random()*6)+1;
+    var to_pos = (from_pos + dice) % 36;
+    var cell = BOARD[to_pos];
+    var final_pos = to_pos;
+    if(cell.type === '跳转' && cell.jump_to !== undefined){
+      final_pos = cell.jump_to;
+    } else if(cell.steps){
+      var n = Math.abs(cell.steps);
+      for(var i=0;i<n;i++) final_pos = (final_pos - 1 + 36) % 36;
+    } else if(cell.freeze){
+      skip = cell.freeze;
+    }
+    pos = final_pos;
+    document.getElementById('dice-face').textContent = FACES[dice-1];
+    document.getElementById('dice-num').textContent = dice + ' 點';
+    document.getElementById('game-msg').textContent = userId + ' 擲出 ' + dice + ' 點，抵達格' + final_pos + ' ' + cell.name;
+    sendRecord(dice, from_pos, final_pos, cell);
+    showResult(dice, from_pos, to_pos, final_pos, cell, false);
+  }
+
+  function confirmId(){
+    var v = document.getElementById('id-input').value.trim();
+    if(!v){ document.getElementById('id-err').textContent = '請輸入論壇 ID'; return; }
+    userId = v;
+    document.getElementById('id-screen').style.display = 'none';
+    document.getElementById('main').style.display = 'flex';
+    buildBoard();
+    updateHighlight();
+  }
+
+  window.confirmId = confirmId;
+  window.closeResult = closeResult;
+  window.doRoll = doRoll;
+})();
+  </script>
+</body>
+</html>
