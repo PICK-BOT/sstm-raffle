@@ -41,7 +41,7 @@
   <div id="id-screen">
     <div class="id-card">
       <h2 style="margin-bottom:8px">🎲 大富翁走格子</h2>
-      <p style="font-size:.9rem;opacity:.8;margin-bottom:16px">輸入論壇 ID 進入遊戲，記錄會寫入主辦試算表「大富翁」分頁</p>
+      <p style="font-size:.9rem;opacity:.8;margin-bottom:16px"> 输入论坛 ID 进入游戏，记录会传给主办</p>
       <input id="id-input" type="text" placeholder="论坛 ID" maxlength="50" onkeydown="if(event.key==='Enter')confirmId()">
       <button id="id-confirm" onclick="confirmId()">进入游戏</button>
       <div id="id-err"></div>
@@ -131,7 +131,7 @@
     center.id = 'center';
     center.style.gridRow = '2/10';
     center.style.gridColumn = '2/10';
-    center.innerHTML = '<div id="dice-face">🎲</div><div id="dice-num"></div><div id="game-msg">擲骰子走格子</div><button id="roll-btn" onclick="doRoll()">🎲 掷骰</button>';
+    center.innerHTML = '<div id="dice-face">🎲</div><div id="dice-num"></div><div id="game-msg">掷骰子走格子</div><button id="roll-btn" onclick="doRoll()">🎲 掷骰</button>';
     container.appendChild(center);
   }
 
@@ -156,11 +156,11 @@
     var resName = document.getElementById('res-name');
     var resDesc = document.getElementById('res-desc');
     if(skipped){
-      resDice.textContent = '❄️ 凍結，跳過本回合';
-      resName.textContent = '剩餘凍結 ' + skipLeft + ' 回';
+      resDice.textContent = '❄️ 冻结，跳过本回合';
+      resName.textContent = '剩余冻结 ' + skipLeft + ' 回';
       resDesc.textContent = '';
     } else {
-      resDice.textContent = FACES[dice-1] + ' 擲出 ' + dice + ' 點  格' + from_pos + '→格' + final_pos;
+      resDice.textContent = FACES[dice-1] + ' 掷出 ' + dice + ' 点  格' + from_pos + '→格' + final_pos;
       resName.textContent = cell.name;
       resDesc.textContent = cell.desc;
     }
@@ -182,7 +182,7 @@
     if(skip > 0){
       skip--;
       showResult(0, from_pos, from_pos, from_pos, BOARD[from_pos], true, skip);
-      document.getElementById('game-msg').textContent = userId + ' 凍結中，剩餘 ' + skip + ' 回';
+      document.getElementById('game-msg').textContent = userId + ' 冻结中，剩余 ' + skip + ' 回';
       return;
     }
     var dice = Math.floor(Math.random()*6)+1;
@@ -199,15 +199,15 @@
     }
     pos = final_pos;
     document.getElementById('dice-face').textContent = FACES[dice-1];
-    document.getElementById('dice-num').textContent = dice + ' 點';
-    document.getElementById('game-msg').textContent = userId + ' 擲出 ' + dice + ' 點，抵達格' + final_pos + ' ' + cell.name;
+    document.getElementById('dice-num').textContent = dice + ' 点';
+    document.getElementById('game-msg').textContent = userId + ' 掷出 ' + dice + ' 点，抵达格' + final_pos + ' ' + cell.name;
     sendRecord(dice, from_pos, final_pos, cell);
     showResult(dice, from_pos, to_pos, final_pos, cell, false);
   }
 
   function confirmId(){
     var v = document.getElementById('id-input').value.trim();
-    if(!v){ document.getElementById('id-err').textContent = '請輸入論壇 ID'; return; }
+    if(!v){ document.getElementById('id-err').textContent = '请输入论坛 ID '; return; }
     userId = v;
     document.getElementById('id-screen').style.display = 'none';
     document.getElementById('main').style.display = 'flex';
@@ -222,3 +222,4 @@
   </script>
 </body>
 </html>
+
