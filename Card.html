@@ -183,19 +183,6 @@
             color: #666;
             font-size: 0.9rem;
         }
-        .record-status {
-            background: #e8f5e8;
-            color: #2e7d32;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 10px;
-            text-align: center;
-            font-size: 0.9rem;
-        }
-        .record-status.error {
-            background: #ffebee;
-            color: #c62828;
-        }
         @media (max-width: 600px) {
             .container {
                 padding: 20px;
@@ -221,9 +208,6 @@
     <div class="container">
         <div class="header">
             <h1>🎴 翻牌游戏 🎴</h1>
-            <div class="record-status" id="recordStatus">
-                📊 记录功能就绪
-            </div>
         </div>
         
         <div class="user-section">
@@ -470,7 +454,6 @@
             // 显示游戏区域
             document.getElementById('gameArea').style.display = 'block';
             
-            updateRecordStatus();
             showMessage('ID已设置: ' + userId + '，可以开始游戏了！');
             
             // 初始化游戏
@@ -636,7 +619,6 @@
                 gameState.userId = savedUserId;
                 // 不自动显示游戏区域，要求用户点击设置ID
             }
-            updateRecordStatus();
         });
     </script>
 </body>
