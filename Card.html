@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>翻牌游戏 - SSTM</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .user-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .user-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .user-input input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .user-input button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .user-input button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            color: #555;
+        }
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        .card {
+            aspect-ratio: 1;
+            background: linear-gradient(145deg, #f8f9fa, #ffffff);
+            border: 3px solid #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #333;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            writing-mode: horizontal-tb;
+            text-orientation: mixed;
+            direction: ltr;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+        }
+        .card.flipped {
+            background: var(--card-color);
+            color: white;
+            border-color: var(--card-color);
+            writing-mode: horizontal-tb;
+            text-orientation: mixed;
+            direction: ltr;
+        }
+        .card.matched {
+            background: var(--card-color);
+            color: white;
+            border-color: var(--card-color);
+            opacity: 0.7;
+            cursor: not-allowed;
+            writing-mode: horizontal-tb;
+            text-orientation: mixed;
+            direction: ltr;
+        }
+        .card.empty {
+            background: transparent !important;
+            border: 3px solid transparent !important;
+            cursor: default !important;
+            opacity: 0.3;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .btn {
+            padding: 12px 24px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        .btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border-radius: 12px;
+            margin-top: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+        .result.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .record-status {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .record-status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            .game-board {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px;
+            }
+            .card {
+                font-size: 0.9rem;
+            }
+            .user-input {
+                flex-direction: column;
+            }
+            .user-input input {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎴 翻牌游戏 🎴</h1>
+            <div class="record-status" id="recordStatus">
+                📊 记录功能就绪
+            </div>
+        </div>
+        
+        <div class="user-section">
+            <div class="user-input">
+                <input type="text" id="userId" placeholder="请输入你的论坛ID (必须)" value="">
+                <button onclick="setUserId()">设置ID</button>
+            </div>
+            <div id="gameArea" style="display: none;">
+                <div class="stats">
+                    <span>剩余配对: <strong id="remaining">8</strong></span>
+                    <span>已配对: <strong id="flipped">0</strong></span>
+                </div>
+                
+                <div class="game-board" id="gameBoard">
+                    <!-- 卡片将通过 JavaScript 生成 -->
+                </div>
+                
+                <div class="controls">
+                    <!-- 移除重新开始和全部显示按钮 -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="result" id="result"></div>
+        
+        <div class="footer">
+            <p>基于HTML5的翻牌游戏 | <a href="https://github.com/PICK-BOT/sstm-raffle" target="_blank">GitHub</a></p>
+        </div>
+    </div>
+
+    <script>
+        // 配置
+        const CONFIG = {
+            cards: [
+                {name: "节操+10", weight: 20, color: "#FF6B6B"},
+                {name: "羽毛+5", weight: 20, color: "#4ECDC4"},
+                {name: "节操+20", weight: 15, color: "#FFD93D"},
+                {name: "羽毛+10", weight: 15, color: "#6BCB77"},
+                {name: "谢谢参与", weight: 30, color: "#8898AA"},
+            ],
+            recordUrl: getRecordUrl(),
+            localRecords: []
+        };
+
+        // 游戏状态
+        let gameState = {
+            cards: [],
+            flippedCards: [],
+            matchedPairs: 0,
+            totalPairs: 8,
+            userId: localStorage.getItem('userId') || '',
+            recordEnabled: true,
+            isProcessing: false  // 防止快速点击
+        };
+
+        // 获取记录URL
+        function getRecordUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('record') || '';
+        }
+
+        // 初始化游戏
+        function initGame() {
+            // 生成配对卡片（每种2张）
+            gameState.cards = [];
+            gameState.flippedCards = [];
+            gameState.matchedPairs = 0;
+            
+            // 选择8种卡片类型
+            const selectedCards = [];
+            for (let i = 0; i < 8; i++) {
+                const card = selectCardByWeight(CONFIG.cards);
+                selectedCards.push({...card});
+            }
+            
+            // 每种卡片创建2张
+            selectedCards.forEach(card => {
+                gameState.cards.push({...card, id: Math.random().toString(36).substr(2, 9), matched: false, flipped: false});
+                gameState.cards.push({...card, id: Math.random().toString(36).substr(2, 9), matched: false, flipped: false});
+            });
+            
+            // 随机打乱
+            gameState.cards.sort(() => Math.random() - 0.5);
+            
+            renderBoard();
+            updateStats();
+        }
+
+        // 根据权重选择卡牌
+        function selectCardByWeight(cards) {
+            const totalWeight = cards.reduce((sum, card) => sum + card.weight, 0);
+            let random = Math.random() * totalWeight;
+            
+            for (const card of cards) {
+                random -= card.weight;
+                if (random <= 0) {
+                    return {...card};
+                }
+            }
+            return {...cards[0]};
+        }
+
+        // 渲染游戏板
+        function renderBoard() {
+            const board = document.getElementById('gameBoard');
+            board.innerHTML = '';
+            
+            gameState.cards.forEach((card, index) => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'card';
+                cardElement.style.setProperty('--card-color', card.color);
+                
+                if (card.matched) {
+                    // 匹配的卡片显示为空白，但保持位置
+                    cardElement.classList.add('empty');
+                    cardElement.textContent = '';
+                    cardElement.style.cursor = 'default';
+                    cardElement.style.border = '3px solid transparent';
+                } else if (card.flipped) {
+                    cardElement.classList.add('flipped');
+                    cardElement.textContent = card.name;
+                } else {
+                    cardElement.textContent = '?';
+                }
+                
+                // 只有未匹配的卡片才能点击
+                if (!card.matched) {
+                    cardElement.onclick = () => flipCard(index);
+                }
+                
+                board.appendChild(cardElement);
+            });
+        }
+
+        // 翻牌
+        function flipCard(index) {
+            const card = gameState.cards[index];
+            
+            // 如果正在处理或已匹配或已翻开，不处理
+            if (gameState.isProcessing || card.matched || card.flipped) return;
+            
+            // 设置处理状态，防止快速点击
+            gameState.isProcessing = true;
+            
+            // 翻开卡片
+            card.flipped = true;
+            gameState.flippedCards.push(index);
+            
+            renderBoard();
+            
+            // 如果翻开了2张卡片
+            if (gameState.flippedCards.length === 2) {
+                const [firstIndex, secondIndex] = gameState.flippedCards;
+                const firstCard = gameState.cards[firstIndex];
+                const secondCard = gameState.cards[secondIndex];
+                
+                // 检查是否匹配
+                if (firstCard.name === secondCard.name) {
+                    // 匹配成功
+                    setTimeout(() => {
+                        firstCard.matched = true;
+                        secondCard.matched = true;
+                        firstCard.flipped = false;  // 匹配后不显示
+                        secondCard.flipped = false; // 匹配后不显示
+                        gameState.matchedPairs++;
+                        gameState.flippedCards = [];
+                        
+                        // 记录获得的奖励
+                        recordFlip(firstCard);
+                        
+                        renderBoard();
+                        updateStats();
+                        
+                        // 检查游戏是否结束
+                        if (gameState.matchedPairs === gameState.totalPairs) {
+                            // 显示重新开始按钮
+                            const controlsDiv = document.querySelector('.controls');
+                            controlsDiv.innerHTML = '<button class="btn" onclick="location.reload()">重新开始</button>';
+                            
+                            setTimeout(() => {
+                                showMessage('🎉 恭喜！你找到了所有配对！🎉');
+                            }, 500);
+                        }
+                        
+                        // 重置处理状态
+                        gameState.isProcessing = false;
+                    }, 1000);
+                } else {
+                    // 不匹配，1秒后盖回去
+                    setTimeout(() => {
+                        firstCard.flipped = false;
+                        secondCard.flipped = false;
+                        gameState.flippedCards = [];
+                        renderBoard();
+                        
+                        // 重置处理状态
+                        gameState.isProcessing = false;
+                    }, 1000);
+                }
+            } else {
+                // 只翻开一张卡片，重置处理状态
+                setTimeout(() => {
+                    gameState.isProcessing = false;
+                }, 100);
+            }
+        }
+
+        // 显示结果
+        function showResult(card) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `🎉 恭喜获得: ${card.name} 🎉`;
+            resultDiv.classList.add('show');
+            
+            setTimeout(() => {
+                resultDiv.classList.remove('show');
+            }, 3000);
+        }
+
+        // 更新统计
+        function updateStats() {
+            document.getElementById('remaining').textContent = gameState.totalPairs - gameState.matchedPairs;
+            document.getElementById('flipped').textContent = gameState.matchedPairs;
+        }
+
+        // 设置用户ID
+        function setUserId() {
+            const userId = document.getElementById('userId').value.trim();
+            if (!userId) {
+                showMessage('请输入你的论坛ID');
+                return;
+            }
+            
+            if (userId.length < 2) {
+                showMessage('ID长度至少2个字符');
+                return;
+            }
+            
+            gameState.userId = userId;
+            localStorage.setItem('userId', userId);
+            
+            // 显示游戏区域
+            document.getElementById('gameArea').style.display = 'block';
+            
+            updateRecordStatus();
+            showMessage('ID已设置: ' + userId + '，可以开始游戏了！');
+            
+            // 初始化游戏
+            initGame();
+        }
+
+        // 切换记录
+        // function toggleRecord() {
+        //     gameState.recordEnabled = !gameState.recordEnabled;
+        //     localStorage.setItem('recordEnabled', gameState.recordEnabled);
+        //     updateStats();
+        //     updateRecordStatus();
+        //     showMessage('记录功能已' + (gameState.recordEnabled ? '开启' : '关闭'));
+        // }
+
+        // 更新记录状态
+        function updateRecordStatus() {
+            const statusDiv = document.getElementById('recordStatus');
+            if (CONFIG.recordUrl) {
+                statusDiv.innerHTML = `📊 云端记录已连接<br><small>${CONFIG.recordUrl.substring(0, 50)}...</small>`;
+                statusDiv.className = 'record-status';
+            } else {
+                statusDiv.innerHTML = '📊 请在URL中添加record参数<br><small>?record=你的Google-Sheets-URL</small>';
+                statusDiv.className = 'record-status error';
+            }
+        }
+
+        // 记录翻牌
+        function recordFlip(card) {
+            // 只进行云端记录，不保存到本地
+            if (CONFIG.recordUrl) {
+                recordToCloud({
+                    timestamp: new Date().toISOString(),
+                    id: gameState.userId || 'anonymous',
+                    card: card.name,
+                    description: `颜色: ${card.color}`
+                });
+            } else {
+                console.log('未配置云端记录URL，跳过记录');
+            }
+        }
+
+        // 云端记录
+        async function recordToCloud(record) {
+            if (!CONFIG.recordUrl) {
+                console.log('未配置云端记录URL');
+                return;
+            }
+            
+            try {
+                console.log('=== 开始云端记录 ===');
+                console.log('记录URL:', CONFIG.recordUrl);
+                console.log('记录数据:', record);
+                
+                const payload = {
+                    time: record.timestamp,
+                    id: record.id,
+                    card: record.card,
+                    description: `配对成功获得: ${record.card}`
+                };
+                
+                console.log('发送数据:', JSON.stringify(payload));
+                
+                const response = await fetch(CONFIG.recordUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                console.log('响应状态:', response.status);
+                console.log('响应头:', response.headers);
+                
+                if (response.ok) {
+                    console.log('✅ 云端记录成功');
+                    const result = await response.json();
+                    console.log('✅ 服务器响应:', result);
+                    showMessage('记录成功！');
+                } else {
+                    console.error('❌ 云端记录失败:', response.status, response.statusText);
+                    const errorText = await response.text();
+                    console.error('❌ 错误详情:', errorText);
+                    showMessage(`记录失败: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('❌ 云端记录错误:', error);
+                showMessage('记录失败，请检查网络');
+            }
+        }
+
+        // 重置游戏 (已移除，不再需要)
+        // function resetGame() {
+        //     gameState.flipped = 0;
+        //     gameState.remaining = 16;
+        //     initGame();
+        //     showMessage('游戏已重置');
+        // }
+
+        // 全部显示 (已移除，不再需要)
+        // function revealAll() {
+        //     gameState.cards.forEach(card => {
+        //         card.flipped = true;
+        //     });
+        //     gameState.flipped = 16;
+        //     gameState.remaining = 0;
+        //     
+        //     renderBoard();
+        //     updateStats();
+        //     showMessage('所有卡牌已显示');
+        // }
+
+        // 导出记录
+        function exportRecords() {
+            const records = JSON.parse(localStorage.getItem('cardGameRecords') || '[]');
+            if (records.length === 0) {
+                showMessage('暂无记录可导出');
+                return;
+            }
+            
+            // 创建CSV内容
+            const csvContent = [
+                ['日期', '时间', '用户ID', '翻牌结果', '颜色'],
+                ...records.map(r => [r.date, r.time, r.userId, r.cardName, r.cardColor])
+            ].map(row => row.join(',')).join('\n');
+            
+            // 下载文件
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `翻牌记录_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.csv`;
+            link.click();
+            
+            showMessage(`已导出 ${records.length} 条记录`);
+        }
+
+        // 显示消息
+        function showMessage(message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = message;
+            resultDiv.classList.add('show');
+            
+            setTimeout(() => {
+                resultDiv.classList.remove('show');
+            }, 2000);
+        }
+
+        // 加载本地记录
+        function loadLocalRecords() {
+            const stored = localStorage.getItem('cardGameRecords');
+            if (stored) {
+                CONFIG.localRecords = JSON.parse(stored);
+            }
+        }
+
+        // 页面加载时初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedUserId = localStorage.getItem('userId');
+            if (savedUserId) {
+                document.getElementById('userId').value = savedUserId;
+                gameState.userId = savedUserId;
+                document.getElementById('gameArea').style.display = 'block';
+                updateRecordStatus();
+                initGame();
+            } else {
+                updateRecordStatus();
+            }
+        });
+    </script>
+</body>
+</html>
