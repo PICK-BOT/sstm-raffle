@@ -391,6 +391,9 @@
                         gameState.matchedPairs++;
                         gameState.flippedCards = [];
                         
+                        // 立即显示获得的奖励
+                        showResult(firstCard);
+                        
                         // 记录获得的奖励
                         recordFlip(firstCard);
                         
@@ -626,16 +629,14 @@
 
         // 页面加载时初始化
         window.addEventListener('DOMContentLoaded', () => {
+            // 恢复用户ID但不自动显示游戏
             const savedUserId = localStorage.getItem('userId');
             if (savedUserId) {
                 document.getElementById('userId').value = savedUserId;
                 gameState.userId = savedUserId;
-                document.getElementById('gameArea').style.display = 'block';
-                updateRecordStatus();
-                initGame();
-            } else {
-                updateRecordStatus();
+                // 不自动显示游戏区域，要求用户点击设置ID
             }
+            updateRecordStatus();
         });
     </script>
 </body>
