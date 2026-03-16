@@ -531,7 +531,7 @@
             <div class="max-number" id="finalMaxNumber">0</div>
             <div class="game-over-buttons">
                 <button class="btn" onclick="newGame()">新游戏</button>
-                <button class="btn btn-secondary" onclick="showLeaderboard(); return false;">查看排行榜</button>
+                <button class="btn btn-secondary" onclick="showLeaderboardFromGameOver(); return false;">查看排行榜</button>
             </div>
         </div>
     </div>
@@ -882,6 +882,27 @@
             }
         }
 
+        // 从游戏结束弹窗显示排行榜
+        function showLeaderboardFromGameOver() {
+            console.log('从游戏结束弹窗显示排行榜');
+            
+            // 隐藏游戏结束弹窗
+            hideGameOverModal();
+            
+            // 开始新游戏
+            newGame();
+            
+            // 延迟显示排行榜，让新游戏先初始化
+            setTimeout(() => {
+                showLeaderboard();
+            }, 100);
+            
+            // 阻止事件冒泡
+            if (window.event) {
+                window.event.stopPropagation();
+            }
+        }
+
         // 隐藏排行榜
         function hideLeaderboard() {
             console.log('隐藏排行榜被调用');
@@ -1029,6 +1050,10 @@
                 // 不自动显示游戏区域，要求用户点击设置ID
             }
         });
+        
+        // 版本信息
+        console.log('2048游戏 - 版本: v1.2.0');
+        console.log('更新内容: 修复排行榜显示问题，添加游戏结束弹窗排行榜功能');
     </script>
 </body>
 </html>
