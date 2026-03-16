@@ -339,6 +339,14 @@
             background: #1976D2;
         }
 
+        .btn-warning {
+            background: #ff9800;
+        }
+
+        .btn-warning:hover {
+            background: #f57c00;
+        }
+
         .leaderboard {
             background: #f8f9fa;
             border-radius: 10px;
@@ -523,6 +531,7 @@
                 
                 <div class="controls">
                     <button class="btn" onclick="newGame()">新游戏</button>
+                    <button class="btn btn-warning" onclick="endGameNow()">直接结束游戏</button>
                     <button class="btn btn-secondary" onclick="showLeaderboard(); return false;">排行榜</button>
                 </div>
                 
@@ -538,7 +547,7 @@
         
         <div class="footer">
             <p>基于HTML5的2048游戏 | <a href="https://github.com/PICK-BOT/sstm-raffle" target="_blank">GitHub</a></p>
-            <p class="version-info">版本: v1.3.0 | 更新: 修复页面滚动问题，确保所有功能按钮可见</p>
+            <p class="version-info">版本: v1.3.1 (直接结束版) | 更新: 2024-03-16</p>
         </div>
     </div>
 
@@ -810,6 +819,21 @@
             document.getElementById('gameOverModal').style.display = 'none';
         }
 
+        // 直接结束游戏
+        function endGameNow() {
+            if (!gameState.userId) {
+                showMessage('请先设置用户ID！');
+                return;
+            }
+            
+            if (confirm('确定要直接结束游戏吗？当前成绩将被记录到排行榜。')) {
+                gameState.isGameOver = true;
+                showGameOverModal();
+                recordGame();
+                showMessage('游戏已结束，成绩已记录！');
+            }
+        }
+
         // 新游戏
         function newGame() {
             initGame();
@@ -834,7 +858,7 @@
                 });
                 
                 const payload = {
-                    time: new Date().toISOString(),
+                    userId: gameState.userId,
                     id: gameState.userId,
                     maxNumber: gameState.maxNumber,
                     score: gameState.score,
