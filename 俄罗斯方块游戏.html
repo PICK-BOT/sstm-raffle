@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>俄罗斯方块 - HTML5游戏</title>
+    <title>俄罗斯方块游戏</title>
     <style>
         * {
             margin: 0;
@@ -195,10 +195,135 @@
         .rank-1 { color: #ffd700; }
         .rank-2 { color: #c0c0c0; }
         .rank-3 { color: #cd7f32; }
+
+        .config-panel {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .config-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .config-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .save-config-btn {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            width: 100%;
+        }
+
+        .save-config-btn:hover {
+            background: #1976d2;
+        }
+
+        .version-info {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        .login-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-panel h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        .login-input:focus {
+            border-color: #2196f3;
+            outline: none;
+        }
+
+        .login-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background 0.3s;
+        }
+
+        .login-btn:hover {
+            background: #45a049;
+        }
+
+        .login-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
     <div class="game-container">
+        <!-- 登录遮罩 -->
+        <div class="login-overlay" id="loginOverlay">
+            <div class="login-panel">
+                <h2>🎮 俄罗斯方块游戏</h2>
+                <input type="text" id="userId" class="login-input" placeholder="请输入您的ID（必填）" maxlength="20">
+                <button class="login-btn" id="loginBtn" onclick="startGame()">开始游戏</button>
+                <small style="color: #666; font-size: 12px;">
+                    ID将用于记录您的游戏数据
+                </small>
+            </div>
+        </div>
+        
         <div class="game-board">
             <canvas id="gameCanvas" width="300" height="600"></canvas>
             <div class="game-over" id="gameOver">
@@ -212,6 +337,16 @@
         </div>
         
         <div class="game-info">
+            <div class="config-panel">
+                <h3>配置API</h3>
+                <input type="text" id="apiUrl" class="config-input" placeholder="输入您的 Google Apps Script URL">
+                <button class="save-config-btn" onclick="saveApiConfig()">保存配置</button>
+                <small style="color: rgba(255,255,255,0.7); font-size: 11px;">
+                    提示：也可以通过URL参数设置：<br>
+                    ?record=https://script.google.com/macros/您的ID/exec
+                </small>
+            </div>
+            
             <div class="info-panel">
                 <h3>游戏信息</h3>
                 <div class="score-display">分数: <span id="score">0</span></div>
@@ -240,9 +375,16 @@
             <div class="info-panel">
                 <h3>排行榜</h3>
                 <div class="leaderboard" id="leaderboard">
-                    <div class="leaderboard-item">加载中...</div>
+                    <div class="leaderboard-item">请先登录</div>
                 </div>
             </div>
+        </div>
+        
+        <!-- 版本信息 -->
+        <div class="version-info">
+            俄罗斯方块游戏 | 
+            最后更新: 2024-03-16 | 
+            API状态: <span id="apiStatus">未连接</span>
         </div>
     </div>
 
@@ -287,6 +429,13 @@
         let gameElapsedTime = 0;
         let moveCount = 0;
         let piecesUsed = [];
+
+        // 用户信息
+        let userId = '';
+        let isLoggedIn = false;
+
+        // API配置
+        let WEB_APP_URL = '';
 
         // Canvas设置
         const canvas = document.getElementById('gameCanvas');
@@ -506,52 +655,84 @@
                 `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
 
-        // 游戏结束
-        function gameOver() {
-            gameRunning = false;
+        // 获取API URL
+        function getApiUrl() {
+            // 优先级：URL参数 > 本地存储 > 默认值
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramUrl = urlParams.get('record');
+            if (paramUrl) {
+                return paramUrl;
+            }
             
-            const finalData = {
-                score: score,
-                linesCleared: lines,
-                level: level,
-                gameTime: document.getElementById('gameTime').textContent,
-                pieces: [...new Set(piecesUsed)].join(','),
-                moves: moveCount
-            };
+            const storedUrl = localStorage.getItem('tetris_api_url');
+            if (storedUrl) {
+                return storedUrl;
+            }
+            
+            // 默认URL（您的部署URL）
+            return 'https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsiAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec';
+        }
 
-            document.getElementById('finalScore').textContent = score;
-            document.getElementById('finalLines').textContent = lines;
-            document.getElementById('finalLevel').textContent = level;
-            document.getElementById('finalTime').textContent = finalData.gameTime;
-            document.getElementById('gameOver').style.display = 'block';
+        // 保存API配置
+        function saveApiConfig() {
+            const inputUrl = document.getElementById('apiUrl').value.trim();
+            if (inputUrl) {
+                localStorage.setItem('tetris_api_url', inputUrl);
+                WEB_APP_URL = inputUrl;
+                alert('API URL 已保存！');
+                updateApiStatus();
+                loadLeaderboard();
+            } else {
+                alert('请输入有效的 API URL');
+            }
+        }
 
-            // 发送数据到服务器
-            sendGameData(finalData);
+        // 更新API状态
+        function updateApiStatus() {
+            const statusEl = document.getElementById('apiStatus');
+            if (statusEl) {
+                statusEl.textContent = '已连接';
+            }
         }
 
         // 发送游戏数据
         async function sendGameData(data) {
+            if (!WEB_APP_URL) {
+                console.error('API URL 未配置');
+                return;
+            }
+            
+            // 添加用户信息到数据
+            const enhancedData = {
+                ...data,
+                userId: userId,
+                timestamp: new Date().toISOString()
+            };
+            
             try {
-                // 替换为您的 Google Apps Script Web App URL
-                const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzzC-TP6ogQqxJo1JlTAS6926HIkACpn2kHmFhRYJ5K8IjWztcCYthx9nnpzNXWC-DWEA/exec';
-                
                 const response = await fetch(WEB_APP_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify(enhancedData)
                 });
 
                 const result = await response.json();
                 console.log('游戏数据发送结果:', result);
                 
+                if (result.success) {
+                    console.log('✅ 数据成功写入Excel，ID:', userId);
+                    alert(`游戏数据已保存！\n用户ID: ${userId}\n分数: ${data.score}\n时间: ${new Date().toLocaleString()}`);
+                }
+                
                 // 更新排行榜
-                if (result.success && result.leaderboard) {
+                if (result.leaderboard) {
                     updateLeaderboard(result.leaderboard);
                 }
             } catch (error) {
                 console.error('发送游戏数据失败:', error);
+                alert('数据保存失败，请检查网络连接');
             }
         }
 
@@ -583,10 +764,12 @@
 
         // 加载排行榜
         async function loadLeaderboard() {
+            if (!WEB_APP_URL) {
+                document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">请先配置API URL</div>';
+                return;
+            }
+            
             try {
-                // 替换为您的 Google Apps Script Web App URL
-                const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzzC-TP6ogQqxJo1JlTAS6926HIkACpn2kHmFhRYJ5K8IjWztcCYthx9nnpzNXWC-DWEA/exec';
-                
                 const response = await fetch(WEB_APP_URL);
                 const result = await response.json();
                 
@@ -595,7 +778,31 @@
                 }
             } catch (error) {
                 console.error('加载排行榜失败:', error);
+                document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">加载失败</div>';
             }
+        }
+
+        // 游戏结束
+        function gameOver() {
+            gameRunning = false;
+            
+            const finalData = {
+                score: score,
+                linesCleared: lines,
+                level: level,
+                gameTime: document.getElementById('gameTime').textContent,
+                pieces: [...new Set(piecesUsed)].join(','),
+                moves: moveCount
+            };
+
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalLines').textContent = lines;
+            document.getElementById('finalLevel').textContent = level;
+            document.getElementById('finalTime').textContent = finalData.gameTime;
+            document.getElementById('gameOver').style.display = 'block';
+
+            // 发送数据到服务器
+            sendGameData(finalData);
         }
 
         // 重新开始游戏
@@ -721,11 +928,65 @@
             drawNextPiece();
         });
 
+        // 开始游戏
+        function startGame() {
+            const userIdInput = document.getElementById('userId').value.trim();
+            
+            if (!userIdInput) {
+                alert('请输入您的ID才能开始游戏！');
+                return;
+            }
+            
+            userId = userIdInput;
+            isLoggedIn = true;
+            
+            // 保存登录信息
+            localStorage.setItem('tetris_user_id', userId);
+            
+            // 隐藏登录界面
+            document.getElementById('loginOverlay').style.display = 'none';
+            
+            // 初始化游戏
+            initBoard();
+            restartGame();
+            
+            // 更新API状态
+            updateApiStatus();
+            
+            // 加载排行榜
+            loadLeaderboard();
+        }
+
+        // 登出功能
+        function logout() {
+            isLoggedIn = false;
+            userId = '';
+            gameRunning = false;
+            
+            // 显示登录界面
+            document.getElementById('loginOverlay').style.display = 'flex';
+            
+            // 清空排行榜
+            document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">请先登录</div>';
+        }
+
         // 初始化游戏
         function init() {
+            // 获取API URL
+            WEB_APP_URL = getApiUrl();
+            
+            // 显示当前API URL
+            document.getElementById('apiUrl').value = WEB_APP_URL;
+            
+            // 检查是否已登录
+            const savedUserId = localStorage.getItem('tetris_user_id');
+            
+            if (savedUserId) {
+                document.getElementById('userId').value = savedUserId;
+            }
+            
+            // 初始化游戏板（但不开始游戏）
             initBoard();
-            loadLeaderboard();
-            restartGame();
         }
 
         // 启动游戏
