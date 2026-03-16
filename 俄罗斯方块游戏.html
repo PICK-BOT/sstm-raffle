@@ -335,7 +335,7 @@
         <!-- 版本信息 -->
         <div class="version-info">
             俄罗斯方块游戏 | 
-            最后更新: 2024-03-16 v1.2.0 (JSONP版)
+            最后更新: 2024-03-16 v1.2.1 (修复版)
         </div>
     </div>
 
@@ -651,8 +651,18 @@
             return 'https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsiAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec';
         }
 
+        // 保存API配置
+        function saveApiConfig() {
+            // 功能已移除，API通过URL参数自动配置
+        }
+
+        // 更新API状态
+        function updateApiStatus() {
+            // API状态显示已移除
+        }
+
         // 发送游戏数据 - 使用JSONP方式（完全按照2048游戏）
-        function sendGameData(data) {
+        async function sendGameData(data) {
             if (!WEB_APP_URL) {
                 console.error('API URL 未配置');
                 return;
@@ -888,7 +898,16 @@
 
         // 键盘控制
         document.addEventListener('keydown', (e) => {
-            // 防止在登录界面时响应游戏控制
+            // P键暂停/继续 - 即使在暂停状态也能响应
+            if (e.key === 'p' || e.key === 'P') {
+                e.preventDefault();
+                if (gameRunning && isLoggedIn) {
+                    togglePause();
+                }
+                return;
+            }
+            
+            // 其他游戏控制 - 只在游戏运行且未暂停时响应
             if (!gameRunning || gamePaused || !isLoggedIn) return;
             
             // 防止在输入框中响应游戏控制
@@ -927,16 +946,24 @@
                     break;
                 case ' ':
                     e.preventDefault();
+                    // 立即快速下落到底部
+                    let dropDistance = 0;
                     while (isValidMove(currentPiece, 0, 1)) {
                         currentPiece.y++;
+                        dropDistance++;
                         score += 2;
                         moveCount++;
                     }
-                    break;
-                case 'p':
-                case 'P':
-                    e.preventDefault();
-                    togglePause();
+                    // 立即锁定方块并生成新方块
+                    lockPiece(currentPiece);
+                    clearLines();
+                    currentPiece = nextPiece;
+                    nextPiece = createPiece();
+                    
+                    if (!isValidMove(currentPiece)) {
+                        gameOver();
+                        return;
+                    }
                     break;
             }
             
