@@ -335,7 +335,7 @@
         <!-- 版本信息 -->
         <div class="version-info">
             俄罗斯方块游戏 | 
-            最后更新: 2024-03-16 v1.1.0
+            最后更新: 2024-03-16 v1.2.0 (JSONP版)
         </div>
     </div>
 
@@ -651,63 +651,75 @@
             return 'https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsiAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec';
         }
 
-        // 保存API配置
-        function saveApiConfig() {
-            // 功能已移除，API通过URL参数自动配置
-        }
-
-        // 更新API状态
-        function updateApiStatus() {
-            // API状态显示已移除
-        }
-
-        // 发送游戏数据
-        async function sendGameData(data) {
+        // 发送游戏数据 - 使用JSONP方式（完全按照2048游戏）
+        function sendGameData(data) {
             if (!WEB_APP_URL) {
                 console.error('API URL 未配置');
                 return;
             }
             
             // 添加用户信息到数据
-            const enhancedData = {
-                ...data,
+            const payload = {
+                time: new Date().toISOString(),
                 userId: userId,
-                timestamp: new Date().toISOString()
+                score: data.score,
+                linesCleared: data.linesCleared,
+                level: data.level,
+                gameTime: data.gameTime,
+                pieces: data.pieces,
+                moves: data.moves
             };
             
             try {
-                const response = await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(enhancedData)
-                });
-
-                const result = await response.json();
-                console.log('游戏数据发送结果:', result);
+                console.log('=== 开始记录游戏 ===');
+                console.log('记录URL:', WEB_APP_URL);
+                console.log('发送数据:', JSON.stringify(payload));
                 
-                if (result.success) {
-                    console.log('✅ 数据成功写入Excel，ID:', userId);
-                    alert(`游戏数据已保存！\n用户ID: ${userId}\n分数: ${data.score}\n时间: ${new Date().toLocaleString()}`);
-                }
+                // 创建JSONP请求（按照2048的方式）
+                const callbackName = 'jsonp_callback_' + Date.now();
+                const script = document.createElement('script');
                 
-                // 更新排行榜
-                if (result.leaderboard) {
-                    updateLeaderboard(result.leaderboard);
-                }
+                window[callbackName] = function(response) {
+                    console.log('✅ 游戏记录成功');
+                    console.log('✅ 服务器响应:', response);
+                    
+                    if (response && response.status === 'success') {
+                        console.log('数据成功写入Excel，ID:', userId);
+                        // 重新加载排行榜
+                        loadLeaderboard();
+                    }
+                    
+                    // 清理
+                    delete window[callbackName];
+                    document.head.removeChild(script);
+                };
+                
+                // 构建JSONP URL（按照2048的方式）
+                const jsonpUrl = WEB_APP_URL + 
+                    '?callback=' + callbackName + 
+                    '&data=' + encodeURIComponent(JSON.stringify(payload));
+                
+                script.src = jsonpUrl;
+                script.onerror = function() {
+                    console.error('❌ JSONP请求失败');
+                    delete window[callbackName];
+                    document.head.removeChild(script);
+                };
+                
+                // 发送请求
+                document.head.appendChild(script);
+                
             } catch (error) {
-                console.error('发送游戏数据失败:', error);
-                alert('数据保存失败，请检查网络连接');
+                console.error('❌ 游戏记录错误:', error);
             }
         }
 
-        // 更新排行榜
+        // 更新排行榜 - 适配JSONP数据格式
         function updateLeaderboard(leaderboard) {
             const leaderboardEl = document.getElementById('leaderboard');
             leaderboardEl.innerHTML = '';
             
-            if (leaderboard.length === 0) {
+            if (!leaderboard || leaderboard.length === 0) {
                 leaderboardEl.innerHTML = '<div class="leaderboard-item">暂无记录</div>';
                 return;
             }
@@ -721,32 +733,58 @@
                 
                 item.innerHTML = `
                     <span class="${rankClass}">${rankText} ${record.score}分</span>
-                    <span>Lv.${record.level}</span>
+                    <span>Lv.${record.level || 1}</span>
                 `;
                 
                 leaderboardEl.appendChild(item);
             });
         }
 
-        // 加载排行榜
-        async function loadLeaderboard() {
+        // 加载排行榜 - 使用JSONP方式（完全按照2048游戏）
+        function loadLeaderboard() {
             if (!WEB_APP_URL || WEB_APP_URL === '') {
                 document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">API未配置</div>';
                 return;
             }
             
             try {
-                const response = await fetch(WEB_APP_URL);
-                const result = await response.json();
+                console.log('正在加载排行榜，API URL:', WEB_APP_URL);
                 
-                if (result.success) {
-                    updateLeaderboard(result.leaderboard);
-                } else {
-                    document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">加载失败</div>';
-                }
+                // 创建JSONP回调函数（按照2048的方式）
+                const callbackName = 'leaderboard_callback_' + Date.now();
+                const script = document.createElement('script');
+                
+                window[callbackName] = function(response) {
+                    console.log('排行榜数据:', response);
+                    if (response && response.data) {
+                        updateLeaderboard(response.data);
+                    } else {
+                        document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">暂无记录</div>';
+                    }
+                    delete window[callbackName];
+                    document.head.removeChild(script);
+                };
+                
+                // 构建JSONP URL（按照2048的方式）
+                const jsonpUrl = WEB_APP_URL + 
+                    '?callback=' + callbackName + 
+                    '&action=leaderboard&t=' + Date.now();
+                
+                console.log('排行榜URL:', jsonpUrl);
+                
+                script.src = jsonpUrl;
+                script.onerror = function() {
+                    console.error('加载排行榜失败');
+                    document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">加载排行榜失败</div>';
+                    delete window[callbackName];
+                    document.head.removeChild(script);
+                };
+                
+                document.head.appendChild(script);
+                
             } catch (error) {
                 console.error('加载排行榜失败:', error);
-                document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">网络错误</div>';
+                document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">加载失败</div>';
             }
         }
 
