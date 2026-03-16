@@ -879,19 +879,26 @@
 
         // 加载排行榜
         function loadLeaderboard() {
+            console.log('开始加载排行榜...');
             const callbackName = 'leaderboard_callback_' + Date.now();
             const script = document.createElement('script');
             
             window[callbackName] = function(response) {
                 console.log('排行榜数据:', response);
-                displayLeaderboard(response.data || []);
+                if (response && response.data) {
+                    displayLeaderboard(response.data);
+                } else {
+                    document.getElementById('leaderboardList').innerHTML = '<li class="leaderboard-item">暂无记录</li>';
+                }
                 delete window[callbackName];
                 document.head.removeChild(script);
             };
             
             const jsonpUrl = CONFIG.recordUrl + 
                 '?callback=' + callbackName + 
-                '&action=leaderboard';
+                '&action=leaderboard&t=' + Date.now();
+            
+            console.log('排行榜URL:', jsonpUrl);
             
             script.src = jsonpUrl;
             script.onerror = function() {
