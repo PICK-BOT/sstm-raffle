@@ -504,7 +504,7 @@
                 
                 <div class="controls">
                     <button class="btn" onclick="newGame()">新游戏</button>
-                    <button class="btn btn-secondary" onclick="showLeaderboard()">排行榜</button>
+                    <button class="btn btn-secondary" onclick="showLeaderboard(); return false;">排行榜</button>
                 </div>
                 
                 <div class="leaderboard" id="leaderboard">
@@ -512,7 +512,7 @@
                     <ul class="leaderboard-list" id="leaderboardList">
                         <!-- 排行榜内容将通过JavaScript生成 -->
                     </ul>
-                    <button class="btn btn-secondary" onclick="hideLeaderboard()">关闭排行榜</button>
+                    <button class="btn btn-secondary" onclick="hideLeaderboard(); return false;">关闭排行榜</button>
                 </div>
             </div>
         </div>
@@ -531,7 +531,7 @@
             <div class="max-number" id="finalMaxNumber">0</div>
             <div class="game-over-buttons">
                 <button class="btn" onclick="newGame()">新游戏</button>
-                <button class="btn btn-secondary" onclick="showLeaderboard()">查看排行榜</button>
+                <button class="btn btn-secondary" onclick="showLeaderboard(); return false;">查看排行榜</button>
             </div>
         </div>
     </div>
@@ -862,19 +862,35 @@
 
         // 显示排行榜
         function showLeaderboard() {
+            console.log('显示排行榜被调用');
             const leaderboard = document.getElementById('leaderboard');
+            
+            // 确保排行榜可见
             leaderboard.style.display = 'block';
             
             if (CONFIG.recordUrl) {
+                console.log('开始加载排行榜数据');
                 loadLeaderboard();
             } else {
+                console.log('未配置记录URL，显示默认消息');
                 document.getElementById('leaderboardList').innerHTML = '<li class="leaderboard-item">未配置排行榜</li>';
+            }
+            
+            // 阻止事件冒泡（如果有event对象）
+            if (window.event) {
+                window.event.stopPropagation();
             }
         }
 
         // 隐藏排行榜
         function hideLeaderboard() {
+            console.log('隐藏排行榜被调用');
             document.getElementById('leaderboard').style.display = 'none';
+            
+            // 阻止事件冒泡，防止触发其他事件
+            if (window.event) {
+                window.event.stopPropagation();
+            }
         }
 
         // 加载排行榜
