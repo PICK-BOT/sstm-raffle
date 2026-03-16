@@ -509,7 +509,7 @@
                 console.log('记录数据:', record);
                 
                 const payload = {
-                    time: record.timestamp,
+                    userId: record.id,
                     id: record.id,
                     card: record.card,
                     description: `配对成功获得: ${record.card}`
