@@ -496,8 +496,8 @@
             }
         }
 
-        // 云端记录
-        async function recordToCloud(record) {
+        // 云端记录 - 使用JSONP方式避免CORS问题
+        function recordToCloud(record) {
             if (!CONFIG.recordUrl) {
                 console.log('未配置云端记录URL');
                 return;
@@ -517,29 +517,37 @@
                 
                 console.log('发送数据:', JSON.stringify(payload));
                 
-                const response = await fetch(CONFIG.recordUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
+                // 创建JSONP请求
+                const callbackName = 'jsonp_callback_' + Date.now();
+                const script = document.createElement('script');
                 
-                console.log('响应状态:', response.status);
-                console.log('响应头:', response.headers);
-                
-                if (response.ok) {
+                // 设置回调函数
+                window[callbackName] = function(response) {
                     console.log('✅ 云端记录成功');
-                    const result = await response.json();
-                    console.log('✅ 服务器响应:', result);
+                    console.log('✅ 服务器响应:', response);
                     showMessage('记录成功！');
-                } else {
-                    console.error('❌ 云端记录失败:', response.status, response.statusText);
-                    const errorText = await response.text();
-                    console.error('❌ 错误详情:', errorText);
-                    showMessage(`记录失败: ${response.status}`);
-                }
+                    
+                    // 清理
+                    delete window[callbackName];
+                    document.head.removeChild(script);
+                };
+                
+                // 构建JSONP URL
+                const jsonpUrl = CONFIG.recordUrl + 
+                    '?callback=' + callbackName + 
+                    '&data=' + encodeURIComponent(JSON.stringify(payload));
+                
+                script.src = jsonpUrl;
+                script.onerror = function() {
+                    console.error('❌ JSONP请求失败');
+                    showMessage('记录失败，请检查网络');
+                    delete window[callbackName];
+                    document.head.removeChild(script);
+                };
+                
+                // 发送请求
+                document.head.appendChild(script);
+                
             } catch (error) {
                 console.error('❌ 云端记录错误:', error);
                 showMessage('记录失败，请检查网络');
