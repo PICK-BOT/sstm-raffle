@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048游戏 - 无限挑战</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: url('https://picsum.photos/seed/game2048/1920/1080.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-section {
+            margin-bottom: 20px;
+        }
+
+        .user-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .user-input input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .user-input input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .user-input button {
+            padding: 12px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        .user-input button:hover {
+            background: #45a049;
+        }
+
+        .game-area {
+            display: none;
+        }
+
+        .game-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .game-board {
+            background: #bbada0;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 10px;
+            aspect-ratio: 1;
+        }
+
+        .tile {
+            background: #cdc1b4;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #776e65;
+            transition: all 0.15s ease-in-out;
+            position: relative;
+        }
+
+        .tile-2 { 
+            background: #eee4da; 
+            color: #776e65;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="8" fill="%23ff6b6b" opacity="0.2"/><circle cx="80" cy="20" r="8" fill="%234ecdc4" opacity="0.2"/><circle cx="50" cy="50" r="8" fill="%23ffd93d" opacity="0.2"/><circle cx="20" cy="80" r="8" fill="%236bcf7f" opacity="0.2"/><circle cx="80" cy="80" r="8" fill="%23ff9ff3" opacity="0.2"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-4 { 
+            background: #ede0c8; 
+            color: #776e65;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="15" y="15" width="12" height="12" fill="%23ff6b6b" opacity="0.2" rx="2"/><rect x="73" y="15" width="12" height="12" fill="%234ecdc4" opacity="0.2" rx="2"/><rect x="44" y="44" width="12" height="12" fill="%23ffd93d" opacity="0.2" rx="2"/><rect x="15" y="73" width="12" height="12" fill="%236bcf7f" opacity="0.2" rx="2"/><rect x="73" y="73" width="12" height="12" fill="%23ff9ff3" opacity="0.2" rx="2"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-8 { 
+            background: #f2b179; 
+            color: #f9f6f2;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="20,10 30,30 10,30" fill="%23ff6b6b" opacity="0.2"/><polygon points="80,10 90,30 70,30" fill="%234ecdc4" opacity="0.2"/><polygon points="50,40 60,60 40,60" fill="%23ffd93d" opacity="0.2"/><polygon points="20,70 30,90 10,90" fill="%236bcf7f" opacity="0.2"/><polygon points="80,70 90,90 70,90" fill="%23ff9ff3" opacity="0.2"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-16 { 
+            background: #f59563; 
+            color: #f9f6f2;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M20,15 L25,25 L15,25 Z" fill="%23ff6b6b" opacity="0.2"/><path d="M80,15 L85,25 L75,25 Z" fill="%234ecdc4" opacity="0.2"/><path d="M50,45 L55,55 L45,55 Z" fill="%23ffd93d" opacity="0.2"/><path d="M20,75 L25,85 L15,85 Z" fill="%236bcf7f" opacity="0.2"/><path d="M80,75 L85,85 L75,85 Z" fill="%23ff9ff3" opacity="0.2"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-32 { 
+            background: #f67c5f; 
+            color: #f9f6f2;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="6" fill="%23ff6b6b" opacity="0.3"/><circle cx="80" cy="20" r="6" fill="%234ecdc4" opacity="0.3"/><circle cx="50" cy="50" r="6" fill="%23ffd93d" opacity="0.3"/><circle cx="20" cy="80" r="6" fill="%236bcf7f" opacity="0.3"/><circle cx="80" cy="80" r="6" fill="%23ff9ff3" opacity="0.3"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-64 { 
+            background: #f65e3b; 
+            color: #f9f6f2;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="17" y="17" width="6" height="6" fill="%23ff6b6b" opacity="0.3" rx="1"/><rect x="77" y="17" width="6" height="6" fill="%234ecdc4" opacity="0.3" rx="1"/><rect x="47" y="47" width="6" height="6" fill="%23ffd93d" opacity="0.3" rx="1"/><rect x="17" y="77" width="6" height="6" fill="%236bcf7f" opacity="0.3" rx="1"/><rect x="77" y="77" width="6" height="6" fill="%23ff9ff3" opacity="0.3" rx="1"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-128 { 
+            background: #edcf72; 
+            color: #f9f6f2; 
+            font-size: 1.8rem;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="20,12 28,28 12,28" fill="%23ff6b6b" opacity="0.3"/><polygon points="80,12 88,28 72,28" fill="%234ecdc4" opacity="0.3"/><polygon points="50,42 58,58 42,58" fill="%23ffd93d" opacity="0.3"/><polygon points="20,72 28,88 12,88" fill="%236bcf7f" opacity="0.3"/><polygon points="80,72 88,88 72,88" fill="%23ff9ff3" opacity="0.3"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-256 { 
+            background: #edcc61; 
+            color: #f9f6f2; 
+            font-size: 1.8rem;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="5" fill="%23ff6b6b" opacity="0.4"/><circle cx="80" cy="20" r="5" fill="%234ecdc4" opacity="0.4"/><circle cx="50" cy="50" r="5" fill="%23ffd93d" opacity="0.4"/><circle cx="20" cy="80" r="5" fill="%236bcf7f" opacity="0.4"/><circle cx="80" cy="80" r="5" fill="%23ff9ff3" opacity="0.4"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-512 { 
+            background: #edc850; 
+            color: #f9f6f2; 
+            font-size: 1.8rem;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="18" y="18" width="4" height="4" fill="%23ff6b6b" opacity="0.4" rx="1"/><rect x="78" y="18" width="4" height="4" fill="%234ecdc4" opacity="0.4" rx="1"/><rect x="48" y="48" width="4" height="4" fill="%23ffd93d" opacity="0.4" rx="1"/><rect x="18" y="78" width="4" height="4" fill="%236bcf7f" opacity="0.4" rx="1"/><rect x="78" y="78" width="4" height="4" fill="%23ff9ff3" opacity="0.4" rx="1"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-1024 { 
+            background: #edc53f; 
+            color: #f9f6f2; 
+            font-size: 1.5rem;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="20,15 25,25 15,25" fill="%23ff6b6b" opacity="0.5"/><polygon points="80,15 85,25 75,25" fill="%234ecdc4" opacity="0.5"/><polygon points="50,45 55,55 45,55" fill="%23ffd93d" opacity="0.5"/><polygon points="20,75 25,85 15,85" fill="%236bcf7f" opacity="0.5"/><polygon points="80,75 85,85 75,85" fill="%23ff9ff3" opacity="0.5"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-2048 { 
+            background: #edc22e; 
+            color: #f9f6f2; 
+            font-size: 1.5rem;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="4" fill="%23ff6b6b" opacity="0.6"/><circle cx="80" cy="20" r="4" fill="%234ecdc4" opacity="0.6"/><circle cx="50" cy="50" r="4" fill="%23ffd93d" opacity="0.6"/><circle cx="20" cy="80" r="4" fill="%236bcf7f" opacity="0.6"/><circle cx="80" cy="80" r="4" fill="%23ff9ff3" opacity="0.6"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-4096 { 
+            background: #3c3a32; 
+            color: #f9f6f2; 
+            font-size: 1.5rem;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="18" y="18" width="4" height="4" fill="%23ff6b6b" opacity="0.7" rx="1"/><rect x="78" y="18" width="4" height="4" fill="%234ecdc4" opacity="0.7" rx="1"/><rect x="48" y="48" width="4" height="4" fill="%23ffd93d" opacity="0.7" rx="1"/><rect x="18" y="78" width="4" height="4" fill="%236bcf7f" opacity="0.7" rx="1"/><rect x="78" y="78" width="4" height="4" fill="%23ff9ff3" opacity="0.7" rx="1"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-8192 { 
+            background: #3c3a32; 
+            color: #f9f6f2; 
+            font-size: 1.3rem;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="20,16 24,24 16,24" fill="%23ff6b6b" opacity="0.8"/><polygon points="80,16 84,24 76,24" fill="%234ecdc4" opacity="0.8"/><polygon points="50,46 54,54 46,54" fill="%23ffd93d" opacity="0.8"/><polygon points="20,76 24,84 16,84" fill="%236bcf7f" opacity="0.8"/><polygon points="80,76 84,84 76,84" fill="%23ff9ff3" opacity="0.8"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-16384 { 
+            background: #3c3a32; 
+            color: #f9f6f2; 
+            font-size: 1.3rem;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="3" fill="%23ff6b6b" opacity="0.9"/><circle cx="80" cy="20" r="3" fill="%234ecdc4" opacity="0.9"/><circle cx="50" cy="50" r="3" fill="%23ffd93d" opacity="0.9"/><circle cx="20" cy="80" r="3" fill="%236bcf7f" opacity="0.9"/><circle cx="80" cy="80" r="3" fill="%23ff9ff3" opacity="0.9"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-32768 { 
+            background: #3c3a32; 
+            color: #f9f6f2; 
+            font-size: 1.2rem;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="19" y="19" width="2" height="2" fill="%23ff6b6b" opacity="1.0" rx="1"/><rect x="79" y="19" width="2" height="2" fill="%234ecdc4" opacity="1.0" rx="1"/><rect x="49" y="49" width="2" height="2" fill="%23ffd93d" opacity="1.0" rx="1"/><rect x="19" y="79" width="2" height="2" fill="%236bcf7f" opacity="1.0" rx="1"/><rect x="79" y="79" width="2" height="2" fill="%23ff9ff3" opacity="1.0" rx="1"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-65536 { 
+            background: #3c3a32; 
+            color: #f9f6f2; 
+            font-size: 1.2rem;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="20,18 22,22 18,22" fill="%23ff6b6b" opacity="1.0"/><polygon points="80,18 82,22 78,22" fill="%234ecdc4" opacity="1.0"/><polygon points="50,48 52,52 48,52" fill="%23ffd93d" opacity="1.0"/><polygon points="20,78 22,82 18,82" fill="%236bcf7f" opacity="1.0"/><polygon points="80,78 82,82 78,82" fill="%23ff9ff3" opacity="1.0"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        .tile-131072 { 
+            background: #3c3a32; 
+            color: #f9f6f2; 
+            font-size: 1.1rem;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="%23ff6b6b" opacity="1.0"/><circle cx="80" cy="20" r="2" fill="%234ecdc4" opacity="1.0"/><circle cx="50" cy="50" r="2" fill="%23ffd93d" opacity="1.0"/><circle cx="20" cy="80" r="2" fill="%236bcf7f" opacity="1.0"/><circle cx="80" cy="80" r="2" fill="%23ff9ff3" opacity="1.0"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .tile-new {
+            animation: appear 0.2s ease-in-out;
+        }
+
+        .tile-merged {
+            animation: merge 0.2s ease-in-out;
+        }
+
+        @keyframes appear {
+            from {
+                opacity: 0;
+                transform: scale(0);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes merge {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #45a049;
+        }
+
+        .btn-secondary {
+            background: #2196F3;
+        }
+
+        .btn-secondary:hover {
+            background: #1976D2;
+        }
+
+        .leaderboard {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .leaderboard h3 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .leaderboard-list {
+            list-style: none;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: white;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .leaderboard-rank {
+            font-weight: bold;
+            color: #4CAF50;
+            margin-right: 10px;
+        }
+
+        .leaderboard-name {
+            flex: 1;
+            color: #333;
+        }
+
+        .leaderboard-score {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .message.show {
+            opacity: 1;
+        }
+
+        .game-over-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .game-over-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .game-over-content h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .game-over-content p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .game-over-content .max-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 20px;
+        }
+
+        .game-over-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .tile {
+                font-size: 1.5rem;
+            }
+            
+            .tile-128, .tile-256, .tile-512 {
+                font-size: 1.3rem;
+            }
+            
+            .tile-1024, .tile-2048, .tile-4096 {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 2048游戏 🎮</h1>
+        </div>
+        
+        <div class="user-section">
+            <div class="user-input">
+                <input type="text" id="userId" placeholder="请输入你的论坛ID (必须)" value="">
+                <button onclick="setUserId()">设置ID</button>
+            </div>
+            <div id="gameArea" class="game-area">
+                <div class="game-stats">
+                    <div class="stat-item">
+                        <div class="stat-label">分数</div>
+                        <div class="stat-value" id="score">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">最大数字</div>
+                        <div class="stat-value" id="maxNumber">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">步数</div>
+                        <div class="stat-value" id="moves">0</div>
+                    </div>
+                </div>
+                
+                <div class="game-board">
+                    <div class="grid-container" id="gridContainer">
+                        <!-- 游戏格子将通过JavaScript生成 -->
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn" onclick="newGame()">新游戏</button>
+                    <button class="btn btn-secondary" onclick="showLeaderboard()">排行榜</button>
+                </div>
+                
+                <div class="leaderboard" id="leaderboard">
+                    <h3>🏆 排行榜 TOP 10 🏆</h3>
+                    <ul class="leaderboard-list" id="leaderboardList">
+                        <!-- 排行榜内容将通过JavaScript生成 -->
+                    </ul>
+                    <button class="btn btn-secondary" onclick="hideLeaderboard()">关闭排行榜</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>基于HTML5的2048游戏 | <a href="https://github.com/PICK-BOT/sstm-raffle" target="_blank">GitHub</a></p>
+        </div>
+    </div>
+
+    <div class="message" id="message"></div>
+    
+    <div class="game-over-modal" id="gameOverModal">
+        <div class="game-over-content">
+            <h2>游戏结束！</h2>
+            <p>你无法再移动了</p>
+            <div class="max-number" id="finalMaxNumber">0</div>
+            <div class="game-over-buttons">
+                <button class="btn" onclick="newGame()">新游戏</button>
+                <button class="btn btn-secondary" onclick="showLeaderboard()">查看排行榜</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 配置
+        const CONFIG = {
+            recordUrl: getRecordUrl(),
+            gridSize: 4,
+            winNumbers: [2048, 4096, 8192, 16384, 32768, 65536, 131072]
+        };
+
+        // 游戏状态
+        let gameState = {
+            userId: localStorage.getItem('userId') || '',
+            grid: [],
+            score: 0,
+            maxNumber: 0,
+            moves: 0,
+            isGameOver: false,
+            recordEnabled: true
+        };
+
+        // 获取记录URL
+        function getRecordUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('record') || '';
+        }
+
+        // 设置用户ID
+        function setUserId() {
+            const userId = document.getElementById('userId').value.trim();
+            if (!userId) {
+                showMessage('请输入你的论坛ID');
+                return;
+            }
+            
+            if (userId.length < 2) {
+                showMessage('ID长度至少2个字符');
+                return;
+            }
+            
+            gameState.userId = userId;
+            localStorage.setItem('userId', userId);
+            
+            // 显示游戏区域
+            document.getElementById('gameArea').style.display = 'block';
+            
+            showMessage('ID已设置: ' + userId + '，可以开始游戏了！');
+            
+            // 初始化游戏
+            initGame();
+        }
+
+        // 初始化游戏
+        function initGame() {
+            gameState.grid = Array(CONFIG.gridSize).fill().map(() => Array(CONFIG.gridSize).fill(0));
+            gameState.score = 0;
+            gameState.maxNumber = 0;
+            gameState.moves = 0;
+            gameState.isGameOver = false;
+            
+            // 添加两个初始数字
+            addNewTile();
+            addNewTile();
+            
+            updateDisplay();
+            hideGameOverModal();
+        }
+
+        // 添加新数字块
+        function addNewTile() {
+            const emptyCells = [];
+            for (let i = 0; i < CONFIG.gridSize; i++) {
+                for (let j = 0; j < CONFIG.gridSize; j++) {
+                    if (gameState.grid[i][j] === 0) {
+                        emptyCells.push({row: i, col: j});
+                    }
+                }
+            }
+            
+            if (emptyCells.length > 0) {
+                const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                gameState.grid[randomCell.row][randomCell.col] = Math.random() < 0.9 ? 2 : 4;
+                
+                // 添加动画类
+                setTimeout(() => {
+                    const tile = document.querySelector(`[data-row="${randomCell.row}"][data-col="${randomCell.col}"]`);
+                    if (tile) {
+                        tile.classList.add('tile-new');
+                    }
+                }, 10);
+            }
+        }
+
+        // 更新显示
+        function updateDisplay() {
+            const gridContainer = document.getElementById('gridContainer');
+            gridContainer.innerHTML = '';
+            
+            let maxNum = 0;
+            for (let i = 0; i < CONFIG.gridSize; i++) {
+                for (let j = 0; j < CONFIG.gridSize; j++) {
+                    const value = gameState.grid[i][j];
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.setAttribute('data-row', i);
+                    tile.setAttribute('data-col', j);
+                    
+                    if (value > 0) {
+                        tile.textContent = value;
+                        tile.classList.add(`tile-${value}`);
+                        maxNum = Math.max(maxNum, value);
+                    }
+                    
+                    gridContainer.appendChild(tile);
+                }
+            }
+            
+            gameState.maxNumber = maxNum;
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('maxNumber').textContent = gameState.maxNumber;
+            document.getElementById('moves').textContent = gameState.moves;
+        }
+
+        // 移动逻辑
+        function move(direction) {
+            if (gameState.isGameOver) return;
+            
+            let moved = false;
+            const newGrid = gameState.grid.map(row => [...row]);
+            
+            if (direction === 'left') {
+                for (let i = 0; i < CONFIG.gridSize; i++) {
+                    const row = newGrid[i].filter(val => val !== 0);
+                    const merged = mergeRow(row);
+                    const newRow = merged.concat(Array(CONFIG.gridSize - merged.length).fill(0));
+                    if (JSON.stringify(newRow) !== JSON.stringify(gameState.grid[i])) {
+                        moved = true;
+                    }
+                    newGrid[i] = newRow;
+                }
+            } else if (direction === 'right') {
+                for (let i = 0; i < CONFIG.gridSize; i++) {
+                    const row = newGrid[i].filter(val => val !== 0);
+                    const merged = mergeRow(row.reverse()).reverse();
+                    const newRow = Array(CONFIG.gridSize - merged.length).fill(0).concat(merged);
+                    if (JSON.stringify(newRow) !== JSON.stringify(gameState.grid[i])) {
+                        moved = true;
+                    }
+                    newGrid[i] = newRow;
+                }
+            } else if (direction === 'up') {
+                for (let j = 0; j < CONFIG.gridSize; j++) {
+                    const column = [];
+                    for (let i = 0; i < CONFIG.gridSize; i++) {
+                        if (newGrid[i][j] !== 0) {
+                            column.push(newGrid[i][j]);
+                        }
+                    }
+                    const merged = mergeRow(column);
+                    const newColumn = merged.concat(Array(CONFIG.gridSize - merged.length).fill(0));
+                    for (let i = 0; i < CONFIG.gridSize; i++) {
+                        if (newGrid[i][j] !== newColumn[i]) {
+                            moved = true;
+                        }
+                        newGrid[i][j] = newColumn[i];
+                    }
+                }
+            } else if (direction === 'down') {
+                for (let j = 0; j < CONFIG.gridSize; j++) {
+                    const column = [];
+                    for (let i = 0; i < CONFIG.gridSize; i++) {
+                        if (newGrid[i][j] !== 0) {
+                            column.push(newGrid[i][j]);
+                        }
+                    }
+                    const merged = mergeRow(column.reverse()).reverse();
+                    const newColumn = Array(CONFIG.gridSize - merged.length).fill(0).concat(merged);
+                    for (let i = 0; i < CONFIG.gridSize; i++) {
+                        if (newGrid[i][j] !== newColumn[i]) {
+                            moved = true;
+                        }
+                        newGrid[i][j] = newColumn[i];
+                    }
+                }
+            }
+            
+            if (moved) {
+                gameState.grid = newGrid;
+                gameState.moves++;
+                addNewTile();
+                updateDisplay();
+                
+                // 检查游戏是否结束
+                if (isGameOver()) {
+                    gameState.isGameOver = true;
+                    setTimeout(() => {
+                        showGameOverModal();
+                        recordGame();
+                    }, 300);
+                }
+            }
+        }
+
+        // 合并行
+        function mergeRow(row) {
+            const merged = [];
+            let i = 0;
+            while (i < row.length) {
+                if (i < row.length - 1 && row[i] === row[i + 1]) {
+                    merged.push(row[i] * 2);
+                    gameState.score += row[i] * 2;
+                    i += 2;
+                } else {
+                    merged.push(row[i]);
+                    i++;
+                }
+            }
+            return merged;
+        }
+
+        // 检查游戏是否结束
+        function isGameOver() {
+            // 检查是否有空格
+            for (let i = 0; i < CONFIG.gridSize; i++) {
+                for (let j = 0; j < CONFIG.gridSize; j++) {
+                    if (gameState.grid[i][j] === 0) {
+                        return false;
+                    }
+                }
+            }
+            
+            // 检查是否可以合并
+            for (let i = 0; i < CONFIG.gridSize; i++) {
+                for (let j = 0; j < CONFIG.gridSize; j++) {
+                    const current = gameState.grid[i][j];
+                    if ((i < CONFIG.gridSize - 1 && current === gameState.grid[i + 1][j]) ||
+                        (j < CONFIG.gridSize - 1 && current === gameState.grid[i][j + 1])) {
+                        return false;
+                    }
+                }
+            }
+            
+            return true;
+        }
+
+        // 显示游戏结束弹窗
+        function showGameOverModal() {
+            document.getElementById('finalMaxNumber').textContent = gameState.maxNumber;
+            document.getElementById('gameOverModal').style.display = 'flex';
+        }
+
+        // 隐藏游戏结束弹窗
+        function hideGameOverModal() {
+            document.getElementById('gameOverModal').style.display = 'none';
+        }
+
+        // 新游戏
+        function newGame() {
+            initGame();
+            showMessage('新游戏开始！');
+        }
+
+        // 记录游戏
+        function recordGame() {
+            if (!CONFIG.recordUrl) {
+                console.log('未配置云端记录URL');
+                return;
+            }
+            
+            try {
+                console.log('=== 开始记录游戏 ===');
+                console.log('记录URL:', CONFIG.recordUrl);
+                console.log('游戏数据:', {
+                    id: gameState.userId,
+                    maxNumber: gameState.maxNumber,
+                    score: gameState.score,
+                    moves: gameState.moves
+                });
+                
+                const payload = {
+                    time: new Date().toISOString(),
+                    id: gameState.userId,
+                    maxNumber: gameState.maxNumber,
+                    score: gameState.score,
+                    moves: gameState.moves
+                };
+                
+                console.log('发送数据:', JSON.stringify(payload));
+                
+                // 创建JSONP请求
+                const callbackName = 'jsonp_callback_' + Date.now();
+                const script = document.createElement('script');
+                
+                // 设置回调函数
+                window[callbackName] = function(response) {
+                    console.log('✅ 游戏记录成功');
+                    console.log('✅ 服务器响应:', response);
+                    showMessage('游戏成绩已记录！');
+                    
+                    // 清理
+                    delete window[callbackName];
+                    document.head.removeChild(script);
+                };
+                
+                // 构建JSONP URL
+                const jsonpUrl = CONFIG.recordUrl + 
+                    '?callback=' + callbackName + 
+                    '&data=' + encodeURIComponent(JSON.stringify(payload));
+                
+                script.src = jsonpUrl;
+                script.onerror = function() {
+                    console.error('❌ JSONP请求失败');
+                    showMessage('记录失败，请检查网络');
+                    delete window[callbackName];
+                    document.head.removeChild(script);
+                };
+                
+                // 发送请求
+                document.head.appendChild(script);
+                
+            } catch (error) {
+                console.error('❌ 游戏记录错误:', error);
+                showMessage('记录失败，请检查网络');
+            }
+        }
+
+        // 显示排行榜
+        function showLeaderboard() {
+            const leaderboard = document.getElementById('leaderboard');
+            leaderboard.style.display = 'block';
+            
+            if (CONFIG.recordUrl) {
+                loadLeaderboard();
+            } else {
+                document.getElementById('leaderboardList').innerHTML = '<li class="leaderboard-item">未配置排行榜</li>';
+            }
+        }
+
+        // 隐藏排行榜
+        function hideLeaderboard() {
+            document.getElementById('leaderboard').style.display = 'none';
+        }
+
+        // 加载排行榜
+        function loadLeaderboard() {
+            const callbackName = 'leaderboard_callback_' + Date.now();
+            const script = document.createElement('script');
+            
+            window[callbackName] = function(response) {
+                console.log('排行榜数据:', response);
+                displayLeaderboard(response.data || []);
+                delete window[callbackName];
+                document.head.removeChild(script);
+            };
+            
+            const jsonpUrl = CONFIG.recordUrl + 
+                '?callback=' + callbackName + 
+                '&action=leaderboard';
+            
+            script.src = jsonpUrl;
+            script.onerror = function() {
+                console.error('加载排行榜失败');
+                document.getElementById('leaderboardList').innerHTML = '<li class="leaderboard-item">加载排行榜失败</li>';
+                delete window[callbackName];
+                document.head.removeChild(script);
+            };
+            
+            document.head.appendChild(script);
+        }
+
+        // 显示排行榜
+        function displayLeaderboard(data) {
+            const leaderboardList = document.getElementById('leaderboardList');
+            
+            if (data.length === 0) {
+                leaderboardList.innerHTML = '<li class="leaderboard-item">暂无记录</li>';
+                return;
+            }
+            
+            // 按最大数字排序
+            data.sort((a, b) => b.maxNumber - a.maxNumber);
+            
+            // 只显示前10名
+            const top10 = data.slice(0, 10);
+            
+            leaderboardList.innerHTML = top10.map((record, index) => `
+                <li class="leaderboard-item">
+                    <span class="leaderboard-rank">#${index + 1}</span>
+                    <span class="leaderboard-name">${record.id}</span>
+                    <span class="leaderboard-score">${record.maxNumber}</span>
+                </li>
+            `).join('');
+        }
+
+        // 显示消息
+        function showMessage(text) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.classList.add('show');
+            
+            setTimeout(() => {
+                messageDiv.classList.remove('show');
+            }, 3000);
+        }
+
+        // 键盘事件监听
+        document.addEventListener('keydown', (e) => {
+            if (gameState.userId === '') return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    move('left');
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    move('right');
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    move('up');
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    move('down');
+                    break;
+            }
+        });
+
+        // 触摸事件监听
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            if (gameState.userId === '') return;
+            
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                if (deltaX > 50) {
+                    move('right');
+                } else if (deltaX < -50) {
+                    move('left');
+                }
+            } else {
+                if (deltaY > 50) {
+                    move('down');
+                } else if (deltaY < -50) {
+                    move('up');
+                }
+            }
+        });
+
+        // 页面加载时初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            // 恢复用户ID但不自动显示游戏
+            const savedUserId = localStorage.getItem('userId');
+            if (savedUserId) {
+                document.getElementById('userId').value = savedUserId;
+                gameState.userId = savedUserId;
+                // 不自动显示游戏区域，要求用户点击设置ID
+            }
+        });
+    </script>
+</body>
+</html>
