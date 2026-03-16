@@ -17,11 +17,13 @@
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             background-image: url('https://picsum.photos/seed/game2048/1920/1080.jpg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
+            padding: 20px 0;
+            overflow-y: auto;
         }
 
         .container {
@@ -32,6 +34,8 @@
             max-width: 500px;
             width: 90%;
             backdrop-filter: blur(10px);
+            margin: 20px auto;
+            max-height: none;
         }
 
         .header {
@@ -456,9 +460,14 @@
         }
 
         @media (max-width: 600px) {
+            body {
+                padding: 10px 0;
+            }
+            
             .container {
                 padding: 20px;
-                margin: 10px;
+                margin: 10px auto;
+                width: 95%;
             }
             
             .tile {
@@ -471,6 +480,10 @@
             
             .tile-1024, .tile-2048, .tile-4096 {
                 font-size: 1.1rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
             }
         }
     </style>
@@ -525,7 +538,7 @@
         
         <div class="footer">
             <p>基于HTML5的2048游戏 | <a href="https://github.com/PICK-BOT/sstm-raffle" target="_blank">GitHub</a></p>
-            <p class="version-info">版本: v1.2.0 | 更新: 修复排行榜显示问题，添加游戏结束弹窗排行榜功能</p>
+            <p class="version-info">版本: v1.3.0 | 更新: 修复页面滚动问题，确保所有功能按钮可见</p>
         </div>
     </div>
 
@@ -1059,8 +1072,8 @@
         });
         
         // 版本信息
-        console.log('2048游戏 - 版本: v1.2.0');
-        console.log('更新内容: 修复排行榜显示问题，添加游戏结束弹窗排行榜功能');
+        console.log('2048游戏 - 版本: v1.3.0');
+        console.log('更新内容: 修复页面滚动问题，确保所有功能按钮可见');
     </script>
 </body>
 </html>
