@@ -584,10 +584,16 @@
             recordEnabled: true
         };
 
-        // 获取记录URL
+        // 获取记录URL（优先级：URL参数 > localStorage）
+        // 首次用 ?record=GAS地址 打开后自动持久化，下次无需再带参数
         function getRecordUrl() {
             const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('record') || '';
+            const paramUrl = urlParams.get('record');
+            if (paramUrl) {
+                localStorage.setItem('2048_gas_url', paramUrl);
+                return paramUrl;
+            }
+            return localStorage.getItem('2048_gas_url') || '';
         }
 
         // 设置用户ID
@@ -975,9 +981,9 @@
                 document.head.removeChild(script);
             };
             
-            const jsonpUrl = CONFIG.recordUrl + 
-                '?callback=' + callbackName + 
-                '&action=leaderboard&t=' + Date.now();
+            const jsonpUrl = CONFIG.recordUrl +
+                '?callback=' + callbackName +
+                '&action=leaderboard2048&t=' + Date.now();
             
             console.log('排行榜URL:', jsonpUrl);
             

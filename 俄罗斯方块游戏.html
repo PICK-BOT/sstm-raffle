@@ -635,20 +635,14 @@
 
         // 获取API URL
         function getApiUrl() {
-            // 优先级：URL参数 > 本地存储 > 默认值
+            // 优先级：URL参数 > 本地存储
             const urlParams = new URLSearchParams(window.location.search);
             const paramUrl = urlParams.get('record');
             if (paramUrl) {
+                localStorage.setItem('tetris_api_url', paramUrl); // 持久化
                 return paramUrl;
             }
-            
-            const storedUrl = localStorage.getItem('tetris_api_url');
-            if (storedUrl) {
-                return storedUrl;
-            }
-            
-            // 默认URL（您的部署URL）
-            return 'https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsiAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec';
+            return localStorage.getItem('tetris_api_url') || '';
         }
 
         // 保存API配置
@@ -742,8 +736,8 @@
                 const rankText = index < 3 ? ['🥇', '🥈', '🥉'][index] : `${index + 1}.`;
                 
                 item.innerHTML = `
-                    <span class="${rankClass}">${rankText} ${record.score}分</span>
-                    <span>Lv.${record.level || 1}</span>
+                    <span class="${rankClass}">${rankText} ${record.id || '?'}</span>
+                    <span>${record.score}分 Lv.${record.level || 1}</span>
                 `;
                 
                 leaderboardEl.appendChild(item);
