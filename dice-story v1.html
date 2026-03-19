@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>你的名字 — 命运的骰子</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy: #0d1117;
+  --navy2: #161b27;
+  --navy3: #1e2535;
+  --gold: #c9a84c;
+  --gold-light: #f0d080;
+  --crimson: #9b2335;
+  --crimson-light: #d63a50;
+  --white: #f0ece4;
+  --white-dim: #b8b4ac;
+  --purple: #6b4fa0;
+  --purple-light: #9d7fd4;
+}
+
+html {
+  width: 100%; height: 100%;
+}
+body {
+  width: 100%; min-height: 100%;
+  background: var(--navy);
+  color: var(--white);
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ===== STAR FIELD ===== */
+#starfield {
+  position: fixed; inset: 0; z-index: 0;
+  background: var(--navy);
+  overflow: hidden;
+  pointer-events: none;
+}
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  animation: twinkle var(--dur, 3s) ease-in-out infinite;
+}
+@keyframes twinkle {
+  0%, 100% { opacity: var(--min-op, 0.2); transform: scale(1); }
+  50% { opacity: var(--max-op, 0.9); transform: scale(1.3); }
+}
+
+/* ===== APP CONTAINER ===== */
+#app {
+  position: relative; z-index: 1;
+  width: 100%; min-height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ===== SCREENS ===== */
+.screen {
+  display: none;
+  width: 100%; max-width: 580px;
+  min-height: 100vh;
+  padding: 40px 28px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.6s ease forwards;
+}
+.screen.active { display: flex; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== UI ELEMENTS ===== */
+h1 { font-size: 2rem; font-weight: 900; color: var(--gold-light); text-align: center; margin-bottom: 8px; text-shadow: 0 2px 16px rgba(201,168,76,0.4); }
+h2 { font-size: 1.3rem; font-weight: 700; color: var(--gold); margin-bottom: 20px; text-align: center; }
+.subtitle { font-size: 0.95rem; color: var(--white-dim); text-align: center; margin-bottom: 30px; letter-spacing: 0.1em; }
+
+.card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(201,168,76,0.18);
+  border-radius: 16px;
+  padding: 28px 24px;
+  width: 100%;
+  backdrop-filter: blur(4px);
+  margin-bottom: 18px;
+}
+
+label { display: block; font-size: 0.85rem; color: var(--white-dim); margin-bottom: 6px; letter-spacing: 0.05em; }
+
+input[type="text"], input[type="number"] {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 8px;
+  color: var(--white);
+  font-family: inherit;
+  font-size: 1.05rem;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  margin-bottom: 16px;
+}
+input[type="text"]:focus, input[type="number"]:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+}
+
+.field-row { display: flex; gap: 14px; align-items: flex-start; width: 100%; }
+.field-row .field { flex: 1; }
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px;
+  padding: 13px 32px;
+  border: none; border-radius: 10px;
+  font-family: inherit; font-size: 1rem; font-weight: 700;
+  cursor: pointer; transition: all 0.2s;
+  letter-spacing: 0.05em;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold) 0%, #8a6a20 100%);
+  color: #1a1200;
+  width: 100%;
+  margin-top: 6px;
+  box-shadow: 0 4px 20px rgba(201,168,76,0.25);
+}
+.btn-primary:hover { filter: brightness(1.12); transform: translateY(-1px); box-shadow: 0 6px 28px rgba(201,168,76,0.38); }
+.btn-primary:active { transform: translateY(0); }
+
+.btn-crimson {
+  background: linear-gradient(135deg, var(--crimson-light), var(--crimson));
+  color: #fff;
+  width: 100%;
+  margin-top: 6px;
+  box-shadow: 0 4px 20px rgba(155,35,53,0.28);
+}
+.btn-crimson:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(201,168,76,0.35);
+  color: var(--gold);
+  padding: 8px 20px;
+  font-size: 0.9rem;
+}
+.btn-ghost:hover { background: rgba(201,168,76,0.08); border-color: var(--gold); }
+
+/* ===== LIVE CALC ===== */
+.calc-box {
+  background: rgba(201,168,76,0.06);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+.calc-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.9rem; }
+.calc-row:last-child { margin-bottom: 0; }
+.calc-label { color: var(--white-dim); }
+.calc-value { color: var(--gold-light); font-weight: 700; font-size: 1rem; }
+.calc-note { font-size: 0.78rem; color: var(--white-dim); margin-top: 8px; line-height: 1.5; }
+
+/* ===== SCREEN 3 — DICE ASSIGN ===== */
+.dice-info { font-size: 1rem; color: var(--white); margin-bottom: 18px; text-align: center; }
+.dice-info span { color: var(--gold-light); font-size: 1.2rem; font-weight: 700; }
+
+.mix-die-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(155,35,53,0.25);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  width: 100%;
+}
+.mix-die-label { font-size: 0.9rem; color: var(--white-dim); }
+.mix-die-btns { display: flex; gap: 8px; }
+.die-toggle {
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: 1.5px solid transparent;
+  font-family: inherit; font-size: 0.88rem; font-weight: 700;
+  cursor: pointer; transition: all 0.18s;
+  background: rgba(255,255,255,0.06);
+  color: var(--white-dim);
+}
+.die-toggle.pos.selected { background: rgba(201,168,76,0.18); border-color: var(--gold); color: var(--gold-light); }
+.die-toggle.neg.selected { background: rgba(155,35,53,0.2); border-color: var(--crimson-light); color: #ff8899; }
+.die-toggle:hover { filter: brightness(1.2); }
+
+.summary-box {
+  background: rgba(201,168,76,0.05);
+  border: 1px solid rgba(201,168,76,0.15);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  width: 100%;
+  font-size: 0.92rem;
+  line-height: 1.8;
+}
+.summary-box .s-label { color: var(--white-dim); }
+.summary-box .s-val { color: var(--gold-light); font-weight: 700; }
+
+/* ===== SCREEN 4 — BOOK COVER ===== */
+#screen4 {
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #0a0515 0%, #12082a 35%, #1a0a20 60%, #0d0a1a 100%);
+  min-height: 100vh;
+}
+
+.cover-sky {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg,
+    #040210 0%, #0c0530 20%,
+    #1a0835 45%, #2d1045 60%,
+    #1a0828 80%, #080316 100%);
+}
+
+/* Comet streak */
+.comet {
+  position: absolute;
+  top: 18%; left: 15%;
+  width: 280px; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255,220,150,0.9), rgba(255,255,255,1) 80%, rgba(200,180,255,0.4));
+  transform: rotate(-28deg);
+  box-shadow: 0 0 8px 2px rgba(255,220,150,0.5);
+  border-radius: 2px;
+}
+.comet::after {
+  content: '';
+  position: absolute; right: -6px; top: -5px;
+  width: 12px; height: 12px;
+  background: radial-gradient(circle, #fff 20%, rgba(255,230,180,0.7) 60%, transparent 100%);
+  border-radius: 50%;
+}
+
+/* Mountain silhouette */
+.mountain {
+  position: absolute;
+  bottom: 140px; left: 0; right: 0;
+}
+.mountain svg { width: 100%; height: 220px; display: block; }
+
+/* Characters */
+.characters {
+  position: absolute;
+  bottom: 140px; left: 0; right: 0;
+  display: flex; justify-content: center; gap: 50px;
+  align-items: flex-end;
+}
+.char-silhouette { width: 55px; height: 130px; position: relative; }
+.char-female { /* three-leaf style */
+  background: linear-gradient(180deg, #2d1a4a 0%, #1a0d30 100%);
+  clip-path: polygon(35% 0%, 65% 0%, 75% 25%, 70% 35%, 80% 100%, 20% 100%, 30% 35%, 25% 25%);
+  filter: drop-shadow(0 0 8px rgba(150,100,255,0.3));
+}
+.char-male { /* taki style */
+  background: linear-gradient(180deg, #1a2a3a 0%, #0d1a24 100%);
+  clip-path: polygon(38% 0%, 62% 0%, 72% 22%, 68% 32%, 78% 100%, 22% 100%, 32% 32%, 28% 22%);
+  filter: drop-shadow(0 0 8px rgba(100,150,255,0.3));
+}
+
+/* Ground */
+.ground {
+  position: absolute;
+  bottom: 0; left: 0; right: 0; height: 140px;
+  background: linear-gradient(180deg, #0a0518 0%, #050210 100%);
+  border-top: 1px solid rgba(120,80,200,0.15);
+}
+
+/* Cover text */
+.cover-content {
+  position: relative; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  min-height: 100vh;
+  padding: 70px 30px 40px;
+  text-align: center;
+}
+.cover-title {
+  font-size: 3.5rem; font-weight: 900;
+  color: transparent;
+  background: linear-gradient(180deg, #fff 0%, var(--gold-light) 50%, var(--gold) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  text-shadow: none;
+  letter-spacing: 0.18em;
+  line-height: 1.1;
+  filter: drop-shadow(0 2px 20px rgba(201,168,76,0.5));
+}
+.cover-subtitle {
+  font-size: 1.05rem; color: rgba(200,190,230,0.8);
+  letter-spacing: 0.3em; margin-top: 10px; margin-bottom: 0;
+}
+.cover-divider {
+  width: 120px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  margin: 20px auto;
+}
+.cover-btn-wrap { margin-top: auto; padding-bottom: 20px; width: 100%; max-width: 300px; }
+.btn-cover {
+  background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.08));
+  border: 1.5px solid var(--gold);
+  color: var(--gold-light);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  width: 100%;
+  padding: 16px 40px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.3s;
+  box-shadow: 0 0 20px rgba(201,168,76,0.1);
+}
+.btn-cover:hover {
+  background: linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.15));
+  box-shadow: 0 0 30px rgba(201,168,76,0.25);
+  transform: translateY(-2px);
+}
+
+/* Stars on cover */
+.cover-stars { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+
+/* ===== SCREEN 5 — ROLLING ===== */
+.roll-header { font-size: 1rem; color: var(--white-dim); margin-bottom: 4px; }
+.roll-big { font-size: 2rem; font-weight: 900; color: var(--gold-light); margin-bottom: 24px; }
+
+.slider-wrap { width: 100%; margin-bottom: 20px; }
+.slider-wrap input[type="range"] {
+  width: 100%;
+  accent-color: var(--gold);
+  margin: 8px 0;
+}
+.slider-label { display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--white-dim); }
+
+.dice-animation-area {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  justify-content: center;
+  min-height: 80px;
+  margin-bottom: 18px;
+  width: 100%;
+}
+
+.die {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, var(--navy3), var(--navy2));
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; font-weight: 900; color: var(--gold-light);
+  position: relative;
+  box-shadow: 0 2px 12px rgba(201,168,76,0.15);
+}
+.die.rolling {
+  animation: dieRoll 0.5s ease-in-out;
+  border-color: var(--gold-light);
+}
+.die.neg-die {
+  border-color: var(--crimson-light);
+  color: #ff8899;
+  box-shadow: 0 2px 12px rgba(155,35,53,0.2);
+}
+@keyframes dieRoll {
+  0%   { transform: rotateY(0deg) scale(1); }
+  25%  { transform: rotateY(90deg) scale(1.1); }
+  50%  { transform: rotateY(180deg) scale(0.9); }
+  75%  { transform: rotateY(270deg) scale(1.1); }
+  100% { transform: rotateY(360deg) scale(1); }
+}
+
+.result-display {
+  background: rgba(201,168,76,0.07);
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 12px;
+  padding: 18px 20px;
+  text-align: center;
+  width: 100%;
+  margin-bottom: 16px;
+}
+.result-raw { font-size: 0.88rem; color: var(--white-dim); margin-bottom: 4px; }
+.result-num { font-size: 2.5rem; font-weight: 900; color: var(--gold-light); }
+.result-adj { font-size: 0.88rem; color: #ff8899; margin-top: 4px; }
+.result-final { font-size: 1.1rem; color: var(--gold); font-weight: 700; margin-top: 6px; }
+
+.neg-section {
+  background: rgba(155,35,53,0.08);
+  border: 1px solid rgba(155,35,53,0.25);
+  border-radius: 10px;
+  padding: 14px 18px;
+  width: 100%;
+  margin-bottom: 14px;
+}
+.neg-section label { color: #ff8899; margin-bottom: 8px; }
+.neg-section input[type="number"] { margin-bottom: 0; }
+
+/* ===== SCREEN 6 — BOOK OPEN ===== */
+#screen6 {
+  padding: 0;
+  align-items: stretch;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.book-container {
+  display: flex;
+  width: 100%;
+  max-width: 580px;
+  min-height: 100vh;
+  perspective: 1200px;
+}
+
+.book-wrapper {
+  display: flex;
+  width: 100%;
+  transform-style: preserve-3d;
+  position: relative;
+}
+
+/* Left page (character illustration) */
+.book-left {
+  flex: 0 0 42%;
+  background: linear-gradient(160deg, #12082a 0%, #1a0a35 50%, #0d0518 100%);
+  border-right: 2px solid rgba(201,168,76,0.2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 30px 16px;
+  position: relative;
+  overflow: hidden;
+  animation: bookOpenLeft 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  transform-origin: right center;
+}
+@keyframes bookOpenLeft {
+  from { transform: rotateY(-80deg); opacity: 0; }
+  to   { transform: rotateY(0deg); opacity: 1; }
+}
+
+.char-art { width: 100%; flex: 1; display: flex; align-items: center; justify-content: center; }
+.char-name { font-size: 0.85rem; color: var(--white-dim); text-align: center; letter-spacing: 0.2em; margin-top: 14px; }
+
+/* Right page (story) */
+.book-right {
+  flex: 1;
+  background: linear-gradient(160deg, #13100a 0%, #1c1710 50%, #0f0c08 100%);
+  padding: 30px 22px;
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+  animation: bookOpenRight 0.8s 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  transform-origin: left center;
+}
+@keyframes bookOpenRight {
+  from { transform: rotateY(50deg); opacity: 0; }
+  to   { transform: rotateY(0deg); opacity: 1; }
+}
+
+.story-num { font-size: 0.75rem; color: var(--white-dim); letter-spacing: 0.2em; margin-bottom: 6px; }
+.story-title-display {
+  font-size: 1.05rem; font-weight: 700;
+  color: var(--gold-light);
+  line-height: 1.4;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(201,168,76,0.18);
+  padding-bottom: 10px;
+}
+.story-body {
+  font-size: 0.82rem;
+  line-height: 1.9;
+  color: rgba(240,236,228,0.85);
+  margin-bottom: 18px;
+  flex: 1;
+}
+
+.choices-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.choice-btn {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(201,168,76,0.18);
+  border-radius: 7px;
+  color: var(--white-dim);
+  font-family: inherit; font-size: 0.8rem;
+  padding: 9px 12px;
+  text-align: left; cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1.5;
+  position: relative;
+}
+.choice-btn::before { content: '□ '; color: var(--gold); }
+.choice-btn:hover { background: rgba(201,168,76,0.08); border-color: var(--gold); color: var(--white); }
+.choice-btn.chosen {
+  background: rgba(201,168,76,0.12); border-color: var(--gold);
+  color: var(--gold-light); font-weight: 600;
+}
+.choice-btn.chosen::before { content: '✓ '; color: var(--gold-light); }
+
+.chosen-msg {
+  font-size: 0.85rem; color: var(--gold-light); text-align: center;
+  margin-bottom: 12px; line-height: 1.7;
+  background: rgba(201,168,76,0.07);
+  border-left: 3px solid var(--gold);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  display: none;
+}
+.chosen-msg.show { display: block; }
+
+.btn-restart {
+  background: transparent;
+  border: 1px solid rgba(201,168,76,0.3);
+  color: var(--gold);
+  font-family: inherit; font-size: 0.82rem;
+  padding: 9px 18px; border-radius: 8px;
+  cursor: pointer; transition: all 0.2s;
+  align-self: center;
+}
+.btn-restart:hover { background: rgba(201,168,76,0.1); }
+
+/* ===== CHARACTER SVG ILLUSTRATIONS ===== */
+/* Mitsuha (stories 0-9): purple traditional */
+.char-mitsuha { position: relative; width: 90px; height: 160px; }
+/* Taki (stories 10-19): dark urban */
+.char-taki { position: relative; width: 80px; height: 155px; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 400px) {
+  .cover-title { font-size: 2.6rem; }
+  .book-left { flex: 0 0 35%; padding: 20px 10px; }
+  .book-right { padding: 22px 14px; }
+  .story-title-display { font-size: 0.95rem; }
+  .story-body { font-size: 0.78rem; }
+  .choice-btn { font-size: 0.75rem; }
+}
+
+/* Screen 3 — scrollable layout */
+#screen3 {
+  justify-content: flex-start;
+  padding-top: 32px;
+  min-height: 100vh;
+}
+
+/* ===== BATCH BUTTONS ===== */
+.batch-row {
+  display: flex; gap: 10px; margin-bottom: 14px; width: 100%;
+}
+.btn-batch {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1.5px solid;
+  font-family: inherit; font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; transition: all 0.18s;
+  letter-spacing: 0.05em;
+}
+.btn-batch-pos {
+  background: rgba(201,168,76,0.1); border-color: var(--gold);
+  color: var(--gold-light);
+}
+.btn-batch-pos:hover { background: rgba(201,168,76,0.22); }
+.btn-batch-neg {
+  background: rgba(155,35,53,0.1); border-color: var(--crimson-light);
+  color: #ff8899;
+}
+.btn-batch-neg:hover { background: rgba(155,35,53,0.22); }
+
+/* ===== REWARD OVERLAY ===== */
+.reward-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(5,2,16,0.88);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.35s ease;
+}
+.reward-box {
+  background: linear-gradient(145deg, #12082a 0%, #1e1040 100%);
+  border: 1.5px solid var(--gold);
+  border-radius: 22px;
+  padding: 44px 38px 36px;
+  text-align: center;
+  max-width: 340px; width: 90%;
+  box-shadow: 0 0 60px rgba(201,168,76,0.25), 0 0 120px rgba(100,60,200,0.1);
+  animation: rewardPop 0.55s cubic-bezier(0.175,0.885,0.32,1.275) forwards;
+}
+@keyframes rewardPop {
+  from { transform: scale(0.65); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+.reward-spark { font-size: 2.2rem; margin-bottom: 6px; animation: sparkSpin 1s ease-out; }
+@keyframes sparkSpin { from { transform: rotate(-180deg) scale(0); } to { transform: rotate(0deg) scale(1); } }
+.reward-icon { font-size: 4rem; margin-bottom: 14px; }
+.reward-name {
+  font-size: 1.65rem; font-weight: 900; color: var(--gold-light);
+  margin-bottom: 10px;
+  text-shadow: 0 0 24px rgba(201,168,76,0.6);
+  letter-spacing: 0.08em;
+}
+.reward-desc { font-size: 0.9rem; color: var(--white-dim); margin-bottom: 14px; line-height: 1.7; }
+.reward-remain {
+  font-size: 0.82rem; color: var(--gold); margin-bottom: 22px;
+  padding: 6px 14px; border-radius: 20px;
+  background: rgba(201,168,76,0.08); display: inline-block;
+}
+
+/* ===== MISC ===== */
+.mt8 { margin-top: 8px; }
+.mb0 { margin-bottom: 0; }
+.text-center { text-align: center; }
+.gold { color: var(--gold-light); }
+.dim { color: var(--white-dim); }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- Starfield -->
+<div id="starfield"></div>
+
+<div id="app">
+
+  <!-- ===================== SCREEN 1: ID输入 ===================== -->
+  <div id="screen1" class="screen active">
+    <h1>你的名字</h1>
+    <p class="subtitle">命运的骰子 · 故事之旅</p>
+    <div class="card" style="margin-top:10px;">
+      <label for="inputId">请输入你的论坛 ID</label>
+      <input type="text" id="inputId" placeholder="例如：三叶_1234" maxlength="50">
+      <button class="btn btn-primary" onclick="goScreen2()">确认 →</button>
+    </div>
+    <p class="dim" style="font-size:0.78rem;margin-top:16px;text-align:center;line-height:1.8;">
+      投下命运的骰子<br>翻开属于你的故事
+    </p>
+  </div>
+
+  <!-- ===================== SCREEN 2: 数值输入 ===================== -->
+  <div id="screen2" class="screen">
+    <h2 id="welcomeMsg">欢迎，</h2>
+    <div class="card">
+      <div class="field-row">
+        <div class="field">
+          <label for="inputReplies">你的回复数</label>
+          <input type="number" id="inputReplies" placeholder="0" min="0" oninput="updateCalc()">
+        </div>
+        <div class="field">
+          <label for="inputCitations">被引用数</label>
+          <input type="number" id="inputCitations" placeholder="0" min="0" oninput="updateCalc()">
+        </div>
+      </div>
+      <div class="calc-box">
+        <div class="calc-row">
+          <span class="calc-label">⚀ 正骰子（d4）</span>
+          <span class="calc-value" id="calcPosDice">0 个</span>
+        </div>
+        <div class="calc-row">
+          <span class="calc-label">⚄ 混合骰子（d4）</span>
+          <span class="calc-value" id="calcNegDice">0 个</span>
+        </div>
+        <p class="calc-note">每5回复 = 1个正骰子 &nbsp;|&nbsp; 每次被引用 = 1个混合骰子（可 +4 或 −4）</p>
+      </div>
+      <button class="btn btn-primary" onclick="goScreen3()">记录并继续 →</button>
+    </div>
+  </div>
+
+  <!-- ===================== SCREEN 3: 骰子分配 ===================== -->
+  <div id="screen3" class="screen">
+    <h2>骰子分配</h2>
+    <div class="dice-info">你共有 <span id="s3PosDice">0</span> 个正骰子（d4）</div>
+
+    <div id="mixDiceSection" class="hidden" style="width:100%;">
+      <p style="font-size:0.88rem;color:var(--white-dim);margin-bottom:10px;text-align:center;">
+        你有 <span id="s3NegCount" style="color:#ff8899;font-weight:700;">0</span> 个混合骰子，请逐一选择方向：
+      </p>
+      <div class="batch-row">
+        <button class="btn-batch btn-batch-pos" onclick="batchAssign('pos')">全部设为 +4 进攻</button>
+        <button class="btn-batch btn-batch-neg" onclick="batchAssign('neg')">全部设为 −4 防御</button>
+      </div>
+      <div id="mixDiceRows" style="width:100%;"></div>
+    </div>
+
+    <div class="summary-box">
+      <div class="calc-row">
+        <span class="s-label">⚀ 正骰子</span>
+        <span class="s-val" id="s3SumPos">0 个</span>
+      </div>
+      <div class="calc-row">
+        <span class="s-label">＋ 进攻骰子（+4）</span>
+        <span class="s-val gold" id="s3SumPlus">0 个</span>
+      </div>
+      <div class="calc-row">
+        <span class="s-label">− 防御骰子（-4）</span>
+        <span class="s-val" style="color:#ff8899;" id="s3SumMinus">0 个</span>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="btnGoS4" onclick="goScreen4()" disabled
+      style="opacity:0.5;">了解了，出发！</button>
+  </div>
+
+  <!-- ===================== SCREEN 4: 书本封面 ===================== -->
+  <div id="screen4" class="screen">
+    <!-- Layered background -->
+    <div class="cover-sky"></div>
+    <!-- Cover stars layer -->
+    <div class="cover-stars" id="coverStars"></div>
+    <!-- Comet -->
+    <div class="comet"></div>
+    <!-- Mountain SVG -->
+    <div class="mountain">
+      <svg viewBox="0 0 400 220" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="0,220 60,120 100,160 150,60 200,110 240,40 290,100 340,70 400,130 400,220"
+          fill="#0d0520" opacity="0.95"/>
+        <polygon points="0,220 30,160 80,180 130,100 170,145 220,80 280,130 320,90 380,150 400,220"
+          fill="#080318" opacity="0.8"/>
+      </svg>
+    </div>
+    <!-- Characters -->
+    <div class="characters">
+      <!-- Female silhouette (Mitsuha style) -->
+      <svg width="50" height="120" viewBox="0 0 50 120" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="25" cy="14" rx="9" ry="10" fill="#1a0d30"/>
+        <!-- Hair -->
+        <path d="M16,8 Q15,18 14,30 Q18,24 25,22 Q32,24 36,30 Q35,18 34,8 Q30,4 25,4 Q20,4 16,8Z" fill="#120828"/>
+        <!-- Long hair strands -->
+        <path d="M15,22 Q12,50 14,80" stroke="#120828" stroke-width="3" fill="none"/>
+        <path d="M35,22 Q38,50 36,80" stroke="#120828" stroke-width="3" fill="none"/>
+        <!-- Ribbon -->
+        <ellipse cx="25" cy="18" rx="5" ry="2" fill="#6b2080" opacity="0.8"/>
+        <!-- Body (kimono-like) -->
+        <path d="M16,24 Q10,45 12,80 Q18,85 25,85 Q32,85 38,80 Q40,45 34,24 Q30,28 25,28 Q20,28 16,24Z"
+          fill="#1e0d3a"/>
+        <!-- Skirt -->
+        <path d="M12,75 Q8,100 10,120 Q18,118 25,118 Q32,118 40,120 Q42,100 38,75Z"
+          fill="#160928"/>
+        <!-- Obi belt -->
+        <rect x="13" y="52" width="24" height="8" rx="2" fill="#6b2080" opacity="0.6"/>
+      </svg>
+
+      <!-- Male silhouette (Taki style) -->
+      <svg width="46" height="115" viewBox="0 0 46 115" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="23" cy="12" rx="8" ry="9" fill="#0d1a2e"/>
+        <!-- Hair -->
+        <path d="M15,6 Q14,14 15,20 Q19,18 23,18 Q27,18 31,20 Q32,14 31,6 Q27,2 23,2 Q19,2 15,6Z"
+          fill="#091424"/>
+        <!-- Body (jacket) -->
+        <path d="M15,20 Q8,38 9,72 Q16,76 23,76 Q30,76 37,72 Q38,38 31,20 Q27,24 23,24 Q19,24 15,20Z"
+          fill="#0d1e36"/>
+        <!-- Jacket collar -->
+        <path d="M19,20 L23,32 L27,20" stroke="#152840" stroke-width="2" fill="none"/>
+        <!-- Pants -->
+        <path d="M9,70 Q7,95 8,115 Q15,113 23,113 Q31,113 38,115 Q39,95 37,70Z"
+          fill="#0a1520"/>
+      </svg>
+    </div>
+    <!-- Ground -->
+    <div class="ground"></div>
+
+    <!-- Content overlay -->
+    <div class="cover-content">
+      <div class="cover-title">你的名字</div>
+      <div class="cover-divider"></div>
+      <div class="cover-subtitle">命运的骰子</div>
+
+      <div style="flex:1;"></div>
+
+      <div class="cover-btn-wrap">
+        <button class="btn-cover" onclick="goScreen5()">▶ 开始投骰</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SCREEN 5: 投骰界面 ===================== -->
+  <div id="screen5" class="screen">
+    <h2>投掷命运之骰</h2>
+    <p class="roll-header">你拥有的正骰子</p>
+    <p class="roll-big"><span id="s5TotalDice">0</span> 个 d4</p>
+
+    <div class="card" style="width:100%;">
+      <label>投掷数量：<span id="s5SliderVal" class="gold">1</span> 个</label>
+      <div class="slider-wrap">
+        <input type="range" id="s5Slider" min="1" max="1" value="1" oninput="s5UpdateSlider()">
+        <div class="slider-label"><span>1</span><span id="s5SliderMax">1</span></div>
+      </div>
+
+      <button class="btn btn-crimson" id="s5RollBtn" onclick="rollDice()">🎲 投骰！</button>
+    </div>
+
+    <div id="s5DiceArea" class="dice-animation-area"></div>
+
+    <div id="s5ResultBox" class="result-display hidden">
+      <div class="result-raw" id="s5ResultRaw"></div>
+      <div class="result-num" id="s5ResultNum">0</div>
+      <div class="result-adj" id="s5ResultAdj" style="display:none;"></div>
+      <div class="result-final" id="s5ResultFinal" style="display:none;"></div>
+    </div>
+
+    <div id="s5NegSection" class="neg-section hidden">
+      <label>你有 <span id="s5NegAvail" style="color:#ff8899;font-weight:700;">0</span> 个减向骰子（−4），是否使用？</label>
+      <input type="number" id="s5NegUse" min="0" value="0" placeholder="0" oninput="s5UpdateNeg()" style="margin-top:8px;">
+      <p style="font-size:0.78rem;color:var(--white-dim);margin-top:4px;">填写使用数量（每个 −4 点）</p>
+    </div>
+
+    <button id="s5NextBtn" class="btn btn-primary hidden" onclick="goScreen6()" style="margin-top:8px;">
+      翻开命运之书 →
+    </button>
+  </div>
+
+  <!-- ===================== SCREEN 6: 故事展示 ===================== -->
+  <div id="screen6" class="screen">
+    <div class="book-container">
+      <div class="book-wrapper">
+        <!-- Left page: character art -->
+        <div class="book-left" id="bookLeft">
+          <div class="char-art" id="charArtContainer"></div>
+          <div class="char-name" id="charName"></div>
+        </div>
+
+        <!-- Right page: story -->
+        <div class="book-right">
+          <div class="story-num" id="storyNum">故事 #</div>
+          <div class="story-title-display" id="storyTitleDisplay"></div>
+          <div class="story-body" id="storyBodyDisplay"></div>
+
+          <div class="choices-list" id="choicesList"></div>
+
+          <div class="chosen-msg" id="chosenMsg">✓ 你的选择已记录</div>
+          <button class="btn-restart" onclick="restart()">再来一次 ↩</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ===== REWARD OVERLAY ===== -->
+<div id="rewardOverlay" class="reward-overlay hidden">
+  <div class="reward-box">
+    <div class="reward-spark" id="rewardSpark">✨</div>
+    <div class="reward-icon" id="rewardIcon"></div>
+    <div class="reward-name" id="rewardName"></div>
+    <div class="reward-desc" id="rewardDesc"></div>
+    <div class="reward-remain" id="rewardRemain"></div>
+    <button class="btn btn-primary" onclick="claimReward()" style="max-width:220px;">领取奖励 ✓</button>
+  </div>
+</div>
+
+<script>
+// ===== STORY DATA =====
+const STORIES = [
+  // ===== 重逢篇 (0-9) =====
+  { title: "【重逢】雨天的咖啡馆——十年后的第一眼",
+    body: "某天清晨，三叶睁开眼睛，却发现自己置身于东京某间陌生的公寓。镜子里映出的，是一个她从未见过的男孩的脸。她慌乱地翻看床头的手机，得知自己现在是「立花泷」——而她的身体此刻应该在遥远的飞弹山中。手机屏幕上有一条未读讯息：「喂，你昨天答应帮我向小野寺前辈告白的，别忘了！」三叶盯着那条讯息，心跳加速，不知道该如何是好。",
+    choices: ["按照原计划替泷向前辈告白，尽力扮演好他的角色","给泷的手机发短信，说明情况，请他也控制好自己的身体","假装什么都不知道，静静等待灵魂自然回归","偷偷翻查泷的房间，试图理解这个陌生男孩"],
+    choice_descs: ["三叶鼓起勇气替泷表白，却因女孩特有的害羞说得磕磕巴巴，前辈反而觉得他今天格外可爱。","消息发出后手机立刻震动——「你也是？！我在一个叫糸守的地方，完全不知道该怎么办！」","三叶坐在泷的房间里静待，无意间看见抽屉里的速写本，里面画满了山与湖，有一张像是她的家乡。","三叶翻到泷日记的最后一页，上面写着：「今天梦见一个穿和服的女孩，不知为何，感觉很熟悉……」"]
+  },
+  { title: "【三叶篇】借来的心跳——泷的暗恋",
+    body: "三叶再次占据泷的身体时，意外撞见了泷的暗恋对象——奥寺前辈。前辈悄悄拉住「泷」的袖子，压低声音说：「今天下班后，我有话跟你说。」三叶一颗心七上八下，她知道这对泷来说意味着什么，可自己只是个借用他身体的外来者。黄昏的咖啡馆里，前辈望着她的眼睛，缓缓开口……",
+    choices: ["认真聆听，尽力以泷的方式回应前辈的心意","坦白说「今天状态不好」，把机会留给真正的泷","握住前辈的手，说：「不管是谁，喜欢你都是真心的」","偷偷在备忘录记下前辈每一句话，等泷回来时转告他"],
+    choice_descs: ["三叶拼命模仿泷的语气，却不自觉流露出女孩特有的温柔，前辈愣了一下，脸悄悄红了。","前辈反而如释重负地笑了笑：「没关系，我只是想说……你最近变了，变得更温柔了。」","前辈沉默了三秒，轻轻抽回手：「泷，你真的很特别。」三叶至今不知道这句话算不算答案。","泷收到备忘录后盯着屏幕看了很久，只回了两个字：「谢谢。」三叶看着这两字，莫名有些心疼。"]
+  },
+  { title: "【三叶篇】神社的异光——祖母的秘密",
+    body: "祭典前夜，三叶独自到宫水神社完成每年的奉纳仪式。当她跳完神乐舞，却发现神体前的灯火突然变成了深紫色，四周弥漫着一股甜腻的酒香。奶奶出现在她身后，神情肃穆地说：「三叶，你和他之间的线，已经开始燃烧了。」三叶不明白奶奶的话，但心里有种说不清的悸动。",
+    choices: ["追问奶奶「他」是谁，要求得到正面解释","默默记住这句话，相信一切自有安排","偷偷留下来，藏在暗处继续观察神体的异光","把这件事写进日记，并附上泷在自己身体里留下的奇怪便条"],
+    choice_descs: ["奶奶只是微笑，伸手摸了摸三叶的头发：「那根线，你们两个用自己的命在编织。」","仪式结束后，三叶抬头望见一颗流星划过糸守湖上空，心里莫名地，想哭。","灯火在无风的夜里突然熄灭，三叶看见火焰消失前，留下了一个男孩模糊的轮廓。","第二天早上，那张便条旁多了一行字——「三叶，糸守很美。我好像曾经去过。」"]
+  },
+  { title: "【三叶篇】日记里的陌生字迹——跨越时空的对话",
+    body: "三叶打开昨天的日记，却发现里面多了几行并非她所写的字：「今天穿着你的身体上了体育课，跑步真的好累。对了，糸守的山日落时很好看，我画下来了，夹在书里。」她翻到那一页，果然有一张速写，山与湖在夕阳下宁静得像一幅画。三叶的手微微颤抖——这个从未谋面的人，用她的手，为她的家乡留下了一幅素描。",
+    choices: ["在日记里回信，告诉他东京今天发生了什么","撕下那张速写，悄悄收进自己的钱包保存","跑去告诉好友四叶，两人一起研究这件奇事","在日记末页写下：「如果你看到这里，请告诉我你的名字。」"],
+    choice_descs: ["隔天，三叶发现他回信了：「谢谢你告诉我，我画下了你家门口的那棵树，希望你喜欢。」","三叶把速写夹进钱包，每次打开都忍不住多看一眼，心里有个地方慢慢地，被填满了。","四叶瞪大眼睛，一脸认真地说：「三叶，这是天命！」然后立刻开始策划「灵魂测试计划」。","第二天，日记末页出现了歪斜但认真的三个字：「立花泷。」那一刻，三叶心跳漏了一拍。"]
+  },
+  { title: "【三叶篇】发光的编结——命运的红线",
+    body: "三叶用家传的编结技法，亲手编了一根赤色发绳。然而当她把它绑在发间，绳子在月光下发出了微弱的光芒。奶奶看见后，把她拉到一旁，压低声音说：「宫水家的女人，只有在遇见与自己灵魂相连的人时，编结才会发光。」三叶转过头，窗外的天空上，彗星的双尾正在慢慢形成。",
+    choices: ["把这根发绳寄给泷，相信它会找到该去的地方","亲自去东京，想办法把发绳亲手交给泷","独自坐在神体前，向神明祈求让自己见到他","把发绳解下藏起来，压在日记最深处"],
+    choice_descs: ["发绳到了泷手中后，他把它绑在了手腕上，却说不出为什么，只觉得这样做是对的。","三叶出现在泷家门口，两人四目相对，泷愣在原地，嘴唇动了动，却说不出任何话。","三叶的祈祷在神社里回响，神体前的灯再次燃起紫色的光，奶奶在远处，悄悄点头。","发绳被压在日记下，每次三叶翻开日记，都能感觉到它微微发热，像有人在另一端握着它。"]
+  },
+  { title: "【三叶篇】彗星之夜的预感——什么都来不及了",
+    body: "彗星回归的前夕，三叶突然感到一阵莫名的恐慌。她站在糸守湖边，望着夜空中那道越来越亮的光轨，心里有一个声音在反复呼喊：「快离开，快逃！」然而全镇的人都在欢庆祭典，没有人相信她的预感。就在这时，她的手机收到了泷发来的最后一条短信：「三叶，无论如何，一定要平安。」",
+    choices: ["挨家挨户地敲门，哪怕被当成疯子也要让大家撤离","冲进祭典会场，夺过麦克风向全镇宣布危险","先去找奶奶和妹妹，从自家人开始撤离","再发一条短信给泷：「泷，帮帮我，我不知道该怎么办。」"],
+    choice_descs: ["三叶跑遍了半个镇，哭着求人们离开，终于有人开始动摇，然后是第二个，第三个……","会场陷入混乱，但就在这时，天空中的光芒急剧扩大，庆典的笑声戛然而止。","奶奶握住三叶的手，平静地说：「我知道了。走吧，宫水家的女人，从来都懂得未来。」","泷的电话那头沉默了几秒，然后他说：「我来找你，等我。」但信号在这句话之后断掉了。"]
+  },
+  { title: "【三叶篇】黄昏的分界——只有这一刻",
+    body: "奶奶说过，黄昏是神明与人间重叠的时刻。那天下午，三叶独自站在山顶，感受着天色由橘转紫，心里涌起一股奇异的共鸣感。就在这时，眼前的空气微微扭曲，一个男孩的身影慢慢浮现——那是泷，真正的泷，不是透过灵魂交换，而是就站在她面前。「你是三叶吗？」他的声音有些颤抖。",
+    choices: ["点头，然后问他：「你怎么来了？」","不说话，只是伸出手，想确认他是否真实存在","哭着扑向他，说出那些积攒已久的话","告诉他糸守的危险，趁着黄昏时分一起制定撤离计划"],
+    choice_descs: ["泷愣了一下，然后笑了，那是三叶第一次看见他真正在自己面前笑：「傻瓜，我当然来了。」","泷伸手握住她，温度是真实的，三叶这才相信，这一刻是真的发生了。","泷没有躲开，只是轻轻拍了拍她的背，沉默地站着，直到天色彻底暗去。","两人在夕阳的最后一道光里写下了计划，泷说：「这一次我绝对不会让你消失。」"]
+  },
+  { title: "【三叶篇】消失的名字——忘记你之前",
+    body: "彗星坠落之后，三叶开始逐渐忘记那段交换的记忆。她站在镜子前，怎么也想不起那个男孩的名字，只是胸口有一块地方，像是被挖走了什么。好友四叶察觉出她的异样，轻声问：「三叶，你在找什么？」三叶摸了摸眼角不知何时流下的泪痕，低声说：「我也不知道……只是觉得，有什么很重要的东西，消失了。」",
+    choices: ["在手腕上写下「泷」这个字，在记忆消失前留住他","拿出日记，强迫自己一遍遍重读，不让记忆溜走","去找奶奶，她或许知道该如何找回失去的记忆","搭上去东京的列车，相信即使忘记了名字，脚也会找到路"],
+    choice_descs: ["三叶低头看着手腕上那个字，泪水滴落——她不知道这是谁，却清楚地知道，他是重要的。","日记里的字慢慢模糊，但有一页她看了三遍，最后轻声念出：「立花……泷。」","奶奶把三叶的手握在掌心，半晌后说：「去找他吧，灵魂记得的，比大脑更多。」","三叶坐在列车上，看着窗外的城市，心跳莫名地加快，像是在某个熟悉的地方，越来越近。"]
+  },
+  { title: "【三叶篇】东京的街头——三年后的寻找",
+    body: "三年过去了，三叶搬到东京工作，每天都有一种若有若失的感觉，像是在等待一个永远不会响起的电话。某天下班后，她在地铁站的月台上，看见了一个拿着素描本站在角落的男孩。他的侧脸，让三叶的心猛地抽了一下。「那个人……」她喃喃自语，脚步不受控制地向他靠近。",
+    choices: ["走上前搭话：「请问，我们是不是在哪里见过？」","默默跟在他身后，确认身份再行动","躲在柱子后面观察，直到他抬起头的那一刻","掉头就走，告诉自己这只是错觉"],
+    choice_descs: ["男孩转过来，对着三叶愣了一下，然后扯了扯嘴角：「也许吧，但我总觉得……我一直在找你。」","三叶跟了他三站路，最后在出口处，他突然停下来，头也不回地说：「你跟着我多久了？」","男孩抬起头，和三叶四目相对，两个人都僵住了，像是时间本身停下来，等待他们想起彼此。","三叶走出地铁站，在街角停下来，泪水无声地滑落，她不知道自己在哭什么，只是，好想见他。"]
+  },
+  { title: "【三叶篇】楼梯上的重逢——「你的名字是？」",
+    body: "三叶和那个男孩在东京的某条街上擦肩而过，两人同时回头。那一刻，空气里有什么东西在震颤——像是许多年前某次对视的回响。男孩看着她，眼眶慢慢变红，喉咙动了动：「我好像……一直在找你。」三叶捂住嘴，眼泪不受控制地涌了出来：「我也是……」",
+    choices: ["先告诉他自己的名字，请他也告诉自己他是谁","什么都不说，只是伸出手握住他","问他：「我们，是不是以前见过？」","哭着说：「我差点就找不到你了。」"],
+    choice_descs: ["「宫水三叶。」「立花泷。」两个名字在秋日阳光里轻轻落下，像是找到了它们本来就该在的地方。","泷握住了她的手，沉默了很久，然后轻声说：「不管我们之前发生了什么，谢谢你活下来了。」","泷的眼泪终于落下来：「见过。你戴着一根红色的发绳，站在山顶，对着我笑。」","泷摇了摇头，哽咽道：「没关系，我找到了，就不会再让你消失了。」"]
+  },
+  // ===== 泷篇 (10-19) =====
+  { title: "【泷篇】梦中的山城——那个穿和服的女孩",
+    body: "泷最近总是做一个相同的梦：一座被群山环抱的小镇，一面碧蓝的湖，还有一个穿着和服、头发上戴着红绳的女孩，对着他微笑。梦里的他是那个女孩，却又不是——他能感受到她的心跳、她的悲伤，还有她对某个人深入骨髓的思念。某天早上，泷在速写本上画出了那座小镇，同学凑过来惊呼：「这里是飞弹？你去过吗？」",
+    choices: ["说「去过」，任由自己相信梦里的记忆是真实的","说「没去过」，但偷偷查起飞弹的地图","把速写本合上，决定独自踏上飞弹之旅","打电话给朋友：「我觉得我认识那里的某个人。」"],
+    choice_descs: ["泷说完「去过」，却发现自己能描述出每一条街的细节，连同学都觉得不可思议。","泷在地图上找到了「糸守町」，却发现搜索结果显示该地三年前已不复存在，心里猛地一沉。","泷买好车票，凌晨的月台上，他望着远方，心跳比平时快了一倍，像是在赶赴一个约定。","朋友说：「泷，你最近状态不对，你在想一个女孩吧？」泷沉默了很久，说：「我不知道她的名字。」"]
+  },
+  { title: "【泷篇】速写里的记忆——画下来的思念",
+    body: "泷发现自己的速写本里，多了许多他没有印象画过的画：一个神社、一根红色发绳、湖边的日落，还有一个女孩的背影，头发垂落，却始终没有正脸。他翻到最后一页，那里用陌生的字迹写着：「泷，有一天你会来找我的，对吗？」泷握住笔，心口像是被什么刺了一下。",
+    choices: ["在那行字旁写下：「我来了，告诉我你在哪里。」","把速写本放进书包，用画里的线索找到那个地方","打给前辈，把这件怪事说出来，哪怕被当做傻瓜","再翻一遍速写本，寻找有没有被遗漏的线索"],
+    choice_descs: ["第二天早上，那行字旁边出现了糸守湖的轮廓，还有四个字：「在等你来。」","泷把每一张画拼在桌上，从中拼出了飞弹市某个山区的全貌，然后打开电脑买了最近的车票。","前辈静静听完，沉默了一会儿，说：「泷，去找她吧。有些事，比留在东京更重要。」","速写本最深处，夹着一根已经褪色的红色细绳，泷握住它，脑海里某个遥远的记忆，忽然颤动了。"]
+  },
+  { title: "【泷篇】前辈的告白——心里还是有你",
+    body: "奥寺前辈约泷去咖啡馆，泷知道她有话说。前辈把咖啡杯转了又转，终于抬起头：「泷，我觉得你喜欢的人，不是我。」泷愣住了。前辈继续说：「你看我的时候，眼神是温柔的……但只有在某些时刻，你会突然出神，那时候的你，在想别的人。」窗外的天空，一朵云飘散开来，像极了飞弹山区的形状。",
+    choices: ["否认，说：「我没有……」却在说出口的瞬间，知道自己在说谎","沉默良久，然后点头：「我不知道她是谁，但我总是想起她。」","问前辈：「如果那个人，我连名字都不记得，这算爱情吗？」","站起来，道歉，然后说：「我需要去一个地方，找一个人。」"],
+    choice_descs: ["前辈轻轻摇了摇头，笑着说：「泷，记住，真心喜欢一个人，是骗不了自己的。」","前辈眼眶微红，却微笑着说：「那去找她吧，她一定也在找你。」","前辈想了很久，慢慢说：「我觉得……那不只是爱情，那是一种比爱情更古老的事情。」","泷走出咖啡馆，在路口停下来，摸了摸手腕上那根红色的绳子，朝车站的方向走去。"]
+  },
+  { title: "【泷篇】飞弹的旅途——凭着感觉走",
+    body: "泷一个人踏上了前往飞弹的旅途。车窗外，山势越来越高，空气越来越清澈，心里某个遥远的角落，开始微微发疼。他在一个没有站名牌的小站下了车，凭着某种说不清的直觉，开始向山里走去。路上，他遇见一个老人，老人打量了他一眼，若有所思地说：「孩子，你是来找糸守的人吧。」",
+    choices: ["点头：「请问您知道糸守在哪里吗？」","问老人：「那里……有一个叫三叶的人吗？」","不说话，只是跟着老人向山里走","问老人：「糸守町……还存在吗？」"],
+    choice_descs: ["老人指向更深的山里，沉声说：「那里，三年前的秋天，发生了一件大事。你来得有点迟了，孩子。」","老人的神情一怔，随即轻轻叹了口气：「三叶……她活下来了，但糸守，没有。」","老人走在前头，一边走一边说：「你脸上有一种表情，和她一样，都是在找着什么，又怕找到了。」","老人停下脚步，缓缓说：「那里，连同里面的人，三年前的一个秋夜，就消失了。」"]
+  },
+  { title: "【泷篇】消失的糸守——陨石坑边的眼泪",
+    body: "泷站在陨石坑的边缘，沉默地看着眼前这片巨大的圆形洼地。湖水碧绿，宁静得像一面镜子，却再也倒映不出那座曾经存在的小镇。当地人告诉他，三年前的彗星坠落将糸守町从地图上彻底抹去，全镇五百人，却在坠落前一个多小时全部疏散，无一伤亡。泷握紧了拳头，眼眶慢慢发热——「你是怎么做到的？」",
+    choices: ["爬下陨石坑，站在水边，放声大哭","取出速写本，把眼前的景象一笔一笔画下来","拨打一个在日记里找到的电话号码，哪怕不知道接听的是谁","坐在坑边，闭上眼睛，试着用记忆找回三叶的脸"],
+    choice_descs: ["泷哭了很久，最后抬起头，水面映着他的脸，他突然想起——梦里的那个女孩，也曾在这里哭泣。","泷画了整整一个下午，画完后发现自己在画面角落写了两个字：「三叶。」","电话响了三声，一个年轻女人的声音说：「喂……」然后是长长的沉默，和一声轻轻的哭泣。","泷闭上眼，脑海里浮现了一双眼睛，不是模糊的，而是清晰的、含着泪光的、对着他笑的。"]
+  },
+  { title: "【泷篇】神酒与记忆——口含酒的意义",
+    body: "泷在宫水神社的遗址里，找到了一个盛着透明液体的陶器——那是三叶曾经口嚼的神酒，奶奶亲手留下来的。旁边有一张纸条，字迹工整：「如果有一天，有一个男孩来到这里，请他喝下这杯酒。奶奶留。」泷望着那杯酒，心口被什么东西猛地攥住，然后，他把它喝了下去。",
+    choices: ["静静等待，看看喝下去之后会发生什么","闭上眼睛，把所有和三叶有关的感觉都放进心里","喝完后立刻打开速写本，把涌现的一切画出来","喝完后望向夜空，看看今晚有没有彗星"],
+    choice_descs: ["世界在泷眼前轰然崩塌又重建——所有的记忆如海浪涌来，他终于想起了那个名字：「三叶！」","泷的眼泪在他意识到自己在哭之前已经落下来了，脑海里，三叶的声音清清楚楚地响起。","泷画下的第一笔，是三叶的眼睛——然后是她的笑，她的泪，她的家，还有那根红绳。","夜空里没有彗星，但泷看见了一颗格外亮的星，他对着它说：「三叶，我想起你了，等我去找你。」"]
+  },
+  { title: "【泷篇】黄昏的奇迹——真正的相遇",
+    body: "奶奶说，黄昏时分，灵魂之间的界限会变得模糊。泷凭着这句话，在彗星坠落的那个黄昏，独自爬上了糸守町遗址旁的山顶。天色在橘与紫之间摇摆，而就在那一刻，他看见了她——三叶站在不远处，和他在梦里无数次见过的一样，只是这一次，是真实的。「你是……」她的嘴唇动了动。",
+    choices: ["说出她的名字：「三叶。」","朝她走去，不说话，只是靠近","哽咽着说：「我找了你好久。」","伸出手：「我是立花泷，你还记得我吗？」"],
+    choice_descs: ["三叶愣了一秒，然后眼眶红了：「你……你怎么知道我的名字？」泷笑了，眼泪却落了下来。","两个人在橘色的光里越走越近，当泷的影子和三叶的影子交叠的那一刻，天色开始变暗。","三叶的眼泪先于回答落下来：「我也是……我也找了你很久。」","三叶盯着他的手看了很久，颤抖着伸出手，握住了他：「记得……我一直记得你。」"]
+  },
+  { title: "【泷篇】手心的名字——时间来不及了",
+    body: "黄昏的光正在消退，泷知道他们在一起的时间不多了。他从口袋里掏出一支笔，握住三叶的手：「让我在你手心写下我的名字，不管以后忘了什么，都不能忘。」三叶点头，泷低下头，专注地在她掌心写着，他的手有些抖，因为他知道，天色再暗一点，这一刻就会结束。",
+    choices: ["请三叶也在自己手心写下她的名字","在写完之后紧紧握住她的手，多留一秒是一秒","低头把名字写完，然后抬起头，把这张脸记进心里","轻声告诉她：「等找到我的时候，问我喜不喜欢你。」"],
+    choice_descs: ["三叶握着泷的手认真地写，笔画还没完成，天色已暗，但那个字，留下了。","两只手的温度在最后的橘光里慢慢消退，当泷再次睁开眼，手心里只剩自己的一行字。","泷把三叶的脸记住了——眉毛、眼睛、嘴唇、泪痕，还有对着他笑的样子，这张脸，他不会再忘记。","三叶的眼泪落在他的手背上：「如果你记得，就来找我，我在东京……你一定会找到我的。」"]
+  },
+  { title: "【泷篇】三年的寻找——那种说不清的感觉",
+    body: "三年后，泷大学毕业，开始求职。然而每次坐在面试官对面，他都觉得心里空着一块，说不清是什么。某天，他坐上地铁，看着窗外掠过的城市，忽然很想哭。就在这时，对面的座位上，一个短发的女孩抬起眼睛，和泷对视了一秒——那一瞬间，泷的心脏停跳了半拍。",
+    choices: ["追上去，在车门关上前喊住她","站在原地，用眼神试图让她再看过来","下一站追出去，在站台上四处寻找","坐回座位，低下头，在手心里写下那两个字"],
+    choice_descs: ["泷挤过人群，在车门合上的最后一刻，他们的目光再次相遇——她停了下来。","女孩没有再看过来，但在列车到站时，她收起书，站起身，朝着泷站着的方向，走了过来。","泷在站台上跑了整整两圈，最后停在出口，看见她就站在那里，望着他，红着眼眶。","泷写下「三叶」，抬起头，窗外的城市仍在掠过，但他的心，忽然踏实了一点点。"]
+  },
+  { title: "【泷篇】楼梯上的告白——我想见你",
+    body: "那天，泷追着那种说不清的感觉，一路跑上了某条街的阶梯。就在气喘吁吁停下来的那一刻，对面的阶梯上，也有一个人正在跑着，同样停了下来。两个人都喘着气，相隔十几级台阶，对视着，然后同时开口——「请问……」「你不就是——」话语撞在一起，消散在秋日的风里。泷咬住牙，先开口：「你的名字，能告诉我吗？」",
+    choices: ["走下楼梯，一步一步地靠近她","大声喊出：「我是立花泷！我一直在找你！」","泪流满面地说：「我终于找到你了。」","先听她说，听她的声音确认一切"],
+    choice_descs: ["泷走下每一级台阶，三叶走上每一级台阶，最后，他们停在同一级，各自说出了名字。","三叶愣了一下，然后笑中带泪：「我知道，我是宫水三叶，我找你找了好久。」","三叶把脸埋进双手里，哭声从指缝里漏出来：「我也是，我也是……」","「宫水三叶。」她的声音清晰地落进泷的心里，他闭上眼睛，点了点头：「找到了。」"]
+  }
+];
+
+// ===== REWARDS =====
+const REWARDS = [
+  { icon: '⚔️', name: '30 节操', desc: '命运眷顾了你，获得 30 节操积分！' },
+  { icon: '🪶', name: '10 羽毛', desc: '故事送来了礼物，获得 10 羽毛！' },
+  { icon: '🏅', name: '30天本期勋章', desc: '荣耀属于你，获得 30 天本期勋章！' },
+  { icon: '🎖️', name: '30天字母勋章', desc: '传说级奖励，获得 30 天字母勋章！' },
+];
+
+// ===== GAS CONFIG =====
+const GAS_URL = 'https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec';
+
+// ===== GAME STATE =====
+let state = {
+  id: '',
+  replies: 0,
+  citations: 0,
+  pos_dice: 0,
+  neg_dice: 0,
+  mixAssignments: [], // 'pos' or 'neg'
+  plus_dice: 0,
+  minus_dice: 0,
+  rolled: 0,
+  diceResults: [],
+  raw_result: 0,
+  neg_used: 0,
+  final_result: 0,
+  story_index: 0,
+  chosen: null
+};
+
+// ===== STAR FIELD =====
+(function buildStars() {
+  const sf = document.getElementById('starfield');
+  const count = 160;
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2.5 + 0.5;
+    const dur = (Math.random() * 4 + 2).toFixed(1);
+    const minOp = (Math.random() * 0.2 + 0.1).toFixed(2);
+    const maxOp = (Math.random() * 0.5 + 0.5).toFixed(2);
+    s.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${Math.random()*100}%; top:${Math.random()*100}%;
+      --dur:${dur}s; --min-op:${minOp}; --max-op:${maxOp};
+      animation-delay:${(Math.random()*4).toFixed(1)}s;
+    `;
+    sf.appendChild(s);
+  }
+
+  // Cover stars
+  const cs = document.getElementById('coverStars');
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2 + 0.5;
+    const dur = (Math.random() * 4 + 2).toFixed(1);
+    s.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${Math.random()*100}%; top:${Math.random()*100}%;
+      --dur:${dur}s; --min-op:0.3; --max-op:0.95;
+      animation-delay:${(Math.random()*4).toFixed(1)}s;
+    `;
+    cs.appendChild(s);
+  }
+})();
+
+// ===== NAVIGATION =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  el.classList.add('active');
+  // re-trigger animation
+  el.style.animation = 'none';
+  el.offsetHeight; // reflow
+  el.style.animation = '';
+}
+
+// ===== SCREEN 1 → 2 =====
+function goScreen2() {
+  const id = document.getElementById('inputId').value.trim();
+  if (!id) { alert('请输入你的论坛 ID'); return; }
+  state.id = id;
+  document.getElementById('welcomeMsg').textContent = '欢迎，' + id;
+  updateCalc();
+  showScreen('screen2');
+}
+
+// ===== LIVE CALC =====
+function updateCalc() {
+  const r = parseInt(document.getElementById('inputReplies').value) || 0;
+  const c = parseInt(document.getElementById('inputCitations').value) || 0;
+  const pos = Math.floor(r / 5);
+  const mix = c;
+  document.getElementById('calcPosDice').textContent = pos + ' 个';
+  document.getElementById('calcNegDice').textContent = mix + ' 个';
+}
+
+// ===== SCREEN 2 → 3 =====
+function goScreen3() {
+  const replies = parseInt(document.getElementById('inputReplies').value) || 0;
+  const citations = parseInt(document.getElementById('inputCitations').value) || 0;
+  const pos_dice = Math.floor(replies / 5);
+  const neg_dice = citations;
+
+  if (pos_dice < 1) { alert('你至少需要 5 个回复（1个骰子）才能出发！'); return; }
+
+  state.replies = replies;
+  state.citations = citations;
+  state.pos_dice = pos_dice;
+  state.neg_dice = neg_dice;
+  state.mixAssignments = new Array(neg_dice).fill(null);
+
+  // Build screen 3
+  document.getElementById('s3PosDice').textContent = pos_dice;
+  document.getElementById('s3SumPos').textContent = pos_dice + ' 个';
+
+  const mixSec = document.getElementById('mixDiceSection');
+  const mixRows = document.getElementById('mixDiceRows');
+  mixRows.innerHTML = '';
+
+  if (neg_dice > 0) {
+    mixSec.classList.remove('hidden');
+    document.getElementById('s3NegCount').textContent = neg_dice;
+    for (let i = 0; i < neg_dice; i++) {
+      const row = document.createElement('div');
+      row.className = 'mix-die-row';
+      row.innerHTML = `
+        <span class="mix-die-label">混合骰子 #${i+1}</span>
+        <div class="mix-die-btns">
+          <button class="die-toggle pos" id="tp${i}" onclick="assignDie(${i},'pos')">+4 进攻</button>
+          <button class="die-toggle neg" id="tn${i}" onclick="assignDie(${i},'neg')">−4 防御</button>
+        </div>
+      `;
+      mixRows.appendChild(row);
+    }
+  } else {
+    mixSec.classList.add('hidden');
+  }
+
+  updateS3Summary();
+  showScreen('screen3');
+
+  // If no mix dice, allow proceed immediately
+  if (neg_dice === 0) {
+    document.getElementById('btnGoS4').disabled = false;
+    document.getElementById('btnGoS4').style.opacity = '1';
+  }
+}
+
+function assignDie(idx, type) {
+  state.mixAssignments[idx] = type;
+  // Update button states
+  const tp = document.getElementById('tp' + idx);
+  const tn = document.getElementById('tn' + idx);
+  tp.classList.toggle('selected', type === 'pos');
+  tn.classList.toggle('selected', type === 'neg');
+  updateS3Summary();
+}
+
+function updateS3Summary() {
+  const plus = state.mixAssignments.filter(x => x === 'pos').length;
+  const minus = state.mixAssignments.filter(x => x === 'neg').length;
+  document.getElementById('s3SumPlus').textContent = plus + ' 个';
+  document.getElementById('s3SumMinus').textContent = minus + ' 个';
+
+  const allAssigned = state.neg_dice === 0 || state.mixAssignments.every(x => x !== null);
+  const btn = document.getElementById('btnGoS4');
+  btn.disabled = !allAssigned;
+  btn.style.opacity = allAssigned ? '1' : '0.5';
+
+  state.plus_dice = plus;
+  state.minus_dice = minus;
+}
+
+function batchAssign(type) {
+  for (let i = 0; i < state.neg_dice; i++) {
+    assignDie(i, type);
+  }
+}
+
+// ===== SCREEN 3 → 4 =====
+function goScreen4() {
+  showScreen('screen4');
+}
+
+// ===== SCREEN 4 → 5 =====
+function goScreen5() {
+  document.getElementById('s5TotalDice').textContent = state.pos_dice;
+  const slider = document.getElementById('s5Slider');
+  slider.max = state.pos_dice;
+  slider.value = Math.min(1, state.pos_dice);
+  document.getElementById('s5SliderMax').textContent = state.pos_dice;
+  document.getElementById('s5SliderVal').textContent = slider.value;
+
+  // Reset
+  document.getElementById('s5DiceArea').innerHTML = '';
+  document.getElementById('s5ResultBox').classList.add('hidden');
+  document.getElementById('s5NegSection').classList.add('hidden');
+  document.getElementById('s5NextBtn').classList.add('hidden');
+  document.getElementById('s5RollBtn').disabled = false;
+
+  if (state.minus_dice > 0) {
+    document.getElementById('s5NegAvail').textContent = state.minus_dice;
+  }
+
+  showScreen('screen5');
+}
+
+function s5UpdateSlider() {
+  const val = document.getElementById('s5Slider').value;
+  document.getElementById('s5SliderVal').textContent = val;
+}
+
+function s5UpdateNeg() {
+  const used = parseInt(document.getElementById('s5NegUse').value) || 0;
+  const clamped = Math.max(0, Math.min(state.minus_dice, used));
+  document.getElementById('s5NegUse').value = clamped;
+  state.neg_used = clamped;
+  const adj = state.raw_result - clamped * 4;
+  document.getElementById('s5ResultAdj').textContent = `减去 ${clamped} × 4 = −${clamped*4}`;
+  document.getElementById('s5ResultAdj').style.display = clamped > 0 ? 'block' : 'none';
+  document.getElementById('s5ResultFinal').textContent = `最终结果：${adj}`;
+  document.getElementById('s5ResultFinal').style.display = 'block';
+  state.final_result = adj;
+}
+
+// ===== ROLL DICE =====
+async function rollDice() {
+  const rolled = parseInt(document.getElementById('s5Slider').value);
+  state.rolled = rolled;
+  document.getElementById('s5RollBtn').disabled = true;
+
+  const area = document.getElementById('s5DiceArea');
+  area.innerHTML = '';
+
+  // Create die elements
+  const dieEls = [];
+  for (let i = 0; i < rolled; i++) {
+    const d = document.createElement('div');
+    d.className = 'die rolling';
+    d.textContent = '?';
+    area.appendChild(d);
+    dieEls.push(d);
+  }
+
+  // Animate: spin showing random numbers for 600ms then settle
+  const spinDuration = 600; // ms per die staggered
+  const results = [];
+
+  for (let i = 0; i < rolled; i++) {
+    await new Promise(resolve => {
+      const d = dieEls[i];
+      const result = Math.floor(Math.random() * 4) + 1;
+      results.push(result);
+      let elapsed = 0;
+      const interval = setInterval(() => {
+        d.textContent = Math.floor(Math.random() * 4) + 1;
+        elapsed += 80;
+        if (elapsed >= spinDuration) {
+          clearInterval(interval);
+          d.textContent = result;
+          d.classList.remove('rolling');
+          resolve();
+        }
+      }, 80);
+    });
+    // Brief pause between dice
+    await new Promise(r => setTimeout(r, 100));
+  }
+
+  state.diceResults = results;
+  state.raw_result = results.reduce((a, b) => a + b, 0);
+  state.neg_used = 0;
+  state.final_result = state.raw_result;
+
+  // Show result
+  const rb = document.getElementById('s5ResultBox');
+  rb.classList.remove('hidden');
+  document.getElementById('s5ResultRaw').textContent =
+    results.join(' + ') + (results.length > 1 ? ` = ${state.raw_result}` : '');
+  document.getElementById('s5ResultNum').textContent = state.raw_result;
+  document.getElementById('s5ResultAdj').style.display = 'none';
+  document.getElementById('s5ResultFinal').style.display = 'none';
+
+  // Show neg section if applicable
+  if (state.minus_dice > 0) {
+    document.getElementById('s5NegSection').classList.remove('hidden');
+    document.getElementById('s5NegUse').value = 0;
+    document.getElementById('s5NegAvail').textContent = state.minus_dice;
+  }
+
+  document.getElementById('s5NextBtn').classList.remove('hidden');
+}
+
+// ===== SCREEN 5 → 6 =====
+function goScreen6() {
+  // Read neg used
+  const negUsedEl = document.getElementById('s5NegUse');
+  if (state.minus_dice > 0 && negUsedEl) {
+    state.neg_used = parseInt(negUsedEl.value) || 0;
+    state.final_result = state.raw_result - state.neg_used * 4;
+  }
+
+  // Compute story index
+  const diceRolled = state.rolled;
+  const finalResult = state.final_result;
+  let idx = Math.floor(((finalResult - diceRolled) / (diceRolled * 3)) * 20);
+  idx = Math.max(0, Math.min(19, idx));
+  state.story_index = idx;
+
+  const story = STORIES[idx];
+
+  // Determine character (0-9 Mitsuha, 10-19 Taki)
+  const isMitsuha = idx < 10;
+
+  // Left page character
+  const charArt = document.getElementById('charArtContainer');
+  charArt.innerHTML = isMitsuha ? getMitsuhaArt() : getTakiArt();
+  document.getElementById('charName').textContent = isMitsuha ? '宫水三叶' : '立花泷';
+
+  // Book left background tint
+  const bookLeft = document.getElementById('bookLeft');
+  if (isMitsuha) {
+    bookLeft.style.background = 'linear-gradient(160deg, #120826 0%, #1e0d3a 50%, #0d0518 100%)';
+  } else {
+    bookLeft.style.background = 'linear-gradient(160deg, #080e1c 0%, #0d1a2e 50%, #060a14 100%)';
+  }
+
+  // Right page story
+  document.getElementById('storyNum').textContent = `故事 #${idx + 1}`;
+  document.getElementById('storyTitleDisplay').textContent = story.title;
+  document.getElementById('storyBodyDisplay').textContent = story.body;
+
+  // Choices (max 4)
+  const choicesList = document.getElementById('choicesList');
+  choicesList.innerHTML = '';
+  const choices = story.choices.slice(0, 4);
+  choices.forEach((c, ci) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = c;
+    btn.onclick = () => selectChoice(ci, c, btn);
+    choicesList.appendChild(btn);
+  });
+
+  document.getElementById('chosenMsg').classList.remove('show');
+  state.chosen = null;
+
+  showScreen('screen6');
+
+  // Post to GAS
+  postToGAS(story.title);
+}
+
+function selectChoice(idx, text, btn) {
+  if (state.chosen !== null) return;
+  state.chosen = text;
+  document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('chosen'));
+  btn.classList.add('chosen');
+
+  // 显示对应选项的结果描述
+  const story = STORIES[state.story_index];
+  const desc = (story.choice_descs && story.choice_descs[idx]) || '✓ 你的选择已记录';
+  const chosenMsg = document.getElementById('chosenMsg');
+  chosenMsg.textContent = '📖 ' + desc;
+  chosenMsg.classList.add('show');
+
+  postToGAS(story.title, text, desc);
+  // 延迟 1500ms 让玩家读完描述后弹出奖励
+  setTimeout(showReward, 1500);
+}
+
+function showReward() {
+  const r = REWARDS[Math.floor(Math.random() * REWARDS.length)];
+  const remaining = state.pos_dice - state.rolled;
+  document.getElementById('rewardIcon').textContent = r.icon;
+  document.getElementById('rewardName').textContent = r.name;
+  document.getElementById('rewardDesc').textContent = r.desc;
+  document.getElementById('rewardRemain').textContent =
+    remaining > 0
+      ? `还剩 ${remaining} 个骰子，可继续投掷！`
+      : '骰子已全部使用，本轮游戏结束。';
+  // re-trigger spark animation
+  const spark = document.getElementById('rewardSpark');
+  spark.style.animation = 'none';
+  spark.offsetHeight;
+  spark.style.animation = '';
+  document.getElementById('rewardOverlay').classList.remove('hidden');
+}
+
+function claimReward() {
+  document.getElementById('rewardOverlay').classList.add('hidden');
+  // 扣除本次已使用的骰子
+  state.pos_dice -= state.rolled;
+  state.rolled = 0;
+  state.diceResults = [];
+  state.raw_result = 0;
+  state.neg_used = 0;
+  state.final_result = 0;
+  state.chosen = null;
+
+  if (state.pos_dice < 1) {
+    // 骰子用完，重新开始
+    alert('所有骰子已用完，感谢参与！');
+    restart();
+    return;
+  }
+  // 返回投骰画面
+  goScreen5();
+}
+
+// ===== CHARACTER ART SVG =====
+function getMitsuhaArt() {
+  return `<svg width="120" height="220" viewBox="0 0 120 220" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background glow -->
+    <defs>
+      <radialGradient id="mg" cx="50%" cy="40%" r="50%">
+        <stop offset="0%" stop-color="#6b2080" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="transparent"/>
+      </radialGradient>
+    </defs>
+    <ellipse cx="60" cy="110" rx="55" ry="100" fill="url(#mg)"/>
+    <!-- Head -->
+    <ellipse cx="60" cy="28" rx="18" ry="20" fill="#1a0d30"/>
+    <!-- Long hair - left -->
+    <path d="M43,22 Q30,60 28,120 Q34,115 40,110 Q38,80 42,45Z" fill="#120828"/>
+    <!-- Long hair - right -->
+    <path d="M77,22 Q90,60 92,120 Q86,115 80,110 Q82,80 78,45Z" fill="#120828"/>
+    <!-- Hair top -->
+    <path d="M43,14 Q60,4 77,14 Q75,8 60,4 Q45,4 43,14Z" fill="#0d0518"/>
+    <!-- Red ribbon -->
+    <ellipse cx="60" cy="20" rx="12" ry="3" fill="#9b2335" opacity="0.9"/>
+    <path d="M48,20 Q55,15 60,20 Q55,25 48,20Z" fill="#7a1a28"/>
+    <path d="M72,20 Q65,15 60,20 Q65,25 72,20Z" fill="#7a1a28"/>
+    <!-- Neck -->
+    <rect x="54" y="46" width="12" height="10" rx="2" fill="#1e1040"/>
+    <!-- Body - kimono -->
+    <path d="M40,56 Q28,90 30,160 Q44,168 60,168 Q76,168 90,160 Q92,90 80,56 Q72,62 60,62 Q48,62 40,56Z"
+      fill="#2d1a4a"/>
+    <!-- Kimono pattern lines -->
+    <line x1="60" y1="62" x2="50" y2="160" stroke="#3d2555" stroke-width="1" opacity="0.6"/>
+    <line x1="60" y1="62" x2="70" y2="160" stroke="#3d2555" stroke-width="1" opacity="0.6"/>
+    <!-- Obi belt -->
+    <rect x="32" y="105" width="56" height="14" rx="3" fill="#6b2080" opacity="0.8"/>
+    <rect x="50" y="102" width="20" height="20" rx="3" fill="#8a35a0" opacity="0.7"/>
+    <!-- Skirt/hakama -->
+    <path d="M30,155 Q22,200 24,220 Q42,216 60,216 Q78,216 96,220 Q98,200 90,155Z"
+      fill="#1e0d38"/>
+    <!-- Arms -->
+    <path d="M40,68 Q22,90 20,110 Q26,115 32,110 Q34,90 44,72Z" fill="#2d1a4a"/>
+    <path d="M80,68 Q98,90 100,110 Q94,115 88,110 Q86,90 76,72Z" fill="#2d1a4a"/>
+    <!-- Hands -->
+    <ellipse cx="24" cy="113" rx="7" ry="5" fill="#1a0d30"/>
+    <ellipse cx="96" cy="113" rx="7" ry="5" fill="#1a0d30"/>
+    <!-- Purple aura/kuchikamizake effect -->
+    <circle cx="60" cy="110" r="50" fill="none" stroke="#6b2080" stroke-width="0.5" opacity="0.3"/>
+  </svg>`;
+}
+
+function getTakiArt() {
+  return `<svg width="110" height="210" viewBox="0 0 110 210" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="tg" cx="50%" cy="40%" r="50%">
+        <stop offset="0%" stop-color="#1a3a6a" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="transparent"/>
+      </radialGradient>
+    </defs>
+    <ellipse cx="55" cy="108" rx="52" ry="95" fill="url(#tg)"/>
+    <!-- Head -->
+    <ellipse cx="55" cy="26" rx="17" ry="18" fill="#0d1a2e"/>
+    <!-- Hair -->
+    <path d="M38,16 Q55,6 72,16 Q70,8 55,4 Q40,4 38,16Z" fill="#091424"/>
+    <path d="M38,16 Q35,24 38,32 Q42,28 55,26 Q68,28 72,32 Q75,24 72,16 Q65,12 55,12 Q45,12 38,16Z"
+      fill="#091424"/>
+    <!-- Neck -->
+    <rect x="49" y="42" width="12" height="10" rx="2" fill="#0f1e36"/>
+    <!-- School uniform jacket -->
+    <path d="M36,52 Q24,80 25,150 Q38,157 55,157 Q72,157 85,150 Q86,80 74,52 Q68,58 55,58 Q42,58 36,52Z"
+      fill="#0d1e36"/>
+    <!-- White shirt collar -->
+    <path d="M46,52 L55,68 L64,52" stroke="#e0e8f0" stroke-width="2" fill="none"/>
+    <!-- Tie -->
+    <path d="M55,56 L52,80 L55,84 L58,80 Z" fill="#9b2335" opacity="0.9"/>
+    <!-- Jacket seam lines -->
+    <line x1="35" y1="60" x2="32" y2="148" stroke="#152840" stroke-width="1" opacity="0.5"/>
+    <line x1="75" y1="60" x2="78" y2="148" stroke="#152840" stroke-width="1" opacity="0.5"/>
+    <!-- Belt -->
+    <rect x="28" y="105" width="54" height="8" rx="2" fill="#0a1020"/>
+    <!-- Pants -->
+    <path d="M25,148 Q18,188 20,210 Q36,207 55,207 Q74,207 90,210 Q92,188 85,148Z"
+      fill="#0a1520"/>
+    <!-- Pants crease -->
+    <line x1="40" y1="152" x2="38" y2="208" stroke="#152030" stroke-width="1" opacity="0.5"/>
+    <line x1="70" y1="152" x2="72" y2="208" stroke="#152030" stroke-width="1" opacity="0.5"/>
+    <!-- Arms -->
+    <path d="M36,62 Q18,88 16,108 Q22,112 28,108 Q30,88 40,66Z" fill="#0d1e36"/>
+    <path d="M74,62 Q92,88 94,108 Q88,112 82,108 Q80,88 70,66Z" fill="#0d1e36"/>
+    <!-- Hands -->
+    <ellipse cx="19" cy="111" rx="7" ry="5" fill="#0d1a2e"/>
+    <ellipse cx="91" cy="111" rx="7" ry="5" fill="#0d1a2e"/>
+    <!-- Blue city glow -->
+    <circle cx="55" cy="105" r="48" fill="none" stroke="#1a4a8a" stroke-width="0.5" opacity="0.3"/>
+  </svg>`;
+}
+
+// ===== POST TO GAS =====
+function postToGAS(storyTitle, choice, choiceDesc) {
+  if (!GAS_URL) return;
+  const payload = {
+    id: state.id,
+    replies: state.replies,
+    citations: state.citations,
+    pos_dice: state.pos_dice,
+    neg_dice: state.neg_dice,
+    rolled: state.rolled,
+    raw_result: state.raw_result,
+    neg_used: state.neg_used,
+    final_result: state.final_result,
+    story_num: state.story_index + 1,
+    story_title: storyTitle,
+    choice: choice || '',
+    choice_desc: choiceDesc || ''
+  };
+  fetch(GAS_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).catch(() => {});
+}
+
+// ===== RESTART =====
+function restart() {
+  // Reset state
+  state = {
+    id: '', replies: 0, citations: 0,
+    pos_dice: 0, neg_dice: 0,
+    mixAssignments: [], plus_dice: 0, minus_dice: 0,
+    rolled: 0, diceResults: [], raw_result: 0,
+    neg_used: 0, final_result: 0, story_index: 0, chosen: null
+  };
+  document.getElementById('inputId').value = '';
+  document.getElementById('inputReplies').value = '';
+  document.getElementById('inputCitations').value = '';
+  showScreen('screen1');
+}
+</script>
+</body>
+</html>
