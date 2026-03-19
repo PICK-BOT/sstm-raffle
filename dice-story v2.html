@@ -546,16 +546,16 @@ input[type="text"]:focus, input[type="number"]:focus {
 
 /* ===== BATCH BUTTONS ===== */
 .batch-row {
-  display: flex; gap: 10px; margin-bottom: 14px; width: 100%;
+  display: flex; gap: 8px; margin-bottom: 10px; width: 100%; flex-wrap: wrap;
 }
 .btn-batch {
-  flex: 1;
-  padding: 8px 12px;
+  flex: 1; min-width: 80px;
+  padding: 7px 10px;
   border-radius: 8px;
   border: 1.5px solid;
-  font-family: inherit; font-size: 0.85rem; font-weight: 700;
+  font-family: inherit; font-size: 0.82rem; font-weight: 700;
   cursor: pointer; transition: all 0.18s;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 .btn-batch-pos {
   background: rgba(201,168,76,0.1); border-color: var(--gold);
@@ -567,6 +567,46 @@ input[type="text"]:focus, input[type="number"]:focus {
   color: #ff8899;
 }
 .btn-batch-neg:hover { background: rgba(155,35,53,0.22); }
+.btn-batch-clear {
+  background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.15);
+  color: var(--white-dim);
+}
+.btn-batch-clear:hover { background: rgba(255,255,255,0.09); color: var(--white); }
+
+/* 批量数量输入行 */
+.batch-input-row {
+  display: flex; gap: 8px; margin-bottom: 8px; width: 100%; align-items: center;
+}
+.batch-input-row input[type="number"] {
+  width: 68px; flex-shrink: 0;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 7px; color: var(--white);
+  font-family: inherit; font-size: 0.9rem;
+  padding: 6px 10px; outline: none; margin-bottom: 0;
+  text-align: center;
+}
+.batch-input-row input[type="number"]:focus { border-color: var(--gold); }
+.batch-sep { font-size: 0.78rem; color: var(--white-dim); flex-shrink: 0; }
+
+/* 未分配提示 */
+.unassigned-note {
+  font-size: 0.78rem; color: #ffb347;
+  background: rgba(255,179,71,0.08);
+  border: 1px solid rgba(255,179,71,0.25);
+  border-radius: 8px; padding: 7px 12px;
+  margin-bottom: 10px; width: 100%; text-align: center; display: none;
+}
+.unassigned-note.show { display: block; }
+
+/* 上次未分配提醒 */
+.pending-dice-banner {
+  font-size: 0.8rem; color: #ffb347;
+  background: rgba(255,179,71,0.08);
+  border: 1px solid rgba(255,179,71,0.28);
+  border-radius: 9px; padding: 9px 14px;
+  margin-bottom: 12px; width: 100%; line-height: 1.6;
+}
 
 /* ===== REWARD OVERLAY ===== */
 .reward-overlay {
@@ -806,14 +846,31 @@ input[type="text"]:focus, input[type="number"]:focus {
     <div class="dice-info">你共有 <span id="s3PosDice">0</span> 个正骰子（d4）</div>
 
     <div id="mixDiceSection" class="hidden" style="width:100%;">
+      <!-- 上次未分配提醒 -->
+      <div class="pending-dice-banner hidden" id="pendingBanner"></div>
+
       <p style="font-size:0.88rem;color:var(--white-dim);margin-bottom:10px;text-align:center;">
-        你有 <span id="s3NegCount" style="color:#ff8899;font-weight:700;">0</span> 个混合骰子，请逐一选择方向：
+        你有 <span id="s3NegCount" style="color:#ff8899;font-weight:700;">0</span> 个混合骰子，选择进攻或防御方向：
       </p>
-      <div class="batch-row">
-        <button class="btn-batch btn-batch-pos" onclick="batchAssign('pos')">全部设为 +4 进攻</button>
-        <button class="btn-batch btn-batch-neg" onclick="batchAssign('neg')">全部设为 −4 防御</button>
+
+      <!-- 批量数量输入 -->
+      <div class="batch-input-row">
+        <input type="number" id="batchPosN" min="1" placeholder="数量">
+        <button class="btn-batch btn-batch-pos" style="flex:1;" onclick="batchAssignN('pos')">个 → +4 进攻</button>
+        <input type="number" id="batchNegN" min="1" placeholder="数量">
+        <button class="btn-batch btn-batch-neg" style="flex:1;" onclick="batchAssignN('neg')">个 → −4 防御</button>
       </div>
+      <!-- 快捷全选 + 清除 -->
+      <div class="batch-row">
+        <button class="btn-batch btn-batch-pos" onclick="batchAssign('pos')">全部 +4</button>
+        <button class="btn-batch btn-batch-neg" onclick="batchAssign('neg')">全部 −4</button>
+        <button class="btn-batch btn-batch-clear" onclick="batchClear()">全部清除</button>
+      </div>
+
       <div id="mixDiceRows" style="width:100%;"></div>
+
+      <!-- 未分配提示 -->
+      <div class="unassigned-note" id="unassignedNote"></div>
     </div>
 
     <div class="summary-box">
@@ -829,10 +886,13 @@ input[type="text"]:focus, input[type="number"]:focus {
         <span class="s-label">− 防御骰子（-4）</span>
         <span class="s-val" style="color:#ff8899;" id="s3SumMinus">0 个</span>
       </div>
+      <div class="calc-row" id="s3SumUnassignedRow" style="display:none;">
+        <span class="s-label" style="color:#ffb347;">◌ 未分配（本次跳过）</span>
+        <span class="s-val" style="color:#ffb347;" id="s3SumUnassigned">0 个</span>
+      </div>
     </div>
 
-    <button class="btn btn-primary" id="btnGoS4" onclick="goScreen4()" disabled
-      style="opacity:0.5;">了解了，出发！</button>
+    <button class="btn btn-primary" id="btnGoS4" onclick="goScreen4()">了解了，出发！</button>
   </div>
 
   <!-- ===================== SCREEN 4: 书本封面 ===================== -->
@@ -1114,9 +1174,11 @@ let state = {
   citations: 0,
   pos_dice: 0,
   neg_dice: 0,
-  mixAssignments: [], // 'pos' or 'neg'
+  mixAssignments: [], // 'pos' or 'neg' or null
   plus_dice: 0,
   minus_dice: 0,
+  unassigned_dice: 0,   // 本次未分配的混合骰子
+  pending_neg_dice: 0,  // 上次遗留待分配
   rolled: 0,
   diceResults: [],
   raw_result: 0,
@@ -1214,18 +1276,23 @@ async function fetchProgressFromGAS(id) {
   const data = await res.json();
   if (data.status !== 'ok') return null;
   return {
-    pos_dice_left: parseInt(data.pos_dice_left) || 0,
-    stories_done : data.stories_done || {}
+    pos_dice_left   : parseInt(data.pos_dice_left) || 0,
+    pending_neg_dice: parseInt(data.pending_neg_dice) || 0,
+    stories_done    : data.stories_done || {}
   };
 }
 
 // ===== 推送剩余骰子数到 GAS =====
-function pushDiceToGAS(posLeft) {
+function pushDiceToGAS(posLeft, pendingNeg) {
   if (!GAS_URL || !state.id) return;
   fetch(GAS_URL, {
     method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'save_progress', id: state.id, pos_dice_left: posLeft })
+    body: JSON.stringify({
+      type: 'save_progress', id: state.id,
+      pos_dice_left: posLeft,
+      pending_neg_dice: pendingNeg || 0
+    })
   }).catch(() => {});
 }
 
@@ -1238,6 +1305,7 @@ function saveProgressToStorage(storyDone) {
   if (!all[state.id]) all[state.id] = { pos_dice_left: 0, stories_done: {} };
   if (!all[state.id].stories_done) all[state.id].stories_done = {};
   all[state.id].pos_dice_left = state.pos_dice;
+  all[state.id].pending_neg_dice = state.unassigned_dice || 0;
   if (storyDone) {
     all[state.id].stories_done[storyDone.idx] = {
       story_num  : storyDone.idx + 1,
@@ -1248,8 +1316,8 @@ function saveProgressToStorage(storyDone) {
   }
   saveAllProgress(all);
 
-  // GAS 只需要存剩余骰子（故事记录已由 postToGAS 写入试算表）
-  pushDiceToGAS(state.pos_dice);
+  // GAS 只需要存剩余骰子 + 待分配混合骰子（故事记录已由 postToGAS 写入试算表）
+  pushDiceToGAS(state.pos_dice, state.unassigned_dice || 0);
 }
 
 // ===== SCREEN 1 → 查 GAS → 显示进度 or 跳 SCREEN 2 =====
@@ -1265,7 +1333,17 @@ async function goScreen2() {
   let prog = null;
   try {
     prog = await fetchProgressFromGAS(id);
-    if (prog) setCachedProgress(id, prog);  // 刷新本地缓存
+    if (prog) {
+      // 合并本地 stories_done（GAS 优先，本地补漏，防止离线记录被覆盖）
+      const local = getCachedProgress(id);
+      if (local && local.stories_done) {
+        prog.stories_done = Object.assign({}, local.stories_done, prog.stories_done);
+      }
+      if (local && local.pending_neg_dice && !prog.pending_neg_dice) {
+        prog.pending_neg_dice = local.pending_neg_dice;
+      }
+      setCachedProgress(id, prog);
+    }
   } catch(e) {
     // GAS 失败 → 使用本地缓存
     prog = getCachedProgress(id);
@@ -1293,12 +1371,14 @@ function showProgressScreen(prog) {
   document.getElementById('s1bWelcome').textContent = '欢迎回来，' + state.id;
   const diceLeft  = prog.pos_dice_left || 0;
   const doneCount = Object.keys(prog.stories_done || {}).length;
+  const pendingDice = prog.pending_neg_dice || 0;
 
   document.getElementById('s1bDiceLeft').textContent  = diceLeft;
   document.getElementById('s1bDoneCount').textContent = doneCount;
   document.getElementById('s1bPercent').textContent   = Math.round(doneCount / 20 * 100) + '%';
-  document.getElementById('s1bSubtitle').textContent  =
-    diceLeft > 0 ? `还有 ${diceLeft} 个骰子未使用` : '骰子已用完，可重新输入或查看记录';
+  let subtitleText = diceLeft > 0 ? `还有 ${diceLeft} 个骰子未使用` : '骰子已用完，可重新输入或查看记录';
+  if (pendingDice > 0) subtitleText += `　· 另有 ${pendingDice} 个混合骰子待分配`;
+  document.getElementById('s1bSubtitle').textContent = subtitleText;
 
   const btn = document.getElementById('btnResume');
   if (diceLeft > 0) {
@@ -1345,6 +1425,7 @@ function resumeWithDice() {
   state.pos_dice = diceLeft;
   state.neg_dice = 0; state.mixAssignments = [];
   state.plus_dice = 0; state.minus_dice = 0;
+  state.unassigned_dice = (cached && cached.pending_neg_dice) || 0;
   state.rolled = 0; state.diceResults = [];
   state.raw_result = 0; state.neg_used = 0;
   state.final_result = 0; state.chosen = null;
@@ -1372,7 +1453,7 @@ function startFresh() {
   delete all[state.id];
   saveAllProgress(all);
   // 把 GAS 进度表的剩余骰子归零
-  pushDiceToGAS(0);
+  pushDiceToGAS(0, 0);
   showScreen('screen2');
 }
 
@@ -1391,15 +1472,31 @@ function goScreen3() {
   const replies = parseInt(document.getElementById('inputReplies').value) || 0;
   const citations = parseInt(document.getElementById('inputCitations').value) || 0;
   const pos_dice = Math.floor(replies / 5);
-  const neg_dice = citations;
+  let neg_dice = citations;
 
   if (pos_dice < 1) { alert('你至少需要 5 个回复（1个骰子）才能出发！'); return; }
 
   state.replies = replies;
   state.citations = citations;
   state.pos_dice = pos_dice;
+
+  // 合并上次遗留的未分配混合骰子
+  const cached = getCachedProgress(state.id);
+  const pendingNeg = (cached && cached.pending_neg_dice) || 0;
+  state.pending_neg_dice = pendingNeg;
+
+  const banner = document.getElementById('pendingBanner');
+  if (pendingNeg > 0) {
+    neg_dice += pendingNeg;
+    banner.textContent = `上次还有 ${pendingNeg} 个混合骰子未分配，已合并入本次！`;
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+
   state.neg_dice = neg_dice;
   state.mixAssignments = new Array(neg_dice).fill(null);
+  state.unassigned_dice = 0;
 
   // Build screen 3
   document.getElementById('s3PosDice').textContent = pos_dice;
@@ -1430,12 +1527,6 @@ function goScreen3() {
 
   updateS3Summary();
   showScreen('screen3');
-
-  // If no mix dice, allow proceed immediately
-  if (neg_dice === 0) {
-    document.getElementById('btnGoS4').disabled = false;
-    document.getElementById('btnGoS4').style.opacity = '1';
-  }
 }
 
 function assignDie(idx, type) {
@@ -1451,22 +1542,61 @@ function assignDie(idx, type) {
 function updateS3Summary() {
   const plus = state.mixAssignments.filter(x => x === 'pos').length;
   const minus = state.mixAssignments.filter(x => x === 'neg').length;
+  const unassigned = state.mixAssignments.filter(x => x === null).length;
   document.getElementById('s3SumPlus').textContent = plus + ' 个';
   document.getElementById('s3SumMinus').textContent = minus + ' 个';
 
-  const allAssigned = state.neg_dice === 0 || state.mixAssignments.every(x => x !== null);
+  const note = document.getElementById('unassignedNote');
+  const uRow = document.getElementById('s3SumUnassignedRow');
+  if (unassigned > 0) {
+    note.textContent = `还有 ${unassigned} 个未分配（下次进来会提醒）`;
+    note.classList.add('show');
+    uRow.style.display = '';
+    document.getElementById('s3SumUnassigned').textContent = unassigned + ' 个';
+  } else {
+    note.classList.remove('show');
+    uRow.style.display = 'none';
+  }
+
+  // 按钮始终可用，不需要全部分配
   const btn = document.getElementById('btnGoS4');
-  btn.disabled = !allAssigned;
-  btn.style.opacity = allAssigned ? '1' : '0.5';
+  btn.disabled = false;
+  btn.style.opacity = '1';
 
   state.plus_dice = plus;
   state.minus_dice = minus;
+  state.unassigned_dice = unassigned;
 }
 
 function batchAssign(type) {
   for (let i = 0; i < state.neg_dice; i++) {
     assignDie(i, type);
   }
+}
+
+function batchAssignN(type) {
+  const inputId = type === 'pos' ? 'batchPosN' : 'batchNegN';
+  const n = parseInt(document.getElementById(inputId).value) || 0;
+  if (n < 1) return;
+  let assigned = 0;
+  for (let i = 0; i < state.neg_dice && assigned < n; i++) {
+    if (state.mixAssignments[i] === null) {
+      assignDie(i, type);
+      assigned++;
+    }
+  }
+  document.getElementById(inputId).value = '';
+}
+
+function batchClear() {
+  for (let i = 0; i < state.neg_dice; i++) {
+    state.mixAssignments[i] = null;
+    const tp = document.getElementById('tp' + i);
+    const tn = document.getElementById('tn' + i);
+    if (tp) tp.classList.remove('selected');
+    if (tn) tn.classList.remove('selected');
+  }
+  updateS3Summary();
 }
 
 // ===== SCREEN 3 → 4 =====
