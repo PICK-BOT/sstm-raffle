@@ -335,6 +335,25 @@ input[type="text"]:focus, input[type="number"]:focus {
 .roll-header { font-size: 1rem; color: var(--white-dim); margin-bottom: 4px; }
 .roll-big { font-size: 2rem; font-weight: 900; color: var(--gold-light); margin-bottom: 24px; }
 
+/* 数量输入框 */
+.qty-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+.qty-row label { font-size:.9rem; color:var(--white-dim); white-space:nowrap; flex-shrink:0; }
+#s5ManualInput {
+  width:68px; padding:5px 10px;
+  font-size:1.1rem; font-weight:700; font-family:inherit;
+  color:var(--gold-light);
+  background:rgba(255,255,255,.08);
+  border:2px solid rgba(201,168,76,.35);
+  border-radius:8px; text-align:center; outline:none;
+  transition:border-color .15s;
+}
+#s5ManualInput:focus { border-color:var(--gold); }
+/* 隐藏 number 框的上下小箭头 */
+#s5ManualInput::-webkit-outer-spin-button,
+#s5ManualInput::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+#s5ManualInput[type=number] { -moz-appearance:textfield; }
+.qty-hint { font-size:.78rem; color:var(--white-dim); opacity:.6; }
+
 .slider-wrap { width: 100%; margin-bottom: 20px; }
 .slider-wrap input[type="range"] {
   width: 100%;
@@ -984,10 +1003,17 @@ input[type="text"]:focus, input[type="number"]:focus {
     <p class="roll-big"><span id="s5TotalDice">0</span> 个 d4</p>
 
     <div class="card" style="width:100%;">
-      <label>投掷数量：<span id="s5SliderVal" class="gold">1</span> 个</label>
+      <!-- 数量选择：数字输入框（可直接打）+ 滑杆双向同步 -->
+      <div class="qty-row">
+        <label>投掷数量：</label>
+        <input type="number" id="s5ManualInput" min="1" max="1" value="1"
+          oninput="s5UpdateManual()"
+          onkeydown="if(event.key==='Enter')document.getElementById('s5RollBtn').click();">
+        <span class="qty-hint">个&nbsp;（最多 <span id="s5SliderMax">1</span>，回车投骰）</span>
+      </div>
       <div class="slider-wrap">
         <input type="range" id="s5Slider" min="1" max="1" value="1" oninput="s5UpdateSlider()">
-        <div class="slider-label"><span>1</span><span id="s5SliderMax">1</span></div>
+        <div class="slider-label"><span>1</span><span id="s5SliderVal" style="display:none">1</span><span id="s5SliderMaxRight">1</span></div>
       </div>
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -1577,8 +1603,11 @@ function resumeWithDice() {
   const slider = document.getElementById('s5Slider');
   slider.max = diceLeft;
   slider.value = Math.min(1, diceLeft);
-  document.getElementById('s5SliderMax').textContent = diceLeft;
-  document.getElementById('s5SliderVal').textContent = slider.value;
+  document.getElementById('s5SliderMax').textContent    = diceLeft;
+  document.getElementById('s5SliderMaxRight').textContent = diceLeft;
+  document.getElementById('s5SliderVal').textContent   = slider.value;
+  const mi2 = document.getElementById('s5ManualInput');
+  mi2.max = diceLeft; mi2.value = slider.value;
   document.getElementById('s5DiceArea').innerHTML = '';
   document.getElementById('s5ResultBox').classList.add('hidden');
   document.getElementById('s5NegSection').classList.add('hidden');
@@ -1755,8 +1784,11 @@ function goScreen5() {
   const slider = document.getElementById('s5Slider');
   slider.max = state.pos_dice;
   slider.value = Math.min(1, state.pos_dice);
-  document.getElementById('s5SliderMax').textContent = state.pos_dice;
-  document.getElementById('s5SliderVal').textContent = slider.value;
+  document.getElementById('s5SliderMax').textContent    = state.pos_dice;
+  document.getElementById('s5SliderMaxRight').textContent = state.pos_dice;
+  document.getElementById('s5SliderVal').textContent   = slider.value;
+  const mi = document.getElementById('s5ManualInput');
+  mi.max = state.pos_dice; mi.value = slider.value;
 
   // Reset
   document.getElementById('s5DiceArea').innerHTML = '';
@@ -1776,6 +1808,20 @@ function goScreen5() {
 
 function s5UpdateSlider() {
   const val = document.getElementById('s5Slider').value;
+  document.getElementById('s5SliderVal').textContent = val;
+  document.getElementById('s5ManualInput').value = val;
+}
+
+// 直接输入数字时，同步到滑杆（并夹至合法范围）
+function s5UpdateManual() {
+  const inp = document.getElementById('s5ManualInput');
+  let val = parseInt(inp.value);
+  const max = parseInt(inp.max) || state.pos_dice || 1;
+  if (isNaN(val) || val < 1) val = 1;
+  if (val > max) val = max;
+  inp.value = val;
+  const slider = document.getElementById('s5Slider');
+  slider.value = val;
   document.getElementById('s5SliderVal').textContent = val;
 }
 
