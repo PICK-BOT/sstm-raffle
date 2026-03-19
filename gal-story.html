@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>烘焙奇境・冬日恋歌</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --purple:#9b59b6;--gold:#f0c040;--soft:#fff8f0;
+  --amy-filter:sepia(0.2) saturate(1.8) hue-rotate(10deg) brightness(1.1);
+  --lily-filter:sepia(0.3) saturate(2) hue-rotate(260deg) brightness(0.95);
+  --snow-filter:sepia(0.1) saturate(1.3) hue-rotate(170deg) brightness(1.15);
+}
+body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;color:#fff;overflow:hidden;width:100vw;height:100vh;user-select:none}
+#app{position:relative;width:100%;height:100%;display:flex;flex-direction:column}
+
+/* ── SCREENS ── */
+.screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center}
+.screen.active{display:flex}
+
+/* ── TITLE ── */
+#screen-title{background:linear-gradient(160deg,#0d0221,#1a0533 40%,#2d1055 70%,#0d0221);text-align:center}
+#screen-title .stars{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+#screen-title .stars span{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;animation:twinkle 3s infinite}
+@keyframes twinkle{0%,100%{opacity:0.2}50%{opacity:1}}
+#screen-title h1{font-size:clamp(1.8rem,5vw,3.2rem);color:#f0c040;text-shadow:0 0 30px #9b59b6,0 0 60px #6c3483;letter-spacing:0.1em;position:relative;z-index:1}
+#screen-title h2{font-size:clamp(1rem,3vw,1.6rem);color:#d7bde2;margin-top:0.4em;position:relative;z-index:1}
+.title-btns{display:flex;flex-direction:column;gap:14px;margin-top:48px;position:relative;z-index:1}
+.btn{padding:12px 36px;border:2px solid #9b59b6;background:rgba(155,89,182,0.15);color:#e8daef;font-size:1.05rem;font-family:inherit;cursor:pointer;border-radius:6px;transition:all .25s;letter-spacing:0.05em}
+.btn:hover,.btn:focus{background:rgba(155,89,182,0.5);color:#fff;outline:none;box-shadow:0 0 12px #9b59b6}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn.gold{border-color:#f0c040;color:#f0c040}
+.btn.gold:hover{background:rgba(240,192,64,0.2);box-shadow:0 0 12px #f0c040}
+
+/* ── SETUP / ID SCREENS ── */
+.form-screen{background:linear-gradient(160deg,#0d0221,#1a0533 40%,#0d0221);padding:32px;max-width:480px;width:90%;margin:auto}
+.form-screen h2{color:#f0c040;text-align:center;margin-bottom:24px;font-size:1.4rem}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;color:#d7bde2;margin-bottom:6px;font-size:0.95rem}
+.form-group input{width:100%;padding:10px 14px;background:rgba(255,255,255,0.08);border:1px solid #6c3483;border-radius:4px;color:#fff;font-family:inherit;font-size:1rem;outline:none}
+.form-group input:focus{border-color:#9b59b6;box-shadow:0 0 8px rgba(155,89,182,0.4)}
+.gender-group{display:flex;gap:10px}
+.gender-btn{flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid #6c3483;border-radius:4px;color:#b39ddb;cursor:pointer;font-family:inherit;font-size:0.9rem;transition:all .2s;text-align:center}
+.gender-btn.selected,.gender-btn:hover{background:rgba(155,89,182,0.3);border-color:#9b59b6;color:#fff}
+.form-hint{font-size:0.8rem;color:#888;margin-top:6px}
+.form-actions{display:flex;gap:12px;margin-top:24px}
+.form-actions .btn{flex:1}
+
+/* ── SAVELOAD SCREEN ── */
+#screen-saveload{background:linear-gradient(160deg,#0d0221,#1a0533,#0d0221);padding:24px}
+#screen-saveload h2{color:#f0c040;text-align:center;margin-bottom:20px}
+.save-slots{display:flex;flex-direction:column;gap:12px;width:100%;max-width:500px}
+.save-slot{background:rgba(255,255,255,0.05);border:1px solid #6c3483;border-radius:8px;padding:16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:14px}
+.save-slot:hover{border-color:#9b59b6;background:rgba(155,89,182,0.15)}
+.save-slot-num{font-size:1.5rem;color:#9b59b6;min-width:32px;text-align:center}
+.save-slot-info{flex:1}
+.save-slot-info .slot-title{color:#f0c040;font-size:0.95rem}
+.save-slot-info .slot-meta{color:#888;font-size:0.8rem;margin-top:4px}
+.save-slot-actions{display:flex;gap:8px}
+.save-slot-actions button{padding:6px 12px;font-size:0.8rem;border-radius:4px;cursor:pointer;border:1px solid;font-family:inherit}
+.sl-load{background:rgba(155,89,182,0.2);border-color:#9b59b6;color:#d7bde2}
+.sl-save{background:rgba(64,180,64,0.2);border-color:#4db64d;color:#9deba7}
+.sl-delete{background:rgba(180,64,64,0.15);border-color:#c0392b;color:#e88}
+.sl-load:hover{background:rgba(155,89,182,0.5)}
+.sl-save:hover{background:rgba(64,180,64,0.4)}
+.sl-delete:hover{background:rgba(180,64,64,0.35)}
+.saveload-back{margin-top:18px}
+.save-slots-wrap{width:100%;max-width:520px;max-height:60vh;overflow-y:auto;padding-right:4px}
+.save-slots-wrap::-webkit-scrollbar{width:6px}
+.save-slots-wrap::-webkit-scrollbar-track{background:rgba(255,255,255,0.05)}
+.save-slots-wrap::-webkit-scrollbar-thumb{background:#6c3483;border-radius:3px}
+.add-slot-btn{width:100%;max-width:500px;margin-top:4px;background:rgba(255,255,255,0.04);border:1px dashed #6c3483;color:#9b59b6;padding:10px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.9rem;transition:all .2s}
+.add-slot-btn:hover{background:rgba(108,52,131,0.25);color:#d7bde2}
+/* 结局存档提示 */
+#save-prompt{display:none;position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.97),rgba(0,0,0,0.7));padding:20px 24px 28px;z-index:80;text-align:center;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+#save-prompt p{color:#d7bde2;margin:0 0 14px;font-size:1rem}
+#save-prompt .sp-btns{display:flex;gap:12px;justify-content:center}
+
+/* ── STORY SCREEN ── */
+#screen-story{cursor:pointer}
+#story-bg{position:absolute;inset:0;background-size:cover;background-position:center;transition:background .5s}
+#story-bg-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0.1) 55%,transparent 100%)}
+#char-sprite{position:absolute;right:6%;bottom:160px;height:65%;max-height:520px;object-fit:contain;transition:opacity .4s,transform .4s;transform-origin:bottom center;filter:drop-shadow(0 0 12px rgba(0,0,0,0.6))}
+#char-sprite.hidden{opacity:0;transform:translateX(40px)}
+#char-sprite.visible{opacity:1;transform:translateX(0)}
+#textbox{position:absolute;bottom:0;left:0;right:0;padding:18px 24px 22px;background:linear-gradient(to top,rgba(0,0,0,0.92),rgba(0,0,0,0.7));min-height:140px;z-index:10}
+#char-name{color:#f0c040;font-size:1rem;font-weight:bold;letter-spacing:0.08em;margin-bottom:8px;min-height:1.3em;text-shadow:0 0 8px rgba(240,192,64,0.6)}
+#story-text{color:#f5f0ea;font-size:clamp(0.92rem,2.2vw,1.08rem);line-height:1.85;min-height:3.5em}
+#text-cursor{display:inline-block;width:10px;height:1em;background:#f0c040;margin-left:2px;animation:blink .7s step-end infinite;vertical-align:text-bottom}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+#text-cursor.done{animation:none;opacity:0}
+#story-skip{position:absolute;bottom:6px;right:18px;font-size:0.72rem;color:#666}
+#menu-btn{position:absolute;top:14px;right:14px;background:rgba(0,0,0,0.5);border:1px solid #6c3483;color:#d7bde2;padding:8px 14px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:0.85rem;z-index:20;transition:all .2s}
+#menu-btn:hover{background:rgba(155,89,182,0.4);border-color:#9b59b6}
+#chapter-indicator{position:absolute;top:14px;left:14px;background:rgba(0,0,0,0.5);border:1px solid #3d1a6e;color:#888;padding:6px 12px;border-radius:4px;font-size:0.78rem;z-index:20}
+
+/* ── CHOICE SCREEN ── */
+#screen-choice{background:rgba(0,0,0,0.85);z-index:50}
+#choice-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.3}
+#choice-content{position:relative;z-index:1;width:100%;max-width:600px;padding:24px}
+#choice-title{color:#d7bde2;font-size:0.95rem;margin-bottom:18px;text-align:center;letter-spacing:0.05em}
+.choice-option{background:rgba(13,2,33,0.85);border:1px solid #6c3483;border-radius:8px;padding:14px 18px;margin-bottom:12px;cursor:pointer;transition:all .25s;position:relative}
+.choice-option:hover:not(.locked){border-color:#9b59b6;background:rgba(155,89,182,0.2)}
+.choice-option.locked{opacity:0.55;cursor:not-allowed}
+.choice-option.locked:hover{border-color:#6c3483}
+.choice-main{color:#f5f0ea;font-size:0.95rem;line-height:1.5;margin-bottom:8px}
+.choice-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.choice-lock-icon{font-size:1rem}
+.choice-cond{font-size:0.78rem}
+.cond-met{color:#4db64d}
+.cond-unmet{color:#e05555}
+.choice-progress{font-size:0.75rem;color:#999}
+.choice-affinity{font-size:0.72rem;color:#b39ddb;font-style:italic}
+
+/* ── ENDING SCREEN ── */
+#screen-ending{background:#000;text-align:center}
+#ending-cg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.5}
+#ending-content{position:relative;z-index:1;max-width:560px;padding:32px 24px}
+#ending-name{font-size:1.6rem;color:#f0c040;text-shadow:0 0 20px #9b59b6;margin-bottom:18px}
+#ending-text{color:#e8daef;font-size:1rem;line-height:1.9;margin-bottom:24px}
+#ending-comment{color:#d7bde2;font-size:0.85rem;background:rgba(155,89,182,0.15);border:1px solid #6c3483;border-radius:6px;padding:12px;margin-bottom:20px}
+#ending-fd-notice{color:#f0c040;font-size:0.88rem;margin-bottom:18px}
+.ending-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+
+/* ── OVERLAY: MENU ── */
+#overlay-menu{position:absolute;inset:0;background:rgba(0,0,0,0.85);z-index:100;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#overlay-menu.open{display:flex}
+#overlay-menu h3{color:#f0c040;margin-bottom:8px}
+.menu-save-row{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,0.05);border:1px solid #3d1a6e;border-radius:6px;padding:10px 16px;width:320px}
+.menu-save-row span{flex:1;color:#d7bde2;font-size:0.9rem}
+
+/* ── OVERLAY: STATS ── */
+#overlay-stats{position:absolute;inset:0;background:rgba(0,0,0,0.88);z-index:101;display:none;flex-direction:column;align-items:center;justify-content:flex-start;padding:24px;overflow-y:auto}
+#overlay-stats.open{display:flex}
+#overlay-stats h3{color:#f0c040;margin-bottom:18px;font-size:1.2rem}
+.stats-panel{background:rgba(255,255,255,0.04);border:1px solid #3d1a6e;border-radius:10px;padding:20px;width:100%;max-width:440px}
+.stats-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:0.9rem}
+.stats-row:last-child{border-bottom:none}
+.stats-label{color:#888}
+.stats-val{color:#f0c040}
+.affinity-bars{margin-top:14px}
+.aff-row{margin-bottom:10px}
+.aff-label{color:#d7bde2;font-size:0.85rem;margin-bottom:4px;display:flex;justify-content:space-between}
+.aff-bar-bg{background:rgba(255,255,255,0.08);border-radius:4px;height:8px;overflow:hidden}
+.aff-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.aff-bar-fill.amy{background:linear-gradient(90deg,#e07020,#f0c040)}
+.aff-bar-fill.lily{background:linear-gradient(90deg,#6c3483,#9b59b6)}
+.aff-bar-fill.snow{background:linear-gradient(90deg,#1a7a9a,#56cfe1)}
+.endings-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.ending-tag{padding:4px 10px;border-radius:12px;font-size:0.78rem;border:1px solid}
+.ending-tag.unlocked{border-color:#4db64d;color:#4db64d;background:rgba(77,182,77,0.1)}
+.ending-tag.locked{border-color:#444;color:#555}
+
+/* ── FD SCREEN ── same as story, extra label ── */
+#fd-label{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(155,89,182,0.35);border:1px solid #9b59b6;color:#d7bde2;padding:4px 14px;border-radius:12px;font-size:0.8rem;z-index:20}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(60px);background:rgba(13,2,33,0.95);border:1px solid #9b59b6;color:#e8daef;padding:10px 24px;border-radius:20px;font-size:0.88rem;transition:transform .3s,opacity .3s;opacity:0;z-index:200;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* ── MOBILE ── */
+@media(max-width:640px){
+  #char-sprite{height:55%;right:2%;bottom:130px}
+  #textbox{padding:12px 14px 16px;min-height:120px}
+  #story-text{font-size:0.9rem}
+  .choice-option{padding:10px 12px}
+  .stats-panel{padding:14px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- TITLE -->
+<div id="screen-title" class="screen active">
+  <div class="stars" id="star-field"></div>
+  <h1>烘焙奇境</h1>
+  <h2>冬日恋歌</h2>
+  <div class="title-btns">
+    <button class="btn gold" onclick="startNewGame()">开始新游戏</button>
+    <button class="btn" id="btn-continue" onclick="openSaveloadFromTitle()">继续游戏</button>
+  </div>
+  <div style="position:absolute;bottom:16px;color:#333;font-size:0.72rem">BGM: 无　图源: OpenGameArt (CC-BY)</div>
+</div>
+
+<!-- SETUP -->
+<div id="screen-setup" class="screen">
+  <div class="form-screen">
+    <h2>旅人，你是谁？</h2>
+    <div class="form-group">
+      <label>你的名字</label>
+      <input id="input-name" type="text" placeholder="旅人" maxlength="12">
+      <div class="form-hint">默认称呼：旅人</div>
+    </div>
+    <div class="form-group">
+      <label>性别</label>
+      <div class="gender-group">
+        <div class="gender-btn" data-g="male" onclick="selectGender(this)">男</div>
+        <div class="gender-btn" data-g="female" onclick="selectGender(this)">女</div>
+        <div class="gender-btn" data-g="other" onclick="selectGender(this)">其他</div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" onclick="showScreen('title')">返回</button>
+      <button class="btn gold" onclick="goToIdScreen()">下一步</button>
+    </div>
+  </div>
+</div>
+
+<!-- ID INPUT -->
+<div id="screen-id" class="screen">
+  <div class="form-screen">
+    <h2>论坛档案</h2>
+    <div class="form-group">
+      <label>论坛 ID</label>
+      <input id="input-id" type="text" placeholder="请输入你的论坛ID" maxlength="32">
+      <div class="form-hint">用于读取回复数与被引用数（可用于解锁选项）</div>
+    </div>
+    <div class="form-group">
+      <label>累计回复数</label>
+      <input id="input-replies" type="number" min="0" value="0">
+    </div>
+    <div class="form-group">
+      <label>累计被引用数</label>
+      <input id="input-citations" type="number" min="0" value="0">
+    </div>
+    <div class="form-actions">
+      <button class="btn" onclick="showScreen('setup')">返回</button>
+      <button class="btn gold" onclick="confirmIdAndStart()">进入游戏</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAVELOAD -->
+<div id="screen-saveload" class="screen">
+  <h2 style="color:#f0c040;margin-bottom:18px;position:relative;z-index:1">存档 / 读档</h2>
+  <div class="save-slots-wrap" style="position:relative;z-index:1">
+    <div class="save-slots" id="save-slots-container"></div>
+    <button class="add-slot-btn" onclick="addSlot()">＋ 新增存档槽</button>
+  </div>
+  <button class="btn saveload-back" style="margin-top:14px;position:relative;z-index:1" onclick="saveloadBack()">返回</button>
+</div>
+
+<!-- STORY -->
+<div id="screen-story" class="screen" onclick="onStoryClick()">
+  <div id="story-bg"></div>
+  <div id="story-bg-overlay"></div>
+  <img id="char-sprite" src="" alt="" class="hidden" onerror="this.style.display='none'">
+  <div id="chapter-indicator">第一章</div>
+  <button id="menu-btn" onclick="event.stopPropagation();openMenu()">☰ 菜单</button>
+  <div id="textbox">
+    <div id="char-name"></div>
+    <div id="story-text"><span id="text-cursor" class="done"></span></div>
+    <div id="story-skip">点击继续 ▶</div>
+  </div>
+</div>
+
+<!-- CHOICE -->
+<div id="screen-choice" class="screen">
+  <div id="choice-bg"></div>
+  <div id="choice-content">
+    <div id="choice-title">你会怎么做？</div>
+    <div id="choice-list"></div>
+  </div>
+</div>
+
+<!-- ENDING -->
+<div id="screen-ending" class="screen">
+  <div id="ending-cg"></div>
+  <div id="ending-content">
+    <div id="ending-name"></div>
+    <div id="ending-text"></div>
+    <div id="ending-comment"></div>
+    <div id="ending-fd-notice"></div>
+    <div class="ending-btns">
+      <button class="btn" id="ending-fd-btn" style="display:none" onclick="startFD()">阅读番外</button>
+      <button class="btn gold" onclick="showScreen('title')">返回标题</button>
+      <button class="btn" onclick="openStats()">查看面板</button>
+    </div>
+  </div>
+  <!-- 结局存档提示 -->
+  <div id="save-prompt">
+    <p>是否将本次游戏进度存档？</p>
+    <p style="font-size:0.82rem;color:#9b8;margin:-6px 0 10px">存档可保留当前进度，待回复数达到 50 次后重新进入结局即可解锁番外。</p>
+    <div class="sp-btns">
+      <button class="btn" onclick="openSaveFromEnding()">存档</button>
+      <button class="btn" style="background:rgba(255,255,255,0.07);border-color:#555;color:#aaa" onclick="dismissSavePrompt()">跳过</button>
+    </div>
+  </div>
+</div>
+
+<!-- FD (reuse story UI) -->
+<div id="screen-fd" class="screen" onclick="onFDClick()">
+  <div id="fd-bg" style="position:absolute;inset:0;background-size:cover;background-position:center"></div>
+  <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.1) 55%,transparent 100%)"></div>
+  <img id="fd-sprite" src="" alt="" class="hidden" style="position:absolute;right:6%;bottom:160px;height:65%;max-height:520px;object-fit:contain;transition:opacity .4s,transform .4s;transform-origin:bottom center;filter:drop-shadow(0 0 12px rgba(0,0,0,0.6))" onerror="this.style.display='none'">
+  <div id="fd-label">番外剧情</div>
+  <button style="position:absolute;top:14px;right:14px;background:rgba(0,0,0,0.5);border:1px solid #6c3483;color:#d7bde2;padding:8px 14px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:0.85rem;z-index:20" onclick="event.stopPropagation();showScreen('ending')">返回结局</button>
+  <div id="fd-textbox" style="position:absolute;bottom:0;left:0;right:0;padding:18px 24px 22px;background:linear-gradient(to top,rgba(0,0,0,0.92),rgba(0,0,0,0.7));min-height:140px;z-index:10">
+    <div id="fd-char-name" style="color:#f0c040;font-size:1rem;font-weight:bold;letter-spacing:0.08em;margin-bottom:8px;min-height:1.3em"></div>
+    <div id="fd-story-text" style="color:#f5f0ea;font-size:clamp(0.92rem,2.2vw,1.08rem);line-height:1.85;min-height:3.5em"><span id="fd-text-cursor" style="display:inline-block;width:10px;height:1em;background:#f0c040;margin-left:2px;animation:blink .7s step-end infinite;vertical-align:text-bottom;animation:none;opacity:0"></span></div>
+    <div style="position:absolute;bottom:6px;right:18px;font-size:0.72rem;color:#666">点击继续 ▶</div>
+  </div>
+</div>
+
+<!-- MENU OVERLAY -->
+<div id="overlay-menu">
+  <h3>☰ 游戏菜单</h3>
+  <div id="menu-save-list"></div>
+  <button class="btn" onclick="openStats();closeMenu()">查看玩家面板</button>
+  <button class="btn" onclick="closeMenu();showScreen('title')">返回标题</button>
+  <button class="btn" onclick="closeMenu()">继续游戏</button>
+</div>
+
+<!-- STATS OVERLAY -->
+<div id="overlay-stats">
+  <h3>📊 玩家面板</h3>
+  <div class="stats-panel" id="stats-panel-content"></div>
+  <button class="btn" style="margin-top:18px" onclick="closeStats()">关闭</button>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+</div><!-- #app -->
+
+<script>
+// ══════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════
+const GAS_URL = 'https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec';
+
+// ══════════════════════════════════════════════
+//  GAME STATE
+// ══════════════════════════════════════════════
+let G = {
+  id: '',
+  name: '旅人',
+  gender: 'other',   // male / female / other
+  replies: 0,
+  citations: 0,
+  chapter: 'ch1',
+  sceneIdx: 0,
+  choices: {},
+  affinity: {amy:0, lily:0, snow:0},
+  route: null,
+  endingsUnlocked: [],
+  fdProgress: {},
+  savedAt: '',
+  trueUnlocked: false,
+  // runtime only
+  _saveloadMode: 'load',
+  _currentRoute: null,
+  _fdRoute: null,
+  _fdIdx: 0,
+  _typing: false,
+  _typingDone: false,
+  _typingTimer: null,
+  _fullText: '',
+};
+
+// ══════════════════════════════════════════════
+//  BACKGROUNDS
+// ══════════════════════════════════════════════
+const BG = {
+  kitchen:  'url(https://opengameart.org/sites/default/files/kitchen.jpg)',
+  bedroom:  'url(https://opengameart.org/sites/default/files/single_bedroom.jpg)',
+  outside:  'url(https://opengameart.org/sites/default/files/outside1.jpg)',
+  shop:     'url(https://opengameart.org/sites/default/files/bar.png)',
+  fantasy:  'linear-gradient(135deg,#1a0533,#3d1a6e,#1a0533)',
+  white:    '#fff',
+  black:    '#000',
+  title_bg: 'linear-gradient(160deg,#0d0221,#1a0533 40%,#2d1055 70%,#0d0221)',
+  'kitchen_dark': 'url(https://opengameart.org/sites/default/files/kitchen.jpg)',
+  'kitchen_warm': 'url(https://opengameart.org/sites/default/files/kitchen.jpg)',
+  'black_stars':  'radial-gradient(ellipse at center,#0a0025 0%,#000 100%)',
+};
+function setBG(elId, key) {
+  const el = document.getElementById(elId);
+  const val = BG[key] || BG.fantasy;
+  if(val.startsWith('url(')){
+    el.style.backgroundImage = val;
+    el.style.backgroundColor = '';
+  } else if(val.startsWith('#')){
+    el.style.backgroundImage = 'none';
+    el.style.backgroundColor = val;
+  } else {
+    el.style.backgroundImage = val;
+    el.style.backgroundColor = '';
+  }
+  // dark/warm tint
+  const overlay = document.getElementById('story-bg-overlay');
+  if(overlay){
+    if(key==='kitchen_dark'||key==='black'||key==='black_stars'){
+      overlay.style.background='linear-gradient(to top,rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.55) 55%,rgba(0,0,0,0.3) 100%)';
+    } else if(key==='white'){
+      overlay.style.background='linear-gradient(to top,rgba(0,0,0,0.6) 0%,transparent 60%)';
+    } else {
+      overlay.style.background='linear-gradient(to top,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0.1) 55%,transparent 100%)';
+    }
+  }
+}
+
+// ══════════════════════════════════════════════
+//  SPRITES
+// ══════════════════════════════════════════════
+const SPRITE_URLS = {
+  normal:   'https://opengameart.org/sites/default/files/TRISH%200_0.jpg',
+  happy:    'https://opengameart.org/sites/default/files/TRISH%200_0.jpg',
+  gentle:   'https://opengameart.org/sites/default/files/TRISH%200_0.jpg',
+  warm:     'https://opengameart.org/sites/default/files/TRISH%200_0.jpg',
+  excited:  'https://opengameart.org/sites/default/files/TRISH%200_0.jpg',
+  laugh:    'https://opengameart.org/sites/default/files/TRISH%200_0.jpg',
+  soft:     'https://opengameart.org/sites/default/files/TRISH%200_0.jpg',
+  warm_smile:'https://opengameart.org/sites/default/files/TRISH%200_0.jpg',
+  shining:  'https://opengameart.org/sites/default/files/TRISH%200_0.jpg',
+  tears:    'https://opengameart.org/sites/default/files/TRISH%200_0.jpg',
+  ending:   'https://opengameart.org/sites/default/files/TRISH%200_0.jpg',
+  trying:   'https://opengameart.org/sites/default/files/TRISH%200_0.jpg',
+  concerned:'https://opengameart.org/sites/default/files/TRISH%201_0.jpg',
+  confused: 'https://opengameart.org/sites/default/files/TRISH%201_0.jpg',
+  worried:  'https://opengameart.org/sites/default/files/TRISH%201_0.jpg',
+  panic:    'https://opengameart.org/sites/default/files/TRISH%201_0.jpg',
+  tense:    'https://opengameart.org/sites/default/files/TRISH%201_0.jpg',
+  struggling:'https://opengameart.org/sites/default/files/TRISH%201_0.jpg',
+  working:  'https://opengameart.org/sites/default/files/TRISH%201_0.jpg',
+  honest:   'https://opengameart.org/sites/default/files/TRISH%201_0.jpg',
+  sad:      'https://opengameart.org/sites/default/files/TRISH%202_0.jpg',
+  quiet:    'https://opengameart.org/sites/default/files/TRISH%202_0.jpg',
+  peaceful: 'https://opengameart.org/sites/default/files/TRISH%202_0.jpg',
+  reveal:   'https://opengameart.org/sites/default/files/TRISH%202_0.jpg',
+  cool:     'https://opengameart.org/sites/default/files/TRISH%204_0.jpg',
+  neutral:  'https://opengameart.org/sites/default/files/TRISH%204_0.jpg',
+  urgent:   'https://opengameart.org/sites/default/files/TRISH%204_0.jpg',
+  serious:  'https://opengameart.org/sites/default/files/TRISH%204_0.jpg',
+  complex:  'https://opengameart.org/sites/default/files/TRISH%204_0.jpg',
+  determined:'https://opengameart.org/sites/default/files/TRISH%204_0.jpg',
+  'visible_struggle':'https://opengameart.org/sites/default/files/TRISH%202_0.jpg',
+  'soft_ending':'https://opengameart.org/sites/default/files/TRISH%202_0.jpg',
+};
+const CHAR_FILTER = {
+  Amy:  'sepia(0.2) saturate(1.8) hue-rotate(10deg) brightness(1.1)',
+  Lily: 'sepia(0.3) saturate(2) hue-rotate(260deg) brightness(0.95)',
+  Snow: 'sepia(0.1) saturate(1.3) hue-rotate(170deg) brightness(1.15)',
+};
+const CHAR_NAMES = {Amy:'艾米', Lily:'莉莉', Snow:'小雪'};
+
+function setSprite(spriteEl, char, expr) {
+  if(!char || char==='narrator'||char==='player'||char==='??') {
+    spriteEl.classList.remove('visible');
+    spriteEl.classList.add('hidden');
+    return;
+  }
+  const url = SPRITE_URLS[expr] || SPRITE_URLS.normal;
+  spriteEl.src = url;
+  spriteEl.style.filter = CHAR_FILTER[char] || 'none';
+  spriteEl.classList.remove('hidden');
+  spriteEl.classList.add('visible');
+  spriteEl.style.display = '';
+}
+
+// ══════════════════════════════════════════════
+//  TEXT HELPERS
+// ══════════════════════════════════════════════
+function playerName(){ return G.name||'旅人'; }
+function t(m, f, o){
+  if(G.gender==='male') return m;
+  if(G.gender==='female') return f||m;
+  return o||m;
+}
+function fillText(raw){
+  if(!raw) return '';
+  return raw.replace(/\{name\}/g, playerName());
+}
+
+// ══════════════════════════════════════════════
+//  STORY DATA
+// ══════════════════════════════════════════════
+// Scene object: { char, expr, bg, text, textM, textF, type }
+// type: 'scene' | 'choice' | 'route_split'
+
+function buildScenes(){
+const n = playerName;
+// gender-sensitive text helper (evaluated at render time)
+// scenes store functions for gender variants
+const S = (char, expr, bg, text, textM, textF) =>
+  ({char, expr, bg, text: text||'', textM: textM||null, textF: textF||null, type:'scene'});
+const CHOICE = (data) => ({type:'choice', ...data});
+
+// ── CH1 ──
+const ch1 = [
+  S('narrator',null,'title_bg','那个冬天的早晨，你做了一个奇怪的梦。梦里飘着雪花，还有一股浓郁的奶油香气……然后你发现，梦还没有结束。'),
+  S('narrator',null,'kitchen','这是一个巨大无比的厨房——天花板高得像教堂的穹顶，金色的光芒从某处无从追溯的窗户泻下，照在无数闪亮的烹饪器具上。空气中弥漫着黄油、香草，还有某种说不清的魔法气息。'),
+  S('player',null,'kitchen',null,
+    '"……这是哪里？"你咽了口口水，尽量保持冷静。',
+    '"……这是哪里？"你环视四周，努力让自己不要尖叫。'),
+  S('Amy','happy','kitchen','"哦，你终于醒来了！我还以为要叫小雪泼冷水呢♪"一个金发少女从巨大的搅拌机旁跑过来，发丝上沾着面粉，笑容却灿烂得像正午的阳光。"我是艾米！欢迎来到烘焙奇境！"'),
+  S('Lily','neutral','kitchen','"……闯入者。"角落里，紫发少女从厚厚的魔法书上方抬起眼皮，凉凉地扫了你一眼，又回去看书。"每隔一段时间就会有人掉进来。习惯了。"'),
+  S('Snow','excited','kitchen','"人类人类人类——！！"一道旋风扑向你，短发少女几乎把你撞倒，两眼闪着星星。"你叫什么名字！你从哪里来！你会做什么！你有没有带零食！"'),
+  S('Amy','gentle','kitchen','艾米轻轻把她拉开，对你歉意地笑了笑。"这个世界叫做\'烘焙奇境\'。每隔一段时间，就会有来自现实世界的人意外闯入。"'),
+  S('Lily','cool','kitchen','"规则很简单。"莉莉没有抬头，翻了一页书。"参加烘焙奇境大挑战，通过全部四轮考验，便可获得离开的资格。拒绝参加……"她顿了顿。"那就永远留下。"'),
+  S('Snow','laugh','kitchen',null,
+    '"啦啦啦别那么严肃！"小雪转了个圈。"反正不管怎样，我们三个都会陪着你！——对吧，莉莉？"她冲着莉莉眨了眨眼。莉莉没有回答，但耳尖微微红了。',
+    '"啦啦啦别那么严肃！"小雪转了个圈。"反正不管怎样，我们三个都会陪着你！——对吧，莉莉？"她冲着莉莉眨了眨眼。莉莉哼了一声，把脸藏进书里。'),
+  S('Amy','warm','kitchen','艾米伸出手，面粉沾满了指尖，却握得那么认真。"那么……{name}，准备好了吗？不管结果如何，至少在烘焙奇境的这段时光……不会让你后悔的。"'),
+  CHOICE({
+    key:'ch1',
+    prompt:'你会怎么回应？',
+    bg:'kitchen',
+    options:[
+      {label:'A','text':'"我想先了解一下挑战的内容。"',needReplies:5,needCite:0,aff:{amy:1},result:'A',locked:false,hint:'艾米有些惊喜，莉莉的书翻得慢了半拍。'},
+      {label:'B','text':null,'textM':'"好……那就试试吧。我没有别的选择了。"','textF':'"好……那就试试。反正留在这里也……不算太坏。"',needReplies:10,needCite:0,aff:{},result:'B',hint:'三个人都露出了微笑。'},
+      {label:'C','text':'"接受挑战。不管是什么，我都准备好了。"',needReplies:15,needCite:0,aff:{lily:1},result:'C',hint:'莉莉从书上抬起了头，像第一次真正看见你。'},
+      {label:'D','text':'"等等……你们三个，是在等我来玩团建游戏的吗？"',needReplies:0,needCite:1,aff:{snow:1},result:'D',hint:'小雪笑翻了，莉莉差点把书掉地上，艾米捂脸笑。'},
+    ]
+  }),
+];
+
+// ── CH2 ──
+const ch2 = [
+  S('narrator',null,'kitchen','第一轮挑战开始了。任务卡落在你手中，上面写着：【制作"回忆之味"奇迹蛋糕，需包含三种真心诚意的食材】。'),
+  S('Amy','confused','kitchen','"三种……\'真心诚意的食材\'？"艾米歪着头。"这个世界的材料很特别——它们会对制作者的情感产生反应。你必须真的想着某个重要的人或事，才能让材料发挥效果。"'),
+  S('Snow','laugh','kitchen',null,
+    '"上次有个旅行者想着他家的狗，烤出来的蛋糕会汪汪叫！"小雪笑得趴在桌上。"所以你要想什么呢？{name}？"她凑近来，眼神里带着真正的好奇。',
+    '"上次有个旅行者想着他家的狗，烤出来的蛋糕会汪汪叫！"小雪笑得趴在桌上。"所以你要想什么呢？{name}？"她挽上你的手臂，像认识了十年的朋友。'),
+  S('narrator',null,'kitchen','你站在巨大的烤箱前，闭上眼睛，想起了某人……某件事……某个地方。不知为何，思绪总是飘回那个冬天。飘回那个你离开、或者被留下的地方。'),
+  S('Lily','neutral','kitchen',null,
+    '莉莉走过来，站在你身边，沉默了一会儿。"……你想的是家，对吧。"她的声音没有温度，却意外地没有嘲讽。"在这里待了很长时间的人……最终都会想到家。"',
+    '莉莉走过来，站在你身边，沉默了一会儿。"……你想的是家，对吧。"她侧过脸，目光远望某处。"在这里待了很长时间的人……最终都会想到家。"'),
+  S('Amy','concerned','kitchen','"莉莉？"艾米轻声喊了一句。莉莉没有回头，背对着你们往窗边走去。"……我只是说个事实。"'),
+  S('narrator',null,'kitchen','蛋糕进了烤箱。不知道等待会是多久，但空气里，奶油和糖浆的香气开始慢慢弥漫——带着一丝只有你自己才能辨认的，熟悉的气味。'),
+  S('Snow','gentle','kitchen_warm','小雪坐在你旁边，靠着烤箱的余温，忽然安静下来。"……{name}，你家，是什么样的？"她没有看你，只是轻轻地问。"我……"她顿了一下。"我有时候会很羡慕能问出这个问题的人。"'),
+  CHOICE({
+    key:'ch2',
+    prompt:'蛋糕快要出炉了，你打算……',
+    bg:'kitchen',
+    options:[
+      {label:'A','text':'"专心守着烤箱——这是我能做的最重要的事。"',needReplies:10,needCite:0,aff:{amy:1},result:'A',hint:'艾米悄悄靠过来，站在你身边。'},
+      {label:'B','text':'"去找莉莉——那句话让我有点担心她。"',needReplies:20,needCite:0,aff:{lily:1},result:'B',hint:'莉莉的表情变了，变成某种不那么冷漠的东西。'},
+      {label:'C','text':'"陪小雪继续聊——我想回答她的问题。"',needReplies:30,needCite:0,aff:{snow:1},result:'C',hint:'小雪后来很久都没有说话，只是笑了。'},
+      {label:'D','text':'"三件事都想做……然后把蛋糕烤糊了。"',needReplies:0,needCite:5,aff:{},result:'D',hint:'全场哄笑，气氛反而变得最好。'},
+    ]
+  }),
+];
+
+// ── CH3 ──
+const ch3 = [
+  S('narrator',null,'kitchen','蛋糕测评顺利通过。第二轮挑战的卡片悬在空中——然后突然消失了，被一道黑色的爪子抓走。厨房的灯光开始摇晃。'),
+  S('Lily','urgent','kitchen_dark','"……来了。"莉莉腾地站起来，书本啪地落地。她的声音是第一次有了温度，不是暖的，是颤的——尽管她努力掩盖。"是\'虚空味怪\'。这种东西只在有人带着极强的情绪进入奇境时才会出现。"'),
+  S('Snow','tense','kitchen_dark','"别怕！"小雪站到你前面，摆出一副护着你的架势。虽然她的腿在微微颤抖，但声音还是又响又亮。"它们怕甜味！快，艾米，那个焦糖！"'),
+  S('Amy','panic','kitchen_dark','"已经拿了——！"艾米把一整罐焦糖酱扔过来，正好砸中怪物，它发出一声刺耳的嚎叫，退了半步。然后，整个厨房剧烈地震动起来，三个人和你各自被甩向了不同的方向。'),
+  S('narrator',null,'black','黑暗只持续了一瞬。当你爬起来，发现自己在厨房的一个角落，独自一人。远处传来她们的声音——但越来越远，越来越模糊。'),
+  S('narrator',null,'black','你在这个世界第一次感到了真正的孤独。不是因为陌生，不是因为害怕——而是因为你发现，在短短一段时间里，你已经开始……在乎这里了。'),
+  S('Amy','worried','kitchen',null,
+    '"——！{name}！在这里！"艾米率先找到了你，扑过来抓住你的手，手心全是冷汗。"吓死我了……"他/她的声音哽咽了一下，迅速收回去。',
+    '"——！{name}！在这里！"艾米率先找到了你，扑过来抓住你的手，手心全是冷汗。"吓死我了……"她忍住泪水，拼命点头。'),
+  S('Lily','visible_struggle','kitchen','莉莉最后才出现，外套有些凌乱。她看见你，顿了一下，然后把目光移开。"……你没事就好。"然后，极低的声音，几乎不像她说的："……对不起，没能保护好这个区域。"'),
+  CHOICE({
+    key:'ch3',
+    prompt:'怪物还没有完全离开，你们需要想办法……',
+    bg:'kitchen',
+    options:[
+      {label:'A','text':'"一起用烤箱做大量甜点——用气味把它驱逐！"',needReplies:20,needCite:0,aff:{amy:1},result:'A',hint:'艾米的眼睛亮了。'},
+      {label:'B','text':'"请莉莉告诉我们关于这个怪物的一切——知己知彼。"',needReplies:40,needCite:0,aff:{lily:1},result:'B',hint:'莉莉第一次主动靠近了你们。'},
+      {label:'C','text':'"分头行动，小雪带路、我来吸引怪物注意力！"',needReplies:60,needCite:0,aff:{snow:1},result:'C',hint:'小雪用一种奇怪的眼神看了你很久。'},
+      {label:'D','text':'用{name}的"故乡味道"作为诱饵——我的情绪最强，它最喜欢我。',needReplies:0,needCite:10,aff:{},result:'D',hint:'三个人同时大叫"不行！"'},
+    ]
+  }),
+];
+
+// ── CH4 ──
+const ch4 = [
+  S('narrator',null,'kitchen','第三轮挑战在一场危机中变成了真正的考验。你们四个人站在一起，面对着那头在厨房角落盘旋的巨大阴影——"虚空味怪"。'),
+  S('Lily','serious','kitchen_dark','"听着。"莉莉罕见地先开口。"这头怪物的本质，是\'空虚的味道\'——它吸收那些被遗忘的、失去的记忆中的情感。"她停了一下。"它最怕的，是被真正记住、真正感受过的东西。"'),
+  S('Snow','soft','kitchen_dark','"……被真正记住的东西。"小雪喃喃重复了一遍，声音不像往常那样响亮。她低下头，轻轻攥住自己的手心。"那……我能帮上忙吗？"（你第一次看见她的笑容里有了裂缝。）'),
+  S('Amy','determined','kitchen_dark','"当然可以！"艾米握住小雪的手，又拉住你的手。"我们每个人都有想守护的东西，有想回忆的人——这就是最强的武器。"'),
+  S('narrator',null,'kitchen_dark','在那个混沌的厨房里，在奶油香气与黑暗气息交织的空间里——你发现自己必须做出选择。不只是关于怎么赢，而是关于什么对你来说是最重要的。'),
+  S('Amy','warm','kitchen','"——{name}，你现在想到的……是什么？"她的眼睛看着你，真诚、温柔，像一盏冬天的灯。'),
+  S('Lily','quiet','kitchen','莉莉不说话，只是侧过脸，等着你的答案。窗外的世界在颤抖，而你感到某种奇怪的——平静。'),
+  S('Snow','shining','kitchen','"……说出来吧，{name}。无论是什么。"小雪突然抬起头，笑了——不是那种用来掩盖什么的笑，而是某种从里到外的、真实的、有点委屈又有点释然的笑。'),
+  CHOICE({
+    key:'ch4',
+    prompt:'你想守护的，是……',
+    bg:'kitchen',
+    options:[
+      {label:'A','text':'"家的味道——那个让我知道我属于哪里的温暖。"',needReplies:40,needCite:0,aff:{amy:1},result:'A',hint:'Amy泪目。→ 艾米路线'},
+      {label:'B','text':'"所有无法预料的可能性——接受无法控制的一切。"',needReplies:80,needCite:0,aff:{lily:1},result:'B',hint:'莉莉的表情碎了一下，又重新拼起来，比之前更柔软了一点。→ 莉莉路线'},
+      {label:'C','text':'"这里的每一个瞬间——就算我忘了名字，也忘不了笑声。"',needReplies:120,needCite:0,aff:{snow:1},result:'C',hint:'小雪哭了，但是在笑着哭。→ 小雪路线'},
+      {label:'D','text':'"你们三个——在场的，每一个人。"',needReplies:0,needCite:20,aff:{amy:0.5,lily:0.5,snow:0.5},result:'D',hint:'可能进入普通结局。'},
+    ]
+  }),
+];
+
+// ── Amy Route ──
+const amyRoute = [
+  S('Amy','happy','kitchen','怪物消散了。厨房里恢复了安静，只剩下烤箱里某件东西还在发出轻微的滋滋声。艾米站在你面前，微笑，然后用围裙擦了擦眼角。'),
+  S('Amy','gentle','kitchen',null,
+    '艾米像看见镜子里的自己一样，手还扣着你的，没有放开。"……{name}，你真的……很不一样。其实……我也是因为那种味道，才会出现在这里的。"',
+    '艾米像看见镜子里的自己一样，"……{name}，你真的……很不一样。其实……我也是因为那种味道，才会出现在这里的。"'),
+  S('Amy','sad','bedroom','艾米告诉你她的故事：在现实世界，她是一个放弃了梦想（开一家甜品店）的人，因为太多人告诉她"不现实"。那个冬天，她做了一个非常非常大的蛋糕，哭了一整夜，然后……迷路到了这里。'),
+  S('narrator',null,'bedroom','"我以为，如果能在这里一直做甜点，就够了。"她望着窗外，外面飘着类似雪的东西，但比雪更甜。"但是……你来了之后，我想到了一件事。"'),
+  S('Amy','soft','bedroom',null,
+    '"梦想放在那里，它不会消失的。就算积了灰，它还在。"她看着你说，像是在说你，也像是在说自己。"也许……我们都可以再试一次？"',
+    '"梦想放在那里，它不会消失的。就算积了灰，它还在。"她握住你的手，像在确认某件事。"也许……我们都可以再试一次？"'),
+  S('narrator',null,'outside','最后的挑战在一个飘着微雪的清晨。任务卡上只有一行字：【把最重要的味道，带回它应该在的地方】。'),
+  S('Amy','determined','outside','艾米揉了面团，你帮她添加那三种记忆中的食材。这一次，你们都想得很清楚——不再是模糊的怀念，而是具体的、打算去实现的东西。'),
+  S('narrator',null,'outside','蛋糕出炉的瞬间，整个烘焙奇境都亮了。不是金色，是那种冬天下午房间里的灯光颜色——暖橙色，带着家的气息。'),
+  S('Snow','laugh','outside','小雪跑过来抢先咬了一口，然后愣了一下，然后笑得眼泪都出来了。"……你们两个真是的。"'),
+  S('Lily','soft','outside','莉莉托着一块蛋糕，吃了一口，表情难得地柔和了下来。"……及格了。"她侧过脸，低声说。"你们都……回去吧。"'),
+  S('Amy','warm_smile','white',null,
+    '传送的光芒开始升起。艾米紧紧握住你的手。"{name}——回去之后……我打算开那家甜品店。"她抬起头，眼里有某种清澈的决心。"如果你路过，记得来吃一块免费的蛋糕。"',
+    '传送的光芒开始升起。艾米紧紧握住你的手。"{name}——回去之后……我打算开那家甜品店。"她和你相视而笑，心意已通。"如果你路过，记得来吃一块免费的蛋糕。"'),
+  S('Amy','ending','kitchen',null), // ending handled separately
+];
+
+// ── Lily Route ──
+const lilyRoute = [
+  S('Lily','complex','kitchen','怪物消散的时候，莉莉站在你面前，沉默了很久。"……你是第一个问过我\'你还好吗\'的人。"她说这句话的时候，用的是非常平静的语气，但整个人像是在某处微微颤抖。'),
+  S('Lily','reveal','fantasy','莉莉带你来到了一个你从未见过的地方——烘焙奇境的中心。那里有一本巨大的、永远在被书写的书，上面记录着每一个曾经来过这里的人的故事。"我……是这本书的守护者。"她的声音终于有了一丝颤抖。"我一个人，已经守了很久了。"'),
+  S('Lily','sad','fantasy','"一开始，我以为只要把规则制定得足够完善，世界就不会有问题。"她翻着那本书，手指划过一个个名字。"但是……规则无法代替理解。而我，从来不知道怎么让别人理解我。"'),
+  S('narrator',null,'fantasy','你想起她第一次见你时那句"又一个闯入者"——不是冷漠，是习惯了一次次告别之后的自我保护。那本书里，记录了多少她目送离开的人？'),
+  S('Lily','honest','fantasy','"……我不想让你离开。"她说这句话没有看你，但那几个字，落地有声。"但规则就是规则。我不能——"她停顿了很久。"我不知道怎么打破它。"'),
+  S('narrator',null,'fantasy',null,
+    '你想了一会儿，然后说：也许规则本来就是可以被重新书写的。不是打破，而是更新。她转过来看你的眼神，像是有人终于打开了她一直关着的一扇窗。',
+    '你想了一会儿，然后说：也许规则本来就是可以被重新书写的。不是打破，而是更新。她怔了很久，然后笑了——那是你第一次见到她笑。'),
+  S('Lily','working','fantasy','最后的挑战不是做什么东西，而是共同修改那本书——加入新的一页，写下关于"守护者也可以被守护"的章节。'),
+  S('Amy','warm','kitchen','艾米把做好的点心送过来，看着莉莉和你一起伏在那本巨大的书上写字，悄悄微笑，没有打扰。'),
+  S('Snow','quiet','kitchen','"……莉莉，你知道吗，我一直都很崇拜你。"小雪搬来一把椅子，在旁边安静地坐着，轻声说。"就算你不让人靠近，我也知道你很厉害。"她看了看你们。"但这样……更好。"'),
+  S('Lily','peaceful','fantasy','书写完之后，烘焙奇境的空气轻了一些。莉莉合上那本书，长长地吐了一口气。"……谢谢你。"这次她看着你。不是看向别处，就是直视着你的眼睛。"{name}。"'),
+  S('Lily','soft_ending','white','"……命运这种东西，"她低声说，"也许本来就不该只由一个人掌控。"（停顿。）"下次……如果还有旅行者来，我会……尝试先说你好。"'),
+  S('Lily','ending','fantasy',null),
+];
+
+// ── Snow Route ──
+const snowRoute = [
+  S('Snow','quiet','kitchen','怪物消失之后，小雪坐在厨房地板上，双手抱膝。你第一次发现她的表情这样——安静，有点空白，像是某种她藏了很久的东西，裂缝了。'),
+  S('Snow','soft','kitchen','"……{name}，你还记得你的名字，对不对。"她说的不是问句。"你还记得你家在哪里，对不对。你还记得……最喜欢的食物，喜欢的歌，喜欢的季节，对不对。"'),
+  S('narrator',null,'kitchen','你说：对。她点了点头。然后，她说了一句你没有料到的话："我……不记得了。不是全部，是很多。名字、家、那些细节……好像烟雾一样，越来越淡。"'),
+  S('Snow','struggling','kitchen','"不是不开心！"她急着说，像是担心你误会。"在这里很好，艾米做的东西好吃，莉莉虽然冷淡但其实很可靠，每天有事情可以做……"她的手指在地板上无意识地画圈。"但是……有时候，我就是突然很害怕。"'),
+  S('narrator',null,'kitchen','"害怕什么？"她抬起头，笑了，笑得有点苦。"害怕有一天，连\'我在害怕\'这件事，我也忘了。"'),
+  S('narrator',null,'outside','你陪她走出厨房，走到那个有点像冬天的室外。她说：这里的雪不冷，不知道为什么。然后沉默了很久。然后说：你知道吗，我在这里认识你之前，我以为用笑声可以填满所有地方。'),
+  S('Snow','honest','outside',null,
+    '"但是……"她偏过头看你，头发被奇境的风吹乱了。"你比笑声厚实。你很……真实。你的存在，让我想起了什么叫做\'记住\'。"她拍了你肩膀一下，拍得有点重，但她的手停在那里没有撤回去。',
+    '"但是……"她偏过头看你，头发被奇境的风吹乱了。"你比笑声厚实。你很……真实。你的存在，让我想起了什么叫做\'记住\'。"她突然抱住了你，用力地。'),
+  S('narrator',null,'outside','最后的挑战是：做一道任何人在任何时候都不会忘记的料理——那种吃一口就能想起某个重要瞬间的东西。'),
+  S('Snow','trying','kitchen','小雪第一次认真站在操作台前，额头微微皱起，认真思考。艾米悄悄过来帮忙，莉莉把魔法书翻到"记忆强化调味"那一页递给她。'),
+  S('narrator',null,'kitchen','做出来的东西不是什么精致的糕点，是一碗有点粗糙的、热乎乎的汤。但那股味道……每个人闻到都愣了一下，然后，不约而同地想起了某个地方，某个人。'),
+  S('Snow','tears','white','传送的光升起来。小雪蹦过来一把抱住你，笑着，但哭了。"——我想起来了！我叫做……"她在你耳边说了一个名字，很轻，只有你听见。"{name}，谢谢你。我会记住今天的。就算有一天忘了，反正在这里，我认识了你，那就够了。"'),
+  S('Snow','ending','outside',null),
+];
+
+// ── Normal Ending ──
+const normalRoute = [
+  S('narrator',null,'kitchen','挑战完成了。厨房恢复了平静，三个女孩站在一起，笑着看向你。'),
+  S('Amy','warm','kitchen','"……{name}，你要走了。"艾米轻声说，围裙上还沾着今天的面粉。"一路平安。"'),
+  S('Lily','cool','kitchen','莉莉轻轻点了点头。"……有机会再来。"她顿了顿，像是在考虑要不要说下一句，最终只是转过身，整理起她的书。'),
+  S('Snow','laugh','kitchen','"哼！也不多待一会儿！"小雪对你扮了个鬼脸，但眼圈有点红。"下次来……我要第一个发现你！"'),
+  S('narrator',null,'kitchen','传送的光升起。你回头看——艾米在挥手，莉莉轻轻点头，小雪对你扮了个鬼脸。然后，一切都变成了白色。'),
+  S('narrator',null,'white','你回到了那个冬天的早晨，床边有一小块奶油味的糖，不知道从哪里来。你吃掉它，想起了一些事，和一些人。'),
+];
+
+// ── True Ending ──
+const trueRoute = [
+  S('narrator',null,'kitchen','你又回到了那个厨房。一切都和第一次一样——但有什么东西，感觉哪里不对。空气比上次更安静，颜色也有点……不真实。'),
+  S('Amy','confused','kitchen','"你终于醒来了……"艾米走过来，她的动作有一瞬间像是——卡顿了一下。然后她皱起眉头，用手碰了碰空气中某个你看不见的东西。"……怎么了？这里……有东西不一样。"'),
+  S('Lily','confused','kitchen','莉莉的书不见了。她看着自己空着的手，表情第一次有了真正的困惑。"我总是拿着这本书……但今天，我……想不起它写了什么。"'),
+  S('narrator',null,'white','背景开始消融。不是破碎，是慢慢地变白，像一张纸被橡皮擦轻轻擦过。'),
+  S('??',null,'white','一行文字出现在空白里，不属于任何角色：「你……是来这里几次了？」'),
+  S('narrator',null,'white','你意识到：这不是游戏里的台词。这是……某个人在说话。'),
+  S('??',null,'white','「我写这个故事的那年冬天，我正准备离开家乡。行李已经打包好了，窗外在下雪。我不知道下一个冬天，我会在哪里。」\n「艾米是我对温暖的渴望。莉莉是我对秩序的依赖。小雪……是我那个假装自己很好、其实不知道去哪里的部分。」'),
+  S('??',null,'white','「感谢你陪我玩了这么久。」\n「我现在已经在另一个城市了。那家甜品店，好像真的存在，就在街角——我路过了好几次，总是想着要进去，但每次都走过去了。」\n「也许哪天会进去的。」\n「你呢？你的冬天，还好吗？」'),
+  S('??',null,'black_stars','「有一件事，是真的：不管你在哪里——那些曾经让你感到温暖的瞬间，都是真实存在过的。」\n「它们不会因为时间或者距离而消失。它们就住在你的某个角落，等你回忆。」\n「就像烘焙世界里的蛋糕，永远是香的。」'),
+  S('narrator',null,'black_stars',null),
+];
+
+// ── FD A ──
+const fdA = [
+  S('narrator',null,'shop','艾米真的开了那家甜品店。某个下午，有人推开门进来——是你。'),
+  S('Amy','warm_smile','shop','"……你真的来了。"她愣了一秒，然后笑了，比在烘焙奇境时更自然、更真实。"我以为你只是随口说说的。"'),
+  S('narrator',null,'shop','店里有一块蛋糕，叫做"回忆之味"，只有常客才知道点。'),
+  S('Amy','gentle','shop','那天下午，你们坐了很久，直到街灯亮起，窗外飘起了雪。'),
+  S('Amy','happy','shop','"下次……还来吗？"她侧过头，有点不好意思地笑。"我可以帮你保留一块\'熟客专属\'"。'),
+  S('narrator',null,'outside','你走出那家小店，冬天的街灯把影子拉得很长。回头看，橱窗里透出暖橙色的光。'),
+];
+
+// ── FD B ──
+const fdB = [
+  S('narrator',null,'kitchen','烘焙奇境来了新的旅行者。莉莉站在门口，那个新旅行者忐忑地问："你好，请问……"'),
+  S('Lily','soft','kitchen','莉莉看着他们，停了一下，然后说："……你好。"'),
+  S('narrator',null,'kitchen','远处传来小雪的惊呼："莉莉竟然主动打招呼了！！"和艾米宠溺的"别大惊小怪……"'),
+  S('Lily','peaceful','kitchen','莉莉背对着那个方向，但嘴角弯了一下。'),
+  S('narrator',null,'fantasy','在那本书的最新一页，那行字还在——"守护者也可以被守护"。'),
+  S('Lily','soft_ending','fantasy','她轻轻合上书，望向新到来的旅行者。这一次，她不等对方开口，先走上前去。'),
+];
+
+// ── FD C ──
+const fdC = [
+  S('Snow','happy','kitchen','小雪有了一本新的记事本，里面记满了各种各样的事情，密密麻麻，乱七八糟，但她每天都认真写。'),
+  S('Snow','excited','kitchen','"——这是{name}教我的。"她举着本子，对艾米说。"把想记住的事情写下来，就算忘了，翻一翻，又回来了。"'),
+  S('narrator',null,'kitchen','本子的第一页写着：「今天，我记起了自己的名字。是因为有人陪着我。」那个人的名字，写在旁边，又被她在下面画了好多圈。'),
+  S('Amy','warm','kitchen','艾米凑过去看，捂嘴笑："那可是画了……八个圈？"小雪立刻把本子捂住，满脸通红。'),
+  S('Snow','shining','kitchen','（最后，她对着镜子，给自己鼓劲，深呼吸，然后推开门，去迎接下一个进入奇境的旅行者。）'),
+  S('narrator',null,'outside','烘焙奇境的雪，还是不冷的。但她的心里，暖了一块。'),
+];
+
+return {ch1, ch2, ch3, ch4, amyRoute, lilyRoute, snowRoute, normalRoute, trueRoute, fdA, fdB, fdC};
+}
+
+let SCENES = null;
+
+// ══════════════════════════════════════════════
+//  ROUTE DETERMINATION
+// ══════════════════════════════════════════════
+function determineRoute() {
+  const {amy, lily, snow} = G.affinity;
+  const max = Math.max(amy, lily, snow);
+  if (max < 2) return 'normal';
+  if (G.endingsUnlocked.length >= 3 && G.trueUnlocked) return 'true';
+  const ties = [amy===max, lily===max, snow===max].filter(Boolean).length;
+  if (ties > 1) {
+    // prefer based on ch4 choice
+    const ch4 = G.choices['ch4'];
+    if(ch4==='A') return 'amy';
+    if(ch4==='B') return 'lily';
+    if(ch4==='C') return 'snow';
+    return 'normal';
+  }
+  if (amy === max) return 'amy';
+  if (lily === max) return 'lily';
+  return 'snow';
+}
+
+// ══════════════════════════════════════════════
+//  SCREENS
+// ══════════════════════════════════════════════
+let saveloadMode = 'load';
+let saveloadOrigin = 'title'; // 'title' | 'story' | 'ending'
+
+function showScreen(name, mode) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el = document.getElementById('screen-'+name);
+  if(el) el.classList.add('active');
+  if(name==='saveload'){
+    saveloadMode = mode || 'load';
+    renderSaveSlots();
+  }
+  if(name==='title') initStars();
+}
+
+function openSaveloadFromTitle(){
+  saveloadOrigin = 'title';
+  showScreen('saveload','load');
+}
+function saveloadBack(){
+  if(saveloadOrigin === 'ending'){
+    showScreen('ending');
+  } else if(saveloadOrigin === 'story'){
+    closeMenu();
+    showScreen('story');
+  } else {
+    showScreen('title');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  STARS (title)
+// ══════════════════════════════════════════════
+function initStars(){
+  const sf = document.getElementById('star-field');
+  if(!sf||sf.children.length>5) return;
+  sf.innerHTML='';
+  for(let i=0;i<80;i++){
+    const s = document.createElement('span');
+    s.style.left=Math.random()*100+'%';
+    s.style.top=Math.random()*100+'%';
+    s.style.animationDelay=Math.random()*3+'s';
+    s.style.animationDuration=(2+Math.random()*3)+'s';
+    sf.appendChild(s);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  SETUP
+// ══════════════════════════════════════════════
+let selectedGender = 'other';
+function selectGender(el){
+  document.querySelectorAll('.gender-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedGender = el.dataset.g;
+}
+
+function startNewGame(){
+  // Check for true ending unlock
+  if(G.endingsUnlocked.length>=3){
+    G.trueUnlocked = true;
+  }
+  showScreen('setup');
+}
+
+function goToIdScreen(){
+  const nameVal = document.getElementById('input-name').value.trim();
+  G.name = nameVal || '旅人';
+  G.gender = selectedGender;
+  showScreen('id');
+}
+
+function confirmIdAndStart(){
+  G.id = document.getElementById('input-id').value.trim();
+  G.replies = parseInt(document.getElementById('input-replies').value)||0;
+  G.citations = parseInt(document.getElementById('input-citations').value)||0;
+
+  // Try load from GAS
+  if(G.id){
+    loadFromGAS(G.id, (slots)=>{
+      // find a non-empty slot to auto-load or just start fresh
+      beginGame();
+    });
+  } else {
+    beginGame();
+  }
+}
+
+function beginGame(){
+  SCENES = buildScenes();
+  G.chapter = 'ch1';
+  G.sceneIdx = 0;
+  G.choices = {};
+  G.affinity = {amy:0, lily:0, snow:0};
+  G.route = null;
+  showScreen('story');
+  playScene();
+}
+
+// ══════════════════════════════════════════════
+//  STORY ENGINE
+// ══════════════════════════════════════════════
+let storyTypingDone = false;
+let storyTypingTimer = null;
+let storyFullText = '';
+let storyQueue = [];  // flat array of scenes for current chapter flow
+
+function getChapterScenes(chKey){
+  if(!SCENES) return [];
+  switch(chKey){
+    case 'ch1': return SCENES.ch1;
+    case 'ch2': return SCENES.ch2;
+    case 'ch3': return SCENES.ch3;
+    case 'ch4': return SCENES.ch4;
+    case 'amy': return [...SCENES.amyRoute];
+    case 'lily': return [...SCENES.lilyRoute];
+    case 'snow': return [...SCENES.snowRoute];
+    case 'normal': return SCENES.normalRoute;
+    case 'true': return SCENES.trueRoute;
+    default: return [];
+  }
+}
+
+const CHAPTER_LABELS = {
+  ch1:'第一章：初醒', ch2:'第二章：奇迹蛋糕',
+  ch3:'第三章：味道怪物', ch4:'第四章：决战',
+  amy:'艾米路线', lily:'莉莉路线', snow:'小雪路线',
+  normal:'普通结局', true:'真实结局',
+};
+
+function playScene(){
+  const scenes = getChapterScenes(G.chapter);
+  if(G.sceneIdx >= scenes.length){
+    advanceChapter();
+    return;
+  }
+  const scene = scenes[G.sceneIdx];
+  if(scene.type === 'choice'){
+    showChoice(scene);
+    return;
+  }
+  renderScene(scene);
+}
+
+function renderScene(scene){
+  // BG
+  const bgKey = scene.bg || 'kitchen';
+  setBG('story-bg', bgKey);
+
+  // Sprite
+  const sprite = document.getElementById('char-sprite');
+  setSprite(sprite, scene.char, scene.expr);
+
+  // Chapter label
+  document.getElementById('chapter-indicator').textContent =
+    CHAPTER_LABELS[G.chapter] || G.chapter;
+
+  // Name
+  const nameEl = document.getElementById('char-name');
+  if(!scene.char || scene.char==='narrator'){
+    nameEl.textContent = '';
+    nameEl.style.color = '#d7bde2';
+  } else if(scene.char==='player'){
+    nameEl.textContent = playerName();
+    nameEl.style.color = '#f0c040';
+  } else if(scene.char==='??'){
+    nameEl.textContent = '……';
+    nameEl.style.color = '#b39ddb';
+  } else {
+    nameEl.textContent = CHAR_NAMES[scene.char]||scene.char;
+    const colors = {Amy:'#f0b040', Lily:'#b39ddb', Snow:'#7ecfe8'};
+    nameEl.style.color = colors[scene.char]||'#f0c040';
+  }
+
+  // Text
+  let raw = '';
+  if(G.gender==='male' && scene.textM) raw = scene.textM;
+  else if(G.gender==='female' && scene.textF) raw = scene.textF;
+  else raw = scene.text||'';
+  raw = fillText(raw);
+
+  startTyping(raw, 'story-text', 'text-cursor');
+}
+
+function startTyping(text, textElId, cursorId){
+  storyTypingDone = false;
+  storyFullText = text;
+  if(storyTypingTimer) clearInterval(storyTypingTimer);
+
+  const textEl = document.getElementById(textElId);
+  const cursor = document.getElementById(cursorId);
+  textEl.innerHTML = '';
+  if(cursor){cursor.style.animation='';cursor.style.opacity='1';}
+
+  let i=0;
+  const speed = 30; // ms per char
+  storyTypingTimer = setInterval(()=>{
+    if(i >= text.length){
+      clearInterval(storyTypingTimer);
+      storyTypingDone = true;
+      if(cursor){cursor.style.animation='blink .7s step-end infinite';}
+      return;
+    }
+    // handle \n
+    if(text[i]==='\n'){
+      textEl.appendChild(document.createElement('br'));
+    } else {
+      textEl.appendChild(document.createTextNode(text[i]));
+    }
+    if(cursor) textEl.appendChild(cursor);
+    i++;
+  }, speed);
+}
+
+function completeTyping(){
+  if(storyTypingTimer) clearInterval(storyTypingTimer);
+  storyTypingDone = true;
+  const textEl = document.getElementById('story-text');
+  const cursor = document.getElementById('text-cursor');
+  // render full text
+  textEl.innerHTML = '';
+  storyFullText.split('\n').forEach((line,idx,arr)=>{
+    textEl.appendChild(document.createTextNode(line));
+    if(idx<arr.length-1) textEl.appendChild(document.createElement('br'));
+  });
+  if(cursor){textEl.appendChild(cursor);cursor.style.animation='blink .7s step-end infinite';}
+}
+
+function onStoryClick(){
+  if(!storyTypingDone){
+    completeTyping();
+    return;
+  }
+  // advance
+  G.sceneIdx++;
+  playScene();
+}
+
+function advanceChapter(){
+  const order = ['ch1','ch2','ch3','ch4'];
+  const idx = order.indexOf(G.chapter);
+  if(idx>=0 && idx<order.length-1){
+    G.chapter = order[idx+1];
+    G.sceneIdx = 0;
+    playScene();
+  } else if(G.chapter==='ch4'){
+    // determine route
+    const route = determineRoute();
+    G.route = route;
+    G.chapter = route;
+    G.sceneIdx = 0;
+    playScene();
+  } else {
+    // route ending
+    triggerEnding(G.chapter);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  CHOICE
+// ══════════════════════════════════════════════
+function showChoice(choiceData){
+  setBG('choice-bg', choiceData.bg||'kitchen');
+  document.getElementById('choice-title').textContent = choiceData.prompt||'你会怎么做？';
+
+  const list = document.getElementById('choice-list');
+  list.innerHTML='';
+
+  choiceData.options.forEach((opt,i)=>{
+    const meetsReplies = G.replies >= opt.needReplies;
+    const meetsCite = opt.needCite===0 || G.citations >= opt.needCite;
+    const unlocked = meetsReplies && meetsCite;
+
+    const div = document.createElement('div');
+    div.className = 'choice-option' + (unlocked?'':' locked');
+
+    let labelText = opt.text||'';
+    if(G.gender==='male' && opt.textM) labelText=opt.textM;
+    else if(G.gender==='female' && opt.textF) labelText=opt.textF;
+    labelText = fillText(labelText||opt.text||'');
+
+    // condition text
+    let condParts = [];
+    if(opt.needReplies>0){
+      const met = G.replies>=opt.needReplies;
+      condParts.push(`<span class="choice-cond ${met?'cond-met':'cond-unmet'}">${met?'✓':'🔒'} 需累计回复 ${opt.needReplies} 次（当前 ${G.replies} 次）</span>`);
+    }
+    if(opt.needCite>0){
+      const met = G.citations>=opt.needCite;
+      condParts.push(`<span class="choice-cond ${met?'cond-met':'cond-unmet'}">${met?'✓':'🔒'} 需被引用 ${opt.needCite} 次（当前 ${G.citations} 次）</span>`);
+    }
+    if(opt.needReplies===0&&opt.needCite===0){
+      condParts.push('<span class="choice-cond cond-met">✓ 无条件解锁</span>');
+    }
+
+    div.innerHTML = `
+      <div class="choice-main">${String.fromCharCode(65+i)}. ${labelText}</div>
+      <div class="choice-meta">
+        ${condParts.join('')}
+      </div>
+    `;
+
+    if(unlocked){
+      div.onclick = ()=> makeChoice(choiceData, opt, i);
+    }
+    list.appendChild(div);
+  });
+
+  showScreen('choice');
+}
+
+function makeChoice(choiceData, opt, idx){
+  G.choices[choiceData.key] = opt.result;
+  // apply affinity
+  if(opt.aff){
+    Object.entries(opt.aff).forEach(([k,v])=>{
+      G.affinity[k] = (G.affinity[k]||0) + v;
+    });
+  }
+  // log to GAS
+  logChoiceToGAS(choiceData.key, idx, opt.text||opt.textM||'', opt.aff||{});
+
+  // back to story
+  showScreen('story');
+  G.sceneIdx++;
+  playScene();
+}
+
+// ══════════════════════════════════════════════
+//  ENDING
+// ══════════════════════════════════════════════
+const ENDING_DATA = {
+  amy: {
+    name: '甜蜜的归途',
+    text: '那个冬天，你在一个不可思议的世界里，遇见了一个不可思议的人。她教会了你：所谓的家，不只是你来自的地方，也是你选择去往的地方。而甜点，是任何语言都能听懂的温柔。',
+    comment: '好结局 — 艾米路线',
+    bg: 'kitchen',
+    bgTint: 'rgba(240,150,20,0.15)',
+    fd: 'A',
+  },
+  lily: {
+    name: '命运的配方',
+    text: '那个冬天，你遇见了一个用规则掩盖孤独的人，并且帮她重写了自己的故事的某一页。她教会了你：世界上有些事情是无法掌控的，但接受这件事本身，是一种很深的勇气。',
+    comment: '好结局 — 莉莉路线',
+    bg: 'fantasy',
+    fd: 'B',
+  },
+  snow: {
+    name: '无愁无虑，或者说……',
+    text: '那个冬天，你遇见了一个在笑声中藏着失落的人，陪她找回了"记住"这件事的意义。她教会了你：新的记忆和旧的记忆一样真实，每一个当下，都值得被认真记住。',
+    comment: '好结局 — 小雪路线，含大量搞笑&温馨片段',
+    bg: 'outside',
+    fd: 'C',
+  },
+  normal: {
+    name: '甜蜜的记忆',
+    text: '有些相遇，不需要结果，也依然值得珍惜。\n\n那个冬天，你回到了那个冬天的早晨，床边有一小块奶油味的糖，不知道从哪里来。你吃掉它，想起了一些事，和一些人。',
+    comment: '普通结局',
+    bg: 'white',
+    fd: null,
+  },
+  true: {
+    name: '创作者的笔记',
+    text: '没有浪漫，没有怪物，没有挑战。\n只有一个人，在某个冬天，把思念写进了这个故事里。\n而你，找到了它。\n\n——谢谢你。',
+    comment: '真实结局',
+    bg: 'black_stars',
+    fd: null,
+  },
+};
+
+function triggerEnding(routeKey){
+  const data = ENDING_DATA[routeKey] || ENDING_DATA.normal;
+  if(!G.endingsUnlocked.includes(routeKey)){
+    G.endingsUnlocked.push(routeKey);
+  }
+  if(routeKey!=='true' && G.endingsUnlocked.filter(e=>!['true'].includes(e)).length>=3){
+    G.trueUnlocked = true;
+  }
+
+  document.getElementById('ending-name').textContent = '【结局：'+data.name+'】';
+  document.getElementById('ending-text').textContent = data.text;
+  document.getElementById('ending-comment').textContent = data.comment;
+
+  // FD availability
+  const fdEl = document.getElementById('ending-fd-notice');
+  const fdBtn = document.getElementById('ending-fd-btn');
+  if(data.fd){
+    const fdKey = routeKey;
+    const fdStatus = G.fdProgress[fdKey];
+    const FD_REQ = 50;
+    const already = fdStatus==='unlocked' || fdStatus==='done';
+    const meetsReq = G.replies >= FD_REQ;
+    if(already || meetsReq){
+      // 条件已满足，显示按钮让玩家主动点击进入
+      fdEl.innerHTML = `✨ 番外已解锁！点击下方按钮开始阅读。`;
+      fdBtn.style.display='';
+      fdBtn.textContent = '📖 阅读番外';
+      fdBtn.onclick = ()=>startFD(fdKey);
+    } else {
+      // 未满足，告知条件并建议存档
+      const still = FD_REQ - G.replies;
+      fdEl.innerHTML = `🔒 番外解锁条件：累计回复满 <b>${FD_REQ}</b> 次（当前 ${G.replies} 次，还差 ${still} 次）。<br>
+        <span style="color:#aaa;font-size:0.85rem">💾 建议先存档保存进度，达到条件后重新进入此结局即可解锁番外。</span>`;
+      fdBtn.style.display='none';
+    }
+  } else {
+    fdEl.textContent='';
+    fdBtn.style.display='none';
+  }
+
+  // BG
+  const cgEl = document.getElementById('ending-cg');
+  const bgVal = BG[data.bg]||BG.fantasy;
+  if(bgVal.startsWith('url(')){
+    cgEl.style.backgroundImage=bgVal;cgEl.style.backgroundColor='';
+  } else if(bgVal.startsWith('#')){
+    cgEl.style.backgroundImage='none';cgEl.style.backgroundColor=bgVal;
+  } else {
+    cgEl.style.backgroundImage=bgVal;cgEl.style.backgroundColor='';
+  }
+
+  showScreen('ending');
+  saveProgress();
+}
+
+// ══════════════════════════════════════════════
+//  FD
+// ══════════════════════════════════════════════
+let fdIdx = 0;
+let fdRouteKey = null;
+let fdTypingDone = false;
+let fdTypingTimer = null;
+let fdFullText = '';
+
+function startFD(routeKey){
+  fdRouteKey = routeKey;
+  fdIdx = 0;
+  G.fdProgress[routeKey] = 'playing';
+  showScreen('fd');
+  playFDScene();
+}
+
+function getFDScenes(key){
+  if(!SCENES) return [];
+  switch(key){
+    case 'amy': return SCENES.fdA;
+    case 'lily': return SCENES.fdB;
+    case 'snow': return SCENES.fdC;
+    default: return [];
+  }
+}
+
+function playFDScene(){
+  const scenes = getFDScenes(fdRouteKey);
+  if(fdIdx>=scenes.length){
+    G.fdProgress[fdRouteKey]='done';
+    showScreen('ending');
+    return;
+  }
+  const scene = scenes[fdIdx];
+  renderFDScene(scene);
+}
+
+function renderFDScene(scene){
+  const bgEl = document.getElementById('fd-bg');
+  const bgKey = scene.bg||'kitchen';
+  const bgVal = BG[bgKey]||BG.kitchen;
+  if(bgVal.startsWith('url(')){bgEl.style.backgroundImage=bgVal;bgEl.style.backgroundColor='';}
+  else if(bgVal.startsWith('#')){bgEl.style.backgroundImage='none';bgEl.style.backgroundColor=bgVal;}
+  else{bgEl.style.backgroundImage=bgVal;bgEl.style.backgroundColor='';}
+
+  const sprite = document.getElementById('fd-sprite');
+  setSprite(sprite, scene.char, scene.expr);
+
+  const nameEl = document.getElementById('fd-char-name');
+  if(!scene.char||scene.char==='narrator'){nameEl.textContent='';}
+  else if(scene.char==='player'){nameEl.textContent=playerName();}
+  else { nameEl.textContent=CHAR_NAMES[scene.char]||scene.char; }
+
+  let raw='';
+  if(G.gender==='male'&&scene.textM) raw=scene.textM;
+  else if(G.gender==='female'&&scene.textF) raw=scene.textF;
+  else raw=scene.text||'';
+  raw=fillText(raw);
+
+  fdFullText=raw;
+  fdTypingDone=false;
+  if(fdTypingTimer) clearInterval(fdTypingTimer);
+  const textEl=document.getElementById('fd-story-text');
+  const cursor=document.getElementById('fd-text-cursor');
+  textEl.innerHTML='';
+  if(cursor){cursor.style.animation='blink .7s step-end infinite';cursor.style.opacity='1';}
+
+  let i=0;
+  fdTypingTimer=setInterval(()=>{
+    if(i>=raw.length){clearInterval(fdTypingTimer);fdTypingDone=true;return;}
+    if(raw[i]==='\n') textEl.appendChild(document.createElement('br'));
+    else textEl.appendChild(document.createTextNode(raw[i]));
+    if(cursor) textEl.appendChild(cursor);
+    i++;
+  },30);
+}
+
+function onFDClick(){
+  if(!fdTypingDone){
+    if(fdTypingTimer) clearInterval(fdTypingTimer);
+    fdTypingDone=true;
+    const textEl=document.getElementById('fd-story-text');
+    const cursor=document.getElementById('fd-text-cursor');
+    textEl.innerHTML='';
+    fdFullText.split('\n').forEach((line,idx,arr)=>{
+      textEl.appendChild(document.createTextNode(line));
+      if(idx<arr.length-1) textEl.appendChild(document.createElement('br'));
+    });
+    if(cursor) textEl.appendChild(cursor);
+    return;
+  }
+  fdIdx++;
+  playFDScene();
+}
+
+// ══════════════════════════════════════════════
+//  MENU OVERLAY
+// ══════════════════════════════════════════════
+function openMenu(){
+  renderMenuSaveSlots();
+  document.getElementById('overlay-menu').classList.add('open');
+}
+function closeMenu(){
+  document.getElementById('overlay-menu').classList.remove('open');
+}
+function renderMenuSaveSlots(){
+  const container = document.getElementById('menu-save-list');
+  container.innerHTML='';
+  const maxS = getMaxSlots();
+  for(let s=1;s<=maxS;s++){
+    const row=document.createElement('div');
+    row.className='menu-save-row';
+    const slotData = getLocalSlot(s);
+    row.innerHTML=`
+      <span>存档 ${s}${slotData ? '：'+(CHAPTER_LABELS[slotData.chapter]||slotData.chapter)+' ('+slotData.savedAt.slice(0,10)+')' : '：空'}</span>
+      <button class="sl-save" onclick="quickSave(${s})">存档</button>
+      ${slotData?`<button class="sl-load" onclick="quickLoad(${s})">读取</button>`:''}
+    `;
+    container.appendChild(row);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  STATS OVERLAY
+// ══════════════════════════════════════════════
+function openStats(){
+  const panel=document.getElementById('stats-panel-content');
+  const allEndings=['amy','lily','snow','normal','true'];
+  const allFDs=['amy','lily','snow'];
+  panel.innerHTML=`
+    <div class="stats-row"><span class="stats-label">论坛ID</span><span class="stats-val">${G.id||'（未设定）'}</span></div>
+    <div class="stats-row"><span class="stats-label">玩家名</span><span class="stats-val">${playerName()}</span></div>
+    <div class="stats-row"><span class="stats-label">性别</span><span class="stats-val">${{male:'男',female:'女',other:'其他'}[G.gender]||G.gender}</span></div>
+    <div class="stats-row"><span class="stats-label">累计回复</span><span class="stats-val">${G.replies} 次</span></div>
+    <div class="stats-row"><span class="stats-label">被引用</span><span class="stats-val">${G.citations} 次</span></div>
+    <div class="stats-row"><span class="stats-label">当前章节</span><span class="stats-val">${CHAPTER_LABELS[G.chapter]||G.chapter}</span></div>
+    <div class="affinity-bars" style="margin-top:14px">
+      <div style="color:#d7bde2;font-size:0.85rem;margin-bottom:8px">角色好感度</div>
+      ${renderAffBar('Amy','amy','amy')}
+      ${renderAffBar('Lily','lily','lily')}
+      ${renderAffBar('小雪','snow','snow')}
+    </div>
+    <div style="margin-top:14px">
+      <div style="color:#d7bde2;font-size:0.85rem;margin-bottom:8px">已解锁结局</div>
+      <div class="endings-grid">
+        ${allEndings.map(e=>{
+          const names={amy:'艾米',lily:'莉莉',snow:'小雪',normal:'普通',true:'真实'};
+          const unlocked=G.endingsUnlocked.includes(e);
+          return `<div class="ending-tag ${unlocked?'unlocked':'locked'}">${unlocked?'☑':'☐'} ${names[e]||e}</div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <div style="color:#d7bde2;font-size:0.85rem;margin-bottom:8px">已完成番外</div>
+      <div class="endings-grid">
+        ${allFDs.map(e=>{
+          const names={amy:'艾米番外',lily:'莉莉番外',snow:'小雪番外'};
+          const done=G.fdProgress[e]==='done';
+          return `<div class="ending-tag ${done?'unlocked':'locked'}">${done?'☑':'☐'} ${names[e]||e}</div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('overlay-stats').classList.add('open');
+}
+
+function renderAffBar(label, key, cls){
+  const val=G.affinity[key]||0;
+  const max=4;
+  const pct=Math.min(100,Math.round(val/max*100));
+  return `<div class="aff-row">
+    <div class="aff-label"><span>${label}</span><span>${val}/${max}</span></div>
+    <div class="aff-bar-bg"><div class="aff-bar-fill ${cls}" style="width:${pct}%"></div></div>
+  </div>`;
+}
+
+function closeStats(){
+  document.getElementById('overlay-stats').classList.remove('open');
+}
+
+// ══════════════════════════════════════════════
+//  LOCAL STORAGE (3 slots)
+// ══════════════════════════════════════════════
+const LS_KEY = 'gal_baking_save';
+const DEFAULT_SLOTS = 8;
+function getMaxSlots(){ return parseInt(localStorage.getItem(LS_KEY+'_slots')||DEFAULT_SLOTS); }
+function setMaxSlots(n){ localStorage.setItem(LS_KEY+'_slots', n); }
+function addSlot(){ const n=getMaxSlots()+1; setMaxSlots(n); renderSaveSlots(); showToast('存档槽已增加到 '+n+' 格'); }
+function getLocalSlot(n){ const d=JSON.parse(localStorage.getItem(LS_KEY)||'{}'); return d['slot'+n]||null; }
+function setLocalSlot(n, data){ const d=JSON.parse(localStorage.getItem(LS_KEY)||'{}'); d['slot'+n]=data; localStorage.setItem(LS_KEY,JSON.stringify(d)); }
+function delLocalSlot(n){ const d=JSON.parse(localStorage.getItem(LS_KEY)||'{}'); delete d['slot'+n]; localStorage.setItem(LS_KEY,JSON.stringify(d)); }
+
+function buildSaveData(){
+  return {
+    id: G.id, name: G.name, gender: G.gender,
+    replies: G.replies, citations: G.citations,
+    chapter: G.chapter, sceneIdx: G.sceneIdx,
+    choices: G.choices,
+    affinity: G.affinity,
+    route: G.route,
+    endingsUnlocked: G.endingsUnlocked,
+    fdProgress: G.fdProgress,
+    trueUnlocked: G.trueUnlocked,
+    savedAt: new Date().toISOString(),
+  };
+}
+
+function loadSaveData(data){
+  Object.assign(G, data);
+}
+
+function quickSave(slot){
+  const data = buildSaveData();
+  setLocalSlot(slot, data);
+  saveToGAS(slot, data);
+  showToast(`已存档到存档槽 ${slot}`);
+  if(document.getElementById('overlay-menu').classList.contains('open')) renderMenuSaveSlots();
+}
+
+function quickLoad(slot){
+  const data = getLocalSlot(slot);
+  if(!data){ showToast('该存档槽为空'); return; }
+  loadSaveData(data);
+  SCENES = buildScenes();
+  closeMenu();
+  showScreen('story');
+  playScene();
+  showToast(`已读取存档槽 ${slot}`);
+}
+
+function saveProgress(){
+  // show save prompt at ending instead of auto-saving
+  setTimeout(()=>{
+    document.getElementById('save-prompt').style.display='block';
+  }, 900);
+}
+function dismissSavePrompt(){
+  document.getElementById('save-prompt').style.display='none';
+}
+function openSaveFromEnding(){
+  dismissSavePrompt();
+  saveloadOrigin = 'ending';
+  showScreen('saveload','save');
+  renderSaveSlots();
+}
+
+// ══════════════════════════════════════════════
+//  SAVELOAD SCREEN
+// ══════════════════════════════════════════════
+function renderSaveSlots(){
+  const container = document.getElementById('save-slots-container');
+  container.innerHTML='';
+  const maxS = getMaxSlots();
+  for(let s=1;s<=maxS;s++){
+    const slotData = getLocalSlot(s);
+    const div=document.createElement('div');
+    div.className='save-slot';
+    const chLabel = slotData ? (CHAPTER_LABELS[slotData.chapter]||slotData.chapter) : '';
+    const dateStr = slotData ? slotData.savedAt.slice(0,10) : '';
+    div.innerHTML=`
+      <div class="save-slot-num">${s}</div>
+      <div class="save-slot-info">
+        ${slotData
+          ? `<div class="slot-title">${slotData.name||'旅人'} — ${chLabel}</div>
+             <div class="slot-meta">${dateStr} | 回复:${slotData.replies||0} 引用:${slotData.citations||0}</div>`
+          : '<div class="slot-title" style="color:#555">— 空存档 —</div>'}
+      </div>
+      <div class="save-slot-actions">
+        ${slotData&&saveloadMode==='load' ? `<button class="sl-load" onclick="loadSlot(${s})">读取</button>` : ''}
+        ${saveloadMode==='save' ? `<button class="sl-save" onclick="saveSlot(${s})">存档</button>` : ''}
+        ${slotData ? `<button class="sl-delete" onclick="deleteSlot(${s})">删除</button>` : ''}
+      </div>
+    `;
+    container.appendChild(div);
+  }
+}
+
+function loadSlot(s){
+  const data = getLocalSlot(s);
+  if(!data){showToast('该存档槽为空');return;}
+  loadSaveData(data);
+  SCENES=buildScenes();
+  showScreen('story');
+  playScene();
+}
+function saveSlot(s){
+  quickSave(s);
+  renderSaveSlots();
+}
+function deleteSlot(s){
+  if(!confirm(`确定要删除存档槽 ${s} 吗？`)) return;
+  delLocalSlot(s);
+  renderSaveSlots();
+  showToast('存档已删除');
+}
+
+// ══════════════════════════════════════════════
+//  GAS
+// ══════════════════════════════════════════════
+async function saveToGAS(slot, slotData){
+  try{
+    await fetch(GAS_URL, {
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        sheet:'线性故事', type:'save',
+        slot, data: slotData,
+      })
+    });
+  } catch(e){ console.warn('GAS save failed', e); }
+}
+
+function loadFromGAS(userId, cb){
+  const cbName = '_gasLoad_'+Date.now();
+  window[cbName] = (res)=>{
+    delete window[cbName];
+    if(res && res.slots){
+      [1,2,3].forEach(s=>{
+        if(res.slots[s]) setLocalSlot(s, res.slots[s]);
+      });
+    }
+    cb(res);
+  };
+  const script = document.createElement('script');
+  script.src = GAS_URL+'?sheet=线性故事&id='+encodeURIComponent(userId)+'&callback='+cbName;
+  script.onerror = ()=>{ delete window[cbName]; cb(null); };
+  document.head.appendChild(script);
+  setTimeout(()=>{ if(window[cbName]){ delete window[cbName]; cb(null); } }, 6000);
+}
+
+async function logChoiceToGAS(chapter, optIdx, optText, affGain){
+  try{
+    await fetch(GAS_URL, {
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        sheet:'线性故事', type:'log',
+        id: G.id, name: G.name,
+        chapter, optIdx, optText,
+        affGain, timestamp: new Date().toISOString(),
+      })
+    });
+  } catch(e){ console.warn('GAS log failed', e); }
+}
+
+// ══════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════
+let toastTimer=null;
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.classList.add('show');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+// ══════════════════════════════════════════════
+//  KEYBOARD
+// ══════════════════════════════════════════════
+document.addEventListener('keydown', e=>{
+  const activeScreen = document.querySelector('.screen.active');
+  if(!activeScreen) return;
+  const sid = activeScreen.id;
+  if(e.key===' '||e.key==='Enter'){
+    e.preventDefault();
+    if(sid==='screen-story') onStoryClick();
+    if(sid==='screen-fd') onFDClick();
+  }
+  if(e.key==='Escape'){
+    if(document.getElementById('overlay-menu').classList.contains('open')) closeMenu();
+    else if(document.getElementById('overlay-stats').classList.contains('open')) closeStats();
+    else if(sid==='screen-story') openMenu();
+  }
+});
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+initStars();
+
+// ══════════════════════════════════════════════
+//  FIX: template literal error in renderMenuSaveSlots
+// The ternary inside template literal uses wrong quotes
+// Patch it at runtime is already correct above - re-check
+// ══════════════════════════════════════════════
+
+</script>
+
+<!--
+════════════════════════════════════════════════
+  GAS (Google Apps Script) 需要添加的代码
+  请将以下代码合并到你的 doGet / doPost 函数中
+════════════════════════════════════════════════
+
+── doGet 新增（读取线性故事存档）──
+
+function doGet(e) {
+  var p = e.parameter;
+  var sheetName = p.sheet || '';
+
+  // 线性故事 存档读取
+  if (sheetName === '线性故事' && p.id) {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('线性故事') ||
+                ss.insertSheet('线性故事');
+    var data = sheet.getDataRange().getValues();
+    var result = { slots: {} };
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (row[0] === p.id) {
+        var slot = row[1];
+        try { result.slots[slot] = JSON.parse(row[2]); } catch(err) {}
+      }
+    }
+    var cb = p.callback || 'callback';
+    return ContentService
+      .createTextOutput(cb + '(' + JSON.stringify(result) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  // ... 其余 doGet 逻辑 ...
+}
+
+── doPost 新增（存档保存 + 选择日志）──
+
+function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  var sheetName = data.sheet || '';
+
+  // 线性故事 存档保存
+  if (sheetName === '线性故事' && data.type === 'save') {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('线性故事') ||
+                ss.insertSheet('线性故事');
+    var rows = sheet.getDataRange().getValues();
+    var found = -1;
+    for (var i = 1; i < rows.length; i++) {
+      if (rows[i][0] === data.data.id && rows[i][1] == data.slot) {
+        found = i + 1; break;
+      }
+    }
+    var rowData = [
+      data.data.id, data.slot,
+      JSON.stringify(data.data),
+      new Date().toISOString()
+    ];
+    if (found > 0) sheet.getRange(found, 1, 1, 4).setValues([rowData]);
+    else sheet.appendRow(rowData);
+    return ContentService
+      .createTextOutput(JSON.stringify({ok:true}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 线性故事 选择日志
+  if (sheetName === '线性故事' && data.type === 'log') {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var logSheet = ss.getSheetByName('线性故事_日志') ||
+                   ss.insertSheet('线性故事_日志');
+    logSheet.appendRow([
+      data.id, data.name, data.chapter,
+      data.optIdx, data.optText,
+      JSON.stringify(data.affGain),
+      data.timestamp
+    ]);
+    return ContentService
+      .createTextOutput(JSON.stringify({ok:true}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // ... 其余 doPost 逻辑 ...
+}
+
+════════════════════════════════════════════════
+-->
+
+<!-- v1.0 2026-03-19 初版：烘焙奇境冬日恋歌 -->
+<!-- v1.1 2026-03-19 选项隐藏好感度提示与结果hint -->
+<!-- v1.2 2026-03-19 番外需50回复解锁；结局弹窗问是否存档；存档槽预设8格可自由新增 -->
+<!-- v1.3 2026-03-19 修复继续游戏跳回结局bug(saveloadOrigin)；番外主动点击解锁；存档提示加番外说明 -->
+</body>
+</html>
