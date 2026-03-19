@@ -110,6 +110,21 @@ var PUZZLE_CONFIG={
 const DEFAULT_IMG='https://picsum.photos/id/29/800/600';
 const GAS_SHEET='拼图游戏';
 
+// 读取 record=GAS_URL（优先）并持久化，供 recordResult 使用
+function getRecordUrl(){
+  try{
+    const urlParams=new URLSearchParams(window.location.search);
+    const u=urlParams.get('record');
+    if(u){
+      localStorage.setItem('puzzle_gas_url',u);
+      return u;
+    }
+    return localStorage.getItem('puzzle_gas_url')||'';
+  }catch(e){
+    return '';
+  }
+}
+
 // v8：在 v7 基础上，进一步对 tab 做小幅重叠，最大化消除透明抗锯齿缝
 let G={
   userId:'',gasUrl:'',imgSrc:'',
@@ -163,7 +178,7 @@ function startGame(){
   if(!uid){showToast('请输入论坛ID');return;}
   G.userId=uid;
   const cfg=typeof PUZZLE_CONFIG!=='undefined'?PUZZLE_CONFIG:{};
-  G.gasUrl=cfg.gasUrl||'';
+  G.gasUrl=cfg.gasUrl||getRecordUrl()||'';
   G.imgSrc=cfg.imgUrl||DEFAULT_IMG;
   G.edgeStyle=cfg.edgeStyle||'wave';
   G.rows=cfg.rows||4;
