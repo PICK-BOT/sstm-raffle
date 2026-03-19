@@ -1,8 +1,8 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
+<!doctype html>
+<html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>拼图游戏</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -10,10 +10,11 @@ body{background:#1a1a1a;font-family:Arial,sans-serif;color:#ccc;height:100vh;ove
 #loginOverlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:9999}
 .lbox{background:#1c1c1c;border:1px solid #3a3a3a;border-radius:14px;padding:36px 40px;width:360px;text-align:center}
 .lbox h1{color:#fff;font-size:1.7rem;margin-bottom:6px}
-.lbox .sub{color:#666;font-size:.85rem;margin-bottom:28px}
+.lbox .sub{color:#666;font-size:.85rem;margin-bottom:18px}
 .lbox input{width:100%;padding:13px;background:#252525;border:2px solid #444;border-radius:8px;color:#fff;font-size:.95rem;margin-bottom:14px;text-align:center;outline:none;transition:border-color .2s}
 .lbox input:focus{border-color:#4a9eff}
 .sbtn{width:100%;padding:13px;background:linear-gradient(135deg,#4a9eff,#6b5bef);border:none;border-radius:8px;color:#fff;font-size:1rem;font-weight:bold;cursor:pointer}
+
 #gameScreen{display:none;flex-direction:column;height:100vh}
 #topBar{background:#111;border-bottom:1px solid #2a2a2a;height:42px;display:flex;align-items:center;padding:0 14px;gap:12px;flex-shrink:0}
 #topBar .logo{color:#4a9eff;font-size:1.1rem}
@@ -21,6 +22,7 @@ body{background:#1a1a1a;font-family:Arial,sans-serif;color:#ccc;height:100vh;ove
 #topBar .right{margin-left:auto;display:flex;align-items:center;gap:10px}
 .ubadge{background:#2a2a2a;border-radius:20px;padding:3px 12px;color:#ccc;font-size:.8rem}
 .qbtn{background:transparent;border:1px solid #3a3a3a;color:#777;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:.78rem}
+
 #boardArea{flex:1;position:relative;overflow:hidden;background-color:#3c3c3c;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Crect width='6' height='6' fill='%233c3c3c'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%23383838' opacity='.8'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%23383838' opacity='.8'/%3E%3C/svg%3E")}
 #boardCanvas{position:absolute;top:0;left:0;touch-action:none;cursor:default}
 #ghostImg{position:absolute;pointer-events:none;opacity:.2;display:none}
@@ -33,6 +35,7 @@ body{background:#1a1a1a;font-family:Arial,sans-serif;color:#ccc;height:100vh;ove
 .tsep{width:1px;height:22px;background:#2a2a2a;margin:0 3px}
 .tmid{margin:0 auto;display:flex;align-items:center;gap:14px;color:#777;font-size:.88rem}
 .hint{position:absolute;bottom:58px;right:10px;background:rgba(0,0,0,.6);color:#888;font-size:.72rem;padding:6px 10px;border-radius:6px;pointer-events:none}
+
 #successModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9998;align-items:center;justify-content:center}
 .sbox{background:#1c1c1c;border:1px solid #3a3a3a;border-radius:16px;padding:40px;text-align:center;width:370px}
 .sbox h2{color:#fff;font-size:1.8rem;margin-bottom:6px}
@@ -43,47 +46,74 @@ body{background:#1a1a1a;font-family:Arial,sans-serif;color:#ccc;height:100vh;ove
 .btnrow2 button{flex:1;padding:12px;border:none;border-radius:8px;cursor:pointer;font-size:.9rem;font-weight:bold}
 .bp{background:linear-gradient(135deg,#4a9eff,#6b5bef);color:#fff}
 .bs{background:#2a2a2a;color:#aaa}
+
 #toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.88);color:#fff;padding:9px 20px;border-radius:20px;font-size:.85rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9997;white-space:nowrap}
 #toast.show{opacity:1}
+
+#versionTag{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);color:#a6a6a6;font-size:12px;pointer-events:none;z-index:9996;letter-spacing:.5px}
+#leaderModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9998;align-items:center;justify-content:center}
+.lmBox{background:#1c1c1c;border:1px solid #3a3a3a;border-radius:16px;padding:22px 22px 18px;width:420px}
+.lmTop{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.lmTop h2{color:#fff;font-size:1.25rem}
+.lmTop .x{background:transparent;border:1px solid #3a3a3a;color:#999;border-radius:8px;padding:6px 10px;cursor:pointer}
+.lmHint{color:#666;font-size:.78rem;margin-bottom:10px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px 8px;border-bottom:1px solid #2a2a2a;font-size:.9rem}
+th{color:#888;text-align:left}
+td{color:#ccc}
+.rank1{color:#ffd36a;font-weight:bold}
+.rank2{color:#c9d7ff;font-weight:bold}
+.rank3{color:#ffb7c9;font-weight:bold}
 </style>
 </head>
 <body>
+
 <div id="loginOverlay">
   <div class="lbox">
-    <div style="font-size:3rem;margin-bottom:10px">🧩</div>
-    <h1>拼图游戏</h1>
-    <p class="sub">请输入论坛ID以开始游戏</p>
-    <input type="text" id="inId" placeholder="你的ID" maxlength="30" autocomplete="off">
+    <h1>🧩 拼图游戏</h1>
+    <div class="sub">请输入论坛ID以开始游戏（右上可看排行榜）</div>
+    <input id="inId" placeholder="论坛ID / 玩家ID" maxlength="32"/>
     <button class="sbtn" onclick="startGame()">开始游戏 ▶</button>
   </div>
 </div>
+
 <div id="gameScreen">
   <div id="topBar">
-    <span class="logo">🧩</span>
-    <span class="ptitle" id="ptitle">拼图游戏</span>
-    <div class="right"><span class="ubadge" id="ubadge"></span><button class="qbtn" onclick="quitGame()">退出</button></div>
+    <div class="logo">🧩</div>
+    <div class="ptitle" id="ptitle">拼图游戏</div>
+    <div class="right">
+      <button class="qbtn" onclick="openLeaderboard()">🏆 排行榜</button>
+      <button class="qbtn" onclick="quitGame()">退出</button>
+      <div class="ubadge" id="ubadge">玩家：--</div>
+    </div>
   </div>
+
   <div id="boardArea">
-    <img id="ghostImg" src="" alt="">
-    <div id="refPanel"><img id="refImg" src="" alt="原图"></div>
     <canvas id="boardCanvas"></canvas>
+    <img id="ghostImg" alt="ghost"/>
+    <div id="refPanel"><img id="refImg" alt="ref"/></div>
     <div class="hint">左键拖动 | 右键旋转</div>
   </div>
+
   <div id="bottomBar">
-    <button class="tbtn" id="btnRef" title="显示原图 (R)" onclick="toggleRef()">🖼</button>
-    <button class="tbtn" id="btnGhost" title="透明叠加 (G)" onclick="toggleGhost()">👻</button>
-    <button class="tbtn" id="btnArr" title="整齐排列 (A)" onclick="arrangePieces()">⊞</button>
+    <button class="tbtn" id="btnRef" title="参考图 (R)" onclick="toggleRef()">🖼</button>
+    <button class="tbtn" id="btnGhost" title="底图 (G)" onclick="toggleGhost()">👻</button>
     <div class="tsep"></div>
-    <button class="tbtn" title="打乱" onclick="shufflePieces()">🔀</button>
-    <button class="tbtn" title="新游戏" onclick="newGame()">↺</button>
-    <div class="tmid"><span id="progText">0% 完成</span><span style="color:#333">|</span><span id="timerText">--:--</span></div>
-    <button class="tbtn" style="margin-left:auto" title="全屏" onclick="goFullscreen()">⛶</button>
+    <div class="tmid">
+      <span id="progText">0% 完成</span>
+      <span> | </span>
+      <span id="timerText">--:--</span>
+    </div>
+    <div class="tsep"></div>
+    <button class="tbtn" title="打乱 (S)" onclick="shufflePieces()">🔀</button>
+    <button class="tbtn" title="整齐排列 (A)" onclick="arrangePieces()">⊞</button>
+    <button class="tbtn" title="全屏" onclick="goFullscreen()">⛶</button>
   </div>
 </div>
+
 <div id="successModal">
   <div class="sbox">
-    <div style="font-size:3rem;margin-bottom:10px">🎉</div>
-    <h2>拼图完成！</h2>
+    <h2>🎉 拼图完成！</h2>
     <div class="who" id="sWho"></div>
     <div class="tdisp" id="sTime"></div>
     <div class="stat" id="sStat"></div>
@@ -93,24 +123,51 @@ body{background:#1a1a1a;font-family:Arial,sans-serif;color:#ccc;height:100vh;ove
     </div>
   </div>
 </div>
+
+<div id="leaderModal">
+  <div class="lmBox">
+    <div class="lmTop">
+      <h2>🏆 排行榜（Top 20）</h2>
+      <button class="x" onclick="closeLeaderboard()">关闭</button>
+    </div>
+    <div class="lmHint" id="lmHint">读取中…</div>
+    <table>
+      <thead>
+        <tr><th style="width:70px">名次</th><th>玩家</th><th style="width:90px">时间</th></tr>
+      </thead>
+      <tbody id="lbBody"></tbody>
+    </table>
+  </div>
+</div>
+
 <div id="toast"></div>
-<div id="versionTag" style="position:fixed;bottom:10px;left:50%;transform:translateX(-50%);color:#666;font-size:12px;pointer-events:none;z-index:9996;letter-spacing:.5px">版本：v17</div>
+<div id="versionTag"></div>
+
 <script>
+// 你也可以不写 gasUrl，改用 ?record= 传入
 var PUZZLE_CONFIG={
-  "title": "拼图游戏",
-  "imgUrl": "https://picsum.photos/id/29/800/600",
-  "gasUrl": "",
-  "rows": 3,
-  "cols": 4,
-  "edgeStyle": "classic"
+  "title":"拼图游戏",
+  "imgUrl":"https://picsum.photos/id/29/800/600",
+  "gasUrl":"",
+  "rows":4,
+  "cols":6
 };
 </script>
-<script>
 
+<script>
 const DEFAULT_IMG='https://picsum.photos/id/29/800/600';
 const GAS_SHEET='拼图游戏';
 
-// 读取 record=GAS_URL（优先）并持久化，供 recordResult 使用
+const PUZZLE_ENGINE_VERSION='v18';
+const PUZZLE_BUILD_ID='2026-03-19-1';
+
+function setVersionTag(){
+  const el=document.getElementById('versionTag');
+  el.textContent='版本：'+PUZZLE_ENGINE_VERSION+' / build '+PUZZLE_BUILD_ID;
+}
+setVersionTag();
+
+// 读取 record=GAS_URL（优先）并持久化，供 recordResult / 排行榜使用
 function getRecordUrl(){
   try{
     const urlParams=new URLSearchParams(window.location.search);
@@ -125,10 +182,9 @@ function getRecordUrl(){
   }
 }
 
-// v8：在 v7 基础上，进一步对 tab 做小幅重叠，最大化消除透明抗锯齿缝
+// v17 紧密贴合引擎（保留你原本的逻辑结构）
 let G={
   userId:'',gasUrl:'',imgSrc:'',
-  edgeStyle:'wave',
   rows:4,cols:6,img:null,
   cellW:0,cellH:0,tab:0,
   dpr:1,
@@ -144,34 +200,10 @@ let G={
 };
 let isDrag=false;
 
-// 多选框（类似 jigsawplanet 的框选移动）
+// 多选框（预留变量：你以后要框选可继续扩）
 let isMarquee=false;
-let selStart=null; // {x,y} in canvas CSS pixels
-let selRect=null;  // {x0,y0,x1,y1} in canvas CSS pixels
-
-function quantizeGroupToIntegers(gid){
-  const grp=getGroup(gid);
-  if(!grp||!grp.pids||!grp.pids.length) return;
-  // 以任意一个 rotation=0 的拼片作为基准，推导“整组的模板平移”，
-  // 让所有 rotation=0 的拼片都落到 (baseX + col*cellW, baseY + row*cellH) 上，避免微小浮点漂移导致缝隙。
-  const ref=grp.pids
-    .map(pid=>G.pieces.find(p=>p.id===pid))
-    .find(p=>p && p.rotation===0);
-  if(!ref) return;
-
-  const baseX=ref.x - ref.col*G.cellW;
-  const baseY=ref.y - ref.row*G.cellH;
-  const baseXq=Math.round(baseX*G.dpr)/G.dpr;
-  const baseYq=Math.round(baseY*G.dpr)/G.dpr;
-
-  grp.pids.forEach(id=>{
-    const pp=G.pieces.find(p=>p.id===id);
-    if(pp && pp.rotation===0){
-      pp.x=baseXq + pp.col*G.cellW;
-      pp.y=baseYq + pp.row*G.cellH;
-    }
-  });
-}
+let selStart=null;
+let selRect=null;
 
 function startGame(){
   const uid=document.getElementById('inId').value.trim();
@@ -180,7 +212,6 @@ function startGame(){
   const cfg=typeof PUZZLE_CONFIG!=='undefined'?PUZZLE_CONFIG:{};
   G.gasUrl=cfg.gasUrl||getRecordUrl()||'';
   G.imgSrc=cfg.imgUrl||DEFAULT_IMG;
-  G.edgeStyle=cfg.edgeStyle||'wave';
   G.rows=cfg.rows||4;
   G.cols=cfg.cols||6;
   const title=cfg.title||'拼图游戏';
@@ -195,8 +226,7 @@ function quitGame(){
   stopTimer();
   document.getElementById('successModal').style.display='none';
   document.getElementById('gameScreen').style.display='none';
-  if(typeof EDITOR_MODE!=='undefined'&&EDITOR_MODE) backToEditor();
-  else document.getElementById('loginOverlay').style.display='flex';
+  document.getElementById('loginOverlay').style.display='flex';
 }
 
 function loadImg(){
@@ -236,41 +266,26 @@ function initGame(){
   let cw=Math.floor(tw/G.cols),ch=Math.floor(th/G.rows);
   const ar=G.img.naturalWidth/G.img.naturalHeight;
   const gr=(cw*G.cols)/(ch*G.rows);
-  if(gr>ar)cw=Math.floor(ch*ar*G.rows/G.cols);
+  if(gr>ar) cw=Math.floor(ch*ar*G.rows/G.cols);
   else ch=Math.floor(cw/ar*G.cols/G.rows);
   cw=Math.max(40,cw);ch=Math.max(40,ch);
-  // tab 增加更大重叠，减少 clip 抗锯齿导致的透明缝隙感
-  // tab：保持几何互补的默认深度
   G.cellW=cw;G.cellH=ch;G.tab=Math.round(Math.min(cw,ch)*.27);
 
-  // v12：先把整块拼图区域统一栅格化到 innerCanvas，避免每个拼片对原图重采样导致像素边缘不一致
-  G.innerW=cw*G.cols;
-  G.innerH=ch*G.rows;
-  const iw=Math.max(1,Math.round(G.innerW*G.dpr));
-  const ih=Math.max(1,Math.round(G.innerH*G.dpr));
-  const ic=document.createElement('canvas');
-  ic.width=iw;ic.height=ih;
-  const ict=ic.getContext('2d');
-  ict.imageSmoothingEnabled=true;
-  ict.drawImage(G.img,0,0,iw,ih);
-  G.innerCanvas=ic;
-
-  // Create data URL from loaded image (ensures ref/ghost match exactly)
   try{
     const tc=document.createElement('canvas');
     tc.width=G.img.naturalWidth;tc.height=G.img.naturalHeight;
     tc.getContext('2d').drawImage(G.img,0,0);
     G.imgDataUrl=tc.toDataURL('image/jpeg',.9);
   }catch(e){G.imgDataUrl=G.imgSrc;}
-
   document.getElementById('refImg').src=G.imgDataUrl;
   document.getElementById('ghostImg').src=G.imgDataUrl;
 
   buildShapeMap();
+  buildInnerCanvas();
   buildPieces();
   scatter();
   render();
-  showToast('开始！'+G.rows+'×'+G.cols+' = '+G.rows*G.cols+' 片 | 右键可旋转');
+  showToast('开始！'+G.rows+'×'+G.cols+' = '+(G.rows*G.cols)+' 片 | 右键可旋转');
 }
 
 function buildShapeMap(){
@@ -287,98 +302,91 @@ function buildShapeMap(){
   }
 }
 
+function buildInnerCanvas(){
+  const {cellW:cw,cellH:ch,tab,rows,cols,img}=G;
+  const w=(cw*cols+tab*2);
+  const h=(ch*rows+tab*2);
+  G.innerW=w;G.innerH=h;
+  const c=document.createElement('canvas');
+  c.width=Math.round(w*G.dpr);
+  c.height=Math.round(h*G.dpr);
+  const ctx=c.getContext('2d');
+  ctx.setTransform(G.dpr,0,0,G.dpr,0,0);
+  ctx.imageSmoothingEnabled=true;
+  ctx.clearRect(0,0,w,h);
+
+  const srcW=img.naturalWidth,srcH=img.naturalHeight;
+  const dstW=cw*cols,dstH=ch*rows;
+  ctx.drawImage(img,0,0,srcW,srcH,tab,tab,dstW,dstH);
+  G.innerCanvas=c;
+}
+
 function buildPieces(){
-  const{cellW:cw,cellH:ch,tab,rows,cols,img,shapeMap}=G;
+  const {cellW:cw,cellH:ch,tab,rows,cols,shapeMap}=G;
   const pw=cw+tab*2,ph=ch+tab*2;
   G.pieces=[];G.groups=[];
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
-      const oc=document.createElement('canvas');
-      // offCanvas 使用 DPR 画到位，主画布不再做二次缩放，减少边缘“缝隙感”
-      oc.width=Math.max(1,Math.floor(pw*G.dpr));
-      oc.height=Math.max(1,Math.floor(ph*G.dpr));
-      const ctx=oc.getContext('2d');
-      const tabs=shapeMap[r][c];
-      // 让 piecePath / drawImage 使用逻辑像素坐标
+      const id=r*cols+c;
+      const off=document.createElement('canvas');
+      off.width=Math.round(pw*G.dpr);
+      off.height=Math.round(ph*G.dpr);
+      const ctx=off.getContext('2d');
       ctx.setTransform(G.dpr,0,0,G.dpr,0,0);
+      ctx.imageSmoothingEnabled=true;
 
-      // Clip to piece shape and draw image — NO shadow (pieces fit seamlessly)
+      const sx=c*cw,sy=r*ch;
       ctx.save();
       ctx.beginPath();
-      piecePath(ctx,tab,tab,cw,ch,tabs,tab);
+      drawPiecePath(ctx,tab,tab,cw,ch,shapeMap[r][c],tab);
       ctx.closePath();
       ctx.clip();
-      // v13：从统一 innerCanvas 按整体偏移绘制（包含凸耳区域纹理）
-      ctx.drawImage(G.innerCanvas,tab-c*cw,tab-r*ch,cw*cols,ch*rows);
+
+      ctx.drawImage(
+        G.innerCanvas,
+        Math.round((sx)*G.dpr), Math.round((sy)*G.dpr), Math.round((pw)*G.dpr), Math.round((ph)*G.dpr),
+        0,0,pw,ph
+      );
+
       ctx.restore();
 
-      const id=r*cols+c;
-      G.pieces.push({id,row:r,col:c,offCanvas:oc,x:0,y:0,gid:id,rotation:0});
-      G.groups.push({id,pids:[id]});
+      G.pieces.push({
+        id, row:r,col:c, gid:id,
+        x:0,y:0, rotation:0,
+        offCanvas:off
+      });
+      G.groups.push({id:id,pids:[id]});
     }
   }
 }
 
-function piecePath(ctx,ox,oy,w,h,tabs,tab){
-  ctx.moveTo(ox,oy);
-  drawEdge(ctx,ox,oy,ox+w,oy,tabs.top,tab);
-  drawEdge(ctx,ox+w,oy,ox+w,oy+h,tabs.right,tab);
-  drawEdge(ctx,ox+w,oy+h,ox,oy+h,tabs.bottom,tab);
-  drawEdge(ctx,ox,oy+h,ox,oy,tabs.left,tab);
-}
-
-function drawEdge(ctx,x1,y1,x2,y2,type,t){
-  if(type===0){ctx.lineTo(x2,y2);return;}
-  const style=(G.edgeStyle||'wave');
-  if(style==='classic') return drawEdgeClassic(ctx,x1,y1,x2,y2,type,t);
-  return drawEdgeWave(ctx,x1,y1,x2,y2,type,t);
+function drawPiecePath(ctx,x,y,w,h,sh,tab){
+  const x0=x,y0=y,x1=x+w,y1=y+h;
+  ctx.moveTo(x0,y0);
+  drawEdgeWave(ctx,x0,y0,x1,y0,sh.top,tab);
+  drawEdgeWave(ctx,x1,y0,x1,y1,sh.right,tab);
+  drawEdgeWave(ctx,x1,y1,x0,y1,sh.bottom,tab);
+  drawEdgeWave(ctx,x0,y1,x0,y0,sh.left,tab);
 }
 
 function drawEdgeWave(ctx,x1,y1,x2,y2,type,t){
+  if(type===0){ctx.lineTo(x2,y2);return;}
   const dx=x2-x1,dy=y2-y1;
-  const len=Math.hypot(dx,dy);
-  if(!len){ctx.lineTo(x2,y2);return;}
+  const len=Math.hypot(dx,dy)||1;
   const ux=dx/len,uy=dy/len;
-  const nx=uy*type,ny=-ux*type;
-  const N=Math.max(12,Math.min(40,Math.round(len*0.2)));
-  for(let i=1;i<=N;i++){
-    const u=i/N;
-    const v=t*(1-Math.cos(2*Math.PI*u))/2;
-    ctx.lineTo(x1+ux*len*u + nx*v, y1+uy*len*u + ny*v);
+  const nx=-uy,ny=ux;
+  const amp=t*0.95*type;
+  const steps=48;
+  for(let i=0;i<=steps;i++){
+    const u=i/steps;
+    const bump=Math.sin(Math.PI*u)*Math.sin(Math.PI*u);
+    const wave=Math.sin(2*Math.PI*u);
+    const off=amp*bump*wave*0.55;
+    const px=x1+dx*u+nx*off;
+    const py=y1+dy*u+ny*off;
+    if(i===0) ctx.lineTo(px,py);
+    else ctx.lineTo(px,py);
   }
-}
-
-function drawEdgeClassic(ctx,x1,y1,x2,y2,type,t){
-  // 传统“圆钮”风格：直线 + 半圆，type 控制凹凸方向（严格镜像）
-  const dx=x2-x1,dy=y2-y1;
-  const len=Math.hypot(dx,dy);
-  if(!len){ctx.lineTo(x2,y2);return;}
-  const ux=dx/len,uy=dy/len;
-  const ang=Math.atan2(dy,dx);
-
-  const r=Math.max(2,Math.min(t*0.85, len*0.22));
-  const lead=len*0.32;
-  const tail=len*0.68;
-
-  // 直线到圆弧起点
-  ctx.lineTo(x1+ux*lead,y1+uy*lead);
-
-  const midx=x1+ux*(len*0.5);
-  const midy=y1+uy*(len*0.5);
-
-  const sx=midx-ux*r, sy=midy-uy*r;
-  const ex=midx+ux*r, ey=midy+uy*r;
-  ctx.lineTo(sx,sy);
-
-  // 画半圆：type>0 朝“左法线”方向凸起，type<0 朝相反方向凹进去
-  // 在屏幕坐标 (y 向下) 下，这组角度能形成对称的上下半圆效果
-  const a0=ang+Math.PI;
-  const a1=ang;
-  const anticlockwise = type < 0;
-  ctx.arc(midx,midy,r,a0,a1,anticlockwise);
-
-  ctx.lineTo(x1+ux*tail,y1+uy*tail);
-  ctx.lineTo(ex,ey);
   ctx.lineTo(x2,y2);
 }
 
@@ -387,17 +395,15 @@ function scatter(){
   const pw=cw+tab*2,ph=ch+tab*2;
   const rots=[0,90,180,270];
   G.pieces.forEach(p=>{
-    p.x=Math.round(tab+Math.random()*(bw-pw-tab*2));
-    p.y=Math.round(tab+Math.random()*(bh-ph-tab*2));
+    p.x=tab+Math.random()*(bw-pw-tab*2);
+    p.y=tab+Math.random()*(bh-ph-tab*2);
     p.rotation=rots[Math.floor(Math.random()*4)];
     p.gid=p.id;
   });
   G.groups=G.pieces.map(p=>({id:p.id,pids:[p.id]}));
 }
 
-function shufflePieces(){
-  scatter();render();showToast('已重新打乱（含旋转）');
-}
+function shufflePieces(){scatter();render();showToast('已重新打乱（含旋转）');}
 
 function arrangePieces(){
   G.pieces.forEach(p=>{p.gid=p.id;p.rotation=0;});
@@ -411,376 +417,28 @@ function arrangePieces(){
   render();showToast('已整齐排列（旋转归零）');
 }
 
-// ── RENDER ──
 function render(){
   const canvas=document.getElementById('boardCanvas');
   const ctx=canvas.getContext('2d');
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.setTransform(G.dpr,0,0,G.dpr,0,0);
+  ctx.clearRect(0,0,G.boardW,G.boardH);
   const isDragging=G.dragPids.length>0;
 
   G.pieces.forEach(p=>{
-    // rotation=0 时采用“直接按拼片左上角设备像素绘制”，减少 translate/offX/offY 分开取整造成的缝隙
-    if(p.rotation===0){
-      const overlap=0;
-      const dx=Math.round((p.x-G.tab)*G.dpr)-overlap;
-      const dy=Math.round((p.y-G.tab)*G.dpr)-overlap;
-      if(isDragging&&G.dragPids.includes(p.id)){
-        ctx.shadowColor='rgba(0,0,0,.55)';
-        ctx.shadowBlur=12*G.dpr;
-        ctx.shadowOffsetX=4*G.dpr;
-        ctx.shadowOffsetY=4*G.dpr;
-      }else{
-        ctx.shadowColor='transparent';
-      }
-      ctx.drawImage(p.offCanvas,dx,dy);
-      ctx.shadowColor='transparent';
-      return;
-    }
-
-    const cx=(p.x+G.cellW/2)*G.dpr;
-    const cy=(p.y+G.cellH/2)*G.dpr;
+    const cx=p.x+G.cellW/2,cy=p.y+G.cellH/2;
     ctx.save();
     ctx.translate(cx,cy);
     ctx.rotate(p.rotation*Math.PI/180);
-    // Shadow only for the dragged group
     if(isDragging&&G.dragPids.includes(p.id)){
       ctx.shadowColor='rgba(0,0,0,.55)';
-      ctx.shadowBlur=12*G.dpr;ctx.shadowOffsetX=4*G.dpr;ctx.shadowOffsetY=4*G.dpr;
+      ctx.shadowBlur=12;ctx.shadowOffsetX=4;ctx.shadowOffsetY=4;
     }
-    ctx.drawImage(p.offCanvas,-(G.tab+G.cellW/2)*G.dpr,-(G.tab+G.cellH/2)*G.dpr);
+    ctx.drawImage(p.offCanvas,-(G.tab+G.cellW/2),-(G.tab+G.cellH/2));
     ctx.restore();
   });
-
-  // 多选框绘制（只在框选时显示）
-  if(isMarquee && selRect){
-    const x0=Math.min(selRect.x0,selRect.x1);
-    const y0=Math.min(selRect.y0,selRect.y1);
-    const w=Math.abs(selRect.x1-selRect.x0);
-    const h=Math.abs(selRect.y1-selRect.y0);
-    ctx.save();
-    ctx.strokeStyle='rgba(74,158,255,.95)';
-    ctx.lineWidth=Math.max(1,2*G.dpr);
-    ctx.setLineDash([6*G.dpr,4*G.dpr]);
-    ctx.strokeRect(x0*G.dpr,y0*G.dpr,w*G.dpr,h*G.dpr);
-    ctx.restore();
-  }
 }
 
-// ── HIT TEST (rotation-aware) ──
 function pieceAt(mx,my){
   for(let i=G.pieces.length-1;i>=0;i--){
     const p=G.pieces[i];
-    if(pointInPiece(mx,my,p))return p;
-  }
-  return null;
-}
-function pointInPiece(mx,my,p){
-  const cx=p.x+G.cellW/2,cy=p.y+G.cellH/2;
-  const ang=-p.rotation*Math.PI/180;
-  const dx=mx-cx,dy=my-cy;
-  const lx=dx*Math.cos(ang)-dy*Math.sin(ang);
-  const ly=dx*Math.sin(ang)+dy*Math.cos(ang);
-  return Math.abs(lx)<=G.tab+G.cellW/2&&Math.abs(ly)<=G.tab+G.cellH/2;
-}
-
-// ── DRAG ──
-const _canvas=document.getElementById('boardCanvas');
-function canvasXY(e){
-  const r=_canvas.getBoundingClientRect(),src=e.touches?e.touches[0]:e;
-  return{x:src.clientX-r.left,y:src.clientY-r.top};
-}
-function getGroup(gid){return G.groups.find(g=>g.id===gid);}
-
-_canvas.addEventListener('mousedown',onDown);
-_canvas.addEventListener('touchstart',onDown,{passive:false});
-function onDown(e){
-  e.preventDefault();
-  const{x,y}=canvasXY(e);
-  const p=pieceAt(x,y);
-  // 左键在拼片外拖出多选框（只对鼠标支持，触摸不做）
-  const isMouseDown = e.type === 'mousedown';
-  if(!p){
-    if(isMouseDown && e.button === 0){
-      isMarquee=true;
-      selStart={x,y};
-      selRect={x0:x,y0:y,x1:x,y1:y};
-      render();
-    }
-    return;
-  }
-  if(!G.started){G.started=true;startTimer();}
-  isDrag=true;
-  G.dragGid=p.gid;
-  const grp=getGroup(p.gid);
-  G.dragPids=[...grp.pids];
-  const leader=G.pieces.find(pp=>pp.id===G.dragPids[0]);
-  G.dragOX=x-leader.x;G.dragOY=y-leader.y;
-  bringToFront(G.dragGid);render();
-}
-
-document.addEventListener('mousemove',onMove);
-document.addEventListener('touchmove',onMove,{passive:false});
-function onMove(e){
-  if(isMarquee){
-    e.preventDefault();
-    const{x,y}=canvasXY(e);
-    selRect.x1=x;
-    selRect.y1=y;
-    render();
-    return;
-  }
-  if(!isDrag)return;e.preventDefault();
-  const{x,y}=canvasXY(e);
-  const leader=G.pieces.find(p=>p.id===G.dragPids[0]);
-  // 对齐到整数像素，减少边缘抗锯齿产生的“缝隙感”
-  const targetLX=x-G.dragOX;
-  const targetLY=y-G.dragOY;
-  const newLX=Math.round(targetLX);
-  const newLY=Math.round(targetLY);
-  const ddx=newLX-leader.x;
-  const ddy=newLY-leader.y;
-  G.dragPids.forEach(id=>{const pp=G.pieces.find(p=>p.id===id);pp.x+=ddx;pp.y+=ddy;});
-  render();
-}
-
-document.addEventListener('mouseup',onUp);
-document.addEventListener('touchend',onUp);
-function onUp(){
-  // 框选结束：把框内拼片所属组合并到一个临时组
-  if(isMarquee){
-    isMarquee=false;
-    const x0=Math.min(selRect.x0,selRect.x1);
-    const y0=Math.min(selRect.y0,selRect.y1);
-    const x1=Math.max(selRect.x0,selRect.x1);
-    const y1=Math.max(selRect.y0,selRect.y1);
-    const picked=[];
-    G.pieces.forEach(p=>{
-      const cx=p.x+G.cellW/2;
-      const cy=p.y+G.cellH/2;
-      if(cx>=x0 && cx<=x1 && cy>=y0 && cy<=y1) picked.push(p.id);
-    });
-    if(picked.length){
-      const firstPid=picked[0];
-      const targetGid=G.pieces.find(p=>p.id===firstPid).gid;
-      const gids=[...new Set(picked.map(pid=>G.pieces.find(p=>p.id===pid).gid))];
-      gids.forEach(gid=>{
-        if(gid!==targetGid) mergeGroups(targetGid,gid);
-      });
-      render();
-    }
-    selStart=null;
-    selRect=null;
-    return;
-  }
-  if(!isDrag)return;
-  isDrag=false;
-  G.dragPids=[];
-  checkSnap();
-  // 吸合结束后：对“整组”统一量化，避免把内部间距改坏
-  quantizeGroupToIntegers(G.dragGid);
-  render();
-  updateProg();
-  checkDone();
-}
-
-// ── RIGHT-CLICK ROTATE ──
-_canvas.addEventListener('contextmenu',onRightClick);
-function onRightClick(e){
-  e.preventDefault();
-  const{x,y}=canvasXY(e);
-  const p=pieceAt(x,y);
-  if(!p)return;
-  const grp=getGroup(p.gid);
-  const gcx=grp.pids.reduce((s,id)=>{
-    const pp=G.pieces.find(p=>p.id===id);return s+pp.x+G.cellW/2;
-  },0)/grp.pids.length;
-  const gcy=grp.pids.reduce((s,id)=>{
-    const pp=G.pieces.find(p=>p.id===id);return s+pp.y+G.cellH/2;
-  },0)/grp.pids.length;
-  grp.pids.forEach(id=>{
-    const pp=G.pieces.find(p=>p.id===id);
-    const dx=pp.x+G.cellW/2-gcx,dy=pp.y+G.cellH/2-gcy;
-    // 90° CW in screen coords: (dx,dy)→(-dy,dx)
-    pp.x=gcx+(-dy)-G.cellW/2;
-    pp.y=gcy+dx-G.cellH/2;
-    pp.rotation=(pp.rotation+90)%360;
-  });
-  bringToFront(p.gid);
-  // 旋转到 0° 时，整组统一量化，减少接缝抗锯齿缝隙
-  quantizeGroupToIntegers(p.gid);
-  render();
-}
-
-function bringToFront(gid){
-  const grp=getGroup(gid);if(!grp)return;
-  const gps=G.pieces.filter(p=>grp.pids.includes(p.id));
-  const oth=G.pieces.filter(p=>!grp.pids.includes(p.id));
-  G.pieces=[...oth,...gps];
-}
-
-// ── SNAP (only when rotation=0) ──
-const SNAP=24;
-function checkSnap(){
-  let snapped=true;
-  while(snapped){
-    snapped=false;
-    const curGrp=getGroup(G.dragGid);if(!curGrp)break;
-    for(const pid of[...curGrp.pids]){
-      const pa=G.pieces.find(p=>p.id===pid);if(!pa||pa.rotation!==0)continue;
-      for(const{dr,dc}of[{dr:-1,dc:0},{dr:1,dc:0},{dr:0,dc:-1},{dr:0,dc:1}]){
-        const nr=pa.row+dr,nc=pa.col+dc;
-        if(nr<0||nr>=G.rows||nc<0||nc>=G.cols)continue;
-        const pb=G.pieces.find(p=>p.row===nr&&p.col===nc);
-        if(!pb||pb.gid===pa.gid||pb.rotation!==0)continue;
-        const ex=pa.x+dc*G.cellW,ey=pa.y+dr*G.cellH;
-        if(Math.hypot(pb.x-ex,pb.y-ey)<SNAP){
-          const sdx=ex-pb.x,sdy=ey-pb.y;
-          getGroup(pb.gid).pids.forEach(id=>{
-            const pp=G.pieces.find(p=>p.id===id);pp.x+=sdx;pp.y+=sdy;
-          });
-          mergeGroups(G.dragGid,pb.gid);
-          // 吸合后：对整组统一量化，减少接缝抗锯齿缝隙
-          quantizeGroupToIntegers(G.dragGid);
-          playSnap();snapped=true;break;
-        }
-      }
-      if(snapped)break;
-    }
-  }
-}
-
-function mergeGroups(g1id,g2id){
-  const g1=getGroup(g1id),g2=getGroup(g2id);
-  if(!g1||!g2||g1===g2)return;
-  g1.pids=[...g1.pids,...g2.pids];
-  g2.pids.forEach(id=>{const p=G.pieces.find(pp=>pp.id===id);if(p)p.gid=g1.id;});
-  G.groups=G.groups.filter(g=>g.id!==g2id);
-  if(G.dragGid===g2id)G.dragGid=g1id;
-}
-
-// ── PROGRESS & DONE ──
-function updateProg(){
-  const total=G.rows*G.cols;
-  const biggest=G.groups.reduce((m,g)=>g.pids.length>m?g.pids.length:m,0);
-  document.getElementById('progText').textContent=Math.round(biggest/total*100)+'% 完成';
-}
-
-function checkDone(){
-  if(G.done)return;
-  if(G.groups.length===1&&G.groups[0].pids.length===G.rows*G.cols){
-    G.done=true;stopTimer();
-    const ts=fmtTime(G.elapsed);
-    document.getElementById('sWho').textContent='玩家：'+G.userId+'，恭喜完成！';
-    document.getElementById('sTime').textContent=ts;
-    document.getElementById('sStat').textContent=G.rows+'×'+G.cols+' = '+G.rows*G.cols+' 片';
-    document.getElementById('successModal').style.display='flex';
-    playComplete();recordResult(ts);
-  }
-}
-function closeModal(){document.getElementById('successModal').style.display='none';}
-
-function recordResult(ts){
-  if(!G.gasUrl)return;
-  const now=new Date();
-  const p=new URLSearchParams({
-    sheet:GAS_SHEET,
-    date:now.toLocaleDateString('zh-TW'),
-    time:now.toLocaleTimeString('zh-TW',{hour12:false}),
-    user_id:G.userId,
-    completed_time:ts,
-    pieces:G.rows*G.cols,
-    difficulty:G.rows+'×'+G.cols,
-    image_url:G.imgSrc
-  });
-  fetch(G.gasUrl+'?'+p.toString(),{mode:'no-cors'}).catch(()=>{});
-}
-
-// ── TIMER ──
-function startTimer(){
-  if(G.timerIv)return;
-  G.startTs=Date.now()-G.elapsed*1000;
-  G.timerIv=setInterval(()=>{
-    G.elapsed=Math.floor((Date.now()-G.startTs)/1000);
-    document.getElementById('timerText').textContent=fmtTime(G.elapsed);
-  },500);
-}
-function stopTimer(){if(G.timerIv){clearInterval(G.timerIv);G.timerIv=null;}}
-function fmtTime(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
-
-// ── UI ──
-function toggleRef(){
-  G.showRef=!G.showRef;
-  document.getElementById('refPanel').style.display=G.showRef?'block':'none';
-  document.getElementById('btnRef').classList.toggle('on',G.showRef);
-}
-function toggleGhost(){
-  G.showGhost=!G.showGhost;
-  const gi=document.getElementById('ghostImg');
-  if(G.showGhost){
-    const w=G.cellW*G.cols,h=G.cellH*G.rows;
-    Object.assign(gi.style,{display:'block',left:(G.boardW-w)/2+'px',top:(G.boardH-h)/2+'px',width:w+'px',height:h+'px'});
-  }else gi.style.display='none';
-  document.getElementById('btnGhost').classList.toggle('on',G.showGhost);
-}
-function goFullscreen(){
-  const el=document.getElementById('gameScreen');
-  if(!document.fullscreenElement)el.requestFullscreen().catch(()=>{});
-  else document.exitFullscreen();
-}
-function newGame(){closeModal();stopTimer();G.elapsed=0;initGame();}
-
-// ── SOUND ──
-let _ac=null;
-function getAC(){return _ac||(_ac=new(window.AudioContext||window.webkitAudioContext)());}
-function playSnap(){
-  try{const c=getAC(),o=c.createOscillator(),g=c.createGain();
-  o.connect(g);g.connect(c.destination);o.frequency.value=900;o.type='sine';
-  g.gain.setValueAtTime(.12,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.12);
-  o.start();o.stop(c.currentTime+.12);}catch(e){}
-}
-function playComplete(){
-  try{const c=getAC();[523,659,784,1047].forEach((f,i)=>{
-    const o=c.createOscillator(),g=c.createGain();
-    o.connect(g);g.connect(c.destination);o.frequency.value=f;o.type='sine';
-    const t=c.currentTime+i*.18;
-    g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+.5);
-    o.start(t);o.stop(t+.5);
-  });}catch(e){}
-}
-
-// ── TOAST ──
-let _tv=null;
-function showToast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  if(_tv)clearTimeout(_tv);
-  _tv=setTimeout(()=>t.classList.remove('show'),2800);
-}
-
-// ── KEYBOARD ──
-document.addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT')return;
-  if(e.key==='r'||e.key==='R')toggleRef();
-  if(e.key==='g'||e.key==='G')toggleGhost();
-  if(e.key==='a'||e.key==='A')arrangePieces();
-  if(e.key==='s'||e.key==='S')shufflePieces();
-});
-document.getElementById('inId').addEventListener('keydown',e=>{if(e.key==='Enter')startGame();});
-
-// ── RESIZE ──
-window.addEventListener('resize',()=>{
-  if(G.img&&document.getElementById('gameScreen').style.display!=='none'){
-    const area=document.getElementById('boardArea'),cnv=document.getElementById('boardCanvas');
-    G.boardW=area.clientWidth;G.boardH=area.clientHeight;
-    G.dpr=window.devicePixelRatio||1;
-    cnv.style.width=G.boardW+'px';
-    cnv.style.height=G.boardH+'px';
-    cnv.width=Math.floor(G.boardW*G.dpr);
-    cnv.height=Math.floor(G.boardH*G.dpr);
-    render();
-  }
-});
-
-</script>
-</body>
-</html>
+   
