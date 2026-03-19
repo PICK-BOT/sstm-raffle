@@ -48,7 +48,14 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
   transition:transform .15s}
 .btn-gold:hover{transform:scale(1.04)}
 .btn-gold:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-sub{padding:8px 22px;font-size:.88rem;background:rgba(255,255,255,.12);
+  color:#fff;border:1.5px solid rgba(255,255,255,.4);border-radius:50px;
+  cursor:pointer;font-weight:700;transition:background .15s}
+.btn-sub:hover{background:rgba(255,255,255,.22)}
 .err-msg{color:#FF6B6B;font-size:.83rem;margin-top:6px}
+#balance-result{margin-top:12px;padding:12px;background:rgba(255,215,0,.08);
+  border:1px solid rgba(255,215,0,.3);border-radius:12px;text-align:center}
+#balance-result .bal-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
 
 /* ===== DICE PREVIEW ===== */
 .dice-preview{background:rgba(255,255,255,.04);border-radius:12px;
@@ -167,8 +174,16 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
     <p>输入论坛 ID 开始游戏</p>
     <input id="inp-id" class="inp" type="text" placeholder="论坛 ID" maxlength="50"
       onkeydown="if(event.key==='Enter')s1Confirm()">
-    <button class="btn-gold" onclick="s1Confirm()">确认 →</button>
+    <button class="btn-gold" id="btn-s1confirm" onclick="s1Confirm()">确认 →</button>
     <div id="id-err" class="err-msg"></div>
+    <div id="balance-result" style="display:none">
+      <div id="balance-info"></div>
+      <div class="bal-btns">
+        <button class="btn-gold" onclick="useBalance()">继续上次游戏</button>
+        <button class="btn-sub"  onclick="goAddDice()">追加骰子</button>
+        <button class="btn-sub"  onclick="goFresh()">重新开始</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -380,20 +395,103 @@ function showScreen(id){
   document.getElementById(id).classList.add('active');
 }
 
+// ================================================================
+// GAS 余额：查询与保存
+// ================================================================
+function fetchBalance(id, cb){
+  if(!GAS_URL){ cb(null); return; }
+  var fn='_balCb'+Date.now();
+  var timer=setTimeout(function(){ delete window[fn]; cb(null); }, 6000);
+  window[fn]=function(data){
+    clearTimeout(timer); delete window[fn];
+    var s=document.getElementById('_balScript');
+    if(s) s.parentNode.removeChild(s);
+    cb(data);
+  };
+  var s=document.createElement('script');
+  s.id='_balScript';
+  s.src=GAS_URL+'?sheet=大富翁余额&id='+encodeURIComponent(id)+'&callback='+fn;
+  document.head.appendChild(s);
+}
+
+function saveBalance(){
+  if(!GAS_URL||!G.userId) return;
+  new Image().src=GAS_URL+'?sheet=大富翁余额&save=1'
+    +'&id='+encodeURIComponent(G.userId)
+    +'&d4='+G.dice[4]+'&d6='+G.dice[6]+'&d8='+G.dice[8]
+    +'&d10='+G.dice[10]+'&d12='+G.dice[12];
+}
+
+window.addEventListener('beforeunload',function(){
+  if(G.userId&&[4,6,8,10,12].some(t=>G.dice[t]>0)) saveBalance();
+});
+
 // SCREEN 1
 function s1Confirm(){
   var v=document.getElementById('inp-id').value.trim();
   if(!v){document.getElementById('id-err').textContent='请输入论坛 ID';return;}
   G.userId=v;
   document.getElementById('id-err').textContent='';
+  document.getElementById('balance-result').style.display='none';
   CONFIG.exchanges.forEach(ex=>{
     var lbl=document.getElementById('exlbl-'+ex.source);
     if(lbl) lbl.textContent=ex.label+'换 d'+ex.dice_type+'×'+ex.dice_count;
   });
+
+  // 查 GAS 余额
+  var btn=document.getElementById('btn-s1confirm');
+  btn.disabled=true; btn.textContent='查询余额…';
+  fetchBalance(v,function(data){
+    btn.disabled=false; btn.textContent='确认 →';
+    var total=(data&&data.found)?(data.d4+data.d6+data.d8+data.d10+data.d12):0;
+    if(data&&data.ok&&data.found&&total>0){
+      // 有余额：显示选项
+      window._balanceDice={4:data.d4,6:data.d6,8:data.d8,10:data.d10,12:data.d12};
+      var chips=[4,6,8,10,12].filter(t=>data['d'+t]>0)
+        .map(t=>'<span class="dbadge">d'+t+' ×'+data['d'+t]+'</span>').join('');
+      document.getElementById('balance-info').innerHTML=
+        '<p style="color:#FFD93D;margin:0 0 6px;font-size:.9rem">🎲 发现上次剩余骰子：</p>'+chips;
+      document.getElementById('balance-result').style.display='block';
+    } else {
+      // 无余额：正常流程
+      window._balanceDice=null;
+      calcDice();
+      showScreen('screen-dice');
+    }
+  });
+}
+window.s1Confirm=s1Confirm;
+
+// 继续上次（只用余额骰子）
+function useBalance(){
+  var r=window._balanceDice||{};
+  window._balanceDice=null;
+  G.dice={4:r[4]||0,6:r[6]||0,8:r[8]||0,10:r[10]||0,12:r[12]||0};
+  G.sel=[4,6,8,10,12].find(t=>G.dice[t]>0)||4;
+  buildBoard(); updateDiceUI(); updateBar();
+  charMove(0,true);
+  setSp('p-avatar','idle'); setSp('center-char','idle');
+  saveBalance(); // 立即写入当前余额
+  showScreen('screen-main');
+}
+window.useBalance=useBalance;
+
+// 追加骰子（余额 + 新计算合并）
+function goAddDice(){
+  calcDice();
+  window._mergeBalance=true; // s2Start 时合并
+  showScreen('screen-dice');
+}
+window.goAddDice=goAddDice;
+
+// 重新开始（忽略余额）
+function goFresh(){
+  window._balanceDice=null;
+  window._mergeBalance=false;
   calcDice();
   showScreen('screen-dice');
 }
-window.s1Confirm=s1Confirm;
+window.goFresh=goFresh;
 
 // SCREEN 2
 function calcDice(){
@@ -423,13 +521,18 @@ window.calcDice=calcDice;
 
 function s2Start(){
   var r=window._pendingDice||{};
+  // 若是「追加骰子」模式，把余额并入
+  if(window._mergeBalance&&window._balanceDice){
+    [4,6,8,10,12].forEach(t=>{ r[t]=(r[t]||0)+(window._balanceDice[t]||0); });
+  }
+  window._mergeBalance=false;
+  window._balanceDice=null;
   G.dice={4:r[4]||0,6:r[6]||0,8:r[8]||0,10:r[10]||0,12:r[12]||0};
   G.sel=[4,6,8,10,12].find(t=>G.dice[t]>0)||4;
-  buildBoard();
-  updateDiceUI();
-  updateBar();
+  buildBoard(); updateDiceUI(); updateBar();
   charMove(0,true);
   setSp('p-avatar','idle'); setSp('center-char','idle');
+  saveBalance(); // 游戏开始时同步写入初始余额
   showScreen('screen-main');
 }
 window.s2Start=s2Start;
@@ -639,7 +742,7 @@ function applyCell(cell,dice,raw,result){
 
   if(G.shield&&(cell.type==='惩罚'||cell.type==='冻结')){
     G.shield=false;
-    regA('ok',()=>endTurn());
+    regA('ok',()=>{ closeOv(); endTurn(); });
     showOv({cls:'',icon:'🛡',type:'平安符生效',dice:diceStr,
       name:'已被平安符保护',desc:'本次「'+cell.name+'」效果已抵消',
       btns:[{lbl:'确认',k:'ok'}]});
@@ -648,7 +751,7 @@ function applyCell(cell,dice,raw,result){
 
   if(cell.type==='奖励'){
     setSp('char-sprite','happy'); setSp('p-avatar','happy'); setSp('center-char','cheer');
-    regA('ok',()=>endTurn());
+    regA('ok',()=>{ closeOv(); endTurn(); });
     showOv({cls:'reward',icon:'🎉',type:'奖励格',dice:diceStr,
       name:cell.name,desc:cell.desc,btns:[{lbl:'太好了！',k:'ok',gold:true}]});
 
@@ -664,7 +767,7 @@ function applyCell(cell,dice,raw,result){
     setSp('char-sprite','frozen'); setSp('p-avatar','frozen'); setSp('center-char','frozen');
     G.frozen=cell.freeze||1;
     updateBar();
-    regA('ok',()=>endTurn());
+    regA('ok',()=>{ closeOv(); endTurn(); });
     showOv({cls:'freeze',icon:'❄️',type:'冻结格',dice:diceStr,
       name:cell.name,
       desc:cell.desc+'\n\n下次行动时可消耗骰子解冻，或跳过回合。',
@@ -689,7 +792,7 @@ function applyCell(cell,dice,raw,result){
 
   } else {
     setSp('char-sprite','calm'); setSp('p-avatar','calm');
-    regA('ok',()=>endTurn());
+    regA('ok',()=>{ closeOv(); endTurn(); });
     showOv({cls:'',icon:'💨',type:'空格',dice:diceStr,
       name:cell.name,desc:cell.desc,btns:[{lbl:'继续',k:'ok'}]});
   }
@@ -906,6 +1009,7 @@ function sendRec(dice,raw,result,from,fin,cell){
     +'&cell_name='+encodeURIComponent(cell.name)
     +'&cell_type='+encodeURIComponent(cell.type)
     +'&cell_desc='+encodeURIComponent(cell.desc);
+  saveBalance(); // 每次投骰后同步剩余骰子到 GAS
 }
 
 // ================================================================
@@ -917,5 +1021,6 @@ function setMsg(m){
   if(cm) cm.textContent=m;
 }
 </script>
+<!-- v1.3 2026-03-19 GAS余额查询、继续/追加/重新开始、每投骰自动同步余额 -->
 </body>
 </html>
