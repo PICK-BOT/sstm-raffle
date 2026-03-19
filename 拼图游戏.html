@@ -94,12 +94,12 @@ body{background:#1a1a1a;font-family:Arial,sans-serif;color:#ccc;height:100vh;ove
   </div>
 </div>
 <div id="toast"></div>
-<div id="versionTag" style="position:fixed;bottom:10px;left:50%;transform:translateX(-50%);color:#666;font-size:12px;pointer-events:none;z-index:9996;letter-spacing:.5px">版本：v17 / 导出：2026-03-19</div>
+<div id="versionTag" style="position:fixed;bottom:10px;left:50%;transform:translateX(-50%);color:#666;font-size:12px;pointer-events:none;z-index:9996;letter-spacing:.5px">版本：v17</div>
 <script>
 var PUZZLE_CONFIG={
   "title": "拼图游戏",
   "imgUrl": "https://picsum.photos/id/29/800/600",
-  "gasUrl": "",
+  "gasUrl": "https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsiAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec",
   "rows": 3,
   "cols": 4,
   "edgeStyle": "classic"
@@ -680,7 +680,6 @@ function checkDone(){
 function closeModal(){document.getElementById('successModal').style.display='none';}
 
 function recordResult(ts){
-  if(!G.gasUrl) G.gasUrl=getRecordUrl()||'';
   if(!G.gasUrl)return;
   const now=new Date();
   const p=new URLSearchParams({
@@ -693,13 +692,7 @@ function recordResult(ts){
     difficulty:G.rows+'×'+G.cols,
     image_url:G.imgSrc
   });
-  const url=G.gasUrl+(G.gasUrl.includes('?')?'&':'?')+p.toString();
-  try{
-    const img=new Image();
-    img.referrerPolicy='no-referrer';
-    img.src=url;
-  }catch(e){}
-  fetch(url,{mode:'no-cors',cache:'no-store'}).catch(()=>{});
+  fetch(G.gasUrl+'?'+p.toString(),{mode:'no-cors'}).catch(()=>{});
 }
 
 // ── TIMER ──
@@ -788,75 +781,6 @@ window.addEventListener('resize',()=>{
   }
 });
 
-</script>
-<script>
-// 确保「导出用户版」一定会记录（就算引擎版本较旧）
-(function(){
-  function _getRecordUrl(){
-    try{
-      var urlParams=new URLSearchParams(window.location.search);
-      var u=urlParams.get('record');
-      if(u){
-        localStorage.setItem('puzzle_gas_url',u);
-        return u;
-      }
-      return localStorage.getItem('puzzle_gas_url')||'';
-    }catch(e){
-      return '';
-    }
-  }
-
-  if(typeof getRecordUrl!=='function'){
-    window.getRecordUrl=_getRecordUrl;
-  }
-
-  // startGame：优先使用 ?record= 覆盖 gasUrl
-  if(typeof startGame==='function'){
-    var _startGame=startGame;
-    window.startGame=function(){
-      var r=_getRecordUrl();
-      try{
-        if(r && window.G && (!G.gasUrl || String(G.gasUrl).trim()==='')) G.gasUrl=r;
-      }catch(e){}
-      return _startGame.apply(this,arguments);
-    };
-  }
-
-  // recordResult：完成时再补抓一次 record，并用 Image beacon 送出
-  if(typeof recordResult==='function'){
-    var _oldRecord=recordResult;
-    window.recordResult=function(ts){
-      try{
-        if(window.G){
-          if(!G.gasUrl) G.gasUrl=_getRecordUrl()||'';
-        }
-      }catch(e){}
-      try{
-        if(window.G && G.gasUrl){
-          var now=new Date();
-          var p=new URLSearchParams({
-            sheet:(typeof GAS_SHEET!=='undefined'?GAS_SHEET:'拼图游戏'),
-            date:now.toLocaleDateString('zh-TW'),
-            time:now.toLocaleTimeString('zh-TW',{hour12:false}),
-            user_id:(window.G&&G.userId)||'',
-            completed_time:ts||'',
-            pieces:(window.G&&G.rows&&G.cols)?(G.rows*G.cols):'',
-            difficulty:(window.G&&G.rows&&G.cols)?(G.rows+'×'+G.cols):'',
-            image_url:(window.G&&G.imgSrc)||''
-          });
-          var url=String(G.gasUrl)+(String(G.gasUrl).includes('?')?'&':'?')+p.toString();
-          try{
-            var img=new Image();
-            img.referrerPolicy='no-referrer';
-            img.src=url;
-          }catch(e){}
-          try{ fetch(url,{mode:'no-cors',cache:'no-store'}).catch(function(){}); }catch(e){}
-        }
-      }catch(e){}
-      try{ return _oldRecord.apply(this,arguments); }catch(e){ return; }
-    };
-  }
-})();
 </script>
 </body>
 </html>
