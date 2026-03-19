@@ -1,225 +1,864 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>大富翁走格子 - sstm 主题</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Microsoft YaHei',Arial,sans-serif;color:#fff;padding:16px;user-select:none}
-    .back-link{position:fixed;top:10px;left:10px;font-size:12px;color:rgba(255,255,255,.7);text-decoration:none}
-    .back-link:hover{color:#ffd200}
-    #id-screen{position:fixed;inset:0;z-index:600;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);display:flex;align-items:center;justify-content:center;flex-direction:column}
-    .id-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:36px 48px;text-align:center}
-    #id-input{width:100%;padding:12px 16px;font-size:1rem;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);border-radius:10px;color:#fff;outline:none;text-align:center;margin-bottom:12px}
-    #id-confirm{padding:12px 40px;font-size:1rem;background:linear-gradient(135deg,#f7971e,#ffd200);color:#1a1a1a;border:none;border-radius:50px;cursor:pointer;font-weight:700}
-    #id-err{color:#FF6B6B;font-size:.85rem;margin-top:8px}
-    #main{display:none;flex-direction:column;align-items:center}
-    h1{font-size:1.4rem;margin-bottom:10px}
-    #board{display:grid;grid-template-columns:repeat(10,36px);grid-template-rows:repeat(10,36px);gap:1px;background:rgba(0,0,0,.4);border-radius:6px;padding:2px}
-    .cell{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;font-size:7px;text-align:center;line-height:1.2;overflow:hidden}
-    .c-奖励{background:#1b5e20;color:#fff}
-    .c-惩罚{background:#b71c1c;color:#fff}
-    .c-空格{background:#37474f;color:#ccc}
-    .c-跳转{background:#311b92;color:#fff}
-    .cell-hl{box-shadow:0 0 0 2px #FFD93D}
-    #center{grid-row:2/10;grid-column:2/10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(15,12,41,.9);border-radius:4px;gap:4px;padding:8px}
-    #dice-face{font-size:36px}
-    #dice-num{font-size:12px;color:#FFD93D}
-    #game-msg{font-size:10px;color:rgba(255,255,255,.8);text-align:center;min-height:20px}
-    #roll-btn{padding:8px 20px;font-size:.9rem;background:linear-gradient(135deg,#f7971e,#ffd200);color:#1a1a1a;border:none;border-radius:50px;cursor:pointer;font-weight:700}
-    #roll-btn:disabled{opacity:.5;cursor:not-allowed}
-    #overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.8);z-index:200}
-    .card{background:linear-gradient(135deg,#1d6fa4,#6a0dad);border-radius:20px;padding:24px 40px;text-align:center;max-width:90vw}
-    .card-name{font-size:1.5rem;font-weight:800;margin:6px 0}
-    .card-desc{font-size:.9rem;opacity:.9;margin-bottom:12px}
-    .card-btn{padding:8px 24px;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.5);border-radius:20px;color:#fff;cursor:pointer}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>大富翁走格子 v2 - SSTM</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;
+  font-family:'Microsoft YaHei',Arial,sans-serif;color:#fff;user-select:none}
+
+/* ===== SCREENS ===== */
+.screen{display:none}
+.screen.active{display:flex}
+
+/* ===== SCREEN 1: ID ===== */
+#screen-id{position:fixed;inset:0;z-index:600;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e)}
+
+/* ===== SCREEN 2: DICE CALC ===== */
+#screen-dice{position:fixed;inset:0;z-index:600;flex-direction:column;
+  align-items:center;justify-content:center;padding:20px;
+  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e)}
+
+/* ===== SCREEN 3: MAIN ===== */
+#screen-main{min-height:100vh;flex-direction:column;align-items:center;padding:10px 6px}
+
+/* ===== CARDS ===== */
+.glass-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);
+  border-radius:20px;padding:32px 40px;max-width:420px;width:92%;text-align:center}
+.glass-card h2{font-size:1.3rem;color:#FFD93D;margin-bottom:6px}
+.glass-card p{font-size:.85rem;opacity:.7;margin-bottom:18px}
+
+/* ===== INPUTS ===== */
+.inp{width:100%;padding:11px 14px;font-size:1rem;background:rgba(255,255,255,.1);
+  border:2px solid rgba(255,255,255,.25);border-radius:10px;color:#fff;
+  outline:none;text-align:center;margin-bottom:12px}
+.inp:focus{border-color:#FFD93D}
+.input-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.input-row label{min-width:80px;font-size:.88rem;color:rgba(255,255,255,.8);text-align:left}
+.input-row .inp{margin:0;max-width:90px;flex-shrink:0}
+.input-row .exlbl{font-size:.72rem;opacity:.55;flex:1}
+
+/* ===== BUTTONS ===== */
+.btn-gold{padding:11px 38px;font-size:1rem;background:linear-gradient(135deg,#f7971e,#ffd200);
+  color:#1a1a1a;border:none;border-radius:50px;cursor:pointer;font-weight:800;
+  transition:transform .15s}
+.btn-gold:hover{transform:scale(1.04)}
+.btn-gold:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.err-msg{color:#FF6B6B;font-size:.83rem;margin-top:6px}
+
+/* ===== DICE PREVIEW ===== */
+.dice-preview{background:rgba(255,255,255,.04);border-radius:12px;
+  padding:12px;margin:12px 0;min-height:52px;text-align:center}
+.dbadge{display:inline-flex;align-items:center;gap:3px;
+  background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.4);
+  border-radius:16px;padding:4px 11px;margin:3px;font-size:.88rem;color:#FFD93D}
+
+/* ===== PLAYER BAR ===== */
+#player-bar{display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:7px 14px;margin-bottom:8px;
+  max-width:430px;width:100%}
+#p-avatar{width:32px;height:44px;flex-shrink:0;
+  background-image:url('images/char.png');
+  background-size:500% 300%;background-position:0% 0%;image-rendering:pixelated}
+#p-name{font-weight:700;color:#FFD93D;font-size:.88rem}
+#p-pos{font-size:.72rem;color:rgba(255,255,255,.55)}
+#freeze-badge{margin-left:auto;background:rgba(13,71,161,.6);
+  border:1px solid #1565c0;border-radius:8px;padding:3px 9px;
+  font-size:.72rem;color:#90CAF9;display:none}
+
+/* ===== BOARD ===== */
+#board-wrap{position:relative;display:inline-block}
+#board{display:grid;grid-template-columns:repeat(10,40px);
+  grid-template-rows:repeat(10,40px);gap:1px;
+  background:rgba(0,0,0,.4);border-radius:6px;padding:2px}
+.cell{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:3px;font-size:5.5px;text-align:center;line-height:1.25;overflow:hidden}
+.c-空格{background:#37474f;color:#aaa}
+.c-奖励{background:#1b5e20;color:#fff}
+.c-惩罚{background:#6a1b9a;color:#fff}
+.c-冻结{background:#0d47a1;color:#fff}
+.c-跳转{background:#311b92;color:#fff}
+.c-机会{background:#bf360c;color:#fff}
+.c-命运{background:#880e4f;color:#fff}
+.cell-hl{box-shadow:0 0 0 2px #FFD93D;z-index:2}
+
+/* ===== CENTER PANEL ===== */
+#center{grid-row:2/10;grid-column:2/10;background:rgba(15,12,41,.92);
+  border-radius:4px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:5px;padding:6px}
+#center-char{width:70px;height:78px;
+  background-image:url('images/char.png');
+  background-size:500% 300%;background-position:0% 0%;image-rendering:pixelated;
+  transition:background-position .18s}
+#center-msg{font-size:8px;text-align:center;color:rgba(255,255,255,.85);
+  max-width:280px;line-height:1.4}
+#center-inv{display:flex;flex-wrap:wrap;justify-content:center;gap:3px;margin-top:3px}
+.inv-chip{background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);
+  border-radius:6px;padding:2px 5px;font-size:7px;color:#FFD93D}
+.inv-chip.empty{opacity:.28}
+
+/* ===== CHARACTER ON BOARD ===== */
+#char-sprite{position:absolute;width:34px;height:46px;pointer-events:none;z-index:10;
+  background-image:url('images/char.png');
+  background-size:500% 300%;background-position:0% 0%;image-rendering:pixelated;
+  filter:drop-shadow(0 2px 5px rgba(0,0,0,.9));
+  transition:left .28s ease-in-out,top .28s ease-in-out;
+  left:2px;top:-4px}
+
+/* ===== CONTROLS ===== */
+#controls{display:flex;flex-wrap:wrap;align-items:center;
+  justify-content:center;gap:7px;margin-top:9px;max-width:430px;width:100%}
+.dbtn{padding:5px 11px;background:rgba(255,215,0,.08);
+  border:2px solid rgba(255,215,0,.35);border-radius:18px;
+  color:#FFD93D;cursor:pointer;font-size:.8rem;font-weight:700;transition:all .15s}
+.dbtn:hover:not(:disabled){background:rgba(255,215,0,.22);border-color:#FFD93D}
+.dbtn.sel{background:rgba(255,215,0,.32);border-color:#FFD93D;
+  box-shadow:0 0 8px rgba(255,215,0,.35)}
+.dbtn:disabled{opacity:.3;cursor:not-allowed}
+#roll-btn{padding:9px 26px;font-size:.95rem;
+  background:linear-gradient(135deg,#f7971e,#ffd200);
+  color:#1a1a1a;border:none;border-radius:50px;cursor:pointer;font-weight:800;
+  transition:transform .15s}
+#roll-btn:hover:not(:disabled){transform:scale(1.05)}
+#roll-btn:disabled{opacity:.48;cursor:not-allowed;transform:none}
+#status-bar{font-size:.75rem;color:rgba(255,255,255,.6);
+  text-align:center;margin-top:5px;min-height:18px;max-width:430px}
+
+/* ===== OVERLAY ===== */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);
+  z-index:500;display:none;align-items:center;justify-content:center;padding:16px}
+.ov-card{background:linear-gradient(135deg,#1d2671,#c33764);
+  border-radius:20px;padding:24px 32px;text-align:center;
+  max-width:92vw;width:360px}
+.ov-card.chance{background:linear-gradient(135deg,#bf360c,#e65100)}
+.ov-card.fate{background:linear-gradient(135deg,#6a1b9a,#880e4f)}
+.ov-card.freeze{background:linear-gradient(135deg,#0d47a1,#1565c0)}
+.ov-card.reward{background:linear-gradient(135deg,#1b5e20,#2e7d32)}
+.ov-icon{font-size:2.2rem;margin-bottom:6px}
+.ov-type{font-size:.72rem;opacity:.75;letter-spacing:.1em;margin-bottom:3px}
+.ov-dice{font-size:.8rem;color:#FFD93D;margin-bottom:8px}
+.ov-name{font-size:1.3rem;font-weight:800;margin:4px 0}
+.ov-desc{font-size:.85rem;opacity:.9;margin-bottom:14px;line-height:1.55;white-space:pre-wrap}
+.ov-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.ov-btn{padding:7px 20px;background:rgba(255,255,255,.18);
+  border:2px solid rgba(255,255,255,.45);border-radius:18px;
+  color:#fff;cursor:pointer;font-size:.85rem;font-weight:700;transition:background .15s}
+.ov-btn:hover{background:rgba(255,255,255,.32)}
+.ov-btn.gold{background:rgba(255,215,0,.28);border-color:#FFD93D;color:#FFD93D}
+.freeze-opts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:10px 0}
+.fbtn{padding:5px 13px;background:rgba(144,202,249,.15);
+  border:1px solid rgba(144,202,249,.4);border-radius:14px;
+  color:#90CAF9;cursor:pointer;font-size:.78rem;transition:background .15s}
+.fbtn:hover{background:rgba(144,202,249,.28)}
+.fbtn:disabled{opacity:.3;cursor:not-allowed}
+</style>
 </head>
 <body>
-  <a class="back-link" href="javascript:history.back()">← 返回主题</a>
-  <div id="id-screen">
-    <div class="id-card">
-      <h2 style="margin-bottom:8px">🎲 大富翁走格子</h2>
-      <p style="font-size:.9rem;opacity:.8;margin-bottom:16px"> 输入论坛 ID 进入游戏，记录会传给主办</p>
-      <input id="id-input" type="text" placeholder="论坛 ID" maxlength="50" onkeydown="if(event.key==='Enter')confirmId()">
-      <button id="id-confirm" onclick="confirmId()">进入游戏</button>
-      <div id="id-err"></div>
-    </div>
+
+<!-- ===== SCREEN 1: ID ===== -->
+<div id="screen-id" class="screen active">
+  <div class="glass-card">
+    <h2>🎲 大富翁走格子</h2>
+    <p>输入论坛 ID 开始游戏</p>
+    <input id="inp-id" class="inp" type="text" placeholder="论坛 ID" maxlength="50"
+      onkeydown="if(event.key==='Enter')s1Confirm()">
+    <button class="btn-gold" onclick="s1Confirm()">确认 →</button>
+    <div id="id-err" class="err-msg"></div>
   </div>
-  <div id="main">
-    <h1>🎲 大富翁走格子</h1>
+</div>
+
+<!-- ===== SCREEN 2: DICE CALC ===== -->
+<div id="screen-dice" class="screen">
+  <div class="glass-card">
+    <h2>🎲 计算骰子</h2>
+    <p>根据你的论坛活动兑换骰子</p>
+    <div class="input-row">
+      <label>💬 回复数</label>
+      <input id="inp-replies" class="inp" type="number" min="0" value="0" oninput="calcDice()">
+      <span class="exlbl" id="exlbl-replies"></span>
+    </div>
+    <div class="input-row">
+      <label>🔗 被引用数</label>
+      <input id="inp-citations" class="inp" type="number" min="0" value="0" oninput="calcDice()">
+      <span class="exlbl" id="exlbl-citations"></span>
+    </div>
+    <div class="dice-preview" id="dice-preview">
+      <span style="opacity:.45;font-size:.82rem">输入数量后自动计算</span>
+    </div>
+    <button class="btn-gold" id="start-btn" onclick="s2Start()" disabled>开始游戏 →</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN 3: MAIN ===== -->
+<div id="screen-main" class="screen">
+  <h1 style="font-size:1.15rem;margin-bottom:7px">🎲 大富翁走格子</h1>
+
+  <div id="player-bar">
+    <div id="p-avatar"></div>
+    <div>
+      <div id="p-name">—</div>
+      <div id="p-pos">格 0 · 起点</div>
+    </div>
+    <div id="freeze-badge">❄ 冻结 <span id="freeze-n">0</span> 回</div>
+  </div>
+
+  <div id="board-wrap">
     <div id="board"></div>
-    <div id="overlay">
-      <div class="card">
-        <div id="res-dice" style="font-size:.9rem;margin-bottom:4px"></div>
-        <div class="card-name" id="res-name">—</div>
-        <div class="card-desc" id="res-desc"></div>
-        <button class="card-btn" onclick="closeResult()">关闭</button>
-      </div>
-    </div>
+    <div id="char-sprite"></div>
   </div>
-  <script>
-(function(){
-  var params = new URLSearchParams(window.location.search);
-  var RECORD_URL = 'https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsiAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec';
 
-  var BOARD = [
-    {id:0,name:"起 点",type:"空格",desc:"起点，平安无事"},
-    {id:1,name:"节操+10",type:"奖励",desc:"获得10节操"},
-    {id:2,name:"空  格",type:"空格",desc:"无事发生"},
-    {id:3,name:"退后2格",type:"惩罚",desc:"退后2格",steps:-2},
-    {id:4,name:"羽毛+5",type:"奖励",desc:"获得5羽毛"},
-    {id:5,name:"冻结1回",type:"惩罚",desc:"跳过下1回合",freeze:1},
-    {id:6,name:"跳→15",type:"跳转",desc:"跳到格子15",jump_to:15},
-    {id:7,name:"节操+20",type:"奖励",desc:"获得20节操"},
-    {id:8,name:"空  格",type:"空格",desc:"无事发生"},
-    {id:9,name:"退后3格",type:"惩罚",desc:"退后3格",steps:-3},
-    {id:10,name:"羽毛+10",type:"奖励",desc:"获得10羽毛"},
-    {id:11,name:"空  格",type:"空格",desc:"无事发生"},
-    {id:12,name:"退后2格",type:"惩罚",desc:"退后2格",steps:-2},
-    {id:13,name:"节操+30",type:"奖励",desc:"获得30节操"},
-    {id:14,name:"冻结2回",type:"惩罚",desc:"跳过下2回合",freeze:2},
-    {id:15,name:"空  格",type:"空格",desc:"无事发生"},
-    {id:16,name:"节操+15",type:"奖励",desc:"获得15节操"},
-    {id:17,name:"跳→起点",type:"跳转",desc:"跳回起点(格0)",jump_to:0},
-    {id:18,name:"退后2格",type:"惩罚",desc:"退后2格",steps:-2},
-    {id:19,name:"空  格",type:"空格",desc:"无事发生"},
-    {id:20,name:"节操+10",type:"奖励",desc:"获得10节操"},
-    {id:21,name:"退后4格",type:"惩罚",desc:"退后4格",steps:-4},
-    {id:22,name:"空  格",type:"空格",desc:"无事发生"},
-    {id:23,name:"羽毛+5",type:"奖励",desc:"获得5羽毛"},
-    {id:24,name:"跳→30",type:"跳转",desc:"跳到格子30",jump_to:30},
-    {id:25,name:"空  格",type:"空格",desc:"无事发生"},
-    {id:26,name:"冻结1回",type:"惩罚",desc:"跳过下1回合",freeze:1},
-    {id:27,name:"节操+20",type:"奖励",desc:"获得20节操"},
-    {id:28,name:"空  格",type:"空格",desc:"无事发生"},
-    {id:29,name:"退后2格",type:"惩罚",desc:"退后2格",steps:-2},
-    {id:30,name:"节操+10",type:"奖励",desc:"获得10节操"},
-    {id:31,name:"空  格",type:"空格",desc:"无事发生"},
-    {id:32,name:"羽毛+30",type:"奖励",desc:"获得30羽毛"},
-    {id:33,name:"退后3格",type:"惩罚",desc:"退后3格",steps:-3},
-    {id:34,name:"跳→5",type:"跳转",desc:"跳到格子5",jump_to:5},
-    {id:35,name:"节操+50",type:"奖励",desc:"获得50节操"}
-  ];
+  <div id="controls">
+    <button class="dbtn sel" id="btn-d4"  onclick="selDice(4)">d4  <span id="n4">×0</span></button>
+    <button class="dbtn"     id="btn-d6"  onclick="selDice(6)">d6  <span id="n6">×0</span></button>
+    <button class="dbtn"     id="btn-d8"  onclick="selDice(8)">d8  <span id="n8">×0</span></button>
+    <button class="dbtn"     id="btn-d10" onclick="selDice(10)">d10 <span id="n10">×0</span></button>
+    <button class="dbtn"     id="btn-d12" onclick="selDice(12)">d12 <span id="n12">×0</span></button>
+    <button id="roll-btn" onclick="doRoll()">🎲 投骰</button>
+  </div>
+  <div id="status-bar"></div>
+</div>
 
-  var FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
-  var pos = 0, skip = 0, userId = '', pending = false;
+<!-- ===== OVERLAY ===== -->
+<div id="overlay">
+  <div class="ov-card" id="ov-card">
+    <div class="ov-icon" id="ov-icon">🎲</div>
+    <div class="ov-type" id="ov-type"></div>
+    <div class="ov-dice" id="ov-dice"></div>
+    <div class="ov-name" id="ov-name"></div>
+    <div class="ov-desc" id="ov-desc"></div>
+    <div class="ov-btns" id="ov-btns"></div>
+  </div>
+</div>
 
-  function cellPos(id){
-    if(id<=9) return [1, id+1];
-    if(id<=17) return [id-8, 10];
-    if(id<=27) return [10, 28-id];
-    return [37-id, 1];
+<script>
+// ================================================================
+// CONFIG — 游戏配置器可编辑
+// ================================================================
+var CONFIG = {
+  exchanges: [
+    {label:'每5回复',  source:'replies',   amount:5, dice_type:4, dice_count:1, sign:'+'},
+    {label:'每1被引用', source:'citations', amount:1, dice_type:4, dice_count:1, sign:'+'}
+  ],
+  unfreeze_dice_type: 4,
+  unfreeze_per_turn: 1
+};
+
+// ================================================================
+// BOARD — 游戏配置器可视化编辑
+// ================================================================
+var BOARD = [
+  {id:0,  name:"起 点",   type:"空格", desc:"起点，平安无事"},
+  {id:1,  name:"节操+10", type:"奖励", desc:"获得10节操"},
+  {id:2,  name:"机 会",   type:"机会", desc:"抽取一张机会卡"},
+  {id:3,  name:"退后2格", type:"惩罚", desc:"退后2格", steps:-2},
+  {id:4,  name:"羽毛+5",  type:"奖励", desc:"获得5羽毛"},
+  {id:5,  name:"冻 结",   type:"冻结", desc:"冻结1回合，可消耗骰子解冻", freeze:1},
+  {id:6,  name:"命 运",   type:"命运", desc:"抽取一张命运卡"},
+  {id:7,  name:"节操+20", type:"奖励", desc:"获得20节操"},
+  {id:8,  name:"机 会",   type:"机会", desc:"抽取一张机会卡"},
+  {id:9,  name:"退后3格", type:"惩罚", desc:"退后3格", steps:-3},
+  {id:10, name:"跳→15",   type:"跳转", desc:"跳到格子15", jump_to:15},
+  {id:11, name:"命 运",   type:"命运", desc:"抽取一张命运卡"},
+  {id:12, name:"退后2格", type:"惩罚", desc:"退后2格", steps:-2},
+  {id:13, name:"节操+30", type:"奖励", desc:"获得30节操"},
+  {id:14, name:"冻 结",   type:"冻结", desc:"冻结2回合，可消耗骰子解冻", freeze:2},
+  {id:15, name:"机 会",   type:"机会", desc:"抽取一张机会卡"},
+  {id:16, name:"节操+15", type:"奖励", desc:"获得15节操"},
+  {id:17, name:"命 运",   type:"命运", desc:"抽取一张命运卡"},
+  {id:18, name:"退后2格", type:"惩罚", desc:"退后2格", steps:-2},
+  {id:19, name:"机 会",   type:"机会", desc:"抽取一张机会卡"},
+  {id:20, name:"节操+10", type:"奖励", desc:"获得10节操"},
+  {id:21, name:"退后4格", type:"惩罚", desc:"退后4格", steps:-4},
+  {id:22, name:"命 运",   type:"命运", desc:"抽取一张命运卡"},
+  {id:23, name:"羽毛+5",  type:"奖励", desc:"获得5羽毛"},
+  {id:24, name:"跳→30",   type:"跳转", desc:"跳到格子30", jump_to:30},
+  {id:25, name:"机 会",   type:"机会", desc:"抽取一张机会卡"},
+  {id:26, name:"冻 结",   type:"冻结", desc:"冻结1回合，可消耗骰子解冻", freeze:1},
+  {id:27, name:"节操+20", type:"奖励", desc:"获得20节操"},
+  {id:28, name:"命 运",   type:"命运", desc:"抽取一张命运卡"},
+  {id:29, name:"退后2格", type:"惩罚", desc:"退后2格", steps:-2},
+  {id:30, name:"节操+10", type:"奖励", desc:"获得10节操"},
+  {id:31, name:"机 会",   type:"机会", desc:"抽取一张机会卡"},
+  {id:32, name:"羽毛+30", type:"奖励", desc:"获得30羽毛"},
+  {id:33, name:"退后3格", type:"惩罚", desc:"退后3格", steps:-3},
+  {id:34, name:"跳→5",    type:"跳转", desc:"跳到格子5", jump_to:5},
+  {id:35, name:"节操+50", type:"奖励", desc:"获得50节操"}
+];
+
+// ================================================================
+// CHANCE_CARDS — 游戏配置器可编辑
+// ================================================================
+var CHANCE_CARDS = [
+  {name:"幸运眷顾",   desc:"前进3格",                    type:"advance",     value:3},
+  {name:"顺风飞翔",   desc:"前进5格",                    type:"advance",     value:5},
+  {name:"误入歧途",   desc:"退后2格",                    type:"retreat",     value:2},
+  {name:"时光倒流",   desc:"退回起点（格0）",             type:"goto",        value:0},
+  {name:"神秘传送",   desc:"随机跳到任意格",              type:"random",      value:-1},
+  {name:"节操暴增",   desc:"记录节操+30（下次领取）",     type:"reward",      value:"节操+30"},
+  {name:"再投一次",   desc:"立刻获得一次额外投骰机会",    type:"extra_roll",  value:1},
+  {name:"冻结解除",   desc:"立即解除所有冻结状态",        type:"unfreeze",    value:0},
+  {name:"平安符",     desc:"本次格子效果无效化",          type:"nothing",     value:0},
+  {name:"往前到奖励", desc:"跳到前方最近的奖励格",        type:"next_reward", value:0}
+];
+
+// ================================================================
+// FATE_CARDS — 游戏配置器可编辑
+// ================================================================
+var FATE_CARDS = [
+  {name:"命运考验",   desc:"需在主题完成3次有效回复后方可继续游戏",          type:"task_reply",    value:3},
+  {name:"引用挑战",   desc:"需被他人引用1次后方可继续游戏",                  type:"task_citation", value:1},
+  {name:"命运惩戒",   desc:"冻结3回合（可消耗骰子提前解冻）",               type:"freeze",        value:3},
+  {name:"命运恩赐",   desc:"直接前进到前方最近的奖励格",                    type:"next_reward",   value:0},
+  {name:"宿命轮回",   desc:"传送回起点，且下次投骰点数翻倍",               type:"goto_double",   value:0},
+  {name:"命运双刃",   desc:"下一次投骰点数翻倍",                           type:"double_next",   value:1},
+  {name:"再抽机会",   desc:"立刻抽取一张机会卡",                           type:"extra_chance",  value:1},
+  {name:"宿命之图",   desc:"需在主题发布1张与活动相关的图片后方可继续",     type:"task_image",    value:1},
+  {name:"命运厚礼",   desc:"随机获得 d6 × 1",                             type:"reward_dice",   value:{t:6,c:1}},
+  {name:"命运之罚",   desc:"随机退后 1～3 格",                            type:"retreat_rnd",   value:3}
+];
+
+// ================================================================
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsiAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec';
+
+// ================================================================
+// SPRITE  (5 列 × 3 行)
+// ================================================================
+var SP = {
+  idle:      [0,0], happy:     [1,0], calm:     [2,0], shy:      [3,0], think:    [4,0],
+  walk1:     [0,1], walk2:     [1,1], jump:     [2,1], cheer:    [3,1], worried:  [4,1],
+  frozen:    [0,2], spin:      [1,2], land:     [2,2], point:    [3,2], victory:  [4,2]
+};
+function spPos(key){
+  var s=SP[key]||SP.idle;
+  return (s[0]*25)+'% '+(s[1]*50)+'%';
+}
+function setSp(id,key){
+  var el=document.getElementById(id);
+  if(el) el.style.backgroundPosition=spPos(key);
+}
+
+// ================================================================
+// STATE
+// ================================================================
+var G = {
+  userId:'', pos:0,
+  dice:{4:0,6:0,8:0,10:0,12:0},
+  sel:4,
+  frozen:0,
+  doubleNext:false,
+  shield:false,
+  pending:false
+};
+
+// ================================================================
+// OVERLAY ACTION REGISTRY
+// ================================================================
+var OVA = {};
+function regA(k,fn){ OVA[k]=fn; }
+function runA(k){ if(OVA[k]) OVA[k](); }
+window.runA = runA;
+
+// ================================================================
+// SCREEN HELPERS
+// ================================================================
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// SCREEN 1
+function s1Confirm(){
+  var v=document.getElementById('inp-id').value.trim();
+  if(!v){document.getElementById('id-err').textContent='请输入论坛 ID';return;}
+  G.userId=v;
+  document.getElementById('id-err').textContent='';
+  CONFIG.exchanges.forEach(ex=>{
+    var lbl=document.getElementById('exlbl-'+ex.source);
+    if(lbl) lbl.textContent=ex.label+'换 d'+ex.dice_type+'×'+ex.dice_count;
+  });
+  calcDice();
+  showScreen('screen-dice');
+}
+window.s1Confirm=s1Confirm;
+
+// SCREEN 2
+function calcDice(){
+  var r=parseInt(document.getElementById('inp-replies').value)||0;
+  var c=parseInt(document.getElementById('inp-citations').value)||0;
+  var res={4:0,6:0,8:0,10:0,12:0};
+  CONFIG.exchanges.forEach(ex=>{
+    var amt=(ex.source==='replies'?r:c);
+    if(amt<=0||ex.amount<=0)return;
+    var n=Math.floor(amt/ex.amount)*ex.dice_count;
+    if(ex.sign==='+'){ res[ex.dice_type]=(res[ex.dice_type]||0)+n; }
+    else { res[ex.dice_type]=Math.max(0,(res[ex.dice_type]||0)-n); }
+  });
+  var total=Object.values(res).reduce((a,b)=>a+b,0);
+  var prev=document.getElementById('dice-preview');
+  if(total===0){
+    prev.innerHTML='<span style="opacity:.45;font-size:.82rem">未获得骰子，请调整数量</span>';
+    document.getElementById('start-btn').disabled=true;
+  } else {
+    prev.innerHTML=[4,6,8,10,12].filter(t=>res[t]>0)
+      .map(t=>'<span class="dbadge">🎲 d'+t+' × '+res[t]+'</span>').join('');
+    document.getElementById('start-btn').disabled=false;
   }
+  window._pendingDice=res;
+}
+window.calcDice=calcDice;
 
-  function buildBoard(){
-    var container = document.getElementById('board');
-    container.innerHTML = '';
-    BOARD.forEach(function(c){
-      var p = cellPos(c.id);
-      var div = document.createElement('div');
-      div.className = 'cell c-' + c.type;
-      div.id = 'cell-' + c.id;
-      div.style.gridRow = p[0];
-      div.style.gridColumn = p[1];
-      div.title = '格' + c.id + ': ' + c.name + ' — ' + c.desc;
-      div.textContent = c.id + ' ' + c.name.replace(/\s/g,'');
-      container.appendChild(div);
-    });
-    var center = document.createElement('div');
-    center.id = 'center';
-    center.style.gridRow = '2/10';
-    center.style.gridColumn = '2/10';
-    center.innerHTML = '<div id="dice-face">🎲</div><div id="dice-num"></div><div id="game-msg">掷骰子走格子</div><button id="roll-btn" onclick="doRoll()">🎲 掷骰</button>';
-    container.appendChild(center);
+function s2Start(){
+  var r=window._pendingDice||{};
+  G.dice={4:r[4]||0,6:r[6]||0,8:r[8]||0,10:r[10]||0,12:r[12]||0};
+  G.sel=[4,6,8,10,12].find(t=>G.dice[t]>0)||4;
+  buildBoard();
+  updateDiceUI();
+  updateBar();
+  charMove(0,true);
+  setSp('p-avatar','idle'); setSp('center-char','idle');
+  showScreen('screen-main');
+}
+window.s2Start=s2Start;
+
+// ================================================================
+// BOARD
+// ================================================================
+function cellGrid(id){
+  if(id<=9)  return {r:1,   c:id+1};
+  if(id<=17) return {r:id-8,c:10};
+  if(id<=27) return {r:10,  c:28-id};
+  return {r:37-id, c:1};
+}
+function cellPx(id){
+  var g=cellGrid(id);
+  return {x:2+(g.c-1)*41, y:2+(g.r-1)*41};
+}
+
+function buildBoard(){
+  var el=document.getElementById('board');
+  el.innerHTML='';
+  BOARD.forEach(c=>{
+    var g=cellGrid(c.id);
+    var d=document.createElement('div');
+    d.className='cell c-'+c.type;
+    d.id='cell-'+c.id;
+    d.style.gridRow=g.r; d.style.gridColumn=g.c;
+    d.title='格'+c.id+': '+c.name+'—'+c.desc;
+    d.innerHTML='<span style="font-size:4.5px;opacity:.6">'+c.id+'</span>'
+      +'<span>'+c.name.replace(/\s/g,'')+'</span>';
+    el.appendChild(d);
+  });
+  var ctr=document.createElement('div');
+  ctr.id='center'; ctr.style.gridRow='2/10'; ctr.style.gridColumn='2/10';
+  ctr.innerHTML=
+    '<div id="center-char"></div>'+
+    '<div id="center-msg" style="font-size:8px;text-align:center;color:rgba(255,255,255,.85)">准备出发！</div>'+
+    '<div id="center-inv"></div>';
+  el.appendChild(ctr);
+}
+
+function hlCell(id){
+  document.querySelectorAll('.cell-hl').forEach(e=>e.classList.remove('cell-hl'));
+  var el=document.getElementById('cell-'+id);
+  if(el) el.classList.add('cell-hl');
+}
+
+// ================================================================
+// CHARACTER
+// ================================================================
+function charMove(id,instant){
+  var px=cellPx(id);
+  var sp=document.getElementById('char-sprite');
+  if(!sp) return;
+  if(instant){
+    sp.style.transition='none';
+    sp.style.left=px.x+'px'; sp.style.top=(px.y-6)+'px';
+    setTimeout(()=>{ sp.style.transition='left .28s ease-in-out,top .28s ease-in-out'; },50);
+  } else {
+    sp.style.left=px.x+'px'; sp.style.top=(px.y-6)+'px';
   }
+}
 
-  function updateHighlight(){
-    document.querySelectorAll('.cell-hl').forEach(function(el){ el.classList.remove('cell-hl'); });
-    var el = document.getElementById('cell-' + pos);
-    if(el) el.classList.add('cell-hl');
-  }
-
-  function sendRecord(dice, from_pos, final_pos, cell){
-    if(!RECORD_URL || RECORD_URL.indexOf('http')!==0) return;
-    var now = new Date();
-    var dateStr = now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0')+'-'+now.getDate().toString().padStart(2,'0');
-    var timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0')+':'+now.getSeconds().toString().padStart(2,'0');
-    var q = '?sheet=大富翁&date='+encodeURIComponent(dateStr)+'&time='+encodeURIComponent(timeStr)+'&user_id='+encodeURIComponent(userId)+'&dice='+encodeURIComponent(dice)+'&from_pos='+from_pos+'&final_pos='+final_pos+'&cell_name='+encodeURIComponent(cell.name)+'&cell_type='+encodeURIComponent(cell.type)+'&cell_desc='+encodeURIComponent(cell.desc);
-    var img = new Image();
-    img.src = RECORD_URL + q;
-  }
-
-  function showResult(dice, from_pos, to_pos, final_pos, cell, skipped, skipLeft){
-    var resDice = document.getElementById('res-dice');
-    var resName = document.getElementById('res-name');
-    var resDesc = document.getElementById('res-desc');
-    if(skipped){
-      resDice.textContent = '❄️ 冻结，跳过本回合';
-      resName.textContent = '剩余冻结 ' + skipLeft + ' 回';
-      resDesc.textContent = '';
-    } else {
-      resDice.textContent = FACES[dice-1] + ' 掷出 ' + dice + ' 点  格' + from_pos + '→格' + final_pos;
-      resName.textContent = cell.name;
-      resDesc.textContent = cell.desc;
-    }
-    document.getElementById('overlay').style.display = 'flex';
-  }
-
-  function closeResult(){
-    document.getElementById('overlay').style.display = 'none';
-    pending = false;
-    document.getElementById('roll-btn').disabled = false;
-    updateHighlight();
-  }
-
-  function doRoll(){
-    if(pending) return;
-    pending = true;
-    document.getElementById('roll-btn').disabled = true;
-    var from_pos = pos;
-    if(skip > 0){
-      skip--;
-      showResult(0, from_pos, from_pos, from_pos, BOARD[from_pos], true, skip);
-      document.getElementById('game-msg').textContent = userId + ' 冻结中，剩余 ' + skip + ' 回';
+var _walkTmr=null;
+function animWalk(path,onDone){
+  var i=0;
+  clearInterval(_walkTmr);
+  _walkTmr=setInterval(()=>{
+    if(i>=path.length){
+      clearInterval(_walkTmr);
+      setSp('char-sprite','land'); setSp('p-avatar','idle'); setSp('center-char','idle');
+      if(onDone) onDone();
       return;
     }
-    var dice = Math.floor(Math.random()*6)+1;
-    var to_pos = (from_pos + dice) % 36;
-    var cell = BOARD[to_pos];
-    var final_pos = to_pos;
-    if(cell.type === '跳转' && cell.jump_to !== undefined){
-      final_pos = cell.jump_to;
-    } else if(cell.steps){
-      var n = Math.abs(cell.steps);
-      for(var i=0;i<n;i++) final_pos = (final_pos - 1 + 36) % 36;
-    } else if(cell.freeze){
-      skip = cell.freeze;
-    }
-    pos = final_pos;
-    document.getElementById('dice-face').textContent = FACES[dice-1];
-    document.getElementById('dice-num').textContent = dice + ' 点';
-    document.getElementById('game-msg').textContent = userId + ' 掷出 ' + dice + ' 点，抵达格' + final_pos + ' ' + cell.name;
-    sendRecord(dice, from_pos, final_pos, cell);
-    showResult(dice, from_pos, to_pos, final_pos, cell, false);
+    charMove(path[i],false);
+    hlCell(path[i]);
+    setSp('char-sprite',i%2===0?'walk1':'walk2');
+    setSp('p-avatar',i%2===0?'walk1':'walk2');
+    i++;
+  },290);
+}
+
+// ================================================================
+// DICE UI
+// ================================================================
+function updateDiceUI(){
+  [4,6,8,10,12].forEach(t=>{
+    var n=document.getElementById('n'+t);
+    if(n) n.textContent='×'+G.dice[t];
+    var b=document.getElementById('btn-d'+t);
+    if(b){ b.classList.toggle('sel',G.sel===t); b.disabled=(G.dice[t]<=0); }
+  });
+  // center inventory
+  var inv=document.getElementById('center-inv');
+  if(inv){
+    inv.innerHTML=[4,6,8,10,12].map(t=>
+      '<span class="inv-chip'+(G.dice[t]<=0?' empty':'')+'">d'+t+'×'+G.dice[t]+'</span>'
+    ).join('');
+  }
+  var rb=document.getElementById('roll-btn');
+  if(rb) rb.disabled=G.pending;
+}
+
+function selDice(s){
+  if(G.dice[s]<=0) return;
+  G.sel=s; updateDiceUI();
+}
+window.selDice=selDice;
+
+// ================================================================
+// PLAYER BAR
+// ================================================================
+function updateBar(){
+  document.getElementById('p-name').textContent=G.userId;
+  var c=BOARD[G.pos];
+  document.getElementById('p-pos').textContent='格 '+G.pos+' · '+c.name.replace(/\s/g,'');
+  var fb=document.getElementById('freeze-badge');
+  if(G.frozen>0){
+    fb.style.display='block';
+    document.getElementById('freeze-n').textContent=G.frozen>=99?'任务':G.frozen;
+  } else { fb.style.display='none'; }
+}
+
+// ================================================================
+// ROLL
+// ================================================================
+function doRoll(){
+  if(G.pending) return;
+  if(G.frozen>0){ showFreezeOv(); return; }
+  if(![4,6,8,10,12].some(t=>G.dice[t]>0)){ setMsg('骰子已全部用完！'); return; }
+  if(G.dice[G.sel]<=0){ G.sel=[4,6,8,10,12].find(t=>G.dice[t]>0)||4; updateDiceUI(); }
+
+  G.pending=true; updateDiceUI();
+  G.dice[G.sel]--;
+  var sides=G.sel;
+  var raw=Math.floor(Math.random()*sides)+1;
+  var result=G.doubleNext?raw*2:raw;
+  if(G.doubleNext) G.doubleNext=false;
+
+  setSp('char-sprite','spin'); setSp('p-avatar','spin'); setSp('center-char','spin');
+  setMsg(G.userId+' 投出 d'+sides+' → '+raw+(result!==raw?' (×2='+result+')':''));
+  document.getElementById('center-msg').textContent='🎲 '+result+' 点！';
+
+  var from=G.pos;
+  var path=[];
+  for(var s=1;s<=result;s++) path.push((from+s)%BOARD.length);
+
+  setTimeout(()=>{
+    animWalk(path,()=>{
+      G.pos=path[path.length-1];
+      hlCell(G.pos); updateBar(); updateDiceUI();
+      sendRec(sides,raw,result,from,G.pos,BOARD[G.pos]);
+      applyCell(BOARD[G.pos],sides,raw,result);
+    });
+  },300);
+}
+window.doRoll=doRoll;
+
+// ================================================================
+// CELL EFFECTS
+// ================================================================
+function applyCell(cell,dice,raw,result){
+  var diceStr='d'+dice+' 投出 '+raw+(result!==raw?' (×2='+result+')':'')
+    +'  格'+((G.pos-result+BOARD.length)%BOARD.length)+'→格'+G.pos;
+
+  if(G.shield&&(cell.type==='惩罚'||cell.type==='冻结')){
+    G.shield=false;
+    regA('ok',()=>endTurn());
+    showOv({cls:'',icon:'🛡',type:'平安符生效',dice:diceStr,
+      name:'已被平安符保护',desc:'本次「'+cell.name+'」效果已抵消',
+      btns:[{lbl:'确认',k:'ok'}]});
+    return;
   }
 
-  function confirmId(){
-    var v = document.getElementById('id-input').value.trim();
-    if(!v){ document.getElementById('id-err').textContent = '请输入论坛 ID '; return; }
-    userId = v;
-    document.getElementById('id-screen').style.display = 'none';
-    document.getElementById('main').style.display = 'flex';
-    buildBoard();
-    updateHighlight();
+  if(cell.type==='奖励'){
+    setSp('char-sprite','happy'); setSp('p-avatar','happy'); setSp('center-char','cheer');
+    regA('ok',()=>endTurn());
+    showOv({cls:'reward',icon:'🎉',type:'奖励格',dice:diceStr,
+      name:cell.name,desc:cell.desc,btns:[{lbl:'太好了！',k:'ok',gold:true}]});
+
+  } else if(cell.type==='惩罚'){
+    setSp('char-sprite','worried'); setSp('p-avatar','worried'); setSp('center-char','worried');
+    var steps=cell.steps||0;
+    regA('ok',()=>{ closeOv(); moveSteps(steps); });
+    showOv({cls:'',icon:'💫',type:'惩罚格',dice:diceStr,
+      name:cell.name,desc:cell.desc+'\n\n将会'+( steps<0?'退后':'前进')+Math.abs(steps)+'格',
+      btns:[{lbl:'接受惩罚',k:'ok'}]});
+
+  } else if(cell.type==='冻结'){
+    setSp('char-sprite','frozen'); setSp('p-avatar','frozen'); setSp('center-char','frozen');
+    G.frozen=cell.freeze||1;
+    updateBar();
+    regA('ok',()=>endTurn());
+    showOv({cls:'freeze',icon:'❄️',type:'冻结格',dice:diceStr,
+      name:cell.name,
+      desc:cell.desc+'\n\n下次行动时可消耗骰子解冻，或跳过回合。',
+      btns:[{lbl:'知道了',k:'ok'}]});
+
+  } else if(cell.type==='跳转'){
+    setSp('char-sprite','jump'); setSp('p-avatar','jump'); setSp('center-char','jump');
+    var dest=cell.jump_to;
+    regA('ok',()=>{ closeOv(); jumpTo(dest); });
+    showOv({cls:'',icon:'🌀',type:'跳转格',dice:diceStr,
+      name:cell.name,desc:cell.desc,btns:[{lbl:'传送！',k:'ok',gold:true}]});
+
+  } else if(cell.type==='机会'){
+    setSp('char-sprite','shy'); setSp('p-avatar','shy'); setSp('center-char','think');
+    var card=CHANCE_CARDS[Math.floor(Math.random()*CHANCE_CARDS.length)];
+    showChanceCard(card,diceStr);
+
+  } else if(cell.type==='命运'){
+    setSp('char-sprite','think'); setSp('p-avatar','think'); setSp('center-char','think');
+    var fc=FATE_CARDS[Math.floor(Math.random()*FATE_CARDS.length)];
+    showFateCard(fc,diceStr);
+
+  } else {
+    setSp('char-sprite','calm'); setSp('p-avatar','calm');
+    regA('ok',()=>endTurn());
+    showOv({cls:'',icon:'💨',type:'空格',dice:diceStr,
+      name:cell.name,desc:cell.desc,btns:[{lbl:'继续',k:'ok'}]});
+  }
+}
+
+// ================================================================
+// MOVEMENT HELPERS
+// ================================================================
+function moveSteps(steps){
+  if(!steps){ endTurn(); return; }
+  var n=Math.abs(steps), dir=steps>0?1:-1;
+  var path=[], cur=G.pos;
+  for(var i=0;i<n;i++){ cur=(cur+dir+BOARD.length)%BOARD.length; path.push(cur); }
+  animWalk(path,()=>{ G.pos=cur; hlCell(G.pos); updateBar(); endTurn(); });
+}
+
+function jumpTo(dest){
+  charMove(dest,false);
+  setTimeout(()=>{ G.pos=dest; hlCell(dest); updateBar();
+    setSp('char-sprite','land'); endTurn();
+    document.getElementById('center-msg').textContent='传送到格 '+dest;
+  },350);
+}
+
+function nextRewardCell(){
+  for(var k=1;k<BOARD.length;k++){
+    var idx=(G.pos+k)%BOARD.length;
+    if(BOARD[idx].type==='奖励') return idx;
+  }
+  return G.pos;
+}
+
+function endTurn(){
+  G.pending=false; updateDiceUI();
+  setSp('char-sprite','idle');
+}
+
+// ================================================================
+// CHANCE CARD
+// ================================================================
+function showChanceCard(card,diceStr){
+  var k='chance';
+  regA(k,()=>{ closeOv(); applyChance(card); });
+  var lbl=card.type==='advance'?'前进 '+card.value+' 格'
+    :card.type==='retreat'?'退后 '+card.value+' 格'
+    :card.type==='goto'?'跳到格 '+card.value
+    :card.type==='random'?'随机传送！'
+    :card.type==='extra_roll'?'获得额外投骰'
+    :card.type==='unfreeze'?'解除冻结！'
+    :card.type==='next_reward'?'前进到奖励格'
+    :'确认';
+  showOv({cls:'chance',icon:'🃏',type:'🃏 机会卡',dice:diceStr,
+    name:card.name,desc:card.desc,btns:[{lbl:lbl,k:k,gold:true}]});
+}
+
+function applyChance(card){
+  var t=card.type, v=card.value;
+  if(t==='advance'){
+    var p=[]; for(var i=1;i<=v;i++) p.push((G.pos+i)%BOARD.length);
+    animWalk(p,()=>{ G.pos=p[p.length-1]; hlCell(G.pos); updateBar(); endTurn(); });
+  } else if(t==='retreat'){
+    var p2=[]; for(var j=1;j<=v;j++) p2.push((G.pos-j+BOARD.length)%BOARD.length);
+    animWalk(p2,()=>{ G.pos=p2[p2.length-1]; hlCell(G.pos); updateBar(); endTurn(); });
+  } else if(t==='goto'){ jumpTo(v);
+  } else if(t==='random'){ jumpTo(Math.floor(Math.random()*BOARD.length));
+  } else if(t==='extra_roll'){ G.pending=false; updateDiceUI(); setMsg('获得额外投骰机会！');
+  } else if(t==='unfreeze'){ G.frozen=0; updateBar(); setSp('char-sprite','idle'); endTurn(); setMsg('冻结已解除！');
+  } else if(t==='next_reward'){ jumpTo(nextRewardCell());
+  } else if(t==='nothing'){ endTurn(); setMsg('平安符生效，本次无效');
+  } else { endTurn(); }
+}
+
+// ================================================================
+// FATE CARD
+// ================================================================
+function showFateCard(card,diceStr){
+  var isTask=(card.type==='task_reply'||card.type==='task_citation'||card.type==='task_image');
+  if(isTask){
+    regA('done',()=>{ closeOv(); endTurn(); setMsg('任务完成！继续游戏'); });
+    regA('later',()=>{ closeOv(); G.frozen=99; updateBar();
+      endTurn(); setMsg('任务待完成，完成后点「投骰」→「任务已完成」'); });
+    showOv({cls:'fate',icon:'🎴',type:'🎴 命运卡',dice:diceStr,
+      name:card.name,desc:card.desc,
+      btns:[{lbl:'✅ 任务已完成，继续',k:'done',gold:true},{lbl:'稍后再来',k:'later'}]});
+  } else {
+    regA('fate',()=>{ closeOv(); applyFate(card); });
+    showOv({cls:'fate',icon:'🎴',type:'🎴 命运卡',dice:diceStr,
+      name:card.name,desc:card.desc,btns:[{lbl:'接受命运',k:'fate',gold:true}]});
+  }
+}
+
+function applyFate(card){
+  var t=card.type, v=card.value;
+  if(t==='freeze'){ G.frozen=v; updateBar(); setSp('char-sprite','frozen'); endTurn(); setMsg('冻结 '+v+' 回合');
+  } else if(t==='next_reward'){ jumpTo(nextRewardCell());
+  } else if(t==='goto_double'){ G.doubleNext=true; jumpTo(0);
+  } else if(t==='double_next'){ G.doubleNext=true; endTurn(); setMsg('下次投骰点数翻倍！');
+  } else if(t==='extra_chance'){
+    var cc=CHANCE_CARDS[Math.floor(Math.random()*CHANCE_CARDS.length)];
+    showChanceCard(cc,'');
+  } else if(t==='reward_dice'){
+    G.dice[v.t]=(G.dice[v.t]||0)+v.c; updateDiceUI(); endTurn(); setMsg('获得 d'+v.t+' ×'+v.c+'！');
+  } else if(t==='retreat_rnd'){
+    var steps=Math.floor(Math.random()*v)+1;
+    var p=[]; for(var m=1;m<=steps;m++) p.push((G.pos-m+BOARD.length)%BOARD.length);
+    animWalk(p,()=>{ G.pos=p[p.length-1]; hlCell(G.pos); updateBar(); endTurn(); });
+  } else if(t==='goto'){ jumpTo(v);
+  } else { endTurn(); }
+}
+
+// ================================================================
+// FREEZE OVERLAY
+// ================================================================
+function showFreezeOv(){
+  var isTask=G.frozen>=99;
+  document.getElementById('ov-card').className='ov-card freeze';
+  document.getElementById('ov-icon').textContent='❄️';
+  document.getElementById('ov-type').textContent='冻结中';
+  document.getElementById('ov-dice').textContent='';
+  document.getElementById('ov-name').textContent=isTask?'任务待完成':'冻结 '+G.frozen+' 回合';
+
+  var descEl=document.getElementById('ov-desc');
+  if(isTask){
+    descEl.textContent='请先在论坛完成命运卡要求的任务，完成后点下方按钮继续。';
+  } else {
+    descEl.textContent='可消耗骰子提前解冻，或跳过本回合。';
+    // Append unfreeze buttons
+    var wrap=document.createElement('div');
+    wrap.className='freeze-opts'; wrap.style.marginTop='8px';
+    [4,6,8,10,12].forEach(t=>{
+      if(G.dice[t]>=CONFIG.unfreeze_per_turn){
+        var b=document.createElement('button');
+        b.className='fbtn';
+        b.textContent='消耗 d'+t+' ×'+CONFIG.unfreeze_per_turn+' 解冻1回';
+        b.onclick=()=>unfreezeWith(t);
+        wrap.appendChild(b);
+      }
+    });
+    if(wrap.children.length) descEl.appendChild(wrap);
   }
 
-  window.confirmId = confirmId;
-  window.closeResult = closeResult;
-  window.doRoll = doRoll;
-})();
-  </script>
+  var btnsEl=document.getElementById('ov-btns');
+  btnsEl.innerHTML='';
+  if(isTask){
+    var b1=document.createElement('button');
+    b1.className='ov-btn gold'; b1.textContent='✅ 任务已完成，继续';
+    b1.onclick=()=>{ G.frozen=0; closeOv(); updateBar();
+      setSp('char-sprite','cheer'); setSp('p-avatar','happy');
+      G.pending=false; updateDiceUI(); setMsg('任务完成！继续游戏'); };
+    btnsEl.appendChild(b1);
+  } else {
+    var b2=document.createElement('button');
+    b2.className='ov-btn'; b2.textContent='⏭ 跳过本回合';
+    b2.onclick=()=>{ G.frozen=Math.max(0,G.frozen-1); closeOv(); updateBar();
+      if(G.frozen===0){ setSp('char-sprite','idle'); setSp('p-avatar','idle'); }
+      G.pending=false; updateDiceUI(); setMsg('跳过本回合，剩余冻结 '+G.frozen+' 回'); };
+    btnsEl.appendChild(b2);
+  }
+  document.getElementById('overlay').style.display='flex';
+}
+
+function unfreezeWith(t){
+  if(G.dice[t]<CONFIG.unfreeze_per_turn) return;
+  G.dice[t]-=CONFIG.unfreeze_per_turn;
+  G.frozen=Math.max(0,G.frozen-1);
+  closeOv(); updateBar(); updateDiceUI();
+  if(G.frozen===0){ setSp('char-sprite','idle'); setSp('p-avatar','idle'); setSp('center-char','idle'); }
+  G.pending=false;
+  setMsg('消耗 d'+t+' ×'+CONFIG.unfreeze_per_turn+' 解冻1回，剩余 '+G.frozen+' 回');
+}
+window.unfreezeWith=unfreezeWith;
+
+// ================================================================
+// OVERLAY
+// ================================================================
+function showOv(opts){
+  document.getElementById('ov-card').className='ov-card'+(opts.cls?' '+opts.cls:'');
+  document.getElementById('ov-icon').textContent=opts.icon||'🎲';
+  document.getElementById('ov-type').textContent=opts.type||'';
+  document.getElementById('ov-dice').textContent=opts.dice||'';
+  document.getElementById('ov-name').textContent=opts.name||'';
+  document.getElementById('ov-desc').textContent=opts.desc||'';
+  document.getElementById('ov-btns').innerHTML=(opts.btns||[]).map(b=>
+    '<button class="ov-btn'+(b.gold?' gold':'')+'" onclick="runA(\''+b.k+'\')">'+b.lbl+'</button>'
+  ).join('');
+  document.getElementById('center-msg').textContent=opts.name||'';
+  document.getElementById('overlay').style.display='flex';
+}
+
+function closeOv(){
+  document.getElementById('overlay').style.display='none';
+}
+window.closeOv=closeOv;
+
+// ================================================================
+// GAS RECORD
+// ================================================================
+function sendRec(dice,raw,result,from,fin,cell){
+  if(!GAS_URL) return;
+  var n=new Date();
+  var ds=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
+  var ts=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+  new Image().src=GAS_URL+'?sheet=大富翁'
+    +'&date='+encodeURIComponent(ds)+'&time='+encodeURIComponent(ts)
+    +'&user_id='+encodeURIComponent(G.userId)
+    +'&dice=d'+dice+'+'+raw+(result!==raw?'x2='+result:'')
+    +'&from_pos='+from+'&final_pos='+fin
+    +'&cell_name='+encodeURIComponent(cell.name)
+    +'&cell_type='+encodeURIComponent(cell.type)
+    +'&cell_desc='+encodeURIComponent(cell.desc);
+}
+
+// ================================================================
+// STATUS
+// ================================================================
+function setMsg(m){
+  document.getElementById('status-bar').textContent=m;
+  var cm=document.getElementById('center-msg');
+  if(cm) cm.textContent=m;
+}
+</script>
 </body>
 </html>
-

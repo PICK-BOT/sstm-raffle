@@ -1795,6 +1795,7 @@ function s5UpdateNeg() {
 // ===== ROLL DICE =====
 let _skipRoll = false;           // 跳过旗标：点「跳过动画」时设为 true
 let _skipResolve = null;         // 当前正在等待的 Promise resolve，跳过时立即触发
+let _rewardTimer = null;         // showReward 的定时器 ID，导航离开时必须取消
 
 function skipRollAnim() {
   _skipRoll = true;
@@ -1940,6 +1941,7 @@ function rollAllAtOnce() {
 
 // ===== 从投骰画面/奖励画面返回记录 =====
 function goProgressFromGame() {
+  if (_rewardTimer) { clearTimeout(_rewardTimer); _rewardTimer = null; }
   const cached = getCachedProgress(state.id);
   if (cached) showProgressScreen(cached);
   else showScreen('screen1b');
@@ -2044,11 +2046,25 @@ function selectChoice(idx, text, btn) {
     desc      : desc
   });
 
+  // 选择后立即禁用「再来一次」，防止在 1500ms 内误触导致状态被 restart() 清空
+  const restartBtn = document.querySelector('.btn-restart');
+  if (restartBtn) restartBtn.disabled = true;
+
   // 延迟 1500ms 让玩家读完描述后弹出奖励
-  setTimeout(showReward, 1500);
+  if (_rewardTimer) clearTimeout(_rewardTimer);
+  _rewardTimer = setTimeout(showReward, 1500);
 }
 
 function showReward() {
+  _rewardTimer = null;
+
+  // 安全检查：若玩家已离开 screen6（例如点了其他按钮），不弹出遮罩
+  if (!document.getElementById('screen6').classList.contains('active')) return;
+
+  // 恢复「再来一次」按钮（弹出奖励后它已被遮罩覆盖，领取后才真正可用）
+  const restartBtn = document.querySelector('.btn-restart');
+  if (restartBtn) restartBtn.disabled = false;
+
   const r = REWARDS[Math.floor(Math.random() * REWARDS.length)];
   const remaining = state.pos_dice - state.rolled;
   document.getElementById('rewardIcon').textContent = r.icon;
@@ -2214,6 +2230,11 @@ function postToGAS(storyTitle, choice, choiceDesc, choiceIdx) {
 
 // ===== RESTART =====
 function restart() {
+  // 取消待触发的奖励定时器，防止 restart 后遮罩出现在错误画面
+  if (_rewardTimer) { clearTimeout(_rewardTimer); _rewardTimer = null; }
+  // 恢复按钮状态（以防 disabled 时触发了 restart）
+  const restartBtn = document.querySelector('.btn-restart');
+  if (restartBtn) restartBtn.disabled = false;
   // Reset state
   state = {
     id: '', replies: 0, citations: 0,
