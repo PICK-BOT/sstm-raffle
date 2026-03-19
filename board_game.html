@@ -64,7 +64,7 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
   max-width:430px;width:100%}
 #p-avatar{width:32px;height:44px;flex-shrink:0;
   background-image:url('images/char.png');
-  background-size:500% 300%;background-position:0% 0%;image-rendering:pixelated}
+  background-size:600% 400%;background-position:0% 0%;image-rendering:pixelated}
 #p-name{font-weight:700;color:#FFD93D;font-size:.88rem}
 #p-pos{font-size:.72rem;color:rgba(255,255,255,.55)}
 #freeze-badge{margin-left:auto;background:rgba(13,71,161,.6);
@@ -93,7 +93,7 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
   align-items:center;justify-content:center;gap:5px;padding:6px}
 #center-char{width:70px;height:78px;
   background-image:url('images/char.png');
-  background-size:500% 300%;background-position:0% 0%;image-rendering:pixelated;
+  background-size:600% 400%;background-position:0% 0%;image-rendering:pixelated;
   transition:background-position .18s}
 #center-msg{font-size:8px;text-align:center;color:rgba(255,255,255,.85);
   max-width:280px;line-height:1.4}
@@ -105,7 +105,7 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
 /* ===== CHARACTER ON BOARD ===== */
 #char-sprite{position:absolute;width:34px;height:46px;pointer-events:none;z-index:10;
   background-image:url('images/char.png');
-  background-size:500% 300%;background-position:0% 0%;image-rendering:pixelated;
+  background-size:600% 400%;background-position:0% 0%;image-rendering:pixelated;
   filter:drop-shadow(0 2px 5px rgba(0,0,0,.9));
   transition:left .28s ease-in-out,top .28s ease-in-out;
   left:2px;top:-4px}
@@ -218,6 +218,14 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
     <button class="dbtn"     id="btn-d8"  onclick="selDice(8)">d8  <span id="n8">×0</span></button>
     <button class="dbtn"     id="btn-d10" onclick="selDice(10)">d10 <span id="n10">×0</span></button>
     <button class="dbtn"     id="btn-d12" onclick="selDice(12)">d12 <span id="n12">×0</span></button>
+    <div id="roll-count-row" style="display:flex;align-items:center;gap:6px;margin-top:4px;width:100%;justify-content:center">
+      <label style="font-size:.8rem;color:rgba(255,255,255,.7)">投掷数量：</label>
+      <input id="roll-count" type="number" min="1" max="1" value="1"
+        style="width:52px;padding:3px 5px;border-radius:6px;border:1px solid rgba(255,255,255,.3);
+               background:rgba(0,0,0,.4);color:#fff;font-size:.85rem;text-align:center"
+        oninput="clampRollCount()" onkeydown="if(event.key==='Enter')doRoll()">
+      <span id="roll-count-hint" style="font-size:.75rem;color:rgba(255,255,255,.5)">（最多 1 个）</span>
+    </div>
     <button id="roll-btn" onclick="doRoll()">🎲 投骰</button>
   </div>
   <div id="status-bar"></div>
@@ -326,7 +334,7 @@ var FATE_CARDS = [
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsiAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec';
 
 // ================================================================
-// SPRITE  (5 列 × 3 行)
+// SPRITE  (6 列 × 4 行，每格 256×256)
 // ================================================================
 var SP = {
   idle:      [0,0], happy:     [1,0], calm:     [2,0], shy:      [3,0], think:    [4,0],
@@ -335,7 +343,7 @@ var SP = {
 };
 function spPos(key){
   var s=SP[key]||SP.idle;
-  return (s[0]*25)+'% '+(s[1]*50)+'%';
+  return (s[0]*20)+'% '+(Math.round(s[1]*33.33))+'%';
 }
 function setSp(id,key){
   var el=document.getElementById(id);
@@ -352,7 +360,8 @@ var G = {
   frozen:0,
   doubleNext:false,
   shield:false,
-  pending:false
+  pending:false,
+  nextRollCb:null
 };
 
 // ================================================================
@@ -522,6 +531,26 @@ function updateDiceUI(){
   }
   var rb=document.getElementById('roll-btn');
   if(rb) rb.disabled=G.pending;
+  // 同步投掷数量上限
+  var maxRoll=G.dice[G.sel]||0;
+  var rcInput=document.getElementById('roll-count');
+  var rcHint=document.getElementById('roll-count-hint');
+  if(rcInput){
+    rcInput.max=maxRoll;
+    if(parseInt(rcInput.value)>maxRoll) rcInput.value=maxRoll||1;
+    if(parseInt(rcInput.value)<1) rcInput.value=1;
+    rcInput.disabled=G.pending;
+  }
+  if(rcHint) rcHint.textContent='（最多 '+maxRoll+' 个）';
+}
+
+function clampRollCount(){
+  var inp=document.getElementById('roll-count');
+  if(!inp) return;
+  var max=parseInt(inp.max)||1;
+  var val=parseInt(inp.value);
+  if(isNaN(val)||val<1) inp.value=1;
+  else if(val>max) inp.value=max;
 }
 
 function selDice(s){
@@ -553,29 +582,51 @@ function doRoll(){
   if(![4,6,8,10,12].some(t=>G.dice[t]>0)){ setMsg('骰子已全部用完！'); return; }
   if(G.dice[G.sel]<=0){ G.sel=[4,6,8,10,12].find(t=>G.dice[t]>0)||4; updateDiceUI(); }
 
+  // 取出投掷数量
+  var rcInput=document.getElementById('roll-count');
+  var rollN=Math.max(1,Math.min(parseInt(rcInput?rcInput.value:1)||1, G.dice[G.sel]));
+
   G.pending=true; updateDiceUI();
-  G.dice[G.sel]--;
-  var sides=G.sel;
-  var raw=Math.floor(Math.random()*sides)+1;
-  var result=G.doubleNext?raw*2:raw;
-  if(G.doubleNext) G.doubleNext=false;
 
-  setSp('char-sprite','spin'); setSp('p-avatar','spin'); setSp('center-char','spin');
-  setMsg(G.userId+' 投出 d'+sides+' → '+raw+(result!==raw?' (×2='+result+')':''));
-  document.getElementById('center-msg').textContent='🎲 '+result+' 点！';
+  // 预先计算所有次的结果
+  var rolls=[];
+  for(var i=0;i<rollN;i++){
+    var sides=G.sel;
+    G.dice[G.sel]--;
+    var raw=Math.floor(Math.random()*sides)+1;
+    var result=G.doubleNext?raw*2:raw;
+    if(G.doubleNext) G.doubleNext=false;
+    rolls.push({sides,raw,result});
+  }
 
-  var from=G.pos;
-  var path=[];
-  for(var s=1;s<=result;s++) path.push((from+s)%BOARD.length);
+  // 依序播放每次投掷动画
+  function playRoll(idx){
+    if(idx>=rolls.length){
+      G.pending=false; updateDiceUI();
+      return;
+    }
+    var r=rolls[idx];
+    setSp('char-sprite','spin'); setSp('p-avatar','spin'); setSp('center-char','spin');
+    setMsg(G.userId+' 投出 d'+r.sides+' → '+r.raw+(r.result!==r.raw?' (×2='+r.result+')':'')
+      +(rollN>1?' ['+(idx+1)+'/'+rollN+']':''));
+    document.getElementById('center-msg').textContent='🎲 '+r.result+' 点！';
 
-  setTimeout(()=>{
-    animWalk(path,()=>{
-      G.pos=path[path.length-1];
-      hlCell(G.pos); updateBar(); updateDiceUI();
-      sendRec(sides,raw,result,from,G.pos,BOARD[G.pos]);
-      applyCell(BOARD[G.pos],sides,raw,result);
-    });
-  },300);
+    var from=G.pos;
+    var path=[];
+    for(var s=1;s<=r.result;s++) path.push((from+s)%BOARD.length);
+
+    setTimeout(()=>{
+      animWalk(path,()=>{
+        G.pos=path[path.length-1];
+        hlCell(G.pos); updateBar(); updateDiceUI();
+        sendRec(r.sides,r.raw,r.result,from,G.pos,BOARD[G.pos]);
+        // 若还有后续投掷，endTurn 会自动触发下一次
+        G.nextRollCb=(idx+1<rolls.length)?()=>playRoll(idx+1):null;
+        applyCell(BOARD[G.pos],r.sides,r.raw,r.result);
+      });
+    },300);
+  }
+  playRoll(0);
 }
 window.doRoll=doRoll;
 
@@ -672,6 +723,12 @@ function nextRewardCell(){
 }
 
 function endTurn(){
+  if(typeof G.nextRollCb==='function'){
+    var cb=G.nextRollCb;
+    G.nextRollCb=null;
+    cb(); // 继续下一次投掷
+    return;
+  }
   G.pending=false; updateDiceUI();
   setSp('char-sprite','idle');
 }
