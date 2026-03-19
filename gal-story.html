@@ -278,6 +278,7 @@ body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;
       <button class="btn" id="ending-fd-btn" style="display:none" onclick="startFD()">阅读番外</button>
       <button class="btn gold" onclick="showScreen('title')">返回标题</button>
       <button class="btn" onclick="openStats()">查看面板</button>
+      <button class="btn" style="font-size:0.8rem;padding:8px 14px" onclick="openUpdateStatsFromEnding()">📝 更新回复数</button>
     </div>
   </div>
   <!-- 结局存档提示 -->
@@ -309,9 +310,30 @@ body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;
 <div id="overlay-menu">
   <h3>☰ 游戏菜单</h3>
   <div id="menu-save-list"></div>
+  <button class="btn" onclick="openUpdateStats()">📝 更新回复／引用数</button>
   <button class="btn" onclick="openStats();closeMenu()">查看玩家面板</button>
   <button class="btn" onclick="closeMenu();showScreen('title')">返回标题</button>
   <button class="btn" onclick="closeMenu()">继续游戏</button>
+</div>
+
+<!-- UPDATE STATS OVERLAY -->
+<div id="overlay-update-stats" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:#1a0533;border:1px solid #6c3483;border-radius:12px;padding:28px 32px;width:90%;max-width:380px;text-align:center">
+    <h3 style="color:#f0c040;margin:0 0 18px">📝 更新回复／引用数</h3>
+    <p style="color:#aaa;font-size:0.85rem;margin:0 0 18px">可用于解锁新选项或番外，填入最新数字后点确认。</p>
+    <div style="display:flex;flex-direction:column;gap:12px;text-align:left">
+      <label style="color:#d7bde2;font-size:0.9rem">累计回复数
+        <input id="upd-replies" type="number" min="0" style="width:100%;margin-top:4px;padding:8px 10px;background:#0d0221;border:1px solid #6c3483;color:#f0c040;border-radius:6px;font-size:1rem;box-sizing:border-box">
+      </label>
+      <label style="color:#d7bde2;font-size:0.9rem">累计被引用数
+        <input id="upd-citations" type="number" min="0" style="width:100%;margin-top:4px;padding:8px 10px;background:#0d0221;border:1px solid #6c3483;color:#f0c040;border-radius:6px;font-size:1rem;box-sizing:border-box">
+      </label>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
+      <button class="btn" onclick="confirmUpdateStats()">确认</button>
+      <button class="btn" style="background:rgba(255,255,255,0.07);border-color:#555;color:#aaa" onclick="closeUpdateStats()">取消</button>
+    </div>
+  </div>
 </div>
 
 <!-- STATS OVERLAY -->
@@ -1013,7 +1035,9 @@ function showChoice(choiceData){
     let labelText = opt.text||'';
     if(G.gender==='male' && opt.textM) labelText=opt.textM;
     else if(G.gender==='female' && opt.textF) labelText=opt.textF;
-    labelText = fillText(labelText||opt.text||'');
+    else if(!labelText && opt.textM) labelText=opt.textM;  // 性别「其他」时回退 textM
+    else if(!labelText && opt.textF) labelText=opt.textF;
+    labelText = fillText(labelText||'');
 
     // condition text
     let condParts = [];
@@ -1112,6 +1136,7 @@ function triggerEnding(routeKey){
   if(routeKey!=='true' && G.endingsUnlocked.filter(e=>!['true'].includes(e)).length>=3){
     G.trueUnlocked = true;
   }
+  G._currentRoute = routeKey;
 
   document.getElementById('ending-name').textContent = '【结局：'+data.name+'】';
   document.getElementById('ending-text').textContent = data.text;
@@ -1157,6 +1182,29 @@ function triggerEnding(routeKey){
 
   showScreen('ending');
   saveProgress();
+}
+
+function triggerEndingRefreshFD(routeKey){
+  if(!ENDING_DATA) return;
+  const data = ENDING_DATA[routeKey];
+  if(!data || !data.fd) return;
+  const fdEl  = document.getElementById('ending-fd-notice');
+  const fdBtn = document.getElementById('ending-fd-btn');
+  const fdStatus = G.fdProgress[routeKey];
+  const FD_REQ = 50;
+  const already = fdStatus==='unlocked' || fdStatus==='done';
+  const meetsReq = G.replies >= FD_REQ;
+  if(already || meetsReq){
+    fdEl.innerHTML = `✨ 番外已解锁！点击下方按钮开始阅读。`;
+    fdBtn.style.display='';
+    fdBtn.textContent = '📖 阅读番外';
+    fdBtn.onclick = ()=>startFD(routeKey);
+  } else {
+    const still = FD_REQ - G.replies;
+    fdEl.innerHTML = `🔒 番外解锁条件：累计回复满 <b>${FD_REQ}</b> 次（当前 ${G.replies} 次，还差 ${still} 次）。<br>
+      <span style="color:#aaa;font-size:0.85rem">💾 建议先存档保存进度，达到条件后重新进入此结局即可解锁番外。</span>`;
+    fdBtn.style.display='none';
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -1264,6 +1312,35 @@ function openMenu(){
 }
 function closeMenu(){
   document.getElementById('overlay-menu').classList.remove('open');
+}
+function openUpdateStats(){
+  closeMenu();
+  document.getElementById('upd-replies').value = G.replies||0;
+  document.getElementById('upd-citations').value = G.citations||0;
+  document.getElementById('overlay-update-stats').style.display='flex';
+}
+function closeUpdateStats(){
+  document.getElementById('overlay-update-stats').style.display='none';
+}
+let _updateStatsFromEnding = false;
+function openUpdateStatsFromEnding(){
+  _updateStatsFromEnding = true;
+  document.getElementById('upd-replies').value = G.replies||0;
+  document.getElementById('upd-citations').value = G.citations||0;
+  document.getElementById('overlay-update-stats').style.display='flex';
+}
+function confirmUpdateStats(){
+  const r = parseInt(document.getElementById('upd-replies').value)||0;
+  const c = parseInt(document.getElementById('upd-citations').value)||0;
+  G.replies = r;
+  G.citations = c;
+  closeUpdateStats();
+  showToast(`已更新：回复 ${r} 次 / 被引用 ${c} 次`);
+  // 若从结局触发，重新刷新番外解锁状态
+  if(_updateStatsFromEnding && G._currentRoute){
+    triggerEndingRefreshFD(G._currentRoute);
+  }
+  _updateStatsFromEnding = false;
 }
 function renderMenuSaveSlots(){
   const container = document.getElementById('menu-save-list');
@@ -1642,5 +1719,6 @@ function doPost(e) {
 <!-- v1.1 2026-03-19 选项隐藏好感度提示与结果hint -->
 <!-- v1.2 2026-03-19 番外需50回复解锁；结局弹窗问是否存档；存档槽预设8格可自由新增 -->
 <!-- v1.3 2026-03-19 修复继续游戏跳回结局bug(saveloadOrigin)；番外主动点击解锁；存档提示加番外说明 -->
+<!-- v1.4 2026-03-19 修复性别「其他」时选项B无文字；菜单+结局加「更新回复/引用数」按钮；更新后即时刷新番外解锁状态 -->
 </body>
 </html>
