@@ -994,6 +994,16 @@ input[type="text"]:focus, input[type="number"]:focus {
         <button class="btn btn-crimson" id="s5RollBtn" onclick="rollDice()" style="flex:2;">🎲 投骰！</button>
         <button class="btn btn-ghost" id="s5InstantBtn" onclick="rollAllAtOnce()" style="flex:1;font-size:0.85rem;">⚡ 一次投完</button>
       </div>
+
+      <!-- 跳过按钮：仅在投骰动画播放时可见 -->
+      <button id="s5SkipBtn"
+        onclick="skipRollAnim()"
+        style="display:none;margin-top:8px;width:100%;padding:7px 0;
+               background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);
+               border-radius:8px;color:rgba(255,255,255,0.6);font-size:0.82rem;
+               cursor:pointer;letter-spacing:.06em;">
+        ⏩ 跳过动画
+      </button>
     </div>
 
     <div id="s5DiceArea" class="dice-animation-area"></div>
@@ -1783,17 +1793,32 @@ function s5UpdateNeg() {
 }
 
 // ===== ROLL DICE =====
+let _skipRoll = false;           // 跳过旗标：点「跳过动画」时设为 true
+let _skipResolve = null;         // 当前正在等待的 Promise resolve，跳过时立即触发
+
+function skipRollAnim() {
+  _skipRoll = true;
+  if (_skipResolve) { _skipResolve(); _skipResolve = null; }
+}
+
 async function rollDice() {
   const rolled = parseInt(document.getElementById('s5Slider').value);
   if (!checkDiceLimit(rolled)) return;
   state.rolled = rolled;
+  _skipRoll = false;             // 每次投骰前重置跳过旗标
+
   document.getElementById('s5RollBtn').disabled = true;
   document.getElementById('s5InstantBtn').disabled = true;
+  document.getElementById('s5SkipBtn').style.display = 'block';  // 显示跳过按钮
 
   const area = document.getElementById('s5DiceArea');
   area.innerHTML = '';
 
-  // Create die elements
+  // 预先生成所有骰子结果（跳过时直接使用）
+  const results = [];
+  for (let i = 0; i < rolled; i++) results.push(Math.floor(Math.random() * 4) + 1);
+
+  // 创建所有骰子元素
   const dieEls = [];
   for (let i = 0; i < rolled; i++) {
     const d = document.createElement('div');
@@ -1803,30 +1828,47 @@ async function rollDice() {
     dieEls.push(d);
   }
 
-  // Animate: spin showing random numbers for 600ms then settle
-  const spinDuration = 600; // ms per die staggered
-  const results = [];
+  const spinDuration = 600;
 
   for (let i = 0; i < rolled; i++) {
+    if (_skipRoll) {
+      // 跳过：剩余骰子全部直接显示结果
+      for (let j = i; j < rolled; j++) {
+        dieEls[j].textContent = results[j];
+        dieEls[j].classList.remove('rolling');
+      }
+      break;
+    }
+
     await new Promise(resolve => {
+      _skipResolve = resolve;    // 供 skipRollAnim() 强制触发
       const d = dieEls[i];
-      const result = Math.floor(Math.random() * 4) + 1;
-      results.push(result);
       let elapsed = 0;
       const interval = setInterval(() => {
+        if (_skipRoll) {
+          clearInterval(interval);
+          d.textContent = results[i];
+          d.classList.remove('rolling');
+          _skipResolve = null;
+          resolve();
+          return;
+        }
         d.textContent = Math.floor(Math.random() * 4) + 1;
         elapsed += 80;
         if (elapsed >= spinDuration) {
           clearInterval(interval);
-          d.textContent = result;
+          d.textContent = results[i];
           d.classList.remove('rolling');
+          _skipResolve = null;
           resolve();
         }
       }, 80);
     });
-    // Brief pause between dice
-    await new Promise(r => setTimeout(r, 100));
+
+    if (!_skipRoll) await new Promise(r => setTimeout(r, 100));
   }
+
+  document.getElementById('s5SkipBtn').style.display = 'none';  // 动画结束，隐藏跳过按钮
 
   state.diceResults = results;
   state.raw_result = results.reduce((a, b) => a + b, 0);
