@@ -95,6 +95,11 @@ body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;
 #menu-btn{position:absolute;top:14px;right:14px;background:rgba(0,0,0,0.5);border:1px solid #6c3483;color:#d7bde2;padding:8px 14px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:0.85rem;z-index:20;transition:all .2s}
 #menu-btn:hover{background:rgba(155,89,182,0.4);border-color:#9b59b6}
 #chapter-indicator{position:absolute;top:14px;left:14px;background:rgba(0,0,0,0.5);border:1px solid #3d1a6e;color:#888;padding:6px 12px;border-radius:4px;font-size:0.78rem;z-index:20}
+#skip-btn{position:absolute;top:50px;right:14px;background:rgba(0,0,0,0.45);border:1px solid #3d1a6e;color:#666;padding:5px 10px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:0.75rem;z-index:20;transition:all .2s;display:none}
+#skip-btn.seen{color:#9b59b6;border-color:#6c3483;}
+#skip-btn.seen:hover{background:rgba(108,52,131,0.4);color:#d7bde2}
+#skip-btn.active{color:#f0c040;border-color:#f0c040;background:rgba(240,192,64,0.15);animation:skipPulse 1s ease infinite}
+@keyframes skipPulse{0%,100%{opacity:1}50%{opacity:0.6}}
 
 /* ── CHOICE SCREEN ── */
 #screen-choice{background:rgba(0,0,0,0.85);z-index:50}
@@ -181,6 +186,7 @@ body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;
   <div class="title-btns">
     <button class="btn gold" onclick="startNewGame()">开始新游戏</button>
     <button class="btn" id="btn-continue" onclick="openSaveloadFromTitle()">继续游戏</button>
+    <button class="btn" id="btn-title-stats" style="display:none" onclick="openStats()">📊 玩家面板</button>
   </div>
   <div style="position:absolute;bottom:16px;color:#333;font-size:0.72rem">BGM: 无　图源: OpenGameArt (CC-BY)</div>
 </div>
@@ -250,6 +256,7 @@ body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;
   <img id="char-sprite" src="" alt="" class="hidden" onerror="this.style.display='none'">
   <div id="chapter-indicator">第一章</div>
   <button id="menu-btn" onclick="event.stopPropagation();openMenu()">☰ 菜单</button>
+  <button id="skip-btn" onclick="event.stopPropagation();toggleSkip()">⏭ 快转</button>
   <div id="textbox">
     <div id="char-name"></div>
     <div id="story-text"><span id="text-cursor" class="done"></span></div>
@@ -370,6 +377,7 @@ let G = {
   route: null,
   endingsUnlocked: [],
   fdProgress: {},
+  seenScenes: {},
   savedAt: '',
   trueUnlocked: false,
   // runtime only
@@ -377,6 +385,7 @@ let G = {
   _currentRoute: null,
   _fdRoute: null,
   _fdIdx: 0,
+  _skipMode: false,
   _typing: false,
   _typingDone: false,
   _typingTimer: null,
@@ -768,7 +777,11 @@ function showScreen(name, mode) {
     saveloadMode = mode || 'load';
     renderSaveSlots();
   }
-  if(name==='title') initStars();
+  if(name==='title'){
+    initStars();
+    const statsBtn = document.getElementById('btn-title-stats');
+    if(statsBtn) statsBtn.style.display = G.id ? '' : 'none';
+  }
 }
 
 function openSaveloadFromTitle(){
@@ -886,18 +899,37 @@ const CHAPTER_LABELS = {
   normal:'普通结局', true:'真实结局',
 };
 
+let _skipTimer = null;
+
 function playScene(){
   const scenes = getChapterScenes(G.chapter);
   if(G.sceneIdx >= scenes.length){
+    stopSkip();
     advanceChapter();
     return;
   }
   const scene = scenes[G.sceneIdx];
   if(scene.type === 'choice'){
+    stopSkip(); // 遇到选择题强制停止快转
     showChoice(scene);
     return;
   }
+  // 快转模式：若当前场景未看过则停止快转
+  if(G._skipMode){
+    const key = G.chapter + ':' + G.sceneIdx;
+    if(!G.seenScenes[key]){
+      stopSkip();
+    }
+  }
   renderScene(scene);
+  // 快转模式：渲染后立即完成打字并自动推进
+  if(G._skipMode){
+    completeTyping();
+    _skipTimer = setTimeout(()=>{
+      G.sceneIdx++;
+      playScene();
+    }, 80); // 每幕间隔 80ms，能看到切换感
+  }
 }
 
 function renderScene(scene){
@@ -937,7 +969,12 @@ function renderScene(scene){
   else raw = scene.text||'';
   raw = fillText(raw);
 
+  // 标记该场景已看
+  const sceneKey = G.chapter + ':' + G.sceneIdx;
+  G.seenScenes[sceneKey] = 1;
+
   startTyping(raw, 'story-text', 'text-cursor');
+  updateSkipBtn();
 }
 
 function startTyping(text, textElId, cursorId){
@@ -984,7 +1021,40 @@ function completeTyping(){
   if(cursor){textEl.appendChild(cursor);cursor.style.animation='blink .7s step-end infinite';}
 }
 
+function sceneIsSeen(chapter, idx){
+  return !!G.seenScenes[chapter+':'+idx];
+}
+function updateSkipBtn(){
+  const btn = document.getElementById('skip-btn');
+  if(!btn) return;
+  const canSee = sceneIsSeen(G.chapter, G.sceneIdx);
+  if(canSee){
+    btn.style.display='';
+    btn.className = G._skipMode ? 'active' : 'seen';
+    btn.textContent = G._skipMode ? '⏹ 停止' : '⏭ 快转';
+  } else {
+    btn.style.display='none';
+    if(G._skipMode) stopSkip();
+  }
+}
+function toggleSkip(){
+  if(G._skipMode){ stopSkip(); return; }
+  // 只有当前场景已看过才能开启
+  if(!sceneIsSeen(G.chapter, G.sceneIdx)){ showToast('当前剧情未看过，无法快转'); return; }
+  G._skipMode = true;
+  updateSkipBtn();
+  // 若正在打字，先完成，然后推进
+  if(!storyTypingDone) completeTyping();
+  _skipTimer = setTimeout(()=>{ G.sceneIdx++; playScene(); }, 80);
+}
+function stopSkip(){
+  G._skipMode = false;
+  if(_skipTimer){ clearTimeout(_skipTimer); _skipTimer=null; }
+  updateSkipBtn();
+}
+
 function onStoryClick(){
+  if(G._skipMode){ stopSkip(); return; } // 点击画面停止快转
   if(!storyTypingDone){
     completeTyping();
     return;
@@ -1439,13 +1509,18 @@ function buildSaveData(){
     route: G.route,
     endingsUnlocked: G.endingsUnlocked,
     fdProgress: G.fdProgress,
+    seenScenes: G.seenScenes,
     trueUnlocked: G.trueUnlocked,
     savedAt: new Date().toISOString(),
   };
 }
 
 function loadSaveData(data){
+  const prevSeen = G.seenScenes || {};
   Object.assign(G, data);
+  // 合并已看记录（读档不能少于本机已有的）
+  G.seenScenes = Object.assign({}, prevSeen, G.seenScenes || {});
+  G._skipMode = false;
 }
 
 function quickSave(slot){
@@ -1720,5 +1795,7 @@ function doPost(e) {
 <!-- v1.2 2026-03-19 番外需50回复解锁；结局弹窗问是否存档；存档槽预设8格可自由新增 -->
 <!-- v1.3 2026-03-19 修复继续游戏跳回结局bug(saveloadOrigin)；番外主动点击解锁；存档提示加番外说明 -->
 <!-- v1.4 2026-03-19 修复性别「其他」时选项B无文字；菜单+结局加「更新回复/引用数」按钮；更新后即时刷新番外解锁状态 -->
+<!-- v1.5 2026-03-19 快转功能：已看场景右上角出现⏭快转按钮，自动跳过到选项或未看场景；点击画面或按钮可随时停止 -->
+<!-- v1.6 2026-03-19 标题页回来后若有玩家数据则显示「玩家面板」按钮，可直接查看最新面板 -->
 </body>
 </html>
