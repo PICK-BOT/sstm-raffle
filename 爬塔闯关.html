@@ -1079,7 +1079,8 @@ function submitAction(){
           type:"reply",
           need:need,
           dodgeAct:dodgeAct,
-          txt:"怪物反击！需至少折算 "+need+" 条回复（1 条被引用按 5 条回复折算，可混用），并选择「"+dodgeAct+"」完成闪躲。"
+          // 不提示“该选哪种闪躲”，让玩家自行猜
+          txt:"怪物反击！需至少折算 "+need+" 条回复（1 条被引用按 5 条回复折算，可混用），并在下方完成闪躲反击。"
         };
       }else if(mode===1){
         const need=rInt(1,2);
@@ -1087,10 +1088,12 @@ function submitAction(){
           type:"quote",
           need:need,
           dodgeAct:dodgeAct,
-          txt:"怪物反击！需至少 "+need+" 条被引用，并在下方选择「"+dodgeAct+"」完成闪躲（被引用可达成本条要求）。"
+          // 不提示“该选哪种闪躲”，让玩家自行猜
+          txt:"怪物反击！需至少 "+need+" 条被引用，并在下方完成闪躲反击（被引用可达成本条要求）。"
         };
       }else{
-        r.monster.counter={type:"action",need:dodgeAct,txt:"怪物反击！请选择行动："+dodgeAct+"（无需消耗回复/被引用）。"};
+        // 不提示“该选哪种行动”，让玩家自行猜
+        r.monster.counter={type:"action",need:dodgeAct,txt:"怪物反击！需要你在下方选择闪躲行动完成反击。"};
       }
       sys("怪物开始反击！请按说明选择闪躲方式并满足条件，或选择硬接伤害。");
     }
