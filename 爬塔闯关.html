@@ -1152,13 +1152,16 @@ function takeHit(){
     const mon=newMonster(1); mon.maxHp=mon.hp;
     r.floor=1; r.reward=0; r.kill=0; r.hits=0; r.monster=mon; r.task=null; r.chest=null; r.rest=null;
     r.stockReply=br; r.stockQuote=bq; r.lootBag=keepLoot;
-    setMenuNotice("你已阵亡：累计承受3次伤害。已保留战利品并回到第1层，可从“继续爬塔”重新出发。");
+    // 阵亡：不弹窗，用主菜单系统提醒承接（避免玩家摸不着头绪）
+    setMenuNotice("你已阵亡：累计承受3次伤害（生命值已降至 0/3）。已保留战利品并回到第1层，可从“继续爬塔”重新出发。");
     localStorage.setItem(KRUN,JSON.stringify(r));
     try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
     backMenu();
     return;
   }else{
-    sys("闪躲失败，受到1次伤害。当前受击："+r.hits+"/3");
+    const hpMax=3;
+    const hpCur=Math.max(0,hpMax-r.hits);
+    sys("闪躲失败！被怪物命中，生命值 -1。当前生命："+hpCur+" / "+hpMax+"（受击 "+r.hits+"/3）");
   }
   localStorage.setItem(KRUN,JSON.stringify(r));
   try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
