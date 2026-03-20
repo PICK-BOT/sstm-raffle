@@ -45,6 +45,8 @@
     .modal .mbox .mimg{display:block;width:120px;height:120px;object-fit:contain;margin:0 auto 12px}
     .modal .mbox p{margin:0 0 14px;line-height:1.65;color:#eaf2ff;font-size:14px}
     .modal .mbox .mrow{display:flex;gap:8px;justify-content:flex-end}
+    .task-phrase-extra{width:100%;flex-basis:100%;margin-top:6px;padding:8px;border:1px dashed #486797;border-radius:8px;background:#081424;font-size:13px;line-height:1.55;color:#c9daf6}
+    .task-phrase-extra .task-hint{margin:0 0 8px;color:#eaf2ff}
   </style>
 </head>
 <body>
@@ -139,8 +141,17 @@
           </div>
           <div id="taskActs" class="acts hidden">
             <span id="taskTxt"></span>
+            <div id="taskPhraseExtra" class="hidden task-phrase-extra">
+              <p id="taskPhraseHint" class="task-hint"></p>
+              <div id="phBuyoutWrap" class="row" style="margin:0;align-items:center">
+                <span>折抵申报·回复</span><input id="phReply" type="number" min="0" value="0">
+                <span>被引用</span><input id="phQuote" type="number" min="0" value="0">
+                <button type="button" class="warn" onclick="submitPhraseBuyout()">用语存量折抵通关</button>
+              </div>
+              <div id="phNeedWrap" style="font-size:12px;color:#9db7e2;margin-top:6px">折抵需求：等价 <b id="phNeedPts">30</b> 点（1 被引用=5 点，纯被引用约 6 条）。与开锁算法相同，从「待用+申报」中按最少消耗扣减。</div>
+            </div>
             <input id="taskLink" class="hidden" placeholder="输入任务链接">
-            <button class="good" onclick="submitTask()">完成任务</button>
+            <button id="taskDoneBtn" class="good" onclick="submitTask()">完成任务</button>
             <button class="primary" onclick="goBackRest()">返回上一层</button>
           </div>
           <div id="chestActs" class="acts hidden">
@@ -185,7 +196,7 @@
 </div>
 
 <script>
-const VER="v1.3.0-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
+const VER="v1.4.3-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
 const SHEET="爬塔闯关";
 const USER_IMG_POOL=[
   "./assets/c__Users_Fish_Chen_AppData_Roaming_Cursor_User_workspaceStorage_e82a39d4f02dd167ea7d277ae174f65a_images_image-a0d6726b-fb23-4710-b309-567e9cf17bea.png",
@@ -200,24 +211,57 @@ function milestoneOnceKey(f){ return "tower_milestone_once_"+f; }
 function hasMilestoneOnce(f){ try{return localStorage.getItem(milestoneOnceKey(f))==="1";}catch(e){return false;} }
 function setMilestoneOnce(f){ try{localStorage.setItem(milestoneOnceKey(f),"1");}catch(e){} }
 const TOWER_FALLBACK="https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?auto=format&fit=crop&w=1200&q=80";
+/** 普通遭遇：非传说宝可梦，种类多、减少重复感 */
 const POKE_MONS=[
-  {id:94,name:"耿鬼"},{id:6,name:"喷火龙"},{id:149,name:"快龙"},
-  {id:248,name:"班基拉斯"},{id:445,name:"烈咬陆鲨"},{id:448,name:"路卡利欧"},
-  {id:282,name:"沙奈朵"},{id:150,name:"超梦"},{id:376,name:"巨金怪"},
-  {id:359,name:"阿勃梭鲁"},{id:212,name:"巨钳螳螂"},{id:26,name:"雷丘"}
+  {id:6,name:"喷火龙"},{id:9,name:"水箭龟"},{id:65,name:"胡地"},{id:94,name:"耿鬼"},{id:130,name:"暴鲤龙"},
+  {id:131,name:"拉普拉斯"},{id:143,name:"卡比兽"},{id:149,name:"快龙"},{id:169,name:"叉字蝠"},{id:181,name:"电龙"},
+  {id:196,name:"太阳伊布"},{id:197,name:"月亮伊布"},{id:208,name:"大钢蛇"},{id:229,name:"黑鲁加"},{id:230,name:"刺龙王"},
+  {id:242,name:"幸福蛋"},{id:248,name:"班基拉斯"},{id:254,name:"蜥蜴王"},{id:257,name:"火焰鸡"},{id:260,name:"巨沼怪"},
+  {id:282,name:"沙奈朵"},{id:359,name:"阿勃梭鲁"},{id:376,name:"巨金怪"},{id:392,name:"烈焰猴"},{id:395,name:"帝王拿波"},
+  {id:445,name:"烈咬陆鲨"},{id:448,name:"路卡利欧"},{id:462,name:"自爆磁怪"},{id:464,name:"超甲狂犀"},{id:466,name:"电击魔兽"},
+  {id:530,name:"龙头地鼠"},{id:553,name:"流氓鳄"},{id:612,name:"双斧战龙"},{id:637,name:"火神蛾"},{id:715,name:"音波龙"},
+  {id:812,name:"千面避役"},{id:815,name:"闪焰王牌"},{id:861,name:"长毛巨魔"},{id:887,name:"多龙巴鲁托"}
 ];
+/** 10 的倍数层：传说/神兽（三鸟、三狗、封面神、超梦系、剑盾龙等） */
 const POKE_LEGEND=[
-  {id:144,name:"急冻鸟"},{id:145,name:"闪电鸟"},{id:146,name:"火焰鸟"},
-  {id:243,name:"雷公"},{id:244,name:"炎帝"},{id:245,name:"水君"},
-  {id:249,name:"洛奇亚"},{id:250,name:"凤王"},{id:377,name:"雷吉洛克"},
-  {id:378,name:"雷吉艾斯"},{id:379,name:"雷吉斯奇鲁"},{id:383,name:"固拉多"},
-  {id:384,name:"烈空坐"},{id:487,name:"骑拉帝纳"},{id:716,name:"哲尔尼亚斯"}
+  {id:144,name:"急冻鸟"},{id:145,name:"闪电鸟"},{id:146,name:"火焰鸟"},{id:150,name:"超梦"},{id:151,name:"梦幻"},
+  {id:243,name:"雷公"},{id:244,name:"炎帝"},{id:245,name:"水君"},{id:249,name:"洛奇亚"},{id:250,name:"凤王"},
+  {id:377,name:"雷吉洛克"},{id:378,name:"雷吉艾斯"},{id:379,name:"雷吉斯奇鲁"},{id:382,name:"盖欧卡"},{id:383,name:"固拉多"},
+  {id:384,name:"烈空坐"},{id:386,name:"代欧奇希斯"},{id:483,name:"帝牙卢卡"},{id:484,name:"帕路奇亚"},{id:487,name:"骑拉帝纳"},
+  {id:493,name:"阿尔宙斯"},{id:643,name:"莱希拉姆"},{id:644,name:"捷克罗姆"},{id:646,name:"酋雷姆"},{id:716,name:"哲尔尼亚斯"},
+  {id:717,name:"伊裴尔塔尔"},{id:718,name:"基格尔德"},{id:791,name:"索尔迦雷欧"},{id:792,name:"露奈雅拉"},{id:800,name:"奈克洛兹玛"},
+  {id:888,name:"苍响"},{id:889,name:"藏玛然特"},{id:890,name:"无极汰那"}
+];
+/** phraseTask：用语/风格类，分为“自己完成池”与“别人回你池” */
+const PHRASE_TASK_NOTICE_SELF="【提醒】本层为用语类（自己完成池）：请结合语境自然发挥，勿在不同帖中反复粘贴同一句套话，以免构成重复灌水而误触版规。";
+const PHRASE_TASK_NOTICE_INCOMING="【提醒】本层为用语类（别人回你池）：目标是获得他人对你的回复且带有题述用语/风格；请避免诱导刷屏或模板化复读。";
+const PHRASE_BUYOUT_PTS=30; /** 等价 30 条回复；被引用按 1:5 折算即满额约 6 条 */
+const PHRASE_TASK_HINT_SELF="本层为“自己完成池”：由你本人发出 1 条符合题述风格/用语的回复即可。";
+const PHRASE_TASK_HINT_INCOMING="本层为“别人回你池”：需要获得他人回复你，且该回复带有题述用语/风格。若暂时难以达成，可使用下方「用语存量折抵」（允许回复与被引用混搭）。";
+const TASKS_PHRASE_SELF=[
+  {type:"timer",phraseTask:true,phraseMode:"self",buyoutAllowed:false,txt:"完成 1 条带有明显感谢或致谢意味的回复（勿复制粘贴空话）。"},
+  {type:"timer",phraseTask:true,phraseMode:"self",buyoutAllowed:false,txt:"完成 1 条表达鼓励或认可对方的回复。"},
+  {type:"timer",phraseTask:true,phraseMode:"self",buyoutAllowed:false,txt:"完成 1 条包含友好问候或祝福语的回复。"},
+  {type:"timer",phraseTask:true,phraseMode:"self",buyoutAllowed:false,txt:"完成 1 条用委婉语气提出建议或不同看法的回复。"},
+  {type:"timer",phraseTask:true,phraseMode:"self",buyoutAllowed:false,txt:"完成 1 条对他人观点表示理解或共情的回复。"},
+  {type:"timer",phraseTask:true,phraseMode:"self",buyoutAllowed:false,txt:"完成 1 条结尾带有礼貌收尾用语的回复。"}
+];
+const TASKS_PHRASE_INCOMING=[
+  {type:"timer",phraseTask:true,phraseMode:"incoming",buyoutAllowed:true,txt:"获得 1 条别人回复你，内容含明显鼓励、认可或支持语气。"},
+  {type:"timer",phraseTask:true,phraseMode:"incoming",buyoutAllowed:true,txt:"获得 1 条别人回复你，内容带有友好问候或祝福语。"},
+  {type:"timer",phraseTask:true,phraseMode:"incoming",buyoutAllowed:true,txt:"获得 1 条别人回复你，内容体现理解、共情或安抚语气。"},
+  {type:"timer",phraseTask:true,phraseMode:"incoming",buyoutAllowed:true,txt:"获得 1 条别人回复你，内容带礼貌收尾用语。"},
+  {type:"timer",phraseTask:true,phraseMode:"incoming",buyoutAllowed:true,txt:"获得 1 条别人回复你，内容以提问继续讨论。"},
+  {type:"timer",phraseTask:true,phraseMode:"incoming",buyoutAllowed:true,txt:"获得 1 条别人回复你，内容呼应你的关键词并表达认真阅读。"}
 ];
 const TASKS=[
-  {type:"timer",txt:"完成 2 条有内容回复后再继续。"},
-  {type:"timer",txt:"帮助 1 位新手并补充可执行建议。"},
   {type:"link",txt:"贴上 1 条你刚完成的回复链接。"},
-  {type:"timer",txt:"在同主题做 3 次推进讨论回复。"}
+  {type:"timer",txt:"完成 2 条有实质内容的回复后再继续。"},
+  {type:"timer",txt:"帮助 1 位新手并写出可执行的具体建议。"},
+  {type:"timer",txt:"在同主题做 3 次推进讨论的回复。"},
+  ...TASKS_PHRASE_SELF,
+  ...TASKS_PHRASE_INCOMING,
+  {type:"timer",txt:"完成 2 条回复：一条偏短信息类，一条偏展开论述（均需有内容）。"}
 ];
 const LOOTS=["节操","羽毛","本期勋章30天","字母勋章30天"];
 const G={uid:"",run:null};
@@ -332,19 +376,21 @@ function enterGame(){
 
 function newMonster(floor){
   const isLegend = floor % 10 === 0;
-  const p=(isLegend?POKE_LEGEND:POKE_MONS)[rInt(0,(isLegend?POKE_LEGEND:POKE_MONS).length-1)];
+  const pool=isLegend?POKE_LEGEND:POKE_MONS;
+  const p=pool[rInt(0,pool.length-1)];
   return {
-    name:p.name,
-    hp:isLegend ? (120 + floor*12 + rInt(0,25)) : mHpByFloor(floor),
+    name:isLegend?("【神兽】"+p.name):p.name,
+    hp:isLegend ? (200 + floor*18 + rInt(0,50)) : mHpByFloor(floor),
     maxHp:0,
-    reward:isLegend ? (30 + floor*8) : (15+floor*6),
+    reward:isLegend ? (55 + floor*12 + rInt(0,20)) : (15+floor*6),
     img:"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/"+p.id+".png",
-    counter:null
+    counter:null,
+    isLegend:!!isLegend
   };
 }
 function newTask(floor){
-  const t=TASKS[(floor-1)%TASKS.length];
-  return {type:t.type,txt:t.txt,startedAt:Date.now(),done:false};
+  const t=TASKS[rInt(0,TASKS.length-1)];
+  return {type:t.type,txt:t.txt,startedAt:Date.now(),done:false,phraseTask:!!t.phraseTask,phraseMode:(t.phraseMode||""),buyoutAllowed:!!t.buyoutAllowed};
 }
 function isTaskFloor(floor){ return floor % 4 === 0 || floor % 7 === 0; }
 function isChestFloor(floor){ return floor % 5 === 0; }
@@ -420,6 +466,20 @@ function renderGame(){
   if(!onRest && onTask){
     document.getElementById("encTxt").textContent="本层事件：执行任务推进探索";
     document.getElementById("taskTxt").textContent=r.task.txt;
+    const phraseOn = !!(r.task.phraseTask && r.task.type!=="link");
+    const phraseIncoming = phraseOn && (r.task.phraseMode==="incoming");
+    show("taskPhraseExtra", phraseOn);
+    if(phraseOn){
+      document.getElementById("taskPhraseHint").textContent=phraseIncoming ? PHRASE_TASK_HINT_INCOMING : PHRASE_TASK_HINT_SELF;
+      document.getElementById("phNeedPts").textContent=String(PHRASE_BUYOUT_PTS);
+      show("phBuyoutWrap", !!r.task.buyoutAllowed);
+      show("phNeedWrap", !!r.task.buyoutAllowed);
+      document.getElementById("taskDoneBtn").textContent=phraseIncoming ? "论坛已完成（别人回我达成）" : "论坛已完成（我已发出达成）";
+    }else{
+      show("phBuyoutWrap", false);
+      show("phNeedWrap", false);
+      document.getElementById("taskDoneBtn").textContent="完成任务";
+    }
     show("taskLink", r.task.type==="link");
     document.getElementById("monsterImg").src="./_split_output/1-1_r1_c1.png";
     document.getElementById("monsterImg").onerror=()=>{document.getElementById("monsterImg").src=pickFromPool();};
@@ -448,7 +508,10 @@ function renderGame(){
   if(onRest){
     sys("休息中~");
   }else if(onTask){
-    sys("当前是任务楼层，请先完成任务后继续爬塔。");
+    const ph=r.task.phraseTask && r.task.type!=="link";
+    const incoming=ph && (r.task.phraseMode==="incoming");
+    const note = !ph ? "" : (incoming ? (PHRASE_TASK_NOTICE_INCOMING+" 可用「用语存量折抵」（等价 "+PHRASE_BUYOUT_PTS+" 点，约 "+Math.ceil(PHRASE_BUYOUT_PTS/5)+" 条被引用，可混搭）。 ") : (PHRASE_TASK_NOTICE_SELF+" "));
+    sys(note+"当前是任务楼层，请先完成任务后继续爬塔。");
   }else if(onChest){
     const need = r.chest.need || 0;
     sys("当前是宝箱楼层，开锁需求值"+need+"，约等于 "+need+" 条回复，或 "+Math.ceil(need/5)+" 条被引用。");
@@ -503,19 +566,29 @@ function submitAction(){
       sys("战斗成功！获得："+r.lastLoot+"。请继续爬塔。");
       setTimeout(()=>nextFloor(), 500);
     }else{
-      // 怪物未死，触发反击
+      // 怪物未死，触发反击（回复/被引用类也必须选对「怎样闪」；被引用类可用被引用数量达成）
       const mode = rInt(0,2);
+      const dodgeAct=["左闪","右闪","防御"][rInt(0,2)];
       if(mode===0){
         const need=rInt(2,5);
-        r.monster.counter={type:"reply",need:need,txt:"怪物反击！输入至少 "+need+" 回复进行闪躲。"};
+        r.monster.counter={
+          type:"reply",
+          need:need,
+          dodgeAct:dodgeAct,
+          txt:"怪物反击！需至少折算 "+need+" 条回复（1 条被引用按 5 条回复折算，可混用），并选择「"+dodgeAct+"」完成闪躲。"
+        };
       }else if(mode===1){
         const need=rInt(1,2);
-        r.monster.counter={type:"quote",need:need,txt:"怪物反击！输入至少 "+need+" 被引用进行闪躲。"};
+        r.monster.counter={
+          type:"quote",
+          need:need,
+          dodgeAct:dodgeAct,
+          txt:"怪物反击！需至少 "+need+" 条被引用，并在下方选择「"+dodgeAct+"」完成闪躲（被引用可达成本条要求）。"
+        };
       }else{
-        const act=["左闪","右闪","防御"][rInt(0,2)];
-        r.monster.counter={type:"action",need:act,txt:"怪物反击！请选择行动："+act+"。"};
+        r.monster.counter={type:"action",need:dodgeAct,txt:"怪物反击！请选择行动："+dodgeAct+"（无需消耗回复/被引用）。"};
       }
-      sys("怪物开始反击！请在下方完成闪躲，或选择硬接伤害。");
+      sys("怪物开始反击！请按说明选择闪躲方式并满足条件，或选择硬接伤害。");
     }
   }
   document.getElementById("actReply").value="0";
@@ -529,16 +602,45 @@ function tryDodge(){
   const c=r.monster.counter;
   const addR=Math.max(0,parseInt(document.getElementById("dgReply").value||"0",10));
   const addQ=Math.max(0,parseInt(document.getElementById("dgQuote").value||"0",10));
-  const act=document.getElementById("dgAction").value;
+  const act=(document.getElementById("dgAction").value||"").trim();
+  const needAct = c.type==="action" ? c.need : c.dodgeAct;
+  const mustPickDodge = (c.type==="action") || !!c.dodgeAct;
+  if(mustPickDodge){
+    if(!act){
+      sys("请先在下拉框中选择怎样闪躲：左闪、右闪或防御。");
+      return;
+    }
+    if(act!==needAct){
+      document.getElementById("dgReply").value="0";
+      document.getElementById("dgQuote").value="0";
+      document.getElementById("dgAction").value="";
+      sys("闪躲方式不对！本次按失败处理并受到打击。");
+      takeHit();
+      return;
+    }
+  }
   let ok=false;
   if(c.type==="reply"){
-    const total=(r.stockReply||0)+addR;
-    if(total>=c.need){ r.stockReply = total - c.need; ok=true; }
+    const needPts=c.need;
+    const maxR=(r.stockReply||0)+addR, maxQ=(r.stockQuote||0)+addQ;
+    let best=null;
+    for(let q=0;q<=maxQ;q++){
+      for(let rr=0;rr<=maxR;rr++){
+        const d=q*5+rr;
+        if(d<needPts) continue;
+        if(!best || d<best.d || (d===best.d && (q+rr)<(best.q+best.r))) best={q:q,r:rr,d:d};
+      }
+    }
+    if(best){
+      r.stockQuote=maxQ-best.q;
+      r.stockReply=maxR-best.r;
+      ok=true;
+    }
   }else if(c.type==="quote"){
     const total=(r.stockQuote||0)+addQ;
     if(total>=c.need){ r.stockQuote = total - c.need; ok=true; }
   }else{
-    ok = (act===c.need);
+    ok=true;
   }
   document.getElementById("dgReply").value="0";
   document.getElementById("dgQuote").value="0";
@@ -546,12 +648,11 @@ function tryDodge(){
   if(ok){
     r.monster.counter=null;
     sys("闪躲成功！可继续攻击怪物。");
+    localStorage.setItem(KRUN,JSON.stringify(r));
+    renderGame();
   }else{
     takeHit();
-    return;
   }
-  localStorage.setItem(KRUN,JSON.stringify(r));
-  renderGame();
 }
 
 function takeHit(){
@@ -598,6 +699,37 @@ function submitTask(){
   sys("任务已通关，请继续爬塔！");
   setTimeout(()=>nextFloor(), 500);
   localStorage.setItem(KRUN,JSON.stringify(r));
+  renderGame();
+}
+
+function submitPhraseBuyout(){
+  const r=G.run;if(!r||!r.task)return;
+  if(!r.task.phraseTask || r.task.type==="link" || !r.task.buyoutAllowed || r.task.phraseMode!=="incoming") return sys("当前任务不支持折抵。仅“别人回你”用语任务可折抵。");
+  if(r.task.done) return sys("本层任务已完成。");
+  const addR=Math.max(0,parseInt(document.getElementById("phReply").value||"0",10));
+  const addQ=Math.max(0,parseInt(document.getElementById("phQuote").value||"0",10));
+  const totalR=(r.stockReply||0)+addR;
+  const totalQ=(r.stockQuote||0)+addQ;
+  const pts=totalR+totalQ*5;
+  const need=PHRASE_BUYOUT_PTS;
+  if(pts<need) return sys("用语折抵需要合计至少 "+need+" 点（1 被引用=5 点），当前为 "+pts+" 点。纯回复仅计条数，纯被引用约需 "+Math.ceil(need/5)+" 条。");
+  let best=null;
+  for(let q=0;q<=totalQ;q++){
+    for(let rr=0;rr<=totalR;rr++){
+      const d=q*5+rr; if(d<need) continue;
+      if(!best || d<best.d || (d===best.d && (q+rr)<(best.q+best.r))) best={q:q,r:rr,d:d};
+    }
+  }
+  if(!best) return sys("扣减计算异常，请重试。");
+  r.stockQuote=totalQ-best.q;
+  r.stockReply=totalR-best.r;
+  r.task.done=true;
+  document.getElementById("phReply").value="0";
+  document.getElementById("phQuote").value="0";
+  sys("已用语存量折抵通关（消耗 "+best.r+" 点回复与 "+best.q+" 条被引用合计满 "+need+" 点）。请继续爬塔！");
+  setTimeout(()=>nextFloor(), 500);
+  localStorage.setItem(KRUN,JSON.stringify(r));
+  syncCloudState("phrase_buyout");
   renderGame();
 }
 
@@ -734,9 +866,9 @@ function sendCloud(rec){
     perm_this:String(lt["永久本期勋章"]||0),perm_past:String(lt["永久往期兑换机会"]||0),
     _ts:String(Date.now())
   });
+  /** 仅用一种方式上报：Image 与 fetch 同时发会触发两次 GET，Google 表会写入两行重复记录 */
   const url=u+(u.includes("?")?"&":"?")+p.toString();
   try{const img=new Image();img.referrerPolicy="no-referrer";img.src=url;}catch(e){}
-  fetch(url,{mode:"no-cors",cache:"no-store"}).catch(()=>{});
 }
 
 function syncCloudState(eventName){
