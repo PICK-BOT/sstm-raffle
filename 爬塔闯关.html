@@ -58,6 +58,7 @@
       <input id="uid" maxlength="30" placeholder="请输入论坛ID（必填）">
       <button class="primary" onclick="enterGame()">进入游戏</button>
     </div>
+    <div style="font-size:13px;color:#c9daf6;margin-top:8px" id="loginNotice"></div>
   </div>
 
   <div id="menuCard" class="card hidden">
@@ -82,6 +83,7 @@
       <button class="primary" onclick="startRun()">开始爬塔</button>
       <button class="good" onclick="resumeRun()">继续爬塔</button>
       <button onclick="openRecord()">查看记录</button>
+      <button onclick="switchToIdInput_()">更改ID（可能影响记录）</button>
     </div>
   </div>
 
@@ -105,7 +107,11 @@
         <div class="s"><div class="k">引用伤害</div><div class="v">每次被引用 = 5 伤害</div></div>
         <div class="s"><div class="k">战利品</div><div id="pLoot" class="v">-</div></div>
         <div class="s"><div class="k">永久奖励</div><div id="pPerm" class="v">-</div></div>
-        <div class="row"><button class="warn" onclick="retreat()">撤退结算</button><button onclick="backMenu()">主菜单</button></div>
+        <div class="row">
+          <button class="warn" onclick="retreat()">撤退结算</button>
+          <button onclick="backMenu()">主菜单</button>
+          <button onclick="changeIdMidGame_()">更改ID</button>
+        </div>
       </div>
 
       <div class="battle">
@@ -279,7 +285,7 @@ const LOOTS=["节操","羽毛","本期勋章30天","字母勋章30天"];
 const STRICT_CLOUD_CONFIRM=true;
 // 全云端续档：继续爬塔优先从云端恢复，不再依赖 localStorage 的 KRUN
 const STRICT_CLOUD_RESUME=true;
-const G={uid:"",run:null,strict:{confirmed:false,loading:false,promise:null,totals:null,milestoneOnceMap:null,confirmedAt:0,lastSnapshotAt:0,snapshotTimer:null}};
+const G={uid:"",run:null,strict:{confirmed:false,loading:false,promise:null,totals:null,milestoneOnceMap:null,confirmedAt:0,lastSnapshotAt:0,snapshotTimer:null},pendingAliasFrom:""};
 function sys(msg){ document.getElementById("sysMsg").textContent = msg; }
 function setMenuNotice(msg){ document.getElementById("menuNotice").textContent = msg || ""; }
 function applyLootCaps(obj){
@@ -558,6 +564,32 @@ function cloudMaybeSaveRunSnapshot_(force){
   cloudSaveRunSnapshot_();
 }
 
+function saveUidAliasToCloud_(fromUid, toUid){
+  return new Promise((resolve,reject)=>{
+    const u=gasUrl();
+    if(!u) return reject(new Error("no_gas_url"));
+    if(!fromUid || !toUid || fromUid===toUid) return reject(new Error("bad_alias"));
+    const cb="tower_cb_alias_"+Date.now();
+    window[cb]=function(res2){
+      try{
+        delete window[cb];
+        if(res2 && res2.ok) resolve(true);
+        else reject(new Error((res2&&res2.error)||"alias_failed"));
+      }catch(e){
+        reject(e);
+      }
+    };
+    const s=document.createElement("script");
+    s.src=u+(u.includes("?")?"&":"?")+"action=set_uid_alias&from_id="+encodeURIComponent(fromUid)+"&to_id="+encodeURIComponent(toUid)+"&callback="+cb+"&t="+Date.now();
+    s.onerror=function(){
+      delete window[cb];
+      s.remove();
+      reject(new Error("alias_script_load_failed"));
+    };
+    document.head.appendChild(s);
+  });
+}
+
 function now(){const d=new Date();return{date:d.toLocaleDateString("zh-TW"),time:d.toLocaleTimeString("zh-TW",{hour12:false})};}
 function secFmt(s){return String((s/60)|0).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
 function show(id,v){document.getElementById(id).classList.toggle("hidden",!v);}
@@ -574,8 +606,15 @@ function clearMenuAddStock_(){
   document.getElementById("baseQuote").value="0";
 }
 
-function enterGame(){
-  const uid=document.getElementById("uid").value.trim(); if(!uid)return sys("请先输入ID。");
+async function enterGame(){
+  const uid=document.getElementById("uid").value.trim();
+  if(!uid){
+    const el=document.getElementById("loginNotice");
+    if(el) el.textContent="请先输入论坛ID。";
+    return;
+  }
+  const aliasFrom = G.pendingAliasFrom || '';
+  G.pendingAliasFrom = '';
   G.uid=uid; localStorage.setItem(KID,uid);
   show("loginCard",false); show("menuCard",true); document.getElementById("hello").textContent="玩家："+uid;
   // 严格模式：战利品/里程碑展示前先等待云端确认
@@ -594,8 +633,89 @@ function enterGame(){
   document.getElementById("lootPermPast").textContent="读取中…";
   setMenuNotice("云端确认中…（完成后才会显示战利品与里程碑状态）");
 
+  // 若进行了ID软合并：先把旧ID别名写入云端，再做云端确认
+  if(aliasFrom && aliasFrom !== uid){
+    try{
+      await saveUidAliasToCloud_(aliasFrom, uid);
+    }catch(e){}
+  }
   // 主动触发云端确认；startRun/resumeRun 也会二次阻塞，避免用户抢跑
   ensureCloudConfirmed_();
+}
+
+function switchToIdInput_(){
+  const oldUid=G && G.uid ? G.uid : '';
+  // 记录：下次进入游戏时如果输入了新ID，则把旧ID软合并到新ID
+  try{G.pendingAliasFrom = oldUid || '';}catch(e){}
+  if(G && G.run && !G.run.done){
+    const ok=confirm("你当前有未结算的爬塔进度。切换ID将放弃当前进度，并可能导致云端记录/排行榜分裂。是否继续？");
+    if(!ok) return;
+  }
+  try{
+    if(STRICT_CLOUD_RESUME) cloudClearRunSnapshot_();
+  }catch(e){}
+  try{localStorage.removeItem(KRUN);}catch(e){}
+  try{G.run=null;}catch(e){}
+  try{
+    G.strict.confirmed=false;
+    G.strict.loading=false;
+    G.strict.promise=null;
+    G.strict.milestoneOnceMap=null;
+    G.strict.confirmedAt=0;
+  }catch(e){}
+  const el=document.getElementById("loginNotice");
+  if(el) el.textContent="提醒：更改ID可能导致云端记录/排行榜不再连续。点击“进入游戏”后将使用新的ID。";
+  document.getElementById("uid").value=oldUid||"";
+  show("menuCard",false);
+  show("recordCard",false);
+  show("gameCard",false);
+  show("loginCard",true);
+}
+
+async function changeIdMidGame_(){
+  if(!G || !G.uid) return;
+  const oldUid=String(G.uid||'').trim();
+  let newUid=prompt("请输入新的论坛ID：", oldUid);
+  if(newUid===null) return;
+  newUid=String(newUid||'').trim();
+  if(!newUid){
+    sys("ID不能为空。");
+    return;
+  }
+  if(newUid===oldUid){
+    sys("ID未改变。");
+    return;
+  }
+  const ok=confirm("更改ID将把旧ID软合并到新ID，并把后续记录写入新ID。可能影响排行榜显示的刷新时效。是否继续？");
+  if(!ok) return;
+
+  sys("正在写入云端别名（软合并）…");
+  try{
+    await saveUidAliasToCloud_(oldUid,newUid);
+  }catch(e){
+    sys("云端别名写入失败（或网络慢）。仍继续切换ID，但排行榜/里程碑归并可能延迟。");
+  }
+
+  // 切换本地运行的玩家ID（不中断进度）
+  G.uid=newUid;
+  localStorage.setItem(KID,newUid);
+  document.getElementById("pUid").textContent=newUid;
+
+  // 刷新严格云端确认，确保后续不重复领里程碑
+  try{
+    G.strict.confirmed=false;
+    G.strict.loading=false;
+    G.strict.promise=null;
+    G.strict.milestoneOnceMap=null;
+    G.strict.confirmedAt=0;
+    await ensureCloudConfirmed_();
+  }catch(e){}
+
+  // 把当前进行中的快照也用新ID立刻写上去，断网重连能继续
+  try{cloudMaybeSaveRunSnapshot_(true);}catch(e){}
+
+  sys("ID已更改。继续爬塔吧。");
+  renderGame();
 }
 
 function newMonster(floor){
