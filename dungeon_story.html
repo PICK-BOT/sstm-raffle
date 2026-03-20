@@ -16,16 +16,9 @@
     button:hover{transform:translateY(-1px);filter:brightness(1.08)}
     .hud{display:grid;grid-template-columns:320px 1fr;gap:10px;align-items:start}
     .s{display:grid;grid-template-columns:95px 1fr;gap:6px;margin-bottom:7px}.k{color:#b8baf0}.v{color:#fbf8ff}
-    .mapbox{background:linear-gradient(180deg,#0f1024,#090a1a);border:1px solid #4c4f86;border-radius:8px;padding:8px;overflow:auto;max-height:none;height:72vh;box-shadow:inset 0 0 28px #7f72ff1a;width:100%}
-    .map{border-collapse:collapse;table-layout:fixed;width:100%}
-    .map td{
-      /* 让 12x12 的地图随容器宽度自动铺满（避免右侧大片空白） */
-      width:8.3333%;
-      aspect-ratio:1/1;
-      height:auto;
-      text-align:center;vertical-align:middle;border:1px solid #23274f;
-      font-size:12px;
-    }
+    .mapbox{background:linear-gradient(180deg,#0f1024,#090a1a);border:1px solid #4c4f86;border-radius:8px;padding:8px;overflow:auto;max-height:520px;box-shadow:inset 0 0 28px #7f72ff1a;width:100%}
+    .map{border-collapse:collapse}
+    .map td{width:30px;height:30px;text-align:center;vertical-align:middle;border:1px solid #23274f;font-size:12px}
     .fog{background:#070810;color:#070810}.wall{background:#1f1a2f;color:#1f1a2f}.floor{background:#1d2143}
     .wallHint{background:repeating-linear-gradient(45deg,#9a9a9a55 0,#9a9a9a55 3px,#1f1a2f 3px,#1f1a2f 7px),#1f1a2f;color:#cfcfcf}
     .water{background:#1a3f66;color:#b7e6ff}.stairs{background:#4d3c78;color:#ffe18f}.event{outline:1px dashed #9d8cff}
@@ -102,6 +95,15 @@
           </div>
         </div>
         <div id="offlineWarn" style="font-size:13px;color:#ffd66e;margin-top:6px;min-height:18px"></div>
+
+        <!-- 上下左右放在系统提醒下方；仅交互事件按钮在地图下方 -->
+        <div class="acts">
+          <button onclick="move(0,-1)">上</button>
+          <button onclick="move(-1,0)">左</button>
+          <button onclick="move(1,0)">右</button>
+          <button onclick="move(0,1)">下</button>
+          <button class="primary" onclick="goDown()">下楼</button>
+        </div>
       </div>
 
       <div class="mapbox">
@@ -110,14 +112,6 @@
 
       <!-- 所有交互控件移动到地图下方，避免遮挡系统提醒 -->
       <div id="belowInteract" style="display:flex;flex-direction:column;gap:10px">
-        <div class="acts">
-          <button onclick="move(0,-1)">上</button>
-          <button onclick="move(-1,0)">左</button>
-          <button onclick="move(1,0)">右</button>
-          <button onclick="move(0,1)">下</button>
-          <button class="primary" onclick="goDown()">下楼</button>
-        </div>
-
         <div id="eventActs" class="acts hidden">
           <span id="eventTxt">事件</span>
           <span>新增回复</span><input id="addR" type="number" min="0" value="0">
@@ -1276,7 +1270,7 @@ function renderHUD(){
       btnWrap.classList.remove("hidden");
       const b=document.createElement("button");
       b.className="warn";
-      b.textContent="逃跑";
+      b.textContent=(p.boss?"逃跑（BOSS不可）":"逃跑");
       b.onclick=()=>{ G.monsterPick="escape"; resolveEvent(); };
       btnWrap.appendChild(b);
     }
@@ -1297,7 +1291,7 @@ function renderHUD(){
       btnWrap2.appendChild(b1);
       const b2=document.createElement("button");
       b2.className="warn";
-      b2.textContent="不救助(下次改战斗)";
+      b2.textContent="不救助";
       b2.onclick=()=>{ G.rescuePick="refuse"; resolveEvent(); };
       btnWrap2.appendChild(b2);
     }
@@ -1541,6 +1535,11 @@ async function resolveEvent(){
     // 怪物可逃跑：成功则直接结束这格（不结算奖励）；失败则玩家生命 -1
     if(p.type==="monster" && G.monsterPick==="escape"){
       G.monsterPick=null;
+      if(p.boss){
+        sysTransient("这是 BOSS，无法逃跑！",SYS_AVATARS[2],1600);
+        renderMap(); renderHUD();
+        return;
+      }
       const success=Math.random()<0.45; // 仅用于逃跑结果，不向玩家显示概率
       if(success){
         p.done=true; p.resolvedKind="escape"; s.pending=null;
@@ -1662,6 +1661,8 @@ async function resolveEvent(){
       G.talkPick=null;
       if(v<0 || !p.outcomes || !p.outcomes[v]) return sys("请先选择一个沟通选项。",SYS_AVATARS[2]);
       const oc=p.outcomes[v]||"combat";
+      // 对话型事件通常不需要频繁写云端，避免玩家点完后“事件还在处理”的体感卡住
+      if(oc==="peace" || oc==="conflict") shouldSave=false;
 
       if(!s.story.floorContext) s.story.floorContext={rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0};
       if(oc==="peace") s.story.floorContext.talkHelpAccepted=(Number(s.story.floorContext.talkHelpAccepted||0)+1);
