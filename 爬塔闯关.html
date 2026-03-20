@@ -47,6 +47,10 @@
     .modal .mbox .mrow{display:flex;gap:8px;justify-content:flex-end}
     .task-phrase-extra{width:100%;flex-basis:100%;margin-top:6px;padding:8px;border:1px dashed #486797;border-radius:8px;background:#081424;font-size:13px;line-height:1.55;color:#c9daf6}
     .task-phrase-extra .task-hint{margin:0 0 8px;color:#eaf2ff}
+    .loading-mask{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;z-index:10000}
+    .loading-box{min-width:300px;max-width:420px;background:#122844;border:1px solid #4e7fca;border-radius:12px;padding:14px;display:flex;gap:10px;align-items:center}
+    .loading-box img{width:64px;height:64px;object-fit:contain;flex:0 0 auto}
+    .loading-box .t{font-size:14px;line-height:1.6;color:#eaf2ff}
   </style>
 </head>
 <body>
@@ -198,6 +202,13 @@
     </div>
   </div>
 
+  <div id="loadingMask" class="loading-mask hidden" aria-hidden="true">
+    <div class="loading-box">
+      <img id="loadingAvatar" alt="系统提醒">
+      <div id="loadingText" class="t">系统正在读取中，请静候…</div>
+    </div>
+  </div>
+
   <div class="version" id="versionTxt">版本：</div>
 </div>
 
@@ -296,6 +307,20 @@ function setMenuButtonsDisabled_(disabled){
     if(b) b.disabled=!!disabled;
   }catch(e){}
 }
+function setLoadingOverlay_(show,text){
+  try{
+    const m=document.getElementById("loadingMask");
+    const t=document.getElementById("loadingText");
+    const a=document.getElementById("loadingAvatar");
+    if(!m||!t||!a) return;
+    t.textContent=text||"系统正在读取中，请静候…";
+    a.src=SYS_AVATAR;
+    a.onerror=()=>{a.style.display="none";};
+    a.style.display="";
+    m.classList.toggle("hidden", !show);
+    m.setAttribute("aria-hidden", show ? "false":"true");
+  }catch(e){}
+}
 async function withBusyLock_(reason, fn){
   if(G.busy){
     setMenuNotice(reason ? ("正在处理中（" + reason + "）请稍后…") : "正在处理中，请稍后…");
@@ -304,13 +329,16 @@ async function withBusyLock_(reason, fn){
   G.busy=true;
   G.busyAt=Date.now();
   setMenuButtonsDisabled_(true);
-  setMenuNotice(reason ? ("系统正在读取（" + reason + "）请静候…") : "系统正在读取，请静候…");
+  const onResume = String(reason||"").indexOf("继续爬塔")>=0;
+  setMenuNotice(onResume ? "系统正在读取（继续爬塔）请静候…" : "");
+  if(onResume) setLoadingOverlay_(true,"系统正在读取中，请静候…");
   try{
     return await fn();
   }finally{
     G.busy=false;
     G.busyAt=0;
     setMenuButtonsDisabled_(false);
+    setLoadingOverlay_(false);
     setMenuNotice("");
   }
 }
@@ -896,12 +924,13 @@ async function resumeRun(){
 }
 
 function openGame(){show("menuCard",false);show("recordCard",false);show("gameCard",true);renderGame();}
-function backMenu(){
+function backMenu(priorityNotice){
   show("gameCard",false);show("recordCard",false);show("menuCard",true);
-  if(G && G.uid && G.run && !G.run.done){
-    cloudSaveRunSnapshot_();
-    setMenuNotice("严格云端续档：点击“继续爬塔”将从云端恢复进度；主菜单的初始回复数/被引用数不会并入续档。");
+  if(priorityNotice){
+    setMenuNotice(priorityNotice);
+    return;
   }
+  if(G && G.uid && G.run && !G.run.done) cloudSaveRunSnapshot_();
 }
 
 function renderGame(){
@@ -1153,10 +1182,9 @@ function takeHit(){
     r.floor=1; r.reward=0; r.kill=0; r.hits=0; r.monster=mon; r.task=null; r.chest=null; r.rest=null;
     r.stockReply=br; r.stockQuote=bq; r.lootBag=keepLoot;
     // 阵亡：不弹窗，用主菜单系统提醒承接（避免玩家摸不着头绪）
-    setMenuNotice("你已阵亡：累计承受3次伤害（生命值已降至 0/3）。已保留战利品并回到第1层，可从“继续爬塔”重新出发。");
     localStorage.setItem(KRUN,JSON.stringify(r));
     try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
-    backMenu();
+    backMenu("你已阵亡：累计承受3次伤害（生命值已降至 0/3）。已保留战利品并回到第1层，可从“继续爬塔”重新出发。");
     return;
   }else{
     const hpMax=3;
