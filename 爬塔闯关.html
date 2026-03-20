@@ -196,7 +196,7 @@
 </div>
 
 <script>
-const VER="v1.4.4-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
+const VER="v1.5.0-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
 const SHEET="爬塔闯关";
 const USER_IMG_POOL=[
   "./assets/c__Users_Fish_Chen_AppData_Roaming_Cursor_User_workspaceStorage_e82a39d4f02dd167ea7d277ae174f65a_images_image-a0d6726b-fb23-4710-b309-567e9cf17bea.png",
@@ -208,8 +208,20 @@ const MILESTONE_AVATAR="https://s.sstmlt.com/img/2026/03/19/1-11c14bafe31ee6ee1c
 const LOOT_DEFAULT={"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0,"永久本期勋章":0,"永久往期兑换机会":0};
 const KARMA_CAP_POINTS=5000, FEATHER_CAP_POINTS=2000;
 function milestoneOnceKey(f){ return "tower_milestone_once_"+f; }
-function hasMilestoneOnce(f){ try{return localStorage.getItem(milestoneOnceKey(f))==="1";}catch(e){return false;} }
-function setMilestoneOnce(f){ try{localStorage.setItem(milestoneOnceKey(f),"1");}catch(e){} }
+function hasMilestoneOnce(f){
+  try{
+    if(G && G.strict && G.strict.milestoneOnceMap && (String(f) in G.strict.milestoneOnceMap)){
+      return !!G.strict.milestoneOnceMap[String(f)];
+    }
+  }catch(e){}
+  try{return localStorage.getItem(milestoneOnceKey(f))==="1";}catch(e){return false;}
+}
+function setMilestoneOnce(f){
+  try{localStorage.setItem(milestoneOnceKey(f),"1");}catch(e){}
+  try{
+    if(G && G.strict && G.strict.milestoneOnceMap) G.strict.milestoneOnceMap[String(f)] = true;
+  }catch(e){}
+}
 const TOWER_FALLBACK="https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?auto=format&fit=crop&w=1200&q=80";
 /** 普通遭遇：非传说宝可梦，种类多、减少重复感 */
 const POKE_MONS=[
@@ -264,7 +276,10 @@ const TASKS=[
   {type:"timer",txt:"完成 2 条回复：一条偏短信息类，一条偏展开论述（均需有内容）。"}
 ];
 const LOOTS=["节操","羽毛","本期勋章30天","字母勋章30天"];
-const G={uid:"",run:null};
+const STRICT_CLOUD_CONFIRM=true;
+// 全云端续档：继续爬塔优先从云端恢复，不再依赖 localStorage 的 KRUN
+const STRICT_CLOUD_RESUME=true;
+const G={uid:"",run:null,strict:{confirmed:false,loading:false,promise:null,totals:null,milestoneOnceMap:null,confirmedAt:0,lastSnapshotAt:0,snapshotTimer:null}};
 function sys(msg){ document.getElementById("sysMsg").textContent = msg; }
 function setMenuNotice(msg){ document.getElementById("menuNotice").textContent = msg || ""; }
 function applyLootCaps(obj){
@@ -326,10 +341,11 @@ function handleFloorMilestones(clearedFloor){
   if(!clearedFloor||!G.uid)return;
   const r=G.run;
   let changed=false;
-  if(clearedFloor===20 && (loadLootTotal()["永久本期勋章"]||0)<1){
+  if(clearedFloor===20 && !hasMilestoneOnce(20)){
     const lt=loadLootTotal();
     lt["永久本期勋章"]=1;
     saveLootTotal(lt);
+    setMilestoneOnce(20);
     changed=true;
     showRewardModal("里程碑","你已经得到永久本期勋章。你仍可以继续游玩累积积分（仅用于排行榜评比）",MILESTONE_AVATAR);
     const t=now();
@@ -360,6 +376,188 @@ function gasUrl(){
   localStorage.setItem(KGAS,FIXED_GAS_URL);
   return FIXED_GAS_URL;
 }
+
+function loadCloudUserTotals_(uid){
+  return new Promise((resolve,reject)=>{
+    const u=gasUrl();
+    if(!u) return reject(new Error("no_gas_url"));
+    const cb="tower_cb_totals_"+Date.now();
+    window[cb]=function(res2){
+      try{
+        delete window[cb];
+        if(res2 && res2.ok && res2.data){
+          resolve(res2.data);
+        }else{
+          reject(new Error((res2&&res2.error)||"cloud_error"));
+        }
+      }catch(e){
+        reject(e);
+      }
+    };
+    const s=document.createElement("script");
+    s.src=u+(u.includes("?")?"&":"?")+"action=user_tower_totals&user_id="+encodeURIComponent(uid)+"&callback="+cb+"&t="+Date.now();
+    s.onerror=function(){
+      delete window[cb];
+      s.remove();
+      reject(new Error("cloud_script_load_failed"));
+    };
+    document.head.appendChild(s);
+  });
+}
+
+function applyCloudTotalsToLocal_(data){
+  if(!data || !data.totals) return;
+  const d=data.totals;
+  // 将云端确认后的总计写回本地缓存，用于离线/断网回退
+  const t=loadLootTotal();
+  t["节操"]=Number(d["节操"]||0);
+  t["羽毛"]=Number(d["羽毛"]||0);
+  t["本期勋章30天"]=Number(d["本期勋章30天"]||0);
+  t["字母勋章30天"]=Number(d["字母勋章30天"]||0);
+  t["永久本期勋章"]=Number(d["永久本期勋章"]||0);
+  t["永久往期兑换机会"]=Number(d["永久往期兑换机会"]||0);
+  saveLootTotal(t);
+  if(data.milestone){
+    G.strict.milestoneOnceMap=data.milestone;
+    // 同步一份缓存到本地，离线时还能减少重复领取概率
+    for(const k in data.milestone){
+      if(data.milestone[k]) setMilestoneOnce(k);
+    }
+  }
+}
+
+async function ensureCloudConfirmed_(){
+  if(!STRICT_CLOUD_CONFIRM) return true;
+  if(!G.uid) return false;
+  if(G.strict.confirmed) return true;
+  if(G.strict.loading && G.strict.promise) {
+    try{
+      await G.strict.promise;
+      return G.strict.confirmed;
+    }catch(e){
+      return false;
+    }
+  }
+  G.strict.loading=true;
+  G.strict.promise=(async()=>{
+    const data=await loadCloudUserTotals_(G.uid);
+    applyCloudTotalsToLocal_(data);
+    G.strict.confirmed=true;
+    G.strict.confirmedAt=Date.now();
+    document.getElementById("lootA").textContent=String((loadLootTotal()["节操"]||0));
+    document.getElementById("lootB").textContent=String((loadLootTotal()["羽毛"]||0));
+    document.getElementById("lootC").textContent=String((loadLootTotal()["本期勋章30天"]||0));
+    document.getElementById("lootD").textContent=String((loadLootTotal()["字母勋章30天"]||0));
+    document.getElementById("lootPermThis").textContent=((loadLootTotal()["永久本期勋章"]>=1)?"已获得":"未获得");
+    document.getElementById("lootPermPast").textContent=String(loadLootTotal()["永久往期兑换机会"]||0);
+    renderLootTotal();
+    setMenuNotice("");
+  })();
+
+  try{
+    await G.strict.promise;
+    return true;
+  }catch(e){
+    // 云端失败：允许继续，但会提示非严格回退
+    sys("云端确认失败：将使用本地缓存继续（非严格模式，可能发生重复领取）。");
+    return true;
+  }finally{
+    G.strict.loading=false;
+  }
+}
+
+function cloudSaveRunSnapshot_(){
+  if(!STRICT_CLOUD_RESUME) return;
+  if(!G || !G.uid || !G.run) return;
+  const u=gasUrl(); if(!u) return;
+  const t=now();
+  const runJson=JSON.stringify(G.run);
+  const p=new URLSearchParams({
+    action:"save_run_snapshot",
+    sheet:SHEET,
+    user_id:G.uid,
+    date:t.date,
+    time:t.time,
+    run_json:runJson,
+    _ts:String(Date.now())
+  });
+  const url=u+(u.includes("?")?"&":"?")+p.toString();
+  try{
+    const img=new Image();
+    img.referrerPolicy="no-referrer";
+    img.src=url;
+  }catch(e){}
+}
+
+function cloudClearRunSnapshot_(){
+  if(!STRICT_CLOUD_RESUME) return;
+  if(!G || !G.uid) return;
+  const u=gasUrl(); if(!u) return;
+  const t=now();
+  const p=new URLSearchParams({
+    action:"clear_run_snapshot",
+    sheet:SHEET,
+    user_id:G.uid,
+    date:t.date,
+    time:t.time,
+    _ts:String(Date.now())
+  });
+  const url=u+(u.includes("?")?"&":"?")+p.toString();
+  try{
+    const img=new Image();
+    img.referrerPolicy="no-referrer";
+    img.src=url;
+  }catch(e){}
+}
+
+function loadCloudRunSnapshot_(uid){
+  if(!STRICT_CLOUD_RESUME) return Promise.resolve(null);
+  return new Promise((resolve,reject)=>{
+    const u=gasUrl();
+    if(!u) return reject(new Error("no_gas_url"));
+    const cb="tower_cb_run_"+Date.now();
+    window[cb]=function(res2){
+      try{
+        delete window[cb];
+        if(res2 && res2.ok && res2.data && res2.data.run){
+          resolve(res2.data.run);
+        }else{
+          resolve(null);
+        }
+      }catch(e){
+        reject(e);
+      }
+    };
+    const p=new URLSearchParams({
+      action:"load_run_snapshot",
+      sheet:SHEET,
+      user_id:uid || "",
+      callback:cb,
+      _ts:String(Date.now())
+    });
+    const s=document.createElement("script");
+    s.src=u+(u.includes("?")?"&":"?")+p.toString();
+    s.onerror=function(){
+      delete window[cb];
+      s.remove();
+      reject(new Error("cloud_run_snapshot_load_failed"));
+    };
+    document.head.appendChild(s);
+  });
+}
+
+function cloudMaybeSaveRunSnapshot_(force){
+  if(!STRICT_CLOUD_RESUME) return;
+  if(!G || !G.uid || !G.run || G.run.done) return;
+  if(!force && !navigator.onLine) return;
+  const nowMs=Date.now();
+  const minIntervalMs = 15000; // 节流：最多每 15s 写一次
+  if(!force && G.strict.lastSnapshotAt && (nowMs - G.strict.lastSnapshotAt) < minIntervalMs) return;
+  G.strict.lastSnapshotAt=nowMs;
+  // 直接写入快照（Image beacon）
+  cloudSaveRunSnapshot_();
+}
+
 function now(){const d=new Date();return{date:d.toLocaleDateString("zh-TW"),time:d.toLocaleTimeString("zh-TW",{hour12:false})};}
 function secFmt(s){return String((s/60)|0).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
 function show(id,v){document.getElementById(id).classList.toggle("hidden",!v);}
@@ -380,7 +578,24 @@ function enterGame(){
   const uid=document.getElementById("uid").value.trim(); if(!uid)return sys("请先输入ID。");
   G.uid=uid; localStorage.setItem(KID,uid);
   show("loginCard",false); show("menuCard",true); document.getElementById("hello").textContent="玩家："+uid;
-  renderLootTotal();
+  // 严格模式：战利品/里程碑展示前先等待云端确认
+  G.strict.confirmed=false;
+  G.strict.loading=false;
+  G.strict.promise=null;
+  G.strict.totals=null;
+  G.strict.milestoneOnceMap=null;
+  G.strict.confirmedAt=0;
+
+  document.getElementById("lootA").textContent="…";
+  document.getElementById("lootB").textContent="…";
+  document.getElementById("lootC").textContent="…";
+  document.getElementById("lootD").textContent="…";
+  document.getElementById("lootPermThis").textContent="读取中…";
+  document.getElementById("lootPermPast").textContent="读取中…";
+  setMenuNotice("云端确认中…（完成后才会显示战利品与里程碑状态）");
+
+  // 主动触发云端确认；startRun/resumeRun 也会二次阻塞，避免用户抢跑
+  ensureCloudConfirmed_();
 }
 
 function newMonster(floor){
@@ -404,9 +619,24 @@ function newTask(floor){
 function isTaskFloor(floor){ return floor % 4 === 0 || floor % 7 === 0; }
 function isChestFloor(floor){ return floor % 5 === 0; }
 
-function startRun(){
+async function startRun(){
   if(!G.uid)return;
+  if(STRICT_CLOUD_CONFIRM && !await ensureCloudConfirmed_()) return;
   setMenuNotice("");
+  if(STRICT_CLOUD_RESUME){
+    try{
+      const snap=await loadCloudRunSnapshot_(G.uid);
+      if(snap && !snap.done){
+        const ok=confirm("检测到你已有爬塔云端续档进度。开始爬塔将从第1层开始并清除现有云端续档，是否继续？");
+        if(!ok){
+          return resumeRun();
+        }
+        // 清空本地与云端续档（云端清空为异步 beacon）
+        cloudClearRunSnapshot_();
+        try{localStorage.removeItem(KRUN);}catch(e){}
+      }
+    }catch(e){}
+  }
   const oldRunRaw = localStorage.getItem(KRUN);
   if (oldRunRaw) {
     let oldRun = null;
@@ -424,13 +654,27 @@ function startRun(){
   const mon=newMonster(1); mon.maxHp=mon.hp;
   G.run={st:Date.now(),floor:1,reward:0,kill:0,hits:0,stockReply:br,stockQuote:bq,lastPassAt:0,monster:mon,task:null,chest:null,rest:null,lastLoot:"-",lootBag:{"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0},done:false};
   localStorage.setItem(KRUN,JSON.stringify(G.run));
+  cloudSaveRunSnapshot_();
   clearMenuAddStock_();
   openGame();
 }
 
-function resumeRun(){
+async function resumeRun(){
   if(!G.uid)return;
+  if(STRICT_CLOUD_CONFIRM && !await ensureCloudConfirmed_()) return;
   setMenuNotice("");
+  if(STRICT_CLOUD_RESUME){
+    try{
+      const snap=await loadCloudRunSnapshot_(G.uid);
+      if(snap && !snap.done){
+        G.run=snap;
+        localStorage.setItem(KRUN,JSON.stringify(G.run));
+        clearMenuAddStock_();
+        openGame();
+        return;
+      }
+    }catch(e){}
+  }
   try{G.run=JSON.parse(localStorage.getItem(KRUN)||"null");}catch(e){G.run=null;}
   if(!G.run||G.run.done)return startRun();
   // 主菜单输入的“回复/被引用”视为补充待用存量
@@ -447,13 +691,9 @@ function resumeRun(){
 function openGame(){show("menuCard",false);show("recordCard",false);show("gameCard",true);renderGame();}
 function backMenu(){
   show("gameCard",false);show("recordCard",false);show("menuCard",true);
-  // 提醒：继续爬塔会把主菜单输入并入待用
-  if(G.uid){
-    let r=null;
-    try{r=JSON.parse(localStorage.getItem(KRUN)||"null");}catch(e){r=null;}
-    if(r && !r.done){
-      setMenuNotice("提示：此处“初始回复数/被引用数”可当作补充待用存量；点“继续爬塔”会自动并入本次爬塔的待用并清空输入框。");
-    }
+  if(G && G.uid && G.run && !G.run.done){
+    cloudSaveRunSnapshot_();
+    setMenuNotice("严格云端续档：点击“继续爬塔”将从云端恢复进度；主菜单的初始回复数/被引用数不会并入续档。");
   }
 }
 
@@ -622,6 +862,7 @@ function submitAction(){
   document.getElementById("actReply").value="0";
   document.getElementById("actQuote").value="0";
   localStorage.setItem(KRUN,JSON.stringify(r));
+  try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
   renderGame();
 }
 
@@ -677,6 +918,7 @@ function tryDodge(){
     r.monster.counter=null;
     sys("闪躲成功！可继续攻击怪物。");
     localStorage.setItem(KRUN,JSON.stringify(r));
+    try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
     renderGame();
   }else{
     takeHit();
@@ -705,12 +947,14 @@ function takeHit(){
     r.stockReply=br; r.stockQuote=bq; r.lootBag=keepLoot;
     setMenuNotice("你已阵亡：累计承受3次伤害。已保留战利品并回到第1层，可从“继续爬塔”重新出发。");
     localStorage.setItem(KRUN,JSON.stringify(r));
+    try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
     backMenu();
     return;
   }else{
     sys("闪躲失败，受到1次伤害。当前受击："+r.hits+"/3");
   }
   localStorage.setItem(KRUN,JSON.stringify(r));
+  try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
   renderGame();
 }
 
@@ -727,6 +971,7 @@ function submitTask(){
   sys("任务已通关，请继续爬塔！");
   setTimeout(()=>nextFloor(), 500);
   localStorage.setItem(KRUN,JSON.stringify(r));
+  try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
   renderGame();
 }
 
@@ -757,6 +1002,7 @@ function submitPhraseBuyout(){
   sys("已用语存量折抵通关（消耗 "+best.r+" 点回复与 "+best.q+" 条被引用合计满 "+need+" 点）。请继续爬塔！");
   setTimeout(()=>nextFloor(), 500);
   localStorage.setItem(KRUN,JSON.stringify(r));
+  try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
   syncCloudState("phrase_buyout");
   renderGame();
 }
@@ -783,6 +1029,7 @@ function nextFloor(){
     const mon=newMonster(r.floor); mon.maxHp=mon.hp; r.monster=mon; r.task=null; r.chest=null;
   }
   localStorage.setItem(KRUN,JSON.stringify(r));
+  try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
   syncCloudState("next_floor");
   renderGame();
 }
@@ -797,6 +1044,7 @@ function goBackRest(){
   r.rest = { returnFloor: currentFloor };
   r.monster = null; r.task = null; r.chest = null;
   localStorage.setItem(KRUN,JSON.stringify(r));
+  try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
   syncCloudState("rest");
   renderGame();
 }
@@ -815,6 +1063,7 @@ function continueAfterRest(){
     const mon=newMonster(r.floor); mon.maxHp=mon.hp; r.monster=mon; r.task=null; r.chest=null;
   }
   localStorage.setItem(KRUN,JSON.stringify(r));
+  try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
   syncCloudState("rest_continue");
   renderGame();
 }
@@ -866,6 +1115,7 @@ function openChest(){
   document.getElementById("chReply").value="0";
   document.getElementById("chQuote").value="0";
   localStorage.setItem(KRUN,JSON.stringify(r));
+  try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
   syncCloudState("chest");
   renderGame();
 }
@@ -878,6 +1128,7 @@ function settle(result){
   const unfinishedMonster = (!!r.monster && r.monster.hp > 0) ? 1 : 0;
   const rec={id:G.uid,date:t.date,time:t.time,floors:r.floor-unfinishedMonster,tower_time:secFmt(sec),reward:r.reward,result:result};
   const logs=JSON.parse(localStorage.getItem(KLOG)||"[]"); logs.unshift(rec); localStorage.setItem(KLOG,JSON.stringify(logs.slice(0,120)));
+  if(STRICT_CLOUD_RESUME) cloudClearRunSnapshot_();
   localStorage.removeItem(KRUN); sendCloud(rec);
   sys("结算完成：层数 "+rec.floors+"，积分(仅排行) "+rec.reward+"，时间 "+rec.tower_time+"。");
   backMenu();
@@ -975,12 +1226,32 @@ window.addEventListener("DOMContentLoaded",()=>{
     String(now.getSeconds()).padStart(2,"0");
   document.getElementById("versionTxt").textContent = "版本：" + VER + "+" + stamp;
   saveLootTotal(loadLootTotal());
-  renderLootTotal();
+  // 严格模式下：进入游戏后由云端确认成功再展示战利品/里程碑状态
+  if(!STRICT_CLOUD_CONFIRM) renderLootTotal();
   const uid=localStorage.getItem(KID)||""; if(uid){document.getElementById("uid").value=uid; G.uid=uid; enterGame();}
   const av=document.getElementById("sysAvatar");
   av.src=SYS_AVATAR;
   av.onerror=()=>{av.style.display="none";};
   sys("准备就绪。");
+
+  // 网络恢复后立刻补一次快照；同时周期性刷新快照（离线时跳过）
+  window.addEventListener("online",()=>{
+    try{cloudMaybeSaveRunSnapshot_(true);}catch(e){}
+    try{ensureCloudConfirmed_().catch(()=>{});}catch(e){}
+  });
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden){
+      try{cloudMaybeSaveRunSnapshot_(true);}catch(e){}
+    }
+  });
+  window.addEventListener("beforeunload",()=>{
+    try{cloudMaybeSaveRunSnapshot_(true);}catch(e){}
+  });
+
+  // 周期性：确保离线期间恢复网络后也能把最新状态写上去
+  G.strict.snapshotTimer=setInterval(()=>{
+    try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
+  }, 20000);
 });
 </script>
 </body>
