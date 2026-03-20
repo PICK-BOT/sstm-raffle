@@ -19,6 +19,7 @@
     .mapbox{background:linear-gradient(180deg,#0f1024,#090a1a);border:1px solid #4c4f86;border-radius:8px;padding:8px;overflow:auto;max-height:520px;box-shadow:inset 0 0 28px #7f72ff1a}
     .map{border-collapse:collapse}.map td{width:30px;height:30px;text-align:center;vertical-align:middle;border:1px solid #23274f;font-size:12px}
     .fog{background:#070810;color:#070810}.wall{background:#1f1a2f;color:#1f1a2f}.floor{background:#1d2143}
+    .wallHint{background:repeating-linear-gradient(45deg,#9a9a9a55 0,#9a9a9a55 3px,#1f1a2f 3px,#1f1a2f 7px),#1f1a2f;color:#cfcfcf}
     .water{background:#1a3f66;color:#b7e6ff}.stairs{background:#4d3c78;color:#ffe18f}.event{outline:1px dashed #9d8cff}
     .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#101536c9;border:1px solid #4f57a5;border-radius:8px;padding:8px}
     .sysbox{margin-top:8px;background:#121634;border:1px solid #4f5ab0;border-radius:8px;padding:8px}
@@ -183,6 +184,97 @@ const QUEST_DEFS={
   letter:{title:"未寄出的信",steps:["帮助魔像读信","再完成 2 次和平沟通","完成一次救助转交信件","收到回信"],reward:30}
 };
 const G={uid:"",state:null,busy:false,page:1,recordBase:[],moveSaving:false};
+
+let _sysToken=0;
+function sysTransient(msg, avatar, ms){
+  const token=++_sysToken;
+  const text=String(msg||"");
+  sys(text,avatar);
+  setTimeout(()=>{
+    if(_sysToken===token){
+      const el=document.getElementById("sysMsg");
+      if(el && el.textContent===text) el.textContent="";
+    }
+  }, ms||1600);
+}
+
+function eventGlyph_(ev){
+  if(!ev) return "";
+  const kind=ev.resolvedKind||"";
+  if(ev.type==="chest") return "◇";
+  if(ev.type==="rescue") return "✚";
+  if(ev.type==="monster") return "⚔";
+  if(ev.type==="talk_monster"){
+    if(kind==="peace") return "☮";
+    if(kind==="conflict") return "✦";
+    if(kind==="combat") return "⚔";
+    return "✉";
+  }
+  return "·";
+}
+
+const LOOT_WEIGHTS_DUNGEON={jiecao:30,yumao:30,bqMedal30:32,zmMedal30:8};
+function pickLootKindDungeon_(){
+  const ks=Object.keys(LOOT_WEIGHTS_DUNGEON);
+  let total=0; ks.forEach(k=>{ total += Number(LOOT_WEIGHTS_DUNGEON[k]||0); });
+  let r=Math.random()*total;
+  for(let i=0;i<ks.length;i++){
+    const k=ks[i];
+    r -= Number(LOOT_WEIGHTS_DUNGEON[k]||0);
+    if(r<=0) return k;
+  }
+  return ks[0]||"jiecao";
+}
+function lootKindLabelDungeon_(kind){
+  if(kind==="jiecao") return "30节操";
+  if(kind==="yumao") return "30羽毛";
+  if(kind==="bqMedal30") return "30天本期勋章";
+  if(kind==="zmMedal30") return "30天字母勋章";
+  return kind;
+}
+function applyLootCapsDungeon_(lb){
+  // 节操：jiecao 以“30节操份数”为单位；超出 5000节操则转换为 字母勋章30天
+  // 羽毛：yumao 以“10羽毛份数”为单位；超出 2000羽毛则转换为 字母勋章30天
+  let jc=Number(lb.jiecao||0);
+  let ym=Number(lb.yumao||0);
+  let bq=Number(lb.bqMedal30||0);
+  let zm=Number(lb.zmMedal30||0);
+  const maxJc=Math.floor(5000/30); // 166
+  if(jc>maxJc){
+    zm += (jc-maxJc);
+    jc = maxJc;
+  }
+  const maxYm=Math.floor(2000/10); // 200
+  if(ym>maxYm){
+    zm += (ym-maxYm);
+    ym = maxYm;
+  }
+  lb.jiecao=jc; lb.yumao=ym; lb.bqMedal30=bq; lb.zmMedal30=zm;
+  return lb;
+}
+function grantDungeonLootInstances_(s, n){
+  if(!s) return {diff:{}, primaryKind:""};
+  const lb=s.lootBag|| (s.lootBag={jiecao:0,yumao:0,bqMedal30:0,zmMedal30:0});
+  const before={jiecao:lb.jiecao, yumao:lb.yumao, bqMedal30:lb.bqMedal30, zmMedal30:lb.zmMedal30};
+  let primaryKind="";
+  for(let i=0;i<n;i++){
+    const kind=pickLootKindDungeon_();
+    if(!primaryKind) primaryKind=kind;
+    if(kind==="jiecao") lb.jiecao += 1;
+    else if(kind==="yumao") lb.yumao += 3; // 30羽毛 = 3 * (10羽毛)
+    else if(kind==="bqMedal30") lb.bqMedal30 += 1;
+    else if(kind==="zmMedal30") lb.zmMedal30 += 1;
+  }
+  applyLootCapsDungeon_(lb);
+  const after={jiecao:lb.jiecao, yumao:lb.yumao, bqMedal30:lb.bqMedal30, zmMedal30:lb.zmMedal30};
+  const diff={
+    jiecao:after.jiecao-before.jiecao,
+    yumao:after.yumao-before.yumao,
+    bqMedal30:after.bqMedal30-before.bqMedal30,
+    zmMedal30:after.zmMedal30-before.zmMedal30
+  };
+  return {diff, primaryKind};
+}
 
 function gasUrl(){
   const q=new URLSearchParams(location.search).get("record");
@@ -397,7 +489,7 @@ function buildFloor(floor){
     else if(r<tRescue) events[key(x,y)]={type:"rescue",need:rInt(10,22),story:makeStoryRescue(),reward:baseRescueReward,done:false};
     else if(r<tTalk){ const s=makeStoryMonsterByFloor(floor); events[key(x,y)]={type:"talk_monster",monsterId:s.id,story:s.txt,opts:s.opts,outcomes:s.outcomes,reward:baseTalkReward,hp:rInt(10,22)+floor,done:false}; }
   }
-  return {w:w,h:h,tiles:tiles,revealed:revealed,events:events,start:start,stairs:stairs};
+  return {w:w,h:h,tiles:tiles,revealed:revealed,events:events,start:start,stairs:stairs,learnedWalls:{}};
 }
 
 function xBlockedPath(x,y,start,stairs){
@@ -412,7 +504,7 @@ function newState(uid){
     uid:uid,floor:floor,reward:0,hp:3,maxHp:3,stockReply:0,stockQuote:0,
     player:{x:map.start.x,y:map.start.y},map:map,pending:null,lastEventKey:"",
     eventBias:{peace:0,conflict:0},chapterSeen:{},chapterRewardSeen:{},
-    lootBag:{jiecao:0,yumao:0,bqMedal30:0,pastMedal30:0},
+    lootBag:{jiecao:0,yumao:0,bqMedal30:0,zmMedal30:0},
     story:{
       kindness:0,violence:0,peaceTalks:0,rescueDone:0,chestOpen:0,floorsDescended:0,
       quest:{
@@ -437,13 +529,27 @@ function normalizeState(st){
   if(typeof st.stockReply!=="number") st.stockReply=Number(st.stockReply||0);
   if(typeof st.stockQuote!=="number") st.stockQuote=Number(st.stockQuote||0);
   if(!st.lootBag){
-    st.lootBag={jiecao:0,yumao:0,bqMedal30:0,pastMedal30:0};
+    st.lootBag={jiecao:0,yumao:0,bqMedal30:0,zmMedal30:0};
   }else{
+    // 兼容旧存档：pastMedal30（当时把 30 直接当数值加了）
+    if(st.lootBag.pastMedal30!==undefined && st.lootBag.zmMedal30===undefined){
+      const oldJ=Number(st.lootBag.jiecao||0);
+      const oldY=Number(st.lootBag.yumao||0);
+      const oldB=Number(st.lootBag.bqMedal30||0);
+      const oldP=Number(st.lootBag.pastMedal30||0);
+      st.lootBag={
+        jiecao: Math.floor(oldJ/30), // 旧值是“30节操”，转换为份数
+        yumao: Math.floor(oldY/10), // 旧值是“30羽毛”，转换为 10羽毛份数
+        bqMedal30: Math.floor(oldB/30),
+        zmMedal30: Math.floor(oldP/30)
+      };
+    }
     if(typeof st.lootBag.jiecao!=="number") st.lootBag.jiecao=Number(st.lootBag.jiecao||0);
     if(typeof st.lootBag.yumao!=="number") st.lootBag.yumao=Number(st.lootBag.yumao||0);
     if(typeof st.lootBag.bqMedal30!=="number") st.lootBag.bqMedal30=Number(st.lootBag.bqMedal30||0);
-    if(typeof st.lootBag.pastMedal30!=="number") st.lootBag.pastMedal30=Number(st.lootBag.pastMedal30||0);
+    if(typeof st.lootBag.zmMedal30!=="number") st.lootBag.zmMedal30=Number(st.lootBag.zmMedal30||0);
   }
+  if(st.map && !st.map.learnedWalls) st.map.learnedWalls={};
   if(!st.story){
     st.story={kindness:0,violence:0,peaceTalks:0,rescueDone:0,chestOpen:0,floorsDescended:0,quest:{herb:{stage:0,done:false},lamp:{stage:0,done:false,startFloor:0},letter:{stage:0,done:false}},log:[]};
   }
@@ -545,10 +651,19 @@ function renderMap(){
       const td=document.createElement("td");
       const rv=!!m.revealed[key(x,y)];
       const tile=m.tiles[y][x];
-      td.className=rv?(tile===1?"wall":(tile===2?"water":"floor")):"fog";
+      const k=key(x,y);
+      const isHintWall=rv && m.learnedWalls && m.learnedWalls[k] && tile===1;
+      td.className=rv?(tile===1?(isHintWall?"wallHint":"wall"):(tile===2?"water":"floor")):"fog";
       if(rv && x===m.stairs.x && y===m.stairs.y){ td.className="stairs"; td.textContent="下"; }
       if(rv && s.player.x===x && s.player.y===y){ td.innerHTML='<img src="'+PLAYER_AVATAR+'" alt="p" style="width:22px;height:22px;object-fit:contain">'; }
-      if(rv && m.events[key(x,y)] && !m.events[key(x,y)].done && !(s.player.x===x&&s.player.y===y)) td.classList.add("event");
+      const ev=m.events[k];
+      if(rv && ev && !ev.done && !(s.player.x===x&&s.player.y===y)) td.classList.add("event");
+      // 事件已完成：在地图格子上展示轻量符号
+      if(rv && ev && ev.done && !(s.player.x===x&&s.player.y===y)){
+        // 若是战斗进行中/战后，用 resolvedKind 辅助显示
+        td.textContent=eventGlyph_(ev);
+        td.classList.remove("event");
+      }
       tr.appendChild(td);
     }
     tb.appendChild(tr);
@@ -561,9 +676,14 @@ function renderHUD(){
   document.getElementById("pFloor").textContent=String(s.floor);
   document.getElementById("pHp").textContent=s.hp+" / "+s.maxHp;
   document.getElementById("pReward").textContent=String(s.reward);
-  const lb=s.lootBag||{jiecao:0,yumao:0,bqMedal30:0,pastMedal30:0};
+  const lb=s.lootBag||{jiecao:0,yumao:0,bqMedal30:0,zmMedal30:0};
   const pLoot=document.getElementById("pLoot");
-  if(pLoot) pLoot.textContent="节操 "+lb.jiecao+"；羽毛 "+lb.yumao+"；本期勋章30天 "+lb.bqMedal30+"；往期勋章30天 "+lb.pastMedal30;
+  const feather30=Math.floor((Number(lb.yumao)||0)/3);
+  if(pLoot) pLoot.textContent=
+    "30节操X"+(lb.jiecao||0)+
+    " 30羽毛X"+feather30+
+    " 本期勋章30天X"+(lb.bqMedal30||0)+
+    " 字母勋章30天X"+(lb.zmMedal30||0);
   document.getElementById("pR").textContent=String(s.stockReply||0);
   document.getElementById("pQ").textContent=String(s.stockQuote||0);
   document.getElementById("pAlign").textContent=storyAlignmentText(s);
@@ -589,7 +709,18 @@ function renderHUD(){
     const sel=document.getElementById("talkSel");
     sel.innerHTML='<option value="">选择沟通选项</option>'+p.opts.map((x,i)=>'<option value="'+i+'">'+x+'</option>').join("");
     sel.classList.remove("hidden");
-    document.getElementById("eventBtn").textContent="尝试沟通（会影响下一层事件倾向）";
+    const btn=document.getElementById("eventBtn");
+    const syncBtn=()=>{
+      const v=sel.value;
+      if(v==="" || v===undefined) btn.textContent="执行：请选择一个选项";
+      else{
+        const idx=parseInt(v,10);
+        const label=p.opts[idx]||"该选项";
+        btn.textContent="执行："+label;
+      }
+    };
+    sel.onchange=syncBtn;
+    syncBtn();
   }
 }
 
@@ -667,10 +798,20 @@ function touchTileEvent(){
 async function move(dx,dy){
   const s=G.state;if(!s||G.busy) return;
   if(s.pending) return sys("当前事件未处理，先完成事件再移动。",SYS_AVATARS[2]);
-  if(G.moveSaving) return sys("系统正在保存云端，请稍候…",SYS_AVATARS[2]);
+  if(G.moveSaving){
+    sysTransient("系统正在保存云端，请稍候…",SYS_AVATARS[2],1400);
+    return;
+  }
   const nx=s.player.x+dx, ny=s.player.y+dy, m=s.map;
   if(nx<0||ny<0||nx>=m.w||ny>=m.h) return;
-  if(m.tiles[ny][nx]===1) return sys("前方是墙壁，无法继续移动。",SYS_AVATARS[2]);
+  if(m.tiles[ny][nx]===1){
+    // 玩家已“试图前进”时，才标记这格为已知墙壁，避免反复撞墙。
+    if(m.learnedWalls) m.learnedWalls[key(nx,ny)]=1;
+    if(m.revealed) m.revealed[key(nx,ny)]=1;
+    renderMap(); renderHUD();
+    sysTransient("前方是墙壁，无法继续移动。",SYS_AVATARS[2],1400);
+    return;
+  }
   s.player.x=nx; s.player.y=ny; m.revealed[key(nx,ny)]=1; touchTileEvent();
   // 移动时先不等待云端校验，避免每一步都造成卡顿；失败会提示，但不阻塞本次移动渲染。
   G.moveSaving=true;
@@ -686,7 +827,10 @@ async function move(dx,dy){
 async function resolveEvent(){
   const s=G.state,p=s&&s.pending;
   if(!p||G.busy) return;
-  if(G.moveSaving) return sys("系统正在保存云端，请稍后再处理事件。",SYS_AVATARS[2]);
+  if(G.moveSaving){
+    sysTransient("系统正在保存云端，请稍后再处理事件。",SYS_AVATARS[2],1600);
+    return;
+  }
   const addR=Math.max(0,parseInt(document.getElementById("addR").value||"0",10));
   const addQ=Math.max(0,parseInt(document.getElementById("addQ").value||"0",10));
   s.stockReply=(s.stockReply||0)+addR; s.stockQuote=(s.stockQuote||0)+addQ;
@@ -696,50 +840,70 @@ async function resolveEvent(){
     if(pts<p.need) return sys("点数不足，宝箱未开。可继续积累回复/被引用。",SYS_AVATARS[2]);
     consumePts(s,p.need); p.done=true; s.pending=null; s.reward+=(p.reward||1); s.story.chestOpen=(s.story.chestOpen||0)+1;
     tryAdvanceQuests(s,{type:"chest_done"});
-    const lootPool=[
-      {key:"jiecao", label:"30节操", add:30},
-      {key:"yumao", label:"30羽毛", add:30},
-      {key:"bqMedal30", label:"30天本期勋章", add:30},
-      {key:"pastMedal30", label:"30天往期勋章", add:30},
-    ];
-    const pick=lootPool[rInt(0,lootPool.length-1)];
-    if(s.lootBag) s.lootBag[pick.key]=(s.lootBag[pick.key]||0)+pick.add;
-    sys("宝箱开启！积分 +" + (p.reward||1) + "，战利品：随机获得 " + pick.label + "。",SYS_AVATARS[1]);
+    const loot=grantDungeonLootInstances_(s,1);
+    sys(
+      "宝箱开启！积分 +" + (p.reward||1) +
+      "，战利品：随机获得 " + lootKindLabelDungeon_(loot.primaryKind) + "。",
+      SYS_AVATARS[1]
+    );
   }else if(p.type==="monster"){
-    const hit=Math.max(1,addR+addQ*5);
+    const hit=pts;
+    if(hit<=0){
+      const remain=p.hp;
+      const needQ=Math.ceil(remain/5);
+      return sys("你目前没有可消耗的回复/被引用。要打赢至少需要：回复 "+remain+" 或被引用 "+needQ+"。",SYS_AVATARS[2]);
+    }
+    const before=p.hp;
     p.hp-=hit;
-    if(p.hp>0){ s.pending=p; sys("你造成了 "+hit+" 点伤害，怪物仍在。",SYS_AVATARS[2]); }
-    else{ p.done=true; s.pending=null; s.reward+=p.reward; sys("怪物被击退，积分 +"+p.reward+"。",SYS_AVATARS[1]); }
+    // 攻击消耗：回复/被引用与“待用量”一起消耗掉
+    s.stockReply=0; s.stockQuote=0;
+    if(p.hp>0){
+      s.pending=p;
+      const remain=p.hp;
+      const needQ=Math.ceil(remain/5);
+      sys("你消耗共造成 "+hit+" 点伤害，怪物HP还剩 "+remain+"。要打赢至少需要：回复 "+remain+" 或被引用 "+needQ+"。",SYS_AVATARS[2]);
+    }else{
+      p.done=true; s.pending=null; s.reward+=p.reward;
+      const nLoot=Math.min(4, Math.max(1, Math.floor((p.reward||0)/60)+1));
+      grantDungeonLootInstances_(s,nLoot);
+      sys("怪物被击退，积分 +"+p.reward+"。战利品已自动计入面板。",SYS_AVATARS[1]);
+    }
   }else if(p.type==="rescue"){
     if(pts<p.need) return sys("救助点数不足（需要 "+p.need+"）。",SYS_AVATARS[2]);
     consumePts(s,p.need); p.done=true; s.pending=null; s.reward+=p.reward; s.hp=Math.min(s.maxHp,s.hp+1);
     s.story.kindness=(s.story.kindness||0)+1;
     s.story.rescueDone=(s.story.rescueDone||0)+1;
     tryAdvanceQuests(s,{type:"rescue_done"});
-    sys("你成功救助了对方，收获了真诚感谢。积分 +"+p.reward+"，生命 +1。",SYS_AVATARS[1]);
+    const nLoot=Math.min(3, Math.max(1, Math.floor((p.reward||0)/25)+1));
+    grantDungeonLootInstances_(s,nLoot);
+    sys("你成功救助了对方，收获了真诚感谢。积分 +"+p.reward+"，生命 +1。战利品已自动计入面板。",SYS_AVATARS[1]);
   }else if(p.type==="talk_monster"){
     const v=parseInt(document.getElementById("talkSel").value||"-1",10);
     if(v<0) return sys("请先选择一个沟通选项。",SYS_AVATARS[2]);
     const outcomes=p.outcomes||[];
     const oc=outcomes[v]||"combat";
     if(oc==="peace"){
-      p.done=true; s.pending=null; s.reward+=p.reward;
+      p.done=true; p.resolvedKind="peace"; s.pending=null; s.reward+=p.reward;
       s.eventBias.peace=(s.eventBias.peace||0)+1;
       s.eventBias.conflict=Math.max(0,(s.eventBias.conflict||0)-1);
       s.story.kindness=(s.story.kindness||0)+1;
       s.story.peaceTalks=(s.story.peaceTalks||0)+1;
       tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"peace"});
-      sys("你理解了它的难处，和平解决。积分 +"+p.reward+"。下一层更可能出现可沟通/救助事件。",SYS_AVATARS[1]);
+      grantDungeonLootInstances_(s,1);
+      sys("你理解了它的难处，和平解决。积分 +"+p.reward+"。战利品已自动计入面板。下一层更可能出现可沟通/救助事件。",SYS_AVATARS[1]);
     }else if(oc==="conflict"){
-      p.done=true; s.pending=null;
+      p.done=true; p.resolvedKind="conflict"; s.pending=null;
       const rw=Math.max(4,Math.floor(p.reward*0.45));
       s.reward+=rw;
       s.eventBias.conflict=(s.eventBias.conflict||0)+1;
       s.eventBias.peace=Math.max(0,(s.eventBias.peace||0)-1);
       s.story.violence=(s.story.violence||0)+1;
       tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"conflict"});
-      sys("沟通有些生硬但仍化解冲突。积分 +"+rw+"。下一层可能更容易出现战斗事件。",SYS_AVATARS[2]);
+      grantDungeonLootInstances_(s,2);
+      sys("沟通有些生硬但仍化解冲突。积分 +"+rw+"。战利品已自动计入面板。下一层可能更容易出现战斗事件。",SYS_AVATARS[2]);
     }else{
+      // 战斗不再回到“选择如何回应”，而是把这一格变成战斗状态
+      p.done=true; p.resolvedKind="combat";
       s.pending={type:"monster",hp:p.hp,reward:Math.floor(p.reward*0.7),done:false};
       s.eventBias.conflict=(s.eventBias.conflict||0)+2;
       s.eventBias.peace=Math.max(0,(s.eventBias.peace||0)-1);
@@ -766,7 +930,10 @@ function consumePts(s,need){
 async function goDown(){
   const s=G.state;if(!s||G.busy)return;
   if(s.pending) return sys("本格事件尚未处理，无法下楼。",SYS_AVATARS[2]);
-  if(G.moveSaving) return sys("系统正在保存云端，请稍后再下楼。",SYS_AVATARS[2]);
+  if(G.moveSaving){
+    sysTransient("系统正在保存云端，请稍后再下楼。",SYS_AVATARS[2],1600);
+    return;
+  }
   if(!(s.player.x===s.map.stairs.x && s.player.y===s.map.stairs.y)) return sys("你需要先走到楼梯位置。",SYS_AVATARS[2]);
   s.floor+=1;
   // 章回推进：每 10 层触发一段温馨奇幻小章节
