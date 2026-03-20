@@ -202,7 +202,7 @@
 </div>
 
 <script>
-const VER="v1.5.0-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
+const VER="v1.5.1-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
 const SHEET="爬塔闯关";
 const USER_IMG_POOL=[
   "./assets/c__Users_Fish_Chen_AppData_Roaming_Cursor_User_workspaceStorage_e82a39d4f02dd167ea7d277ae174f65a_images_image-a0d6726b-fb23-4710-b309-567e9cf17bea.png",
@@ -334,6 +334,15 @@ function applyLootCaps(obj){
   t["节操"]=jc;t["羽毛"]=ym;t["字母勋章30天"]=zm;
   t["永久本期勋章"]=Math.max(0,Math.floor(Number(t["永久本期勋章"])||0));
   t["永久往期兑换机会"]=Math.max(0,Math.floor(Number(t["永久往期兑换机会"])||0));
+  // 已获得“永久本期勋章”后，本期30天不再单独计入，直接并入字母30天
+  if(Number(t["永久本期勋章"]||0) >= 1){
+    const bq=Number(t["本期勋章30天"]||0);
+    const zm2=Number(t["字母勋章30天"]||0);
+    if(bq>0){
+      t["字母勋章30天"]=zm2+bq;
+      t["本期勋章30天"]=0;
+    }
+  }
   return t;
 }
 function loadLootTotal(){
@@ -351,6 +360,24 @@ function renderLootTotal(){
   document.getElementById("lootD").textContent=t["字母勋章30天"]||0;
   document.getElementById("lootPermThis").textContent=(t["永久本期勋章"]>=1)?"已获得":"未获得";
   document.getElementById("lootPermPast").textContent=String(t["永久往期兑换机会"]||0);
+}
+
+function pickLootKind_(){
+  const totals=loadLootTotal();
+  const hasPerm=Number(totals["永久本期勋章"]||0) >= 1;
+  // 使用整数权重避免浮点误差
+  // 要求：未获得永久本期时字母概率先下调；获得永久本期后再更低
+  const weights = hasPerm
+    ? { "节操":48, "羽毛":48, "字母勋章30天":4 }  // 字母约 4%
+    : { "节操":30, "羽毛":30, "本期勋章30天":32, "字母勋章30天":8 }; // 字母约 8%
+  const sum = Object.values(weights).reduce((a,b)=>a+b,0);
+  const x = rInt(1, sum);
+  let acc=0;
+  for(const k in weights){
+    acc += weights[k];
+    if(x<=acc) return k;
+  }
+  return "节操";
 }
 function applyLootCapsToBag(bag){
   return applyLootCaps(Object.assign({},LOOT_DEFAULT,bag||{}));
@@ -377,6 +404,16 @@ function handleFloorMilestones(clearedFloor){
     const lt=loadLootTotal();
     lt["永久本期勋章"]=1;
     saveLootTotal(lt);
+    // 当获得永久本期勋章时：把本期30天立刻并入字母30天（修正战利品面板显示与后续上报）
+    try{
+      if(r && r.lootBag){
+        const bq=Number(r.lootBag["本期勋章30天"]||0);
+        if(bq>0){
+          r.lootBag["字母勋章30天"]=Number(r.lootBag["字母勋章30天"]||0) + bq;
+          r.lootBag["本期勋章30天"]=0;
+        }
+      }
+    }catch(e){}
     setMilestoneOnce(20);
     changed=true;
     showRewardModal("里程碑","你已经得到永久本期勋章。你仍可以继续游玩累积积分（仅用于排行榜评比）",MILESTONE_AVATAR);
@@ -657,7 +694,8 @@ async function enterGame(){
   document.getElementById("lootD").textContent="…";
   document.getElementById("lootPermThis").textContent="读取中…";
   document.getElementById("lootPermPast").textContent="读取中…";
-  setMenuNotice("云端确认中…（完成后才会显示战利品与里程碑状态）");
+  // 黄色“读取中”提醒仅在玩家点击“继续爬塔”时展示，避免干扰操作
+  setMenuNotice("");
 
   // 若进行了ID软合并：先把旧ID别名写入云端，再做云端确认
   if(aliasFrom && aliasFrom !== uid){
@@ -816,9 +854,16 @@ async function resumeRun(){
       try{
         const snap=await loadCloudRunSnapshot_(G.uid);
         if(snap && !snap.done){
+          // 云端续档恢复后，把主菜单输入的“初始回复/被引用”作为本次继续爬塔的补充待用存量
+          const s=readMenuAddStock_();
+          if(s.addR>0 || s.addQ>0){
+            snap.stockReply = (snap.stockReply||0) + s.addR;
+            snap.stockQuote = (snap.stockQuote||0) + s.addQ;
+          }
           G.run=snap;
           localStorage.setItem(KRUN,JSON.stringify(G.run));
           clearMenuAddStock_();
+          try{cloudMaybeSaveRunSnapshot_(true);}catch(e){}
           openGame();
           return;
         }
@@ -826,6 +871,18 @@ async function resumeRun(){
     }
     try{G.run=JSON.parse(localStorage.getItem(KRUN)||"null");}catch(e){G.run=null;}
     if(!G.run||G.run.done)return startRun();
+    // 如果云端/缓存已获得永久本期：对当前运行战利品做幂等归并，保证面板即时正确
+    try{
+      const perm=Number(loadLootTotal()["永久本期勋章"]||0);
+      if(perm>=1 && G.run && G.run.lootBag){
+        const bq=Number(G.run.lootBag["本期勋章30天"]||0);
+        if(bq>0){
+          G.run.lootBag["字母勋章30天"]=Number(G.run.lootBag["字母勋章30天"]||0)+bq;
+          G.run.lootBag["本期勋章30天"]=0;
+        }
+      }
+    }catch(e){}
+    try{localStorage.setItem(KRUN,JSON.stringify(G.run));}catch(e){}
     // 主菜单输入的“回复/被引用”视为补充待用存量
     const s=readMenuAddStock_();
     if(s.addR>0 || s.addQ>0){
@@ -965,7 +1022,7 @@ function submitAction(){
     r.monster.hp=0;
     r.kill+=1;
     r.reward+=r.monster.reward;
-    r.lastLoot = LOOTS[rInt(0, LOOTS.length-1)];
+    r.lastLoot = pickLootKind_();
     r.lootBag[r.lastLoot]=(r.lootBag[r.lastLoot]||0)+1;
     const t = loadLootTotal(); t[r.lastLoot]=(t[r.lastLoot]||0)+1; saveLootTotal(t); renderLootTotal();
     sys("战斗成功！获得："+r.lastLoot+"。请继续爬塔。");
@@ -978,7 +1035,7 @@ function submitAction(){
     if(r.monster.hp===0){
       r.kill+=1;
       r.reward+=r.monster.reward;
-      r.lastLoot = LOOTS[rInt(0, LOOTS.length-1)];
+      r.lastLoot = pickLootKind_();
       r.lootBag[r.lastLoot]=(r.lootBag[r.lastLoot]||0)+1;
       const t = loadLootTotal(); t[r.lastLoot]=(t[r.lastLoot]||0)+1; saveLootTotal(t); renderLootTotal();
       sys("战斗成功！获得："+r.lastLoot+"。请继续爬塔。");
@@ -1240,7 +1297,7 @@ function openChest(){
     r.stockQuote = totalQ - best.q;
     r.stockReply = totalR - best.r;
     r.chest.done = true;
-    const loot = LOOTS[rInt(0, LOOTS.length-1)];
+    const loot = pickLootKind_();
     r.lastLoot = loot;
     r.reward += 1;
     const t=loadLootTotal(); t[loot]=(t[loot]||0)+1; saveLootTotal(t); renderLootTotal();
@@ -1254,7 +1311,7 @@ function openChest(){
     if(broken){
       sys("开锁失败，宝箱损坏，未获得奖励。请继续爬塔。");
     }else{
-      const loot = LOOTS[rInt(0, LOOTS.length-1)];
+      const loot = pickLootKind_();
       r.lastLoot = loot;
       const t=loadLootTotal(); t[loot]=(t[loot]||0)+1; saveLootTotal(t); renderLootTotal();
       r.lootBag[loot]=(r.lootBag[loot]||0)+1;
