@@ -27,7 +27,13 @@
     .status div{margin-bottom:6px}
     .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#001735cf;border:1px solid #375a8d;border-radius:8px;padding:8px}
     .acts input{width:110px;min-width:0}
+    .hp-wrap{margin-top:4px}
+    .hpbar{height:12px;border:1px solid #4e6ea0;border-radius:999px;background:#0a1930;overflow:hidden}
+    .hpfill{height:100%;background:linear-gradient(90deg,#4ade80,#22c55e)}
+    .hptxt{font-size:12px;color:#c9daf6;margin-top:4px}
     .sysbox{margin-top:8px;background:#0a1a30;border:1px solid #3b5d90;border-radius:8px;padding:8px}
+    .sysline{display:flex;gap:8px;align-items:flex-start}
+    .sysicon{width:56px;height:56px;object-fit:contain;flex:0 0 auto}
     .sysbox .t{color:#9fb8e4;font-size:12px;margin-bottom:5px}
     .sysbox .c{font-size:13px;line-height:1.6;min-height:20px}
     .log{max-height:230px;overflow:auto;border:1px dashed #486797;border-radius:8px;padding:8px;background:#0b1930;font-size:13px}
@@ -48,16 +54,17 @@
 
   <div id="menuCard" class="card hidden">
     <div class="row"><strong id="hello"></strong></div>
+    <div class="row"><span id="menuNotice" style="color:#ffd66e"></span></div>
     <div class="row">
       <span>累计战利品：</span>
-      <span>节操 <b id="lootA">0</b></span>
-      <span>羽毛 <b id="lootB">0</b></span>
-      <span>本期勋章30天 <b id="lootC">0</b></span>
-      <span>字母勋章30天 <b id="lootD">0</b></span>
+      <span>30节操X<b id="lootA">0</b></span>
+      <span>10羽毛X<b id="lootB">0</b></span>
+      <span>本期勋章30天X<b id="lootC">0</b></span>
+      <span>字母勋章30天X<b id="lootD">0</b></span>
     </div>
     <div class="row">
-      <input id="baseReply" type="number" min="0" value="0" placeholder="已完成回复数">
-      <input id="baseQuote" type="number" min="0" value="0" placeholder="被引用数">
+      <label>初始回复数 <input id="baseReply" type="number" min="0" value="0" placeholder="输入回复数"></label>
+      <label>初始被引用数 <input id="baseQuote" type="number" min="0" value="0" placeholder="输入被引用数"></label>
     </div>
     <div class="row">
       <button class="primary" onclick="startRun()">开始爬塔</button>
@@ -70,6 +77,13 @@
     <div class="hud">
       <div class="side">
         <div class="s"><div class="k">玩家</div><div id="pUid" class="v"></div></div>
+        <div class="s">
+          <div class="k">生命值</div>
+          <div class="v hp-wrap">
+            <div class="hpbar"><div id="pHpFill" class="hpfill" style="width:100%"></div></div>
+            <div id="pHpText" class="hptxt">3 / 3</div>
+          </div>
+        </div>
         <div class="s"><div class="k">层数</div><div id="pFloor" class="v"></div></div>
         <div class="s"><div class="k">奖励</div><div id="pReward" class="v"></div></div>
         <div class="s"><div class="k">通关数</div><div id="pKill" class="v"></div></div>
@@ -125,7 +139,13 @@
             <button class="good" onclick="openChest()">尝试开锁</button>
             <button id="chNextBtn" class="primary" onclick="nextFloor()" disabled>继续爬塔</button>
           </div>
-          <div class="sysbox"><div class="t">系统提醒</div><div id="sysMsg" class="c"></div></div>
+          <div class="sysbox">
+            <div class="t">系统提醒</div>
+            <div class="sysline">
+              <img id="sysAvatar" class="sysicon" alt="提醒小人">
+              <div id="sysMsg" class="c"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -136,7 +156,7 @@
     <div class="row" style="margin-top:8px"><strong>云端记录</strong></div><div id="cloudLog" class="log"></div>
   </div>
 
-  <div class="version">版本：v1.1.0-tower</div>
+  <div class="version" id="versionTxt">版本：</div>
 </div>
 
 <script>
@@ -146,12 +166,20 @@ const USER_IMG_POOL=[
   "./assets/c__Users_Fish_Chen_AppData_Roaming_Cursor_User_workspaceStorage_e82a39d4f02dd167ea7d277ae174f65a_images_image-a0d6726b-fb23-4710-b309-567e9cf17bea.png",
   "./assets/c__Users_Fish_Chen_AppData_Roaming_Cursor_User_workspaceStorage_e82a39d4f02dd167ea7d277ae174f65a_images_image-07ffdcc6-e2c9-4dfc-a25f-0c4b716a3731.png"
 ];
+const SYS_AVATAR="https://s.sstmlt.com/img/2026/03/19/1-108359ab38de728aad.png";
 const TOWER_FALLBACK="https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?auto=format&fit=crop&w=1200&q=80";
 const POKE_MONS=[
   {id:94,name:"耿鬼"},{id:6,name:"喷火龙"},{id:149,name:"快龙"},
   {id:248,name:"班基拉斯"},{id:445,name:"烈咬陆鲨"},{id:448,name:"路卡利欧"},
   {id:282,name:"沙奈朵"},{id:150,name:"超梦"},{id:376,name:"巨金怪"},
   {id:359,name:"阿勃梭鲁"},{id:212,name:"巨钳螳螂"},{id:26,name:"雷丘"}
+];
+const POKE_LEGEND=[
+  {id:144,name:"急冻鸟"},{id:145,name:"闪电鸟"},{id:146,name:"火焰鸟"},
+  {id:243,name:"雷公"},{id:244,name:"炎帝"},{id:245,name:"水君"},
+  {id:249,name:"洛奇亚"},{id:250,name:"凤王"},{id:377,name:"雷吉洛克"},
+  {id:378,name:"雷吉艾斯"},{id:379,name:"雷吉斯奇鲁"},{id:383,name:"固拉多"},
+  {id:384,name:"烈空坐"},{id:487,name:"骑拉帝纳"},{id:716,name:"哲尔尼亚斯"}
 ];
 const TASKS=[
   {type:"timer",txt:"完成 2 条有内容回复后再继续。"},
@@ -162,6 +190,7 @@ const TASKS=[
 const LOOTS=["节操","羽毛","本期勋章30天","字母勋章30天"];
 const G={uid:"",run:null};
 function sys(msg){ document.getElementById("sysMsg").textContent = msg; }
+function setMenuNotice(msg){ document.getElementById("menuNotice").textContent = msg || ""; }
 function loadLootTotal(){
   try{
     return JSON.parse(localStorage.getItem("tower_loot_total")||'{"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0}');
@@ -200,12 +229,13 @@ function enterGame(){
 }
 
 function newMonster(floor){
-  const p=POKE_MONS[rInt(0,POKE_MONS.length-1)];
+  const isLegend = floor % 10 === 0;
+  const p=(isLegend?POKE_LEGEND:POKE_MONS)[rInt(0,(isLegend?POKE_LEGEND:POKE_MONS).length-1)];
   return {
     name:p.name,
-    hp:mHpByFloor(floor),
+    hp:isLegend ? (120 + floor*12 + rInt(0,25)) : mHpByFloor(floor),
     maxHp:0,
-    reward:15+floor*6,
+    reward:isLegend ? (30 + floor*8) : (15+floor*6),
     img:"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/"+p.id+".png",
     counter:null
   };
@@ -219,6 +249,19 @@ function isChestFloor(floor){ return floor % 5 === 0; }
 
 function startRun(){
   if(!G.uid)return;
+  setMenuNotice("");
+  const oldRunRaw = localStorage.getItem(KRUN);
+  if (oldRunRaw) {
+    let oldRun = null;
+    try { oldRun = JSON.parse(oldRunRaw); } catch (e) { oldRun = null; }
+    if (oldRun && !oldRun.done) {
+      const ok = confirm("检测到你已有爬塔进度。开始爬塔将从第1层开始并清除现有进度，是否继续？");
+      if (!ok) {
+        return resumeRun();
+      }
+      localStorage.removeItem(KRUN);
+    }
+  }
   const br=Math.max(0,parseInt(document.getElementById("baseReply").value||"0",10));
   const bq=Math.max(0,parseInt(document.getElementById("baseQuote").value||"0",10));
   const mon=newMonster(1); mon.maxHp=mon.hp;
@@ -229,6 +272,7 @@ function startRun(){
 
 function resumeRun(){
   if(!G.uid)return;
+  setMenuNotice("");
   try{G.run=JSON.parse(localStorage.getItem(KRUN)||"null");}catch(e){G.run=null;}
   if(!G.run||G.run.done)return startRun();
   openGame();
@@ -245,11 +289,16 @@ function renderGame(){
   document.getElementById("pKill").textContent=String(r.kill);
   document.getElementById("pStockR").textContent=String(r.stockReply||0);
   document.getElementById("pStockQ").textContent=String(r.stockQuote||0);
-  document.getElementById("pLoot").textContent="节操"+(r.lootBag["节操"]||0)+" 羽毛"+(r.lootBag["羽毛"]||0)+" 勋章"+((r.lootBag["本期勋章30天"]||0)+(r.lootBag["字母勋章30天"]||0));
+  const hpMax=3, hpCur=Math.max(0,hpMax-(r.hits||0));
+  document.getElementById("pHpFill").style.width=((hpCur/hpMax)*100)+"%";
+  document.getElementById("pHpText").textContent=hpCur+" / "+hpMax;
+  document.getElementById("pLoot").textContent=
+    "30节操X"+(r.lootBag["节操"]||0)+" 10羽毛X"+(r.lootBag["羽毛"]||0)+" 本期勋章30天X"+(r.lootBag["本期勋章30天"]||0)+" 字母勋章30天X"+(r.lootBag["字母勋章30天"]||0);
   const onTask = !!r.task;
   const onChest = !!r.chest;
-  show("fightActs", !onTask && !onChest);
-  show("dodgeActs", !onTask && !onChest && !!r.monster && !!r.monster.counter && r.monster.hp>0);
+  const onCounter = !onTask && !onChest && !!r.monster && !!r.monster.counter && r.monster.hp>0;
+  show("fightActs", !onTask && !onChest && !onCounter);
+  show("dodgeActs", onCounter);
   show("taskActs", onTask);
   show("chestActs", onChest);
   show("battlePanel", !onTask && !onChest);
@@ -282,11 +331,20 @@ function renderGame(){
   bg.src=TOWER_FALLBACK; bg.onerror=()=>{};
   mi.src=onTask?pickFromPool():(onChest?"./_split_output/1-1_r2_c1.png":(r.monster.img||pickFromPool()));
   mi.onerror=()=>{mi.src=pickFromPool();};
+  if(onTask){
+    sys("当前是任务楼层，请先完成任务后继续爬塔。");
+  }else if(onChest){
+    sys("当前是宝箱楼层，点击“尝试开锁”将消耗回复/被引用。");
+  }else{
+    const hp=Math.max(1,r.monster.hp||1);
+    sys("当前是怪物楼层，若只用回复需 "+hp+"；若只用被引用需 "+Math.ceil(hp/5)+"。");
+  }
 }
 
 function submitAction(){
   const r=G.run;if(!r)return;
   if(r.task) return;
+  if(r.monster && r.monster.counter) return sys("怪物正在反击，请先完成闪躲或选择硬接伤害。");
   if(r.monster.hp<=0) return sys("该怪物已被击败。");
   const addR=Math.max(0,parseInt(document.getElementById("actReply").value||"0",10));
   const addQ=Math.max(0,parseInt(document.getElementById("actQuote").value||"0",10));
@@ -387,7 +445,10 @@ function takeHit(){
     const mon=newMonster(1); mon.maxHp=mon.hp;
     r.floor=1; r.reward=0; r.kill=0; r.hits=0; r.monster=mon; r.task=null; r.chest=null;
     r.stockReply=br; r.stockQuote=bq; r.lootBag=keepLoot;
-    sys("你已累计承受3次伤害，已从第1层重新开始。");
+    setMenuNotice("你已阵亡：累计承受3次伤害。已保留战利品并回到第1层，可从“继续爬塔”重新出发。");
+    localStorage.setItem(KRUN,JSON.stringify(r));
+    backMenu();
+    return;
   }else{
     sys("闪躲失败，受到1次伤害。当前受击："+r.hits+"/3");
   }
@@ -399,7 +460,7 @@ function submitTask(){
   const r=G.run;if(!r||!r.task)return;
   if(r.task.type==="link"){
     const v=(document.getElementById("taskLink").value||"").trim();
-    if(!/^https:\/\/sstm\.moe\//i.test(v)) return sys("该任务链接必须以 https://sstm.moe/ 开头。");
+    if(!/^https:\/\/sstm\.moe\//i.test(v)) return sys("你的链接并未在论坛完成，请确认是论坛链接才可闯关!");
     r.task.done = true;
   }else{
     if(Date.now() - r.task.startedAt < 10000) return sys("任务验证未通过，请稍后再试。");
@@ -413,13 +474,13 @@ function submitTask(){
 
 function nextFloor(){
   const r=G.run;if(!r)return;
-  const blockMsg="请打死怪物或开宝箱或完成任务，才可以继续爬塔。";
+  let blockMsg="请打死怪物或开宝箱或完成任务，才可以继续爬塔。";
   if(r.chest){
-    if(!r.chest.done) return sys(blockMsg);
+    if(!r.chest.done) return sys("当前是宝箱楼层，请先尝试开锁完成本层。");
   }else if(r.task){
-    if(!r.task.done) return sys(blockMsg);
+    if(!r.task.done) return sys("当前是任务楼层，请先点击完成任务。");
   }else{
-    if(r.monster.hp>0)return sys(blockMsg);
+    if(r.monster.hp>0)return sys("当前是怪物楼层，请先击败怪物。");
   }
   r.floor+=1;
   if(isTaskFloor(r.floor)){
@@ -432,6 +493,7 @@ function nextFloor(){
     const mon=newMonster(r.floor); mon.maxHp=mon.hp; r.monster=mon; r.task=null; r.chest=null;
   }
   localStorage.setItem(KRUN,JSON.stringify(r));
+  syncCloudState("next_floor");
   renderGame();
 }
 
@@ -444,7 +506,7 @@ function openChest(){
   const totalQ=(r.stockQuote||0)+addQ;
   const pts = totalR + totalQ*5;
   const need = r.chest.need;
-  if(pts<=0) return sys("是否要消耗回复和被引用开锁？当前建议：回复 "+r.chest.need+" 或 被引用 "+Math.ceil(r.chest.need/5)+"。");
+  if(pts<=0) return sys("将消耗约 回复 "+r.chest.need+" 或 被引用 "+Math.ceil(r.chest.need/5)+" 才能稳妥开锁。");
   if(pts>=need){
     // 计算最少消耗，优先扣待用
     let best=null;
@@ -482,6 +544,7 @@ function openChest(){
   document.getElementById("chReply").value="0";
   document.getElementById("chQuote").value="0";
   localStorage.setItem(KRUN,JSON.stringify(r));
+  syncCloudState("chest");
   renderGame();
 }
 
@@ -500,9 +563,30 @@ function settle(result){
 
 function sendCloud(rec){
   const u=gasUrl(); if(!u)return;
-  const p=new URLSearchParams({sheet:SHEET,date:rec.date,time:rec.time,user_id:rec.id,floors:String(rec.floors),tower_time:rec.tower_time,reward:String(rec.reward),result:rec.result});
+  const p=new URLSearchParams({
+    sheet:SHEET,date:rec.date,time:rec.time,user_id:rec.id,floors:String(rec.floors),tower_time:rec.tower_time,reward:String(rec.reward),result:rec.result,
+    stock_reply:String((G.run&&G.run.stockReply)||0),stock_quote:String((G.run&&G.run.stockQuote)||0),hits:String((G.run&&G.run.hits)||0),
+    loot_jiecao:String((G.run&&G.run.lootBag&&G.run.lootBag["节操"])||0),loot_yumao:String((G.run&&G.run.lootBag&&G.run.lootBag["羽毛"])||0),
+    loot_bq:String((G.run&&G.run.lootBag&&G.run.lootBag["本期勋章30天"])||0),loot_zm:String((G.run&&G.run.lootBag&&G.run.lootBag["字母勋章30天"])||0),
+    _ts:String(Date.now())
+  });
   const url=u+(u.includes("?")?"&":"?")+p.toString();
   try{const img=new Image();img.referrerPolicy="no-referrer";img.src=url;}catch(e){}
+  fetch(url,{mode:"no-cors",cache:"no-store"}).catch(()=>{});
+}
+
+function syncCloudState(eventName){
+  const r=G.run; if(!r) return;
+  const u=gasUrl(); if(!u) return;
+  const t=now();
+  const p=new URLSearchParams({
+    action:"save_state",date:t.date,time:t.time,user_id:G.uid,floor:String(r.floor),reward:String(r.reward),event:eventName||"",
+    stock_reply:String(r.stockReply||0),stock_quote:String(r.stockQuote||0),hits:String(r.hits||0),
+    loot_jiecao:String((r.lootBag&&r.lootBag["节操"])||0),loot_yumao:String((r.lootBag&&r.lootBag["羽毛"])||0),
+    loot_bq:String((r.lootBag&&r.lootBag["本期勋章30天"])||0),loot_zm:String((r.lootBag&&r.lootBag["字母勋章30天"])||0),
+    _ts:String(Date.now())
+  });
+  const url=u+(u.includes("?")?"&":"?")+p.toString();
   fetch(url,{mode:"no-cors",cache:"no-store"}).catch(()=>{});
 }
 
@@ -522,8 +606,19 @@ function loadCloud(){
 }
 
 window.addEventListener("DOMContentLoaded",()=>{
+  const now = new Date();
+  const stamp = now.getFullYear().toString() +
+    String(now.getMonth()+1).padStart(2,"0") +
+    String(now.getDate()).padStart(2,"0") + "-" +
+    String(now.getHours()).padStart(2,"0") +
+    String(now.getMinutes()).padStart(2,"0") +
+    String(now.getSeconds()).padStart(2,"0");
+  document.getElementById("versionTxt").textContent = "版本：" + VER + "+" + stamp;
   renderLootTotal();
   const uid=localStorage.getItem(KID)||""; if(uid){document.getElementById("uid").value=uid; G.uid=uid; enterGame();}
+  const av=document.getElementById("sysAvatar");
+  av.src=SYS_AVATAR;
+  av.onerror=()=>{av.style.display="none";};
   sys("准备就绪。");
 });
 </script>
