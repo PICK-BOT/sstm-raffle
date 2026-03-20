@@ -189,7 +189,7 @@
 </div>
 
 <script>
-const VER="v1.3.4-dungeon-story";
+const VER="v1.3.5-dungeon-story";
 const SYS_AVATARS=[
   "https://s.sstmlt.com/img/2026/03/19/1-108359ab38de728aad.png",
   "https://s.sstmlt.com/img/2026/03/19/1-11c14bafe31ee6ee1c.png",
@@ -1538,9 +1538,16 @@ async function move(dx,dy){
   const s=G.state;
   if(!s||G.busy||G.actionBusy) return;
   // 容错：有时事件已结算但 pending 未及时清空（例如史莱姆报恩类结算），避免卡住无法移动
-  if(s.pending && s.pending.done){
-    s.pending=null;
-    renderHUD();
+  if(s.pending){
+    try{
+      const lastKey= s.lastEventKey || key(s.player.x,s.player.y);
+      const ev= (s.map && s.map.events && lastKey) ? s.map.events[lastKey] : null;
+      if(s.pending.done || !ev || !!ev.done){
+        s.pending=null;
+        s.lastEventKey="";
+        renderHUD();
+      }
+    }catch(e){}
   }
   if(s.pending) return sys("当前事件未处理，先完成事件再移动。",SYS_AVATARS[2]);
   if(G.moveSaving){
