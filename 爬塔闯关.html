@@ -111,7 +111,7 @@
             <span>本层新增回复</span><input id="actReply" type="number" min="0" value="0">
             <span>本层新增被引用</span><input id="actQuote" type="number" min="0" value="0">
             <button class="good" onclick="submitAction()">造成伤害</button>
-            <button id="nextBtn" class="primary" onclick="nextFloor()" disabled>继续爬塔</button>
+            <button class="primary" onclick="goBackRest()">返回上一层</button>
           </div>
           <div id="dodgeActs" class="acts hidden">
             <span id="dodgeTxt">怪物反击！</span>
@@ -130,14 +130,18 @@
             <span id="taskTxt"></span>
             <input id="taskLink" class="hidden" placeholder="输入任务链接">
             <button class="good" onclick="submitTask()">完成任务</button>
-            <button id="taskNextBtn" class="primary" onclick="nextFloor()" disabled>继续爬塔</button>
+            <button class="primary" onclick="goBackRest()">返回上一层</button>
           </div>
           <div id="chestActs" class="acts hidden">
             <span>开锁需求值</span><span id="chestNeed">0</span>
             <span>本层新增回复</span><input id="chReply" type="number" min="0" value="0">
             <span>本层新增被引用</span><input id="chQuote" type="number" min="0" value="0">
             <button class="good" onclick="openChest()">尝试开锁</button>
-            <button id="chNextBtn" class="primary" onclick="nextFloor()" disabled>继续爬塔</button>
+            <button class="primary" onclick="goBackRest()">返回上一层</button>
+          </div>
+          <div id="restActs" class="acts hidden">
+            <span id="restTxt">你在上一层短暂休息，已恢复 1 点生命。</span>
+            <button class="primary" onclick="continueAfterRest()">继续爬塔</button>
           </div>
           <div class="sysbox">
             <div class="t">系统提醒</div>
@@ -265,7 +269,7 @@ function startRun(){
   const br=Math.max(0,parseInt(document.getElementById("baseReply").value||"0",10));
   const bq=Math.max(0,parseInt(document.getElementById("baseQuote").value||"0",10));
   const mon=newMonster(1); mon.maxHp=mon.hp;
-  G.run={st:Date.now(),floor:1,reward:0,kill:0,hits:0,stockReply:br,stockQuote:bq,lastPassAt:0,monster:mon,task:null,chest:null,lastLoot:"-",lootBag:{"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0},done:false};
+  G.run={st:Date.now(),floor:1,reward:0,kill:0,hits:0,stockReply:br,stockQuote:bq,lastPassAt:0,monster:mon,task:null,chest:null,rest:null,lastLoot:"-",lootBag:{"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0},done:false};
   localStorage.setItem(KRUN,JSON.stringify(G.run));
   openGame();
 }
@@ -294,26 +298,29 @@ function renderGame(){
   document.getElementById("pHpText").textContent=hpCur+" / "+hpMax;
   document.getElementById("pLoot").textContent=
     "30节操X"+(r.lootBag["节操"]||0)+" 10羽毛X"+(r.lootBag["羽毛"]||0)+" 本期勋章30天X"+(r.lootBag["本期勋章30天"]||0)+" 字母勋章30天X"+(r.lootBag["字母勋章30天"]||0);
+  const onRest = !!r.rest;
   const onTask = !!r.task;
   const onChest = !!r.chest;
-  const onCounter = !onTask && !onChest && !!r.monster && !!r.monster.counter && r.monster.hp>0;
-  show("fightActs", !onTask && !onChest && !onCounter);
-  show("dodgeActs", onCounter);
-  show("taskActs", onTask);
-  show("chestActs", onChest);
-  show("battlePanel", !onTask && !onChest);
-  if(onTask){
+  const onCounter = !onRest && !onTask && !onChest && !!r.monster && !!r.monster.counter && r.monster.hp>0;
+  show("fightActs", !onRest && !onTask && !onChest && !onCounter);
+  show("dodgeActs", !onRest && onCounter);
+  show("taskActs", !onRest && onTask);
+  show("chestActs", !onRest && onChest);
+  show("restActs", onRest);
+  show("battlePanel", !onRest && !onTask && !onChest);
+  if(onRest){
+    document.getElementById("encTxt").textContent="休息中";
+    document.getElementById("restTxt").textContent="你回到上一层短暂休息，已恢复 1 点生命。点击“继续爬塔”回到下一层。";
+  }else if(onTask){
     document.getElementById("encTxt").textContent="本层事件：执行任务推进探索";
     document.getElementById("taskTxt").textContent=r.task.txt;
     show("taskLink", r.task.type==="link");
-    document.getElementById("taskNextBtn").disabled = !r.task.done;
     document.getElementById("monsterImg").src="./_split_output/1-1_r1_c1.png";
     document.getElementById("monsterImg").onerror=()=>{document.getElementById("monsterImg").src=pickFromPool();};
   }else if(onChest){
     document.getElementById("encTxt").textContent="发现宝箱！提交行动尝试开锁";
     show("battlePanel", false);
     document.getElementById("chestNeed").textContent=String(r.chest.need);
-    document.getElementById("chNextBtn").disabled = !r.chest.done;
     document.getElementById("monsterImg").src="./_split_output/1-1_r2_c1.png";
     document.getElementById("monsterImg").onerror=()=>{document.getElementById("monsterImg").src=pickFromPool();};
   }else{
@@ -322,7 +329,6 @@ function renderGame(){
     document.getElementById("mHp").textContent=String(Math.max(0,r.monster.hp));
     document.getElementById("mMax").textContent=String(r.monster.maxHp||r.monster.hp);
     document.getElementById("mRw").textContent=String(r.monster.reward);
-    document.getElementById("nextBtn").disabled=r.monster.hp>0;
     if(r.monster.counter){
       document.getElementById("dodgeTxt").textContent = r.monster.counter.txt;
     }
@@ -331,7 +337,9 @@ function renderGame(){
   bg.src=TOWER_FALLBACK; bg.onerror=()=>{};
   mi.src=onTask?pickFromPool():(onChest?"./_split_output/1-1_r2_c1.png":(r.monster.img||pickFromPool()));
   mi.onerror=()=>{mi.src=pickFromPool();};
-  if(onTask){
+  if(onRest){
+    sys("休息完成后可继续爬塔回到下一层。");
+  }else if(onTask){
     sys("当前是任务楼层，请先完成任务后继续爬塔。");
   }else if(onChest){
     const need = r.chest.need || 0;
@@ -454,7 +462,7 @@ function takeHit(){
     const keepLoot = r.lootBag || {"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0};
     const br=r.stockReply||0, bq=r.stockQuote||0;
     const mon=newMonster(1); mon.maxHp=mon.hp;
-    r.floor=1; r.reward=0; r.kill=0; r.hits=0; r.monster=mon; r.task=null; r.chest=null;
+    r.floor=1; r.reward=0; r.kill=0; r.hits=0; r.monster=mon; r.task=null; r.chest=null; r.rest=null;
     r.stockReply=br; r.stockQuote=bq; r.lootBag=keepLoot;
     setMenuNotice("你已阵亡：累计承受3次伤害。已保留战利品并回到第1层，可从“继续爬塔”重新出发。");
     localStorage.setItem(KRUN,JSON.stringify(r));
@@ -485,7 +493,6 @@ function submitTask(){
 
 function nextFloor(){
   const r=G.run;if(!r)return;
-  let blockMsg="请打死怪物或开宝箱或完成任务，才可以继续爬塔。";
   if(r.chest){
     if(!r.chest.done) return sys("当前是宝箱楼层，请先尝试开锁完成本层。");
   }else if(r.task){
@@ -505,6 +512,38 @@ function nextFloor(){
   }
   localStorage.setItem(KRUN,JSON.stringify(r));
   syncCloudState("next_floor");
+  renderGame();
+}
+
+function goBackRest(){
+  const r=G.run; if(!r) return;
+  if(r.rest) return sys("你已经在休息中，请直接点击“继续爬塔”。");
+  if(r.floor<=1) return sys("当前是第1层，无法再返回上一层。");
+  const currentFloor = r.floor;
+  r.floor = currentFloor - 1;
+  r.hits = Math.max(0, (r.hits||0) - 1); // 休息恢复1点生命
+  r.rest = { returnFloor: currentFloor };
+  r.monster = null; r.task = null; r.chest = null;
+  localStorage.setItem(KRUN,JSON.stringify(r));
+  syncCloudState("rest");
+  renderGame();
+}
+
+function continueAfterRest(){
+  const r=G.run; if(!r||!r.rest) return;
+  r.floor = r.rest.returnFloor;
+  r.rest = null;
+  if(isTaskFloor(r.floor)){
+    r.task = newTask(r.floor);
+    r.monster = null; r.chest = null;
+  }else if(isChestFloor(r.floor)){
+    r.chest = {need: Math.max(10, 12 + r.floor * 2), done:false};
+    r.task = null; r.monster = null;
+  }else{
+    const mon=newMonster(r.floor); mon.maxHp=mon.hp; r.monster=mon; r.task=null; r.chest=null;
+  }
+  localStorage.setItem(KRUN,JSON.stringify(r));
+  syncCloudState("rest_continue");
   renderGame();
 }
 
