@@ -53,6 +53,8 @@
     <div class="row">
       <button id="btnStart" class="primary" onclick="startNew()">开始新冒险</button>
       <button id="btnResume" class="good" onclick="resumeRun()">继续冒险</button>
+      <button onclick="setOfflineMode(true)">离线游玩</button>
+      <button onclick="manualSaveToCloud()">保存进度(云端)</button>
       <button onclick="openRecords()">查看记录</button>
       <button onclick="changeIdFromMenu()">更改ID（同步替换云端）</button>
     </div>
@@ -74,6 +76,8 @@
           <button class="warn" onclick="settle('撤退结算')">撤退结算</button>
           <button onclick="backMenu()">主菜单</button>
           <button onclick="changeIdMidGame()">更改ID</button>
+          <button onclick="setOfflineMode(true)">离线游玩</button>
+          <button onclick="manualSaveToCloud()">保存进度(云端)</button>
         </div>
 
         <div class="acts">
@@ -90,6 +94,7 @@
           <span>新增被引用</span><input id="addQ" type="number" min="0" value="0">
           <button id="eventBtn" class="good" onclick="resolveEvent()">执行</button>
           <select id="talkSel" class="hidden"></select>
+          <div id="talkBtns" class="hidden" style="width:100%;gap:8px;flex-wrap:wrap;display:flex;margin-top:6px"></div>
         </div>
 
         <div class="sysbox">
@@ -98,6 +103,7 @@
             <div id="sysMsg" class="sysc"></div>
           </div>
         </div>
+        <div id="offlineWarn" style="font-size:13px;color:#ffd66e;margin-top:6px;min-height:18px"></div>
       </div>
 
       <div class="mapbox">
@@ -183,7 +189,19 @@ const QUEST_DEFS={
   lamp:{title:"夜灯守望",steps:["答应石像鬼点灯","继续下探 2 层","收集温暖火种（宝箱）","点亮回廊"],reward:26},
   letter:{title:"未寄出的信",steps:["帮助魔像读信","再完成 2 次和平沟通","完成一次救助转交信件","收到回信"],reward:30}
 };
-const G={uid:"",state:null,busy:false,page:1,recordBase:[],moveSaving:false};
+const G={
+  uid:"",
+  state:null,
+  busy:false,
+  page:1,
+  recordBase:[],
+  moveSaving:false,
+  actionBusy:false,
+  offlineMode:false,
+  moveSaveTimer:null,
+  lastMoveSaveAt:0,
+  talkPick:null
+};
 
 let _sysToken=0;
 function sysTransient(msg, avatar, ms){
@@ -296,6 +314,46 @@ function setBusy(v,text){
   if(text) document.getElementById("loadingText").textContent=text;
   document.getElementById("loadingAvatar").src=SYS_AVATARS[0];
 }
+
+function updateOfflineWarn(){
+  const el=document.getElementById("offlineWarn");
+  if(!el) return;
+  if(G.offlineMode){
+    el.textContent="离线游玩中：同层移动不自动云端存档。需要时请点“保存进度(云端)”写入进度。";
+  }else{
+    el.textContent="";
+  }
+}
+
+function setOfflineMode(v){
+  G.offlineMode=!!v;
+  updateOfflineWarn();
+  if(G.offlineMode){
+    sysTransient("离线游玩已启用：同层移动不会频繁写云端。需要时请点击“保存进度(云端)”。",SYS_AVATARS[2],2000);
+  }else{
+    sysTransient("已恢复在线模式：同层移动会自动节流云端存档。",SYS_AVATARS[2],1600);
+  }
+}
+
+async function manualSaveToCloud(){
+  if(!G.state) return;
+  if(G.busy) return;
+  if(G.actionBusy) return;
+  G.actionBusy=true;
+  try{
+    setBusy(true,"正在保存进度，请静候…");
+    updateOfflineWarn();
+    // 手动保存尽量快，不做二次 verify
+    await saveStateCloud("manual_save", false);
+    setNotice("云端保存完成。");
+    sysTransient("云端保存完成。",SYS_AVATARS[1],1600);
+  }catch(e){
+    sysTransient("云端保存失败，请稍后重试。",SYS_AVATARS[2],2000);
+  }finally{
+    setBusy(false);
+    G.actionBusy=false;
+  }
+}
 let _chapterResolver=null;
 function showChapterCard(title,text){
   return new Promise((resolve)=>{
@@ -379,6 +437,17 @@ function makeStoryRescue(){
   ];
   return pool[rInt(0,pool.length-1)];
 }
+function makeStoryRescueByQuest_(questKey){
+  if(questKey==="letter"){
+    const pool=[
+      "一位守在阴影里的信使守着收信的空匣。你说有人把信交给你了——它在等你把信交出去。",
+      "收信人躲在回廊尽头，手却一直停在门环上。那封信必须被亲手送到它面前，才能让等待变成回音。",
+      "一位沉默的街灯守护者抱着空白的封蜡。它不识字，但它知道“把信送回该去的地方”会让世界重新发亮。"
+    ];
+    return pool[rInt(0,pool.length-1)];
+  }
+  return makeStoryRescue();
+}
 function makeStoryMonster(){
   const pool=[
     {id:"wolf",txt:"灰狼守在药草旁，它在为受伤幼崽找药。你怎么回应？",opts:["先听它说明并一起找药","质疑它在说谎并恐吓","直接开战"],outcomes:["peace","conflict","combat"]},
@@ -403,7 +472,20 @@ function makeStoryMonsterByFloor(floor){
   ];
   const tier=chapterTierByFloor(floor);
   const chapter=CHAPTER_MONSTER_PACKS[tier]||[];
-  const pool=base.concat(chapter);
+  let pool=base.concat(chapter);
+  // 事件屏蔽：进行中“夜灯守望”阶段时，不再出现“夜行魔像守旧信”（golem）。
+  // 同样，一旦玩家选择了“夜行魔像战斗(Combat)”并锁定该支线，之后也不再出现 golem 事件。
+  if(G.state && G.state.story && G.state.story.quest){
+    const q=G.state.story.quest;
+    const lampInProgress=!!(q.lamp && q.lamp.stage>0 && !q.lamp.done);
+    const letterBlocked=!!(q.letter && q.letter.combatBlocked);
+    // 一旦已拿到信（letter.stage>=1 且未完成），就不再生成 golem，避免重复刷同一支线
+    const letterWaiting=!!(q.letter && q.letter.stage>=1 && !q.letter.done);
+    if(lampInProgress || letterBlocked || letterWaiting){
+      pool=pool.filter(x=>x.id!=="golem");
+    }
+  }
+  if(!pool.length) pool=base.concat(chapter);
   return pool[rInt(0,pool.length-1)];
 }
 
@@ -475,19 +557,55 @@ function buildFloor(floor){
   const bias=(G.state&&G.state.eventBias)?G.state.eventBias:{peace:0,conflict:0};
   const peaceBoost=Math.min(0.08,0.02*Number(bias.peace||0));
   const conflictBoost=Math.min(0.12,0.02*Number(bias.conflict||0));
-  const chestRate=0.10;
-  const talkRate=Math.max(0.06, Math.min(0.20, 0.10 + peaceBoost - conflictBoost*0.4));
-  const rescueRate=Math.max(0.08, Math.min(0.22, 0.12 + peaceBoost*0.8 - conflictBoost*0.5));
-  const monsterRate=Math.max(0.12, Math.min(0.36, 0.18 + conflictBoost - peaceBoost*0.6));
+
+  // 支线步骤：根据当前进行中的支线，提升后续“需要的事件类型”遭遇率
+  const q=(G.state&&G.state.story&&G.state.story.quest)?G.state.story.quest:null;
+  const herbNeedRescue=!!(q&&q.herb && q.herb.stage===1 && !q.herb.done);
+  const herbNeedChest=!!(q&&q.herb && q.herb.stage===2 && !q.herb.done);
+  const lampNeedChest=!!(q&&q.lamp && q.lamp.stage===2 && !q.lamp.done);
+  const letterNeedRescue=!!(q&&q.letter && q.letter.stage===1 && !q.letter.done);
+
+  const chestNeedCount=(herbNeedChest?1:0)+(lampNeedChest?1:0);
+  const rescueNeedCount=(herbNeedRescue?1:0)+(letterNeedRescue?1:0);
+
+  let chestRate=0.10;
+  let talkRate=Math.max(0.06, Math.min(0.20, 0.10 + peaceBoost - conflictBoost*0.4));
+  let rescueRate=Math.max(0.08, Math.min(0.22, 0.12 + peaceBoost*0.8 - conflictBoost*0.5));
+  let monsterRate=Math.max(0.12, Math.min(0.36, 0.18 + conflictBoost - peaceBoost*0.6));
+
+  if(chestNeedCount>0) chestRate*=1+(0.18*chestNeedCount);
+  if(rescueNeedCount>0) rescueRate*=1+(0.22*rescueNeedCount);
+
+  chestRate=Math.min(0.22, chestRate);
+  rescueRate=Math.min(0.34, rescueRate);
+
+  // 由于 chest/rescue 提升，重新计算总分段
+  // （整体的“monster 与 talk”仍保留之前的 bias）
   const tChest=chestRate, tMonster=tChest+monsterRate, tRescue=tMonster+rescueRate, tTalk=tRescue+talkRate;
   for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
     if(tiles[y][x]===1 || tiles[y][x]===2) continue;
     if((x===start.x&&y===start.y)||(x===stairs.x&&y===stairs.y)) continue;
     const r=Math.random();
-    if(r<tChest) events[key(x,y)]={type:"chest",need:rInt(10,24),reward:baseChestReward,done:false};
-    else if(r<tMonster) events[key(x,y)]={type:"monster",hp:rInt(8,24)+floor,reward:baseMonsterReward,done:false};
-    else if(r<tRescue) events[key(x,y)]={type:"rescue",need:rInt(10,22),story:makeStoryRescue(),reward:baseRescueReward,done:false};
-    else if(r<tTalk){ const s=makeStoryMonsterByFloor(floor); events[key(x,y)]={type:"talk_monster",monsterId:s.id,story:s.txt,opts:s.opts,outcomes:s.outcomes,reward:baseTalkReward,hp:rInt(10,22)+floor,done:false}; }
+    if(r<tChest){
+      let questKey="";
+      if(herbNeedChest && lampNeedChest){
+        questKey=(Math.random()<0.5)?"herb":"lamp";
+      }else if(herbNeedChest) questKey="herb";
+      else if(lampNeedChest) questKey="lamp";
+      events[key(x,y)]={type:"chest",need:rInt(10,24),reward:baseChestReward,questKey:questKey,done:false};
+    }else if(r<tMonster){
+      events[key(x,y)]={type:"monster",hp:rInt(8,24)+floor,reward:baseMonsterReward,done:false};
+    }else if(r<tRescue){
+      let questKey="";
+      if(letterNeedRescue && herbNeedRescue){
+        questKey=(Math.random()<0.6)?"letter":"herb";
+      }else if(letterNeedRescue) questKey="letter";
+      else if(herbNeedRescue) questKey="herb";
+      events[key(x,y)]={type:"rescue",need:rInt(10,22),story:makeStoryRescueByQuest_(questKey),reward:baseRescueReward,questKey:questKey,done:false};
+    }else if(r<tTalk){
+      const s=makeStoryMonsterByFloor(floor);
+      events[key(x,y)]={type:"talk_monster",monsterId:s.id,story:s.txt,opts:s.opts,outcomes:s.outcomes,reward:baseTalkReward,hp:rInt(10,22)+floor,done:false};
+    }
   }
   return {w:w,h:h,tiles:tiles,revealed:revealed,events:events,start:start,stairs:stairs,learnedWalls:{}};
 }
@@ -510,7 +628,7 @@ function newState(uid){
       quest:{
         herb:{stage:0,done:false},
         lamp:{stage:0,done:false,startFloor:0},
-        letter:{stage:0,done:false}
+        letter:{stage:0,done:false,combatBlocked:false}
       },
       endings:{herb:false,lamp:false,letter:false,all:false},
       pendingNotes:[],
@@ -550,10 +668,26 @@ function normalizeState(st){
     if(typeof st.lootBag.zmMedal30!=="number") st.lootBag.zmMedal30=Number(st.lootBag.zmMedal30||0);
   }
   if(st.map && !st.map.learnedWalls) st.map.learnedWalls={};
+  // 事件屏蔽：从云端恢复后，按当前支线状态清理已被禁用的 golem 对话事件。
+  try{
+    if(st && st.map && st.map.events && st.story && st.story.quest){
+      const q=st.story.quest;
+      const lampInProgress=!!(q.lamp && q.lamp.stage>0 && !q.lamp.done);
+      const letterBlocked=!!(q.letter && q.letter.combatBlocked);
+      if(lampInProgress || letterBlocked){
+        for(const k in st.map.events){
+          const ev=st.map.events[k];
+          if(ev && ev.type==="talk_monster" && ev.monsterId==="golem") delete st.map.events[k];
+        }
+      }
+    }
+  }catch(e){}
   if(!st.story){
-    st.story={kindness:0,violence:0,peaceTalks:0,rescueDone:0,chestOpen:0,floorsDescended:0,quest:{herb:{stage:0,done:false},lamp:{stage:0,done:false,startFloor:0},letter:{stage:0,done:false}},log:[]};
+    st.story={kindness:0,violence:0,peaceTalks:0,rescueDone:0,chestOpen:0,floorsDescended:0,quest:{herb:{stage:0,done:false},lamp:{stage:0,done:false,startFloor:0},letter:{stage:0,done:false,combatBlocked:false}},log:[]};
   }
-  if(!st.story.quest) st.story.quest={herb:{stage:0,done:false},lamp:{stage:0,done:false,startFloor:0},letter:{stage:0,done:false}};
+  if(!st.story.quest) st.story.quest={herb:{stage:0,done:false},lamp:{stage:0,done:false,startFloor:0},letter:{stage:0,done:false,combatBlocked:false}};
+  if(!st.story.quest.letter) st.story.quest.letter={stage:0,done:false,combatBlocked:false};
+  if(st.story.quest.letter.combatBlocked===undefined) st.story.quest.letter.combatBlocked=false;
   if(!st.story.endings) st.story.endings={herb:false,lamp:false,letter:false,all:false};
   if(!st.story.pendingNotes) st.story.pendingNotes=[];
   if(!st.story.log) st.story.log=[];
@@ -605,22 +739,33 @@ function tryAdvanceQuests(s,ctx){
   // 药草与幼崽
   if(!q.herb.done){
     if(q.herb.stage===0 && ctx.type==="talk" && ctx.monsterId==="wolf" && ctx.outcome==="peace"){ q.herb.stage=1; pushStoryLog(s,"支线【药草与幼崽】开启：你获得了灰狼的信任。"); }
-    else if(q.herb.stage===1 && ctx.type==="rescue_done"){ q.herb.stage=2; pushStoryLog(s,"支线【药草与幼崽】推进：你找到可托付药草的人。"); }
-    else if(q.herb.stage===2 && ctx.type==="chest_done"){ q.herb.stage=3; q.herb.done=true; s.reward+=QUEST_DEFS.herb.reward; pushStoryLog(s,"支线【药草与幼崽】完成：幼崽得救，积分 +"+QUEST_DEFS.herb.reward); }
+    else if(q.herb.stage===1 && ctx.type==="rescue_done" && ctx.eventQuest==="herb"){ q.herb.stage=2; pushStoryLog(s,"支线【药草与幼崽】推进：你找到可托付药草的人。"); }
+    else if(q.herb.stage===2 && ctx.type==="chest_done" && ctx.eventQuest==="herb"){ q.herb.stage=3; q.herb.done=true; s.reward+=QUEST_DEFS.herb.reward; pushStoryLog(s,"支线【药草与幼崽】完成：幼崽得救，积分 +"+QUEST_DEFS.herb.reward); }
   }
   // 夜灯守望
   if(!q.lamp.done){
     if(q.lamp.stage===0 && ctx.type==="talk" && ctx.monsterId==="gargoyle" && ctx.outcome==="peace"){ q.lamp.stage=1; q.lamp.startFloor=s.floor; pushStoryLog(s,"支线【夜灯守望】开启：你答应帮助石像鬼点灯。"); }
     else if(q.lamp.stage===1 && ctx.type==="descend" && (s.floor-(q.lamp.startFloor||s.floor))>=2){ q.lamp.stage=2; pushStoryLog(s,"支线【夜灯守望】推进：你已带着承诺走过两层。"); }
-    else if(q.lamp.stage===2 && ctx.type==="chest_done"){ q.lamp.stage=3; q.lamp.done=true; s.reward+=QUEST_DEFS.lamp.reward; s.eventBias.peace=(s.eventBias.peace||0)+1; pushStoryLog(s,"支线【夜灯守望】完成：回廊重亮，积分 +"+QUEST_DEFS.lamp.reward); }
+    else if(q.lamp.stage===2 && ctx.type==="chest_done" && ctx.eventQuest==="lamp"){ q.lamp.stage=3; q.lamp.done=true; s.reward+=QUEST_DEFS.lamp.reward; s.eventBias.peace=(s.eventBias.peace||0)+1; pushStoryLog(s,"支线【夜灯守望】完成：回廊重亮，积分 +"+QUEST_DEFS.lamp.reward); }
   }
   // 未寄出的信
   if(!q.letter.done){
-    if(q.letter.stage===0 && ctx.type==="talk" && ctx.monsterId==="golem" && ctx.outcome==="peace"){ q.letter.stage=1; pushStoryLog(s,"支线【未寄出的信】开启：你答应帮魔像完成心愿。"); }
-    else if(q.letter.stage===1 && ctx.type==="talk" && ctx.outcome==="peace" && s.story.peaceTalks>=3){ q.letter.stage=2; pushStoryLog(s,"支线【未寄出的信】推进：你积累了足够的信任。"); }
-    else if(q.letter.stage===2 && ctx.type==="rescue_done"){ q.letter.stage=3; q.letter.done=true; s.reward+=QUEST_DEFS.letter.reward; pushStoryLog(s,"支线【未寄出的信】完成：回信抵达，积分 +"+QUEST_DEFS.letter.reward); }
+    // 正常流程：你对 golem 选择和平 -> 拿到信（stage=1）
+    // 之后只要完成一次 rescue_done（有人愿意替你把信送到“收信人”）-> 交信完成并结束支线
+    if(q.letter.stage===0 && ctx.type==="talk" && ctx.monsterId==="golem" && ctx.outcome==="peace"){
+      q.letter.stage=1;
+      pushStoryLog(s,"支线【未寄出的信】开启：你答应帮魔像完成心愿，并从它手里接过那封信。");
+    }else if(q.letter.stage===1 && ctx.type==="rescue_done"){
+      if(ctx.eventQuest!=="letter") return;
+      q.letter.stage=2;
+      q.letter.done=true;
+      s.reward+=QUEST_DEFS.letter.reward;
+      pushStoryLog(s,"支线【未寄出的信】完成：你把信交到收信人手中，答谢与光亮随之到来。积分 +"+QUEST_DEFS.letter.reward);
+    }
   }
   tryUnlockEndings(s);
+  // 如果当前支线已经进入“需要玩家继续应对”的阶段，则在当前楼层补齐对应格子
+  if(ctx && ctx.type && ctx.type!=="descend") ensureQuestFollowupEvents_(s);
 }
 function storyAlignmentText(s){
   if(!s||!s.story) return "-";
@@ -639,6 +784,62 @@ function questSummaryText(s){
     else if(st.stage>0) parts.push(QUEST_DEFS[id].title+"·进行中("+st.stage+"/3)");
   }
   return parts.length?parts.join("；"):"暂无长线进行中";
+}
+
+function ensureQuestFollowupEvents_(s){
+  if(!s||!s.map||!s.map.events||!s.story||!s.story.quest) return;
+  const q=s.story.quest;
+
+  // 使用当前楼层的基础掉落，保证数值一致
+  const baseRescueReward=rescueRewardByFloor(s.floor);
+  const baseChestReward=chestRewardByFloor();
+
+  function ensureOne(type, questKey, storyForQuest){
+    // 1) 已存在且未完成的专属事件
+    for(const k in s.map.events){
+      const ev=s.map.events[k];
+      if(ev && !ev.done && ev.type===type && ev.questKey===questKey) return;
+    }
+    // 2) 复用“未标记的通用事件”（questKey 为空），补齐链条但不影响其它支线（它本来就没有归属）
+    for(const k in s.map.events){
+      const ev=s.map.events[k];
+      if(ev && !ev.done && ev.type===type && (!ev.questKey || ev.questKey==="")){
+        ev.questKey=questKey;
+        if(type==="rescue") ev.story=storyForQuest||makeStoryRescueByQuest_(questKey);
+        return;
+      }
+    }
+    // 2) 如果地图里没有专属事件，则只在空格里补齐一个（不复用/覆盖其它事件，确保链条严谨）
+    const maxTries=120;
+    for(let i=0;i<maxTries;i++){
+      const x=rInt(1,s.map.w-2);
+      const y=rInt(1,s.map.h-2);
+      const kk=key(x,y);
+      if(s.map.tiles[y][x]!==0) continue; // 跳过墙壁/水道等
+      if(kk===key(s.map.stairs.x,s.map.stairs.y)) continue;
+      if(s.map.events[kk]) continue;
+      if(type==="chest"){
+        s.map.events[kk]={type:"chest",need:rInt(10,24),reward:baseChestReward,questKey:questKey,done:false};
+      }else if(type==="rescue"){
+        s.map.events[kk]={type:"rescue",need:rInt(10,22),story:storyForQuest||makeStoryRescueByQuest_(questKey),reward:baseRescueReward,questKey:questKey,done:false};
+      }
+      return;
+    }
+  }
+
+  // 只对“需要下一步应对”的进行强制补齐
+  if(q.letter && q.letter.stage===1 && !q.letter.done){
+    ensureOne("rescue","letter",makeStoryRescueByQuest_("letter"));
+  }
+  if(q.herb && q.herb.stage===1 && !q.herb.done){
+    ensureOne("rescue","herb",makeStoryRescueByQuest_("herb"));
+  }
+  if(q.herb && q.herb.stage===2 && !q.herb.done){
+    ensureOne("chest","herb",null);
+  }
+  if(q.lamp && q.lamp.stage===2 && !q.lamp.done){
+    ensureOne("chest","lamp",null);
+  }
 }
 
 function renderMap(){
@@ -691,6 +892,9 @@ function renderHUD(){
   const p=s.pending;
   show("eventActs",!!p);
   document.getElementById("talkSel").classList.add("hidden");
+  document.getElementById("eventBtn").classList.remove("hidden");
+  const btnWrap=document.getElementById("talkBtns");
+  if(btnWrap) btnWrap.classList.add("hidden");
   if(!p){
     if(!document.getElementById("sysMsg").textContent) sys("地下城安静下来。你可以继续探索。",SYS_AVATARS[0]);
     return;
@@ -707,20 +911,24 @@ function renderHUD(){
   }else if(p.type==="talk_monster"){
     document.getElementById("eventTxt").textContent=p.story;
     const sel=document.getElementById("talkSel");
-    sel.innerHTML='<option value="">选择沟通选项</option>'+p.opts.map((x,i)=>'<option value="'+i+'">'+x+'</option>').join("");
-    sel.classList.remove("hidden");
-    const btn=document.getElementById("eventBtn");
-    const syncBtn=()=>{
-      const v=sel.value;
-      if(v==="" || v===undefined) btn.textContent="执行：请选择一个选项";
-      else{
-        const idx=parseInt(v,10);
-        const label=p.opts[idx]||"该选项";
-        btn.textContent="执行："+label;
-      }
-    };
-    sel.onchange=syncBtn;
-    syncBtn();
+    sel.classList.add("hidden");
+    const btnWrap=document.getElementById("talkBtns");
+    btnWrap.innerHTML="";
+    btnWrap.classList.remove("hidden");
+    // 对话选项：直接三个行动按钮，避免误点击
+    for(let i=0;i<3;i++){
+      const opt=p.opts[i]||("选项"+(i+1));
+      const b=document.createElement("button");
+      b.className=i===0?"good":(i===1?"warn":"good");
+      b.textContent=opt;
+      b.onclick=()=>{
+        G.talkPick=i;
+        show("eventActs",false);
+        resolveEvent();
+      };
+      btnWrap.appendChild(b);
+    }
+    document.getElementById("eventBtn").classList.add("hidden");
   }
 }
 
@@ -796,14 +1004,17 @@ function touchTileEvent(){
 }
 
 async function move(dx,dy){
-  const s=G.state;if(!s||G.busy) return;
+  const s=G.state;
+  if(!s||G.busy||G.actionBusy) return;
   if(s.pending) return sys("当前事件未处理，先完成事件再移动。",SYS_AVATARS[2]);
   if(G.moveSaving){
     sysTransient("系统正在保存云端，请稍候…",SYS_AVATARS[2],1400);
     return;
   }
+
   const nx=s.player.x+dx, ny=s.player.y+dy, m=s.map;
   if(nx<0||ny<0||nx>=m.w||ny>=m.h) return;
+
   if(m.tiles[ny][nx]===1){
     // 玩家已“试图前进”时，才标记这格为已知墙壁，避免反复撞墙。
     if(m.learnedWalls) m.learnedWalls[key(nx,ny)]=1;
@@ -812,167 +1023,313 @@ async function move(dx,dy){
     sysTransient("前方是墙壁，无法继续移动。",SYS_AVATARS[2],1400);
     return;
   }
+
   s.player.x=nx; s.player.y=ny; m.revealed[key(nx,ny)]=1; touchTileEvent();
-  // 移动时先不等待云端校验，避免每一步都造成卡顿；失败会提示，但不阻塞本次移动渲染。
-  G.moveSaving=true;
   renderMap(); renderHUD();
-  // 关键：延后执行 save（里面会 JSON.stringify 大状态），避免点击当下卡顿。
-  setTimeout(()=>{
-    saveStateCloud("move",false)
-      .catch(()=>sys("云端保存失败：本次移动可能未被确认。",SYS_AVATARS[2]))
-      .finally(()=>{G.moveSaving=false;});
-  },0);
+
+  // 走到楼梯格：询问是否下楼
+  if(nx===m.stairs.x && ny===m.stairs.y && !s.pending){
+    const ok=confirm("你已经踩到了下楼的楼梯。是否下楼？");
+    if(ok){
+      if(G.moveSaveTimer){ try{ clearTimeout(G.moveSaveTimer); }catch(e){} }
+      G.moveSaveTimer=null;
+      goDown();
+    }
+    return;
+  }
+
+  // 同一楼层移动不频繁云存档：做“延迟合并”
+  if(!G.offlineMode){
+    if(G.moveSaveTimer){ try{ clearTimeout(G.moveSaveTimer); }catch(e){} }
+    G.moveSaveTimer=setTimeout(()=>{
+      if(G.offlineMode||G.busy||G.actionBusy||!G.state) return;
+      const nowTs=Date.now();
+      if(nowTs - G.lastMoveSaveAt < 900) return; // 额外节流
+      G.lastMoveSaveAt=nowTs;
+      if(G.moveSaving) return;
+      G.moveSaving=true;
+      saveStateCloud("move_auto", false)
+        .catch(()=>sysTransient("云端保存失败：本次移动可能未被确认。",SYS_AVATARS[2],1800))
+        .finally(()=>{G.moveSaving=false;});
+    }, 1200);
+  }
 }
 
 async function resolveEvent(){
   const s=G.state,p=s&&s.pending;
   if(!p||G.busy) return;
+  if(G.actionBusy) return;
   if(G.moveSaving){
     sysTransient("系统正在保存云端，请稍后再处理事件。",SYS_AVATARS[2],1600);
     return;
   }
-  const addR=Math.max(0,parseInt(document.getElementById("addR").value||"0",10));
-  const addQ=Math.max(0,parseInt(document.getElementById("addQ").value||"0",10));
-  s.stockReply=(s.stockReply||0)+addR; s.stockQuote=(s.stockQuote||0)+addQ;
-  document.getElementById("addR").value="0"; document.getElementById("addQ").value="0";
-  const pts=s.stockReply+s.stockQuote*5;
-  if(p.type==="chest"){
-    if(pts<p.need) return sys("点数不足，宝箱未开。可继续积累回复/被引用。",SYS_AVATARS[2]);
-    consumePts(s,p.need); p.done=true; s.pending=null; s.reward+=(p.reward||1); s.story.chestOpen=(s.story.chestOpen||0)+1;
-    tryAdvanceQuests(s,{type:"chest_done"});
-    const loot=grantDungeonLootInstances_(s,1);
-    sys(
-      "宝箱开启！积分 +" + (p.reward||1) +
-      "，战利品：随机获得 " + lootKindLabelDungeon_(loot.primaryKind) + "。",
-      SYS_AVATARS[1]
-    );
-  }else if(p.type==="monster"){
-    const hit=pts;
-    if(hit<=0){
-      const remain=p.hp;
-      const needQ=Math.ceil(remain/5);
-      return sys("你目前没有可消耗的回复/被引用。要打赢至少需要：回复 "+remain+" 或被引用 "+needQ+"。",SYS_AVATARS[2]);
-    }
-    const before=p.hp;
-    p.hp-=hit;
-    // 攻击消耗：回复/被引用与“待用量”一起消耗掉
-    s.stockReply=0; s.stockQuote=0;
-    if(p.hp>0){
-      s.pending=p;
-      const remain=p.hp;
-      const needQ=Math.ceil(remain/5);
-      sys("你消耗共造成 "+hit+" 点伤害，怪物HP还剩 "+remain+"。要打赢至少需要：回复 "+remain+" 或被引用 "+needQ+"。",SYS_AVATARS[2]);
-    }else{
-      p.done=true; s.pending=null; s.reward+=p.reward;
-      const nLoot=Math.min(4, Math.max(1, Math.floor((p.reward||0)/60)+1));
-      grantDungeonLootInstances_(s,nLoot);
-      sys("怪物被击退，积分 +"+p.reward+"。战利品已自动计入面板。",SYS_AVATARS[1]);
-    }
-  }else if(p.type==="rescue"){
-    if(pts<p.need) return sys("救助点数不足（需要 "+p.need+"）。",SYS_AVATARS[2]);
-    consumePts(s,p.need); p.done=true; s.pending=null; s.reward+=p.reward; s.hp=Math.min(s.maxHp,s.hp+1);
-    s.story.kindness=(s.story.kindness||0)+1;
-    s.story.rescueDone=(s.story.rescueDone||0)+1;
-    tryAdvanceQuests(s,{type:"rescue_done"});
-    const nLoot=Math.min(3, Math.max(1, Math.floor((p.reward||0)/25)+1));
-    grantDungeonLootInstances_(s,nLoot);
-    sys("你成功救助了对方，收获了真诚感谢。积分 +"+p.reward+"，生命 +1。战利品已自动计入面板。",SYS_AVATARS[1]);
-  }else if(p.type==="talk_monster"){
-    const v=parseInt(document.getElementById("talkSel").value||"-1",10);
-    if(v<0) return sys("请先选择一个沟通选项。",SYS_AVATARS[2]);
-    const outcomes=p.outcomes||[];
-    const oc=outcomes[v]||"combat";
-    if(oc==="peace"){
-      p.done=true; p.resolvedKind="peace"; s.pending=null; s.reward+=p.reward;
-      s.eventBias.peace=(s.eventBias.peace||0)+1;
-      s.eventBias.conflict=Math.max(0,(s.eventBias.conflict||0)-1);
+
+  G.actionBusy=true;
+  try{
+    const addR=Math.max(0,parseInt(document.getElementById("addR").value||"0",10));
+    const addQ=Math.max(0,parseInt(document.getElementById("addQ").value||"0",10));
+    s.stockReply=(s.stockReply||0)+addR;
+    s.stockQuote=(s.stockQuote||0)+addQ;
+    document.getElementById("addR").value="0";
+    document.getElementById("addQ").value="0";
+
+    const pts=s.stockReply+s.stockQuote*5;
+    let shouldSave=true;
+
+    if(p.type==="chest"){
+      if(pts<p.need) { renderHUD(); return sys("点数不足，宝箱未开。可继续积累回复/被引用。",SYS_AVATARS[2]); }
+      const before=consumePts(s,p.need);
+      const usedR=before.usedR||0;
+      const usedQ=before.usedQ||0;
+      p.done=true; s.pending=null;
+      s.reward+=(p.reward||1);
+      s.story.chestOpen=(s.story.chestOpen||0)+1;
+      tryAdvanceQuests(s,{type:"chest_done",eventQuest:p.questKey||""});
+      const loot=grantDungeonLootInstances_(s,1);
+      sys(
+        "宝箱开启！积分 +" + (p.reward||1) +
+        "，战利品：随机获得 " + lootKindLabelDungeon_(loot.primaryKind) + "。" +
+        "扣除待用：回复 " + usedR + "；被引用 " + usedQ + "。",
+        SYS_AVATARS[1]
+      );
+      renderMap(); renderHUD();
+    }else if(p.type==="rescue"){
+      if(pts<p.need) { renderHUD(); return sys("救助点数不足（需要 "+p.need+"）。",SYS_AVATARS[2]); }
+      const before=consumePts(s,p.need);
+      const usedR=before.usedR||0;
+      const usedQ=before.usedQ||0;
+      p.done=true; s.pending=null;
+      s.reward+=p.reward; s.hp=Math.min(s.maxHp,s.hp+1);
       s.story.kindness=(s.story.kindness||0)+1;
-      s.story.peaceTalks=(s.story.peaceTalks||0)+1;
-      tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"peace"});
-      grantDungeonLootInstances_(s,1);
-      sys("你理解了它的难处，和平解决。积分 +"+p.reward+"。战利品已自动计入面板。下一层更可能出现可沟通/救助事件。",SYS_AVATARS[1]);
-    }else if(oc==="conflict"){
-      p.done=true; p.resolvedKind="conflict"; s.pending=null;
-      const rw=Math.max(4,Math.floor(p.reward*0.45));
-      s.reward+=rw;
-      s.eventBias.conflict=(s.eventBias.conflict||0)+1;
-      s.eventBias.peace=Math.max(0,(s.eventBias.peace||0)-1);
-      s.story.violence=(s.story.violence||0)+1;
-      tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"conflict"});
-      grantDungeonLootInstances_(s,2);
-      sys("沟通有些生硬但仍化解冲突。积分 +"+rw+"。战利品已自动计入面板。下一层可能更容易出现战斗事件。",SYS_AVATARS[2]);
-    }else{
-      // 战斗不再回到“选择如何回应”，而是把这一格变成战斗状态
-      p.done=true; p.resolvedKind="combat";
-      s.pending={type:"monster",hp:p.hp,reward:Math.floor(p.reward*0.7),done:false};
-      s.eventBias.conflict=(s.eventBias.conflict||0)+2;
-      s.eventBias.peace=Math.max(0,(s.eventBias.peace||0)-1);
-      s.story.violence=(s.story.violence||0)+2;
-      tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"combat"});
-      sys("沟通破裂，怪物情绪失控，进入战斗。接下来几层战斗风险上升。",SYS_AVATARS[2]);
+      s.story.rescueDone=(s.story.rescueDone||0)+1;
+      tryAdvanceQuests(s,{type:"rescue_done",eventQuest:p.questKey||""});
+      const nLoot=Math.min(3, Math.max(1, Math.floor((p.reward||0)/25)+1));
+      grantDungeonLootInstances_(s,nLoot);
+      sys(
+        "你成功救助了对方，收获了真诚感谢。积分 +"+p.reward+"，生命 +1。战利品已自动计入面板。" +
+        "扣除待用：回复 " + usedR + "；被引用 " + usedQ + "。",
+        SYS_AVATARS[1]
+      );
+      renderMap(); renderHUD();
+    }else if(p.type==="monster"){
+      const availablePts=pts;
+      const needPts=p.hp;
+      if(needPts<=0) { s.pending=null; }
+      if(availablePts<=0){
+        const remain=needPts;
+        const needQ=Math.ceil(remain/5);
+        renderHUD();
+        return sys("你目前没有可消耗的回复/被引用。要打赢至少需要：回复 "+remain+" 或被引用 "+needQ+"。",SYS_AVATARS[2]);
+      }
+      const usePts=Math.min(availablePts, needPts);
+      const before=consumePts(s,usePts);
+      const usedR=before.usedR||0;
+      const usedQ=before.usedQ||0;
+      p.hp-=usePts;
+      if(p.hp>0){
+        s.pending=p;
+        const remain=p.hp;
+        const needQ=Math.ceil(remain/5);
+        sys(
+          "你消耗共造成 "+usePts+" 点伤害（扣除待用：回复 "+usedR+"；被引用 "+usedQ+"）。" +
+          "怪物HP还剩 "+remain+"。要打赢至少需要：回复 "+remain+" 或被引用 "+needQ+"。",
+          SYS_AVATARS[2]
+        );
+        renderMap(); renderHUD();
+        shouldSave=false; // 战斗未结束：减少云端写入频率
+      }else{
+        p.done=true; s.pending=null;
+        s.reward+=p.reward;
+        const nLoot=Math.min(4, Math.max(1, Math.floor((p.reward||0)/60)+1));
+        grantDungeonLootInstances_(s,nLoot);
+        sys(
+          "怪物被击退，积分 +"+p.reward+"。（本次扣除待用：回复 "+usedR+"；被引用 "+usedQ+"）战利品已自动计入面板。",
+          SYS_AVATARS[1]
+        );
+        renderMap(); renderHUD();
+      }
+    }else if(p.type==="talk_monster"){
+      let v;
+      if(G.talkPick!==null && G.talkPick!==undefined) v=Number(G.talkPick);
+      else v=parseInt(document.getElementById("talkSel").value||"-1",10);
+      G.talkPick=null;
+      if(v<0 || !p.outcomes || !p.outcomes[v]) return sys("请先选择一个沟通选项。",SYS_AVATARS[2]);
+      const oc=p.outcomes[v]||"combat";
+
+      if(oc==="peace"){
+        p.done=true; p.resolvedKind="peace"; s.pending=null; s.reward+=p.reward;
+        s.eventBias.peace=(s.eventBias.peace||0)+1;
+        s.eventBias.conflict=Math.max(0,(s.eventBias.conflict||0)-1);
+        s.story.kindness=(s.story.kindness||0)+1;
+        s.story.peaceTalks=(s.story.peaceTalks||0)+1;
+        tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"peace"});
+        grantDungeonLootInstances_(s,1);
+        sys(
+          "你理解了它的难处，和平解决。积分 +"+p.reward+"。战利品已自动计入面板。下一层更可能出现可沟通/救助事件。",
+          SYS_AVATARS[1]
+        );
+        // 夜灯守望进行中：清除同层所有 golem 对话事件，避免再遇到“旧信魔像”
+        if(p.monsterId==="gargoyle" && s.story && s.story.quest && s.story.quest.lamp && s.story.quest.lamp.stage>0 && !s.story.quest.lamp.done){
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(ev && ev.type==="talk_monster" && ev.monsterId==="golem") delete s.map.events[k];
+          }
+        }
+        renderMap(); renderHUD();
+      }else if(oc==="conflict"){
+        p.done=true; p.resolvedKind="conflict"; s.pending=null;
+        const rw=Math.max(4,Math.floor(p.reward*0.45));
+        s.reward+=rw;
+        s.eventBias.conflict=(s.eventBias.conflict||0)+1;
+        s.eventBias.peace=Math.max(0,(s.eventBias.peace||0)-1);
+        s.story.violence=(s.story.violence||0)+1;
+        tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"conflict"});
+        grantDungeonLootInstances_(s,2);
+        sys(
+          "沟通有些生硬但仍化解冲突。积分 +"+rw+"。战利品已自动计入面板。下一层可能更容易出现战斗事件。",
+          SYS_AVATARS[2]
+        );
+        renderMap(); renderHUD();
+      }else{
+        // 战斗：把这一格变成战斗状态
+        p.done=true; p.resolvedKind="combat";
+        if(p.monsterId==="golem"){
+          // 一旦选择了“夜行魔像战斗”，同层/后续不再出现该对话事件
+          if(!s.story.quest.letter) s.story.quest.letter={stage:0,done:false,combatBlocked:false};
+          s.story.quest.letter.combatBlocked=true;
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(ev && ev.type==="talk_monster" && ev.monsterId==="golem") delete s.map.events[k];
+          }
+        }
+        s.pending={type:"monster",hp:p.hp,reward:Math.floor(p.reward*0.7),done:false};
+        s.eventBias.conflict=(s.eventBias.conflict||0)+2;
+        s.eventBias.peace=Math.max(0,(s.eventBias.peace||0)-1);
+        s.story.violence=(s.story.violence||0)+2;
+        tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"combat"});
+        sys("沟通破裂，怪物情绪失控，进入战斗。接下来几层战斗风险上升。",SYS_AVATARS[2]);
+        shouldSave=false; // 战斗未结束：减少云端写入
+        renderMap(); renderHUD();
+      }
     }
+
+    if(s.hp<=0){ await onDeath(); return; }
+    popStoryNote(s);
+
+    // 离线游玩：不写入同层事件存档
+    if(!G.offlineMode && shouldSave){
+      try{
+        await saveStateCloud("resolve_event", false);
+      }catch(e){
+        sys("云端写入失败，本次事件未确认。",SYS_AVATARS[2]);
+      }
+    }
+
+    renderMap(); renderHUD();
+  }finally{
+    G.actionBusy=false;
   }
-  if(s.hp<=0){ await onDeath(); return; }
-  popStoryNote(s);
-  try{ await saveStateCloud("resolve_event"); }catch(e){ return sys("云端写入失败，本次事件未确认。",SYS_AVATARS[2]); }
-  renderMap(); renderHUD();
 }
 
 function consumePts(s,need){
-  let rem=need;
+  let rem=Number(need||0);
+  if(rem<=0) return {usedR:0, usedQ:0};
+  s.stockQuote=Number(s.stockQuote||0);
+  s.stockReply=Number(s.stockReply||0);
+
+  let usedQ=0, usedR=0;
+
+  // 先尽量用“被引用”凑够 5 点单位（每条被引用=5点）
   const useQ=Math.min(s.stockQuote, Math.floor(rem/5));
-  s.stockQuote-=useQ; rem-=useQ*5;
-  const useR=Math.min(s.stockReply, rem);
-  s.stockReply-=useR; rem-=useR;
-  if(rem>0 && s.stockQuote>0){ s.stockQuote--; rem=Math.max(0,rem-5); }
+  if(useQ>0){
+    s.stockQuote-=useQ;
+    usedQ+=useQ;
+    rem-=useQ*5;
+  }
+
+  // rem 现在为 0..4，剩下用“回复”逐点扣除；若回复不够，则多花 1 条被引用补足，
+  // 并把多余的点数折回待用“回复”（避免扣光导致的误差）。
+  if(rem>0){
+    if(s.stockReply>=rem){
+      s.stockReply-=rem;
+      usedR+=rem;
+      rem=0;
+    }else{
+      const missing=rem - s.stockReply; // 1..4
+      // 全部消耗回复
+      usedR += s.stockReply;
+      s.stockReply=0;
+      // 理论上：缺的点不会超过4，所以多花一条被引用（5点）即可覆盖
+      if(s.stockQuote<=0) return {usedR, usedQ};
+      s.stockQuote-=1;
+      usedQ+=1;
+      const over=5 - missing; // 1..4
+      s.stockReply += over;
+      rem=0;
+    }
+  }
+
+  return {usedR, usedQ};
 }
 
 async function goDown(){
   const s=G.state;if(!s||G.busy)return;
+  if(G.actionBusy){
+    sysTransient("正在处理事件，请稍后再下楼。",SYS_AVATARS[2],1600);
+    return;
+  }
+  if(G.moveSaveTimer){ try{ clearTimeout(G.moveSaveTimer); }catch(e){} G.moveSaveTimer=null; }
   if(s.pending) return sys("本格事件尚未处理，无法下楼。",SYS_AVATARS[2]);
   if(G.moveSaving){
     sysTransient("系统正在保存云端，请稍后再下楼。",SYS_AVATARS[2],1600);
     return;
   }
   if(!(s.player.x===s.map.stairs.x && s.player.y===s.map.stairs.y)) return sys("你需要先走到楼梯位置。",SYS_AVATARS[2]);
-  s.floor+=1;
-  // 章回推进：每 10 层触发一段温馨奇幻小章节
-  if(s.floor%10===0){
-    const chapter=CHAPTER_PACKS[s.floor]||CHAPTER_PACKS[50];
-    if(chapter && !s.chapterSeen[String(s.floor)]){
-      s.chapterSeen[String(s.floor)]=1;
-      setNotice("章节解锁：第 "+s.floor+" 层 · "+chapter.title);
-      let flavor="";
-      const k=Number(s.story.kindness||0), v=Number(s.story.violence||0);
-      if(k-v>=3) flavor=" 你一路选择倾听，许多原本敌对的身影开始愿意先开口。";
-      else if(v-k>=3) flavor=" 你一路强硬前行，回廊中的戒备越来越重。";
-      else flavor=" 你在温柔与锋利之间摇摆，故事也因此更复杂。";
-      let chapterBonus=0;
-      if(!s.chapterRewardSeen[String(s.floor)]){
-        s.chapterRewardSeen[String(s.floor)]=1;
-        chapterBonus=12+Math.floor(s.floor/10)*2;
-        s.reward+=chapterBonus;
+  G.actionBusy=true;
+  try{
+    s.floor+=1;
+    // 章回推进：每 10 层触发一段温馨奇幻小章节
+    if(s.floor%10===0){
+      const chapter=CHAPTER_PACKS[s.floor]||CHAPTER_PACKS[50];
+      if(chapter && !s.chapterSeen[String(s.floor)]){
+        s.chapterSeen[String(s.floor)]=1;
+        setNotice("章节解锁：第 "+s.floor+" 层 · "+chapter.title);
+        let flavor="";
+        const k=Number(s.story.kindness||0), v=Number(s.story.violence||0);
+        if(k-v>=3) flavor=" 你一路选择倾听，许多原本敌对的身影开始愿意先开口。";
+        else if(v-k>=3) flavor=" 你一路强硬前行，回廊中的戒备越来越重。";
+        else flavor=" 你在温柔与锋利之间摇摆，故事也因此更复杂。";
+        let chapterBonus=0;
+        if(!s.chapterRewardSeen[String(s.floor)]){
+          s.chapterRewardSeen[String(s.floor)]=1;
+          chapterBonus=12+Math.floor(s.floor/10)*2;
+          s.reward+=chapterBonus;
+        }
+        await showChapterCard(
+          "第 "+s.floor+" 层 · "+chapter.title,
+          chapter.text+flavor+(chapterBonus>0?(" 章节小结算：积分 +"+chapterBonus+"。"):"")
+        );
+        sys("章节推进完成："+chapter.title+"。",SYS_AVATARS[1]);
       }
-      await showChapterCard(
-        "第 "+s.floor+" 层 · "+chapter.title,
-        chapter.text+flavor+(chapterBonus>0?(" 章节小结算：积分 +"+chapterBonus+"。"):"")
-      );
-      sys("章节推进完成："+chapter.title+"。",SYS_AVATARS[1]);
     }
+    // 倾向逐层衰减，避免永久锁定某一类事件
+    s.eventBias.peace=Math.max(0,(s.eventBias.peace||0)-1);
+    s.eventBias.conflict=Math.max(0,(s.eventBias.conflict||0)-1);
+    s.story.floorsDescended=(s.story.floorsDescended||0)+1;
+    tryAdvanceQuests(s,{type:"descend"});
+    const hasNote=popStoryNote(s);
+    const m=buildFloor(s.floor); s.map=m; s.player={x:m.start.x,y:m.start.y}; s.pending=null; s.lastEventKey="";
+    s.hp=Math.min(s.maxHp,s.hp+1);
+    try{ await saveStateCloud("next_floor"); }catch(e){ return sys("云端写入失败，无法下楼确认。",SYS_AVATARS[2]); }
+    if(!(s.floor%10===0 && s.chapterSeen[String(s.floor)])){
+      if(!hasNote) sys("你来到第 "+s.floor+" 层。墙壁之外，仍有等待被照亮的故事。",SYS_AVATARS[1]);
+    }
+    // 夜灯守望进入 stage=2 后：在新楼层补齐“需要开箱”的格子
+    ensureQuestFollowupEvents_(s);
+    renderMap(); renderHUD();
+  }finally{
+    G.actionBusy=false;
   }
-  // 倾向逐层衰减，避免永久锁定某一类事件
-  s.eventBias.peace=Math.max(0,(s.eventBias.peace||0)-1);
-  s.eventBias.conflict=Math.max(0,(s.eventBias.conflict||0)-1);
-  s.story.floorsDescended=(s.story.floorsDescended||0)+1;
-  tryAdvanceQuests(s,{type:"descend"});
-  const hasNote=popStoryNote(s);
-  const m=buildFloor(s.floor); s.map=m; s.player={x:m.start.x,y:m.start.y}; s.pending=null; s.lastEventKey="";
-  s.hp=Math.min(s.maxHp,s.hp+1);
-  try{ await saveStateCloud("next_floor"); }catch(e){ return sys("云端写入失败，无法下楼确认。",SYS_AVATARS[2]); }
-  if(!(s.floor%10===0 && s.chapterSeen[String(s.floor)])){
-    if(!hasNote) sys("你来到第 "+s.floor+" 层。墙壁之外，仍有等待被照亮的故事。",SYS_AVATARS[1]);
-  }
-  renderMap(); renderHUD();
 }
 
 async function settle(result){
