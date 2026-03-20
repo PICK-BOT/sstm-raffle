@@ -83,12 +83,12 @@
     <div class="hud">
       <div class="mapbox">
         <div class="mapArea">
-          <table id="mapTable" class="map"></table>
+          <table id="mapTable" class="map"style="min-width:400px"></table>
         </div>
 
         <div id="panelCol" class="panelCol">
-          <div class="panelCols">
-            <div class="colA">
+          <div class="panelCols" >
+            <div class="colA" style="min-width:300px">
               <div class="s"><div class="k">玩家</div><div id="pUid" class="v"></div></div>
               <div class="s"><div class="k">楼层</div><div id="pFloor" class="v"></div></div>
               <div class="s"><div class="k">生命</div><div class="v">
@@ -96,20 +96,33 @@
                 <div id="pHpText" class="hpNum"></div>
               </div></div>
               <div class="s"><div class="k">积分(仅排行)</div><div id="pReward" class="v"></div></div>
-              <div class="s"><div class="k">战利品</div><div id="pLoot" class="v"></div></div>
+
             </div>
-            <div class="colB">
+            <div class="colB" style="min-width:300px">
               <div class="s"><div class="k">待用回复</div><div id="pR" class="v"></div></div>
               <div class="s"><div class="k">待用被引用</div><div id="pQ" class="v"></div></div>
               <div class="s"><div class="k">叙事倾向</div><div id="pAlign" class="v">-</div></div>
               <div class="s"><div class="k">长线支线</div><div id="pQuest" class="v">-</div></div>
             </div>
           </div>
-       
+                   <div class="s"><div class="k">战利品</div><div id="pLoot" class="v"style="min-width:500px"></div></div>
 
- 
+       <div id="offlineWarn" style="font-size:13px;color:#ffd66e;margin-top:6px;min-height:18px"></div>
+          <!-- 事件面板（在系统提醒下方） -->
+        <div id="belowInteract" style="display:flex;flex-direction:column;gap:10px;min-width:600px">
+          <div id="eventActs" class="acts hidden">
+            <span id="eventTxt">事件</span>
+            <span>新增回复</span><input id="addR" type="number" min="0" value="0">
+            <span>新增被引用</span><input id="addQ" type="number" min="0" value="0">
+            <button id="eventBtn" class="good" onclick="resolveEvent()">执行</button>
+            <select id="talkSel" class="hidden"></select>
+            <div id="talkBtns" class="hidden" style="width:100%;gap:8px;flex-wrap:wrap;display:flex;margin-top:6px"></div>
+          </div>
+        </div>
 
-        
+    </div>
+
+  </div>
 
         <!-- 右侧按钮区：menuStack + 移动按钮并排 -->
         <div class="menuActsRow">
@@ -128,29 +141,17 @@
             <button onclick="move(0,1)">下</button>
             <button class="primary" onclick="goDown()">下楼</button>
           </div>
-        </div>
-
         <div class="sysbox">
           <div class="sysline">
             <img id="sysAvatar" class="sysicon" alt="sys">
             <div id="sysMsg" class="sysc"></div>
           </div>
         </div>
-        <div id="offlineWarn" style="font-size:13px;color:#ffd66e;margin-top:6px;min-height:18px"></div>
-
-        <!-- 事件面板（在系统提醒下方） -->
-        <div id="belowInteract" style="display:flex;flex-direction:column;gap:10px">
-          <div id="eventActs" class="acts hidden">
-            <span id="eventTxt">事件</span>
-            <span>新增回复</span><input id="addR" type="number" min="0" value="0">
-            <span>新增被引用</span><input id="addQ" type="number" min="0" value="0">
-            <button id="eventBtn" class="good" onclick="resolveEvent()">执行</button>
-            <select id="talkSel" class="hidden"></select>
-            <div id="talkBtns" class="hidden" style="width:100%;gap:8px;flex-wrap:wrap;display:flex;margin-top:6px"></div>
-          </div>
         </div>
-    </div>
-  </div>
+
+
+ 
+
 
   <div id="recordCard" class="card hidden">
     <div class="row"><strong>云端记录</strong></div>
