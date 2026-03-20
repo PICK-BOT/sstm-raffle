@@ -334,7 +334,8 @@ function renderGame(){
   if(onTask){
     sys("当前是任务楼层，请先完成任务后继续爬塔。");
   }else if(onChest){
-    sys("当前是宝箱楼层，点击“尝试开锁”将消耗回复/被引用。");
+    const need = r.chest.need || 0;
+    sys("当前是宝箱楼层，开锁需求值"+need+"，约等于 "+need+" 条回复，或 "+Math.ceil(need/5)+" 条被引用。");
   }else{
     const hp=Math.max(1,r.monster.hp||1);
     sys("当前是怪物楼层，若只用回复需 "+hp+"；若只用被引用需 "+Math.ceil(hp/5)+"。");
@@ -440,6 +441,16 @@ function takeHit(){
   r.hits = (r.hits||0) + 1;
   r.monster.counter=null;
   if(r.hits>=3){
+    const deadRec = {
+      id:G.uid,
+      date:now().date,
+      time:now().time,
+      floors:Math.max(1,(r.floor||1)-1),
+      tower_time:secFmt(((Date.now()-(r.st||Date.now()))/1000)|0),
+      reward:r.reward||0,
+      result:"阵亡重置"
+    };
+    sendCloud(deadRec);
     const keepLoot = r.lootBag || {"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0};
     const br=r.stockReply||0, bq=r.stockQuote||0;
     const mon=newMonster(1); mon.maxHp=mon.hp;
@@ -597,7 +608,19 @@ function loadCloud(){
   const cb="tower_cb_"+Date.now(); window[cb]=function(res){
     delete window[cb]; s.remove();
     const d=(res&&res.data)||[];
-    el.innerHTML=d.length?d.slice(0,30).map((x,i)=>`<div class="rank"><div>#${i+1}</div><div>${x.id} ${x.time||""}</div><div>${x.floors}层</div><div>${x.reward}奖</div></div>`).join(""):"云端暂无记录";
+    if(d.length){
+      el.innerHTML=d.slice(0,30).map((x,i)=>`<div class="rank"><div>#${i+1}</div><div>${x.id} ${x.time||""}</div><div>${x.floors}层</div><div>${x.reward}奖</div></div>`).join("");
+      return;
+    }
+    if(G.run){
+      syncCloudState("record_auto_sync");
+      el.textContent="云端暂无记录，已自动同步一次当前进度，请稍后再点“刷新云端”。";
+    }else{
+      // 主动写入一条可见闯关记录，避免榜单长期为空
+      const t=now();
+      sendCloud({id:G.uid||"玩家",date:t.date,time:t.time,floors:0,tower_time:"00:00",reward:0,result:"记录初始化"});
+      el.textContent="云端暂无记录，已初始化一条记录，请稍后再点“刷新云端”。";
+    }
   };
   const s=document.createElement("script");
   s.src=u+(u.includes("?")?"&":"?")+"action=leaderboard_tower&callback="+cb+"&t="+Date.now();
