@@ -18,6 +18,9 @@
     /* 右侧上方按钮：集中一行显示，避免占用过多宽度 */
     .menuStack{display:flex;flex-direction:row;gap:8px;flex-wrap:nowrap;align-items:center;margin-bottom:8px;justify-content:flex-start}
     .menuStack button{width:auto;white-space:nowrap;padding:6px 8px;font-size:13px}
+    .menuActsRow{display:flex;gap:10px;align-items:flex-start}
+    #navActs{display:flex;gap:8px;flex-wrap:nowrap}
+    #navActs button{padding:8px 10px;font-size:13px}
     .mapbox{
       background:linear-gradient(180deg,#0f1024,#090a1a);
       border:1px solid #4c4f86;border-radius:8px;padding:8px;
@@ -25,7 +28,8 @@
       display:flex;gap:12px;align-items:flex-start
     }
     .mapArea{flex:0 0 auto}
-    .panelCol{flex:0 0 360px;min-width:360px}
+    .panelCol{flex:0 0 380px;min-width:360px}
+    .panelCols{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
     .s{display:grid;grid-template-columns:95px 1fr;gap:6px;margin-bottom:7px}.k{color:#b8baf0}.v{color:#fbf8ff}
     .map{border-collapse:collapse}
     .map td{width:30px;height:30px;text-align:center;vertical-align:middle;border:1px solid #23274f;font-size:12px}
@@ -83,24 +87,47 @@
         </div>
 
         <div id="panelCol" class="panelCol">
-        <div class="s"><div class="k">玩家</div><div id="pUid" class="v"></div></div>
-        <div class="s"><div class="k">楼层</div><div id="pFloor" class="v"></div></div>
-        <div class="s"><div class="k">生命</div><div class="v">
-          <div class="hpOuter"><div id="pHpBar" class="hpInner"></div></div>
-          <div id="pHpText" class="hpNum"></div>
-        </div></div>
-        <div class="s"><div class="k">积分(仅排行)</div><div id="pReward" class="v"></div></div>
-        <div class="s"><div class="k">战利品</div><div id="pLoot" class="v"></div></div>
-        <div class="s"><div class="k">待用回复</div><div id="pR" class="v"></div></div>
-        <div class="s"><div class="k">待用被引用</div><div id="pQ" class="v"></div></div>
-        <div class="s"><div class="k">叙事倾向</div><div id="pAlign" class="v">-</div></div>
-        <div class="s"><div class="k">长线支线</div><div id="pQuest" class="v">-</div></div>
-        <div class="menuStack" id="topMenuStack">
-          <button class="warn" onclick="settle('撤退结算')">撤退结算</button>
-          <button onclick="backMenu()">主菜单</button>
-          <button onclick="changeIdMidGame()">更改ID</button>
-          <button onclick="setOfflineMode(true)">离线游玩</button>
-          <button onclick="manualSaveToCloud()">保存进度(云端)</button>
+          <div class="panelCols">
+            <div class="colA">
+              <div class="s"><div class="k">玩家</div><div id="pUid" class="v"></div></div>
+              <div class="s"><div class="k">楼层</div><div id="pFloor" class="v"></div></div>
+              <div class="s"><div class="k">生命</div><div class="v">
+                <div class="hpOuter"><div id="pHpBar" class="hpInner"></div></div>
+                <div id="pHpText" class="hpNum"></div>
+              </div></div>
+              <div class="s"><div class="k">积分(仅排行)</div><div id="pReward" class="v"></div></div>
+              <div class="s"><div class="k">战利品</div><div id="pLoot" class="v"></div></div>
+            </div>
+            <div class="colB">
+              <div class="s"><div class="k">待用回复</div><div id="pR" class="v"></div></div>
+              <div class="s"><div class="k">待用被引用</div><div id="pQ" class="v"></div></div>
+              <div class="s"><div class="k">叙事倾向</div><div id="pAlign" class="v">-</div></div>
+              <div class="s"><div class="k">长线支线</div><div id="pQuest" class="v">-</div></div>
+            </div>
+          </div>
+       
+
+ 
+
+        
+
+        <!-- 右侧按钮区：menuStack + 移动按钮并排 -->
+        <div class="menuActsRow">
+          <div class="menuStack" id="topMenuStack">
+            <button class="warn" onclick="settle('撤退结算')">撤退结算</button>
+            <button onclick="backMenu()">主菜单</button>
+            <button onclick="changeIdMidGame()">更改ID</button>
+            <button onclick="setOfflineMode(true)">离线游玩</button>
+            <button onclick="manualSaveToCloud()">保存进度(云端)</button>
+          </div>
+
+          <div class="acts" id="navActs">
+            <button onclick="move(0,-1)">上</button>
+            <button onclick="move(-1,0)">左</button>
+            <button onclick="move(1,0)">右</button>
+            <button onclick="move(0,1)">下</button>
+            <button class="primary" onclick="goDown()">下楼</button>
+          </div>
         </div>
 
         <div class="sysbox">
@@ -111,16 +138,7 @@
         </div>
         <div id="offlineWarn" style="font-size:13px;color:#ffd66e;margin-top:6px;min-height:18px"></div>
 
-        <!-- 上下左右放在系统提醒下方；仅交互事件按钮在地图下方 -->
-        <div class="acts">
-          <button onclick="move(0,-1)">上</button>
-          <button onclick="move(-1,0)">左</button>
-          <button onclick="move(1,0)">右</button>
-          <button onclick="move(0,1)">下</button>
-          <button class="primary" onclick="goDown()">下楼</button>
-        </div>
-
-        <!-- 事件面板（在系统提醒/移动按钮下方） -->
+        <!-- 事件面板（在系统提醒下方） -->
         <div id="belowInteract" style="display:flex;flex-direction:column;gap:10px">
           <div id="eventActs" class="acts hidden">
             <span id="eventTxt">事件</span>
@@ -131,8 +149,6 @@
             <div id="talkBtns" class="hidden" style="width:100%;gap:8px;flex-wrap:wrap;display:flex;margin-top:6px"></div>
           </div>
         </div>
-        </div>
-      </div>
     </div>
   </div>
 
