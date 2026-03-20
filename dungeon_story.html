@@ -235,6 +235,19 @@ function apiJsonp(action, params){
   });
 }
 
+async function apiPostJson_(payload){
+  const u=gasUrl();
+  if(!u) throw new Error("no_gas_url");
+  // 使用 POST，避免 state_json 过长导致 GET/JSONP URL 失效
+  // 先尝试 cors，再回退到 no-cors（我们后续会用 load_state 做确认）
+  try{
+    const res=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),mode:"cors"});
+    if(res && res.ok) return true;
+  }catch(e){}
+  await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),mode:"no-cors"}).catch(()=>{});
+  return true;
+}
+
 async function enterGame(){
   const uid=(document.getElementById("uid").value||"").trim();
   if(!uid){ document.getElementById("loginNotice").textContent="请先输入论坛ID。"; return; }
@@ -541,10 +554,19 @@ function renderHUD(){
 async function saveStateCloud(eventName){
   const s=G.state;if(!s) return;
   s.updatedAt=Date.now();
-  await apiJsonp("save_state",{
-    user_id:G.uid,floor:String(s.floor),reward:String(s.reward),event:eventName||"",
-    state_json:JSON.stringify(s),_ts:String(Date.now())
+  const stateJson=JSON.stringify(s);
+  await apiPostJson_({
+    action:"save_state",
+    user_id:G.uid,
+    floor:String(s.floor),
+    reward:String(s.reward),
+    event:eventName||"",
+    state_json:stateJson,
+    _ts:String(Date.now())
   });
+  // 写入后用云端确认，避免“写入失败却不知”的情况
+  const verify=await apiJsonp("load_state",{user_id:G.uid});
+  if(!verify || !verify.data || !verify.data.state) throw new Error("cloud_save_verify_failed");
 }
 
 async function appendRecord(result){
