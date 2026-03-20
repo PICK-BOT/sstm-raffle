@@ -14,14 +14,18 @@
     input,button,select{border:1px solid #6a70b4;background:#131836;color:#f0f2ff;border-radius:8px;padding:8px 10px;font-size:14px}
     button{cursor:pointer;transition:.18s transform,.18s filter}.primary{background:#5c47d6}.good{background:#2b9f74}.warn{background:#a26a1a}
     button:hover{transform:translateY(-1px);filter:brightness(1.08)}
-    .hud{display:grid;grid-template-columns:1fr 320px;gap:10px;align-items:start}
-    .panelCol{width:320px}
-    .panelCol{grid-column:2}
-    .mapbox{grid-column:1}
+    .hud{display:block}
     .menuStack{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
     .menuStack button{width:100%}
+    .mapbox{
+      background:linear-gradient(180deg,#0f1024,#090a1a);
+      border:1px solid #4c4f86;border-radius:8px;padding:8px;
+      overflow:auto;max-height:520px;box-shadow:inset 0 0 28px #7f72ff1a;width:100%;
+      display:flex;gap:12px;align-items:flex-start
+    }
+    .mapArea{flex:0 0 auto}
+    .panelCol{flex:1 1 auto;min-width:300px}
     .s{display:grid;grid-template-columns:95px 1fr;gap:6px;margin-bottom:7px}.k{color:#b8baf0}.v{color:#fbf8ff}
-    .mapbox{background:linear-gradient(180deg,#0f1024,#090a1a);border:1px solid #4c4f86;border-radius:8px;padding:8px;overflow:auto;max-height:520px;box-shadow:inset 0 0 28px #7f72ff1a;width:100%}
     .map{border-collapse:collapse}
     .map td{width:30px;height:30px;text-align:center;vertical-align:middle;border:1px solid #23274f;font-size:12px}
     .fog{background:#070810;color:#070810}.wall{background:#1f1a2f;color:#1f1a2f}.floor{background:#1d2143}
@@ -72,7 +76,12 @@
 
   <div id="gameCard" class="card hidden">
     <div class="hud">
-      <div id="panelCol" class="panelCol">
+      <div class="mapbox">
+        <div class="mapArea">
+          <table id="mapTable" class="map"></table>
+        </div>
+
+        <div id="panelCol" class="panelCol">
         <div class="s"><div class="k">玩家</div><div id="pUid" class="v"></div></div>
         <div class="s"><div class="k">楼层</div><div id="pFloor" class="v"></div></div>
         <div class="s"><div class="k">生命</div><div class="v">
@@ -121,10 +130,7 @@
             <div id="talkBtns" class="hidden" style="width:100%;gap:8px;flex-wrap:wrap;display:flex;margin-top:6px"></div>
           </div>
         </div>
-      </div>
-
-      <div class="mapbox">
-        <table id="mapTable" class="map"></table>
+        </div>
       </div>
     </div>
   </div>
