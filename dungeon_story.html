@@ -14,9 +14,9 @@
     input,button,select{border:1px solid #6a70b4;background:#131836;color:#f0f2ff;border-radius:8px;padding:8px 10px;font-size:14px}
     button{cursor:pointer;transition:.18s transform,.18s filter}.primary{background:#5c47d6}.good{background:#2b9f74}.warn{background:#a26a1a}
     button:hover{transform:translateY(-1px);filter:brightness(1.08)}
-    .hud{display:grid;grid-template-columns:320px 1fr;gap:10px}
+    .hud{display:flex;flex-direction:column;gap:10px}
     .s{display:grid;grid-template-columns:95px 1fr;gap:6px;margin-bottom:7px}.k{color:#b8baf0}.v{color:#fbf8ff}
-    .mapbox{background:linear-gradient(180deg,#0f1024,#090a1a);border:1px solid #4c4f86;border-radius:8px;padding:8px;overflow:auto;max-height:520px;box-shadow:inset 0 0 28px #7f72ff1a}
+    .mapbox{background:linear-gradient(180deg,#0f1024,#090a1a);border:1px solid #4c4f86;border-radius:8px;padding:8px;overflow:auto;max-height:none;height:72vh;box-shadow:inset 0 0 28px #7f72ff1a}
     .map{border-collapse:collapse}.map td{width:30px;height:30px;text-align:center;vertical-align:middle;border:1px solid #23274f;font-size:12px}
     .fog{background:#070810;color:#070810}.wall{background:#1f1a2f;color:#1f1a2f}.floor{background:#1d2143}
     .wallHint{background:repeating-linear-gradient(45deg,#9a9a9a55 0,#9a9a9a55 3px,#1f1a2f 3px,#1f1a2f 7px),#1f1a2f;color:#cfcfcf}
@@ -33,6 +33,9 @@
     .chapter-box{min-width:320px;max-width:520px;background:linear-gradient(180deg,#261743,#12142e);border:1px solid #8f7aff;border-radius:14px;padding:16px;box-shadow:0 0 30px #8f7aff40}
     .chapter-title{font-size:20px;color:#ffe9b6;margin-bottom:8px}
     .chapter-text{line-height:1.7;color:#ece7ff;margin-bottom:12px}
+    .hpOuter{height:12px;background:#120b1f;border-radius:8px;overflow:hidden;border:1px solid #4633a0}
+    .hpInner{height:100%;background:linear-gradient(90deg,#2ed573,#ff6b6b);width:100%;border-radius:8px;transition:width .22s}
+    .hpNum{font-size:12px;color:#e9e9ff;margin-top:6px;text-align:center}
   </style>
 </head>
 <body>
@@ -65,7 +68,10 @@
       <div>
         <div class="s"><div class="k">玩家</div><div id="pUid" class="v"></div></div>
         <div class="s"><div class="k">楼层</div><div id="pFloor" class="v"></div></div>
-        <div class="s"><div class="k">生命</div><div id="pHp" class="v"></div></div>
+        <div class="s"><div class="k">生命</div><div class="v">
+          <div class="hpOuter"><div id="pHpBar" class="hpInner"></div></div>
+          <div id="pHpText" class="hpNum"></div>
+        </div></div>
         <div class="s"><div class="k">积分(仅排行)</div><div id="pReward" class="v"></div></div>
         <div class="s"><div class="k">战利品</div><div id="pLoot" class="v"></div></div>
         <div class="s"><div class="k">待用回复</div><div id="pR" class="v"></div></div>
@@ -80,6 +86,21 @@
           <button onclick="manualSaveToCloud()">保存进度(云端)</button>
         </div>
 
+        <div class="sysbox">
+          <div class="sysline">
+            <img id="sysAvatar" class="sysicon" alt="sys">
+            <div id="sysMsg" class="sysc"></div>
+          </div>
+        </div>
+        <div id="offlineWarn" style="font-size:13px;color:#ffd66e;margin-top:6px;min-height:18px"></div>
+      </div>
+
+      <div class="mapbox">
+        <table id="mapTable" class="map"></table>
+      </div>
+
+      <!-- 所有交互控件移动到地图下方，避免遮挡系统提醒 -->
+      <div id="belowInteract" style="display:flex;flex-direction:column;gap:10px">
         <div class="acts">
           <button onclick="move(0,-1)">上</button>
           <button onclick="move(-1,0)">左</button>
@@ -96,18 +117,6 @@
           <select id="talkSel" class="hidden"></select>
           <div id="talkBtns" class="hidden" style="width:100%;gap:8px;flex-wrap:wrap;display:flex;margin-top:6px"></div>
         </div>
-
-        <div class="sysbox">
-          <div class="sysline">
-            <img id="sysAvatar" class="sysicon" alt="sys">
-            <div id="sysMsg" class="sysc"></div>
-          </div>
-        </div>
-        <div id="offlineWarn" style="font-size:13px;color:#ffd66e;margin-top:6px;min-height:18px"></div>
-      </div>
-
-      <div class="mapbox">
-        <table id="mapTable" class="map"></table>
       </div>
     </div>
   </div>
@@ -201,7 +210,9 @@ const G={
   moveSaveTimer:null,
   lastMoveSaveAt:0,
   talkPick:null,
-  rescuePick:null
+  rescuePick:null,
+  monsterPick:null,
+  chestPick:null
 };
 
 let _sysToken=0;
@@ -222,7 +233,7 @@ function eventGlyph_(ev){
   const kind=ev.resolvedKind||"";
   if(ev.type==="chest") return "◇";
   if(ev.type==="rescue") return "✚";
-  if(ev.type==="monster") return "⚔";
+  if(ev.type==="monster") return (kind==="escape"?"↗":"⚔");
   if(ev.type==="talk_monster"){
     if(kind==="peace") return "☮";
     if(kind==="conflict") return "✦";
@@ -644,6 +655,12 @@ function buildFloor(floor){
   let rescueRate=Math.max(0.08, Math.min(0.22, 0.12 + peaceBoost*0.8 - conflictBoost*0.5));
   let monsterRate=Math.max(0.12, Math.min(0.36, 0.18 + conflictBoost - peaceBoost*0.6));
 
+  // 救助可拒绝：拒绝后下一层不再生成救助事件（让遭遇变成更偏“必须战斗”的怪物）
+  try{
+    const skipUntil=G.state && G.state.story ? Number(G.state.story.rescueSkipUntilFloor||0) : 0;
+    if(skipUntil>=Number(floor||1)) rescueRate=0;
+  }catch(e){}
+
   if(chestNeedCount>0) chestRate*=1+(0.18*chestNeedCount);
   if(rescueNeedCount>0) rescueRate*=1+(0.22*rescueNeedCount);
 
@@ -682,6 +699,27 @@ function buildFloor(floor){
       events[key(x,y)]={type:"talk_monster",monsterId:s.id,story:s.txt,opts:s.opts,outcomes:s.outcomes,reward:baseTalkReward,hp:rInt(10,22)+floor,done:false};
     }
   }
+  // 兜底：如果本层完全没有“怪物/救助”事件，则用 BOSS 级怪物填补空档
+  let monsterCnt=0, rescueCnt=0;
+  for(const k in events){
+    const ev=events[k];
+    if(!ev || ev.done) continue;
+    if(ev.type==="monster" || ev.type==="talk_monster") monsterCnt++;
+    if(ev.type==="rescue") rescueCnt++;
+  }
+  if(monsterCnt===0 && rescueCnt===0){
+    const bossHp=Math.floor(rInt(20,48)+floor);
+    const maxTries=180;
+    for(let i=0;i<maxTries;i++){
+      const x=rInt(1,w-2), y=rInt(1,h-2);
+      const kk=key(x,y);
+      if(tiles[y][x]!==0) continue;
+      if(kk===key(start.x,start.y) || kk===key(stairs.x,stairs.y)) continue;
+      if(events[kk]) continue;
+      events[kk]={type:"monster",hp:bossHp,reward:baseMonsterReward,boss:true,done:false};
+      break;
+    }
+  }
   return {w:w,h:h,tiles:tiles,revealed:revealed,events:events,start:start,stairs:stairs,learnedWalls:{}};
 }
 
@@ -700,6 +738,11 @@ function newState(uid){
     lootBag:{jiecao:0,yumao:0,bqMedal30:0,zmMedal30:0},
     story:{
       kindness:0,violence:0,peaceTalks:0,rescueDone:0,chestOpen:0,floorsDescended:0,
+      rescueSkipUntilFloor:0,
+      permCurMedal:0,
+      permCurMedalGiven:false,
+      permPastExchange:0,
+      permPastExchangeGivenFloors:{},
       quest:{
         herb:{stage:0,done:false,combatBlocked:false,hasHerb:false},
         lamp:{stage:0,done:false,startFloor:0,combatBlocked:false,hasLamp:false,lit:false},
@@ -779,7 +822,17 @@ function normalizeState(st){
   if(st.story.quest.letter.combatBlocked===undefined) st.story.quest.letter.combatBlocked=false;
   if(st.story.quest.letter.hasLetter===undefined) st.story.quest.letter.hasLetter=false;
   if(st.story.quest.letter.delivered===undefined) st.story.quest.letter.delivered=false;
+  // 兼容旧存档/异常：stage 已经到 2 时，补齐关键状态标记
+  if(st.story.quest.herb && Number(st.story.quest.herb.stage||0)>=2) st.story.quest.herb.hasHerb=true;
+  if(st.story.quest.lamp && Number(st.story.quest.lamp.stage||0)>=2) st.story.quest.lamp.lit=true;
+  if(st.story.quest.letter && Number(st.story.quest.letter.stage||0)>=2) st.story.quest.letter.delivered=true;
   if(!st.story.endings) st.story.endings={herb:false,lamp:false,letter:false,all:false};
+  if(st.story.rescueSkipUntilFloor===undefined) st.story.rescueSkipUntilFloor=0;
+  if(typeof st.story.rescueSkipUntilFloor!=="number") st.story.rescueSkipUntilFloor=Number(st.story.rescueSkipUntilFloor||0);
+  if(st.story.permCurMedal===undefined) st.story.permCurMedal=0;
+  if(st.story.permCurMedalGiven===undefined) st.story.permCurMedalGiven=false;
+  if(st.story.permPastExchange===undefined) st.story.permPastExchange=0;
+  if(!st.story.permPastExchangeGivenFloors) st.story.permPastExchangeGivenFloors={};
   if(!st.story.pendingNotes) st.story.pendingNotes=[];
   if(!st.story.log) st.story.log=[];
   return st;
@@ -1081,6 +1134,20 @@ function ensureQuestFollowupEvents_(s){
 function renderMap(){
   const s=G.state;if(!s) return;
   const m=s.map, tb=document.getElementById("mapTable");
+  // 地图背景保持“每 5 层一换”，让第 6 层开始能明显看到主题变化
+  try{
+    const box=document.querySelector(".mapbox");
+    if(box){
+      const group=Math.floor((Number(s.floor||1)-1)/5);
+      const themes=[
+        "linear-gradient(180deg,#0f1024,#090a1a)",
+        "linear-gradient(180deg,#241020,#0b0712)",
+        "linear-gradient(180deg,#0b2a2a,#070d10)",
+        "linear-gradient(180deg,#2a1f0b,#0a0704)"
+      ];
+      box.style.background=themes[group%themes.length];
+    }
+  }catch(e){}
   tb.innerHTML="";
   for(let y=0;y<m.h;y++){
     const tr=document.createElement("tr");
@@ -1111,7 +1178,11 @@ function renderHUD(){
   const s=G.state;if(!s)return;
   document.getElementById("pUid").textContent=G.uid;
   document.getElementById("pFloor").textContent=String(s.floor);
-  document.getElementById("pHp").textContent=s.hp+" / "+s.maxHp;
+  const hpRatio=(Number(s.maxHp||0)>0)?(Number(s.hp||0)/Number(s.maxHp)):0;
+  const bar=document.getElementById("pHpBar");
+  if(bar) bar.style.width=Math.max(0,Math.min(100,Math.round(hpRatio*100)))+"%";
+  const hpText=document.getElementById("pHpText");
+  if(hpText) hpText.textContent=s.hp+" / "+s.maxHp;
   document.getElementById("pReward").textContent=String(s.reward);
   const lb=s.lootBag||{jiecao:0,yumao:0,bqMedal30:0,zmMedal30:0};
   const pLoot=document.getElementById("pLoot");
@@ -1120,7 +1191,9 @@ function renderHUD(){
     "30节操X"+(lb.jiecao||0)+
     " 30羽毛X"+feather30+
     " 本期勋章30天X"+(lb.bqMedal30||0)+
-    " 字母勋章30天X"+(lb.zmMedal30||0);
+    " 字母勋章30天X"+(lb.zmMedal30||0)+
+    " 永久本期勋章X"+(s.story&&s.story.permCurMedal||0)+
+    " 永久往期兑换机会X"+(s.story&&s.story.permPastExchange||0);
   document.getElementById("pR").textContent=String(s.stockReply||0);
   document.getElementById("pQ").textContent=String(s.stockQuote||0);
   document.getElementById("pAlign").textContent=storyAlignmentText(s);
@@ -1129,11 +1202,6 @@ function renderHUD(){
   show("eventActs",!!p);
   document.getElementById("talkSel").classList.add("hidden");
   document.getElementById("eventBtn").classList.remove("hidden");
-  // 默认按钮：执行事件（救助事件会在分支里覆盖为“完成/不救助”）
-  const evBtn=document.getElementById("eventBtn");
-  if(evBtn){
-    evBtn.onclick=()=>{ G.rescuePick=null; resolveEvent(); };
-  }
   const btnWrap=document.getElementById("talkBtns");
   if(btnWrap) btnWrap.classList.add("hidden");
   if(!p){
@@ -1143,12 +1211,37 @@ function renderHUD(){
   if(p.type==="chest"){
     document.getElementById("eventTxt").textContent="宝箱上锁，需要点数 "+p.need+"（回复1点/被引用5点）。开锁后获得积分与战利品。";
     document.getElementById("eventBtn").textContent="尝试开锁";
+    document.getElementById("eventBtn").classList.add("hidden");
+    if(btnWrap){
+      btnWrap.innerHTML="";
+      btnWrap.classList.remove("hidden");
+      const b1=document.createElement("button");
+      b1.className="good";
+      b1.textContent="打开宝箱";
+      b1.onclick=()=>{ G.chestPick=null; resolveEvent(); };
+      btnWrap.appendChild(b1);
+      const b2=document.createElement("button");
+      b2.className="warn";
+      b2.textContent="不开宝箱(下次再开)";
+      b2.onclick=()=>{ G.chestPick="skip"; resolveEvent(); };
+      btnWrap.appendChild(b2);
+    }
   }else if(p.type==="monster"){
     document.getElementById("eventTxt").textContent="遭遇怪物，HP "+p.hp+"，击败可得积分 "+p.reward+"。";
     document.getElementById("eventBtn").textContent="攻击";
+    if(btnWrap){
+      btnWrap.innerHTML="";
+      btnWrap.classList.remove("hidden");
+      const b=document.createElement("button");
+      b.className="warn";
+      b.textContent="逃跑";
+      b.onclick=()=>{ G.monsterPick="escape"; resolveEvent(); };
+      btnWrap.appendChild(b);
+    }
   }else if(p.type==="rescue"){
     document.getElementById("eventTxt").textContent="拯救任务： "+p.story+"（需求点数 "+p.need+"）";
     document.getElementById("eventBtn").textContent="完成救助";
+    document.getElementById("eventBtn").classList.add("hidden");
     // 救助可选择拒绝：拒绝不消耗点数，但提升战斗遭遇，并阻断该救助链
     document.getElementById("eventBtn").onclick=()=>{ G.rescuePick="do"; resolveEvent(); };
     const btnWrap2=document.getElementById("talkBtns");
@@ -1158,12 +1251,12 @@ function renderHUD(){
       const b1=document.createElement("button");
       b1.className="good";
       b1.textContent="完成救助";
-      b1.onclick=()=>{ G.rescuePick="do"; show("eventActs",false); resolveEvent(); };
+      b1.onclick=()=>{ G.rescuePick="do"; resolveEvent(); };
       btnWrap2.appendChild(b1);
       const b2=document.createElement("button");
       b2.className="warn";
       b2.textContent="不救助(下次改战斗)";
-      b2.onclick=()=>{ G.rescuePick="refuse"; show("eventActs",false); resolveEvent(); };
+      b2.onclick=()=>{ G.rescuePick="refuse"; resolveEvent(); };
       btnWrap2.appendChild(b2);
     }
   }else if(p.type==="talk_monster"){
@@ -1175,7 +1268,20 @@ function renderHUD(){
     btnWrap.classList.remove("hidden");
     // 对话选项：直接三个行动按钮，避免误点击
     for(let i=0;i<3;i++){
-      const opt=p.opts[i]||("选项"+(i+1));
+      let opt=p.opts[i]||("选项"+(i+1));
+      // stage=2 时的“和平”按钮需要替换为更明确的“交付/治疗/点亮/递信”文本
+      if(i===0 && s && s.story && s.story.quest){
+        const q=s.story.quest;
+        if(p.monsterId==="wolf" && q.herb && q.herb.stage===2 && !q.herb.done && q.herb.hasHerb){
+          opt="给灰狼药草（治疗幼崽）";
+        }
+        if(p.monsterId==="gargoyle" && q.lamp && q.lamp.stage===2 && !q.lamp.done && q.lamp.lit){
+          opt="真的把灯点亮了（继续回廊）";
+        }
+        if(p.monsterId==="golem" && q.letter && q.letter.stage===2 && !q.letter.done && q.letter.delivered){
+          opt="把信送到收信人面前";
+        }
+      }
       const b=document.createElement("button");
       b.className=i===0?"good":(i===1?"warn":"good");
       b.textContent=opt;
@@ -1283,6 +1389,11 @@ async function move(dx,dy){
   }
 
   s.player.x=nx; s.player.y=ny; m.revealed[key(nx,ny)]=1; touchTileEvent();
+  // 玩家移动后清掉事件描述，避免奖励/台词残留
+  try{
+    const el=document.getElementById("sysMsg");
+    if(el) el.textContent="";
+  }catch(e){}
   renderMap(); renderHUD();
 
   // 走到楼梯格：询问是否下楼
@@ -1352,6 +1463,10 @@ async function resolveEvent(){
       // 提高战斗倾向：减少救助、增加“必须战斗”的怪物遭遇
       s.eventBias.conflict=(s.eventBias.conflict||0)+2;
       s.eventBias.peace=Math.max(0,(s.eventBias.peace||0)-1);
+      // 下一层起暂不再生成救助类事件
+      if(s.story){
+        s.story.rescueSkipUntilFloor=Math.max(Number(s.story.rescueSkipUntilFloor||0), Number(s.floor||1)+1);
+      }
 
       p.done=true; s.pending=null;
       sys("你选择放弃救助。下一次更可能遭遇需要战斗的怪物。",SYS_AVATARS[2]);
@@ -1361,6 +1476,40 @@ async function resolveEvent(){
       if(!G.offlineMode){
         try{ await saveStateCloud("rescue_refused", false); }catch(e){}
       }
+      return;
+    }
+
+    // 宝箱可选择不开：不消耗点数、不标记 done，关闭面板后下次再来还能继续选
+    if(p.type==="chest" && G.chestPick==="skip"){
+      G.chestPick=null;
+      G.rescuePick=null;
+      s.pending=null;
+      const txt="你暂时放过了宝箱。下次经过时仍可选择开启。";
+      sysTransient(txt,SYS_AVATARS[0],1600);
+      renderMap(); renderHUD();
+      return;
+    }
+
+    // 怪物可逃跑：成功则直接结束这格（不结算奖励）；失败则玩家生命 -1
+    if(p.type==="monster" && G.monsterPick==="escape"){
+      G.monsterPick=null;
+      const success=Math.random()<0.45; // 仅用于逃跑结果，不向玩家显示概率
+      if(success){
+        p.done=true; p.resolvedKind="escape"; s.pending=null;
+        sysTransient("你成功逃离了这场遭遇。",SYS_AVATARS[1],1600);
+        renderMap(); renderHUD();
+        if(!G.offlineMode){
+          try{ await saveStateCloud("escape_success", false); }catch(e){}
+        }
+      }else{
+        s.hp=Number(s.hp||0)-1;
+        sysTransient("你没能逃开，失去 1 点生命。",SYS_AVATARS[2],1600);
+        renderMap(); renderHUD();
+        if(s.hp<=0){ await onDeath(); return; }
+        // 逃跑失败：事件仍需继续处理（本分支已 return，不依赖 shouldSave）
+      }
+      popStoryNote(s);
+      // 离线模式不写云端；已结束的逃跑成功仍会写入（上面已写）
       return;
     }
 
@@ -1591,6 +1740,7 @@ async function goDown(){
     sysTransient("正在处理事件，请稍后再下楼。",SYS_AVATARS[2],1600);
     return;
   }
+  try{ const el=document.getElementById("sysMsg"); if(el) el.textContent=""; }catch(e){}
   setBusy(true,"正在下楼请静候...");
   if(G.moveSaveTimer){ try{ clearTimeout(G.moveSaveTimer); }catch(e){} G.moveSaveTimer=null; }
   if(s.pending){ setBusy(false); return sys("本格事件尚未处理，无法下楼。",SYS_AVATARS[2]); }
@@ -1603,6 +1753,25 @@ async function goDown(){
   G.actionBusy=true;
   try{
     s.floor+=1;
+    // 永久本期勋章 / 永久往期兑换机会触发（通关到指定楼层时弹出）
+    if(s.story){
+      if(s.floor===20 && !s.story.permCurMedalGiven){
+        s.story.permCurMedalGiven=true;
+        s.story.permCurMedal=Number(s.story.permCurMedal||0)+1;
+        sysTransient("通关第 20 层：获得永久本期勋章！",SYS_AVATARS[1],2600);
+        pushStoryLog(s,"永久奖章已解锁：永久本期勋章（第20层）。积分不受影响。");
+      }
+      const floors=[40,60,80,100,120];
+      if(floors.includes(s.floor)){
+        const fk=String(s.floor);
+        if(!s.story.permPastExchangeGivenFloors[fk]){
+          s.story.permPastExchangeGivenFloors[fk]=true;
+          s.story.permPastExchange=Number(s.story.permPastExchange||0)+1;
+          sysTransient("通关第 "+s.floor+" 层：获得永久往期勋章兑换机会 +1！",SYS_AVATARS[1],2600);
+          pushStoryLog(s,"永久奖章已解锁：永久往期勋章兑换机会（第"+s.floor+"层）+1。");
+        }
+      }
+    }
     // 章回推进：每 10 层触发一段温馨奇幻小章节
     if(s.floor%10===0){
       const chapter=CHAPTER_PACKS[s.floor]||CHAPTER_PACKS[50];
@@ -1664,11 +1833,13 @@ async function settle(result){
 
 async function onDeath(){
   const s=G.state;if(!s)return;
-  await appendRecord("阵亡重置");
+  const runReward=Number(s.reward||0);
+  await appendRecord("阵亡重置 | 本次积分 "+runReward);
   await apiJsonp("clear_state",{user_id:G.uid,_ts:String(Date.now())});
   G.state=null;
   show("gameCard",false); show("recordCard",false); show("menuCard",true);
-  setNotice("你已阵亡：本次冒险结束，已写入云端记录。");
+  setNotice("你已经死亡：本次积分已保留为结算记录，共获得 "+runReward+" 分；将从第1层楼开始，回到主画面。");
+  try{ sys("死亡结算完成：积分 "+runReward+"。",SYS_AVATARS[2]); }catch(e){}
 }
 
 async function changeIdFromMenu(){
