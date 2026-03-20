@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>塔之闯关</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;background:#081523;color:#eaf2ff;padding:16px}
+    .app{max-width:980px;margin:0 auto;background:#0d1f35;border:1px solid #2f4b75;border-radius:12px;padding:14px}
+    .title{font-size:30px;margin-bottom:8px}
+    .card{background:#122844;border:1px solid #3a5b8d;border-radius:10px;padding:10px;margin-bottom:10px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+    input,button{border:1px solid #486596;background:#0f1f38;color:#eef4ff;border-radius:7px;padding:9px 11px;font-size:14px}
+    button{cursor:pointer}.primary{background:#2f57de}.good{background:#1a835a}.warn{background:#8f5f11}
+    .hidden{display:none!important}
+    .hud{display:grid;grid-template-columns:270px 1fr;gap:10px}
+    .side .s{display:grid;grid-template-columns:88px 1fr;gap:6px;margin-bottom:7px}
+    .k{color:#9db7e2}.v{color:#f5f8ff}
+    .battle{position:relative;min-height:370px;border:1px solid #35598d;border-radius:10px;overflow:hidden;background:#0d1d33}
+    .tower-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.95}
+    .battle-ui{position:relative;z-index:2;display:flex;flex-direction:column;justify-content:space-between;height:100%;padding:10px}
+    .enc{background:#001f4dcf;border:1px solid #4e7fca;border-radius:8px;padding:8px 10px;font-weight:bold;color:#ffd66e}
+    .monster-box{display:flex;justify-content:space-between;align-items:flex-end;gap:8px}
+    .monster-art{width:270px;max-width:52%;border:1px solid #4972ab;border-radius:8px;background:#081424}
+    .status{min-width:200px;background:#001a3ccf;border:1px solid #44689a;border-radius:8px;padding:8px}
+    .status div{margin-bottom:6px}
+    .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#001735cf;border:1px solid #375a8d;border-radius:8px;padding:8px}
+    .acts input{width:110px;min-width:0}
+    .sysbox{margin-top:8px;background:#0a1a30;border:1px solid #3b5d90;border-radius:8px;padding:8px}
+    .sysbox .t{color:#9fb8e4;font-size:12px;margin-bottom:5px}
+    .sysbox .c{font-size:13px;line-height:1.6;min-height:20px}
+    .log{max-height:230px;overflow:auto;border:1px dashed #486797;border-radius:8px;padding:8px;background:#0b1930;font-size:13px}
+    .rank{display:grid;grid-template-columns:46px 1fr 76px 76px;gap:6px;padding:7px;border-bottom:1px solid #2b4570}
+    .version{text-align:center;color:#9cb3de;font-size:12px;margin-top:6px}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="title">塔之闯关</div>
+
+  <div id="loginCard" class="card">
+    <div class="row">
+      <input id="uid" maxlength="30" placeholder="请输入论坛ID（必填）">
+      <button class="primary" onclick="enterGame()">进入游戏</button>
+    </div>
+  </div>
+
+  <div id="menuCard" class="card hidden">
+    <div class="row"><strong id="hello"></strong></div>
+    <div class="row">
+      <span>累计战利品：</span>
+      <span>节操 <b id="lootA">0</b></span>
+      <span>羽毛 <b id="lootB">0</b></span>
+      <span>本期勋章30天 <b id="lootC">0</b></span>
+      <span>字母勋章30天 <b id="lootD">0</b></span>
+    </div>
+    <div class="row">
+      <input id="baseReply" type="number" min="0" value="0" placeholder="已完成回复数">
+      <input id="baseQuote" type="number" min="0" value="0" placeholder="被引用数">
+    </div>
+    <div class="row">
+      <button class="primary" onclick="startRun()">开始爬塔</button>
+      <button class="good" onclick="resumeRun()">继续爬塔</button>
+      <button onclick="openRecord()">查看记录</button>
+    </div>
+  </div>
+
+  <div id="gameCard" class="card hidden">
+    <div class="hud">
+      <div class="side">
+        <div class="s"><div class="k">玩家</div><div id="pUid" class="v"></div></div>
+        <div class="s"><div class="k">层数</div><div id="pFloor" class="v"></div></div>
+        <div class="s"><div class="k">奖励</div><div id="pReward" class="v"></div></div>
+        <div class="s"><div class="k">通关数</div><div id="pKill" class="v"></div></div>
+        <div class="s"><div class="k">待用回复</div><div id="pStockR" class="v">0</div></div>
+        <div class="s"><div class="k">待用被引用</div><div id="pStockQ" class="v">0</div></div>
+        <div class="s"><div class="k">回复伤害</div><div class="v">每条回复 = 1 伤害</div></div>
+        <div class="s"><div class="k">引用伤害</div><div class="v">每次被引用 = 5 伤害</div></div>
+        <div class="s"><div class="k">战利品</div><div id="pLoot" class="v">-</div></div>
+        <div class="row"><button class="warn" onclick="retreat()">撤退结算</button><button onclick="backMenu()">主菜单</button></div>
+      </div>
+
+      <div class="battle">
+        <img id="towerBg" class="tower-bg" alt="tower">
+        <div class="battle-ui">
+          <div class="enc" id="encTxt">遭遇怪物！请提交本层行动造成伤害</div>
+          <div id="battlePanel" class="monster-box">
+            <img id="monsterImg" class="monster-art" alt="monster">
+            <div class="status">
+              <div>怪物：<span id="mName"></span></div>
+              <div>HP：<span id="mHp"></span> / <span id="mMax"></span></div>
+              <div>层奖励：<span id="mRw"></span></div>
+            </div>
+          </div>
+          <div id="fightActs" class="acts">
+            <span>本层新增回复</span><input id="actReply" type="number" min="0" value="0">
+            <span>本层新增被引用</span><input id="actQuote" type="number" min="0" value="0">
+            <button class="good" onclick="submitAction()">造成伤害</button>
+            <button id="nextBtn" class="primary" onclick="nextFloor()" disabled>继续爬塔</button>
+          </div>
+          <div id="dodgeActs" class="acts hidden">
+            <span id="dodgeTxt">怪物反击！</span>
+            <span>回复</span><input id="dgReply" type="number" min="0" value="0">
+            <span>被引用</span><input id="dgQuote" type="number" min="0" value="0">
+            <select id="dgAction">
+              <option value="">选择行动</option>
+              <option value="左闪">左闪</option>
+              <option value="右闪">右闪</option>
+              <option value="防御">防御</option>
+            </select>
+            <button class="good" onclick="tryDodge()">尝试闪躲</button>
+            <button class="warn" onclick="takeHit()">硬接伤害</button>
+          </div>
+          <div id="taskActs" class="acts hidden">
+            <span id="taskTxt"></span>
+            <input id="taskLink" class="hidden" placeholder="输入任务链接">
+            <button class="good" onclick="submitTask()">完成任务</button>
+            <button id="taskNextBtn" class="primary" onclick="nextFloor()" disabled>继续爬塔</button>
+          </div>
+          <div id="chestActs" class="acts hidden">
+            <span>开锁需求值</span><span id="chestNeed">0</span>
+            <span>本层新增回复</span><input id="chReply" type="number" min="0" value="0">
+            <span>本层新增被引用</span><input id="chQuote" type="number" min="0" value="0">
+            <button class="good" onclick="openChest()">尝试开锁</button>
+            <button id="chNextBtn" class="primary" onclick="nextFloor()" disabled>继续爬塔</button>
+          </div>
+          <div class="sysbox"><div class="t">系统提醒</div><div id="sysMsg" class="c"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="recordCard" class="card hidden">
+    <div class="row"><button onclick="backMenu()">回主菜单</button><button class="primary" onclick="loadCloud()">刷新云端</button></div>
+    <div class="row" style="margin-top:8px"><strong>云端记录</strong></div><div id="cloudLog" class="log"></div>
+  </div>
+
+  <div class="version">版本：v1.1.0-tower</div>
+</div>
+
+<script>
+const VER="v1.2.0-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
+const SHEET="爬塔闯关";
+const USER_IMG_POOL=[
+  "./assets/c__Users_Fish_Chen_AppData_Roaming_Cursor_User_workspaceStorage_e82a39d4f02dd167ea7d277ae174f65a_images_image-a0d6726b-fb23-4710-b309-567e9cf17bea.png",
+  "./assets/c__Users_Fish_Chen_AppData_Roaming_Cursor_User_workspaceStorage_e82a39d4f02dd167ea7d277ae174f65a_images_image-07ffdcc6-e2c9-4dfc-a25f-0c4b716a3731.png"
+];
+const TOWER_FALLBACK="https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?auto=format&fit=crop&w=1200&q=80";
+const POKE_MONS=[
+  {id:94,name:"耿鬼"},{id:6,name:"喷火龙"},{id:149,name:"快龙"},
+  {id:248,name:"班基拉斯"},{id:445,name:"烈咬陆鲨"},{id:448,name:"路卡利欧"},
+  {id:282,name:"沙奈朵"},{id:150,name:"超梦"},{id:376,name:"巨金怪"},
+  {id:359,name:"阿勃梭鲁"},{id:212,name:"巨钳螳螂"},{id:26,name:"雷丘"}
+];
+const TASKS=[
+  {type:"timer",txt:"完成 2 条有内容回复后再继续。"},
+  {type:"timer",txt:"帮助 1 位新手并补充可执行建议。"},
+  {type:"link",txt:"贴上 1 条你刚完成的回复链接。"},
+  {type:"timer",txt:"在同主题做 3 次推进讨论回复。"}
+];
+const LOOTS=["节操","羽毛","本期勋章30天","字母勋章30天"];
+const G={uid:"",run:null};
+function sys(msg){ document.getElementById("sysMsg").textContent = msg; }
+function loadLootTotal(){
+  try{
+    return JSON.parse(localStorage.getItem("tower_loot_total")||'{"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0}');
+  }catch(e){return {"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0};}
+}
+function saveLootTotal(t){ localStorage.setItem("tower_loot_total", JSON.stringify(t)); }
+function renderLootTotal(){
+  const t=loadLootTotal();
+  document.getElementById("lootA").textContent=t["节操"]||0;
+  document.getElementById("lootB").textContent=t["羽毛"]||0;
+  document.getElementById("lootC").textContent=t["本期勋章30天"]||0;
+  document.getElementById("lootD").textContent=t["字母勋章30天"]||0;
+}
+
+const FIXED_GAS_URL="https://script.google.com/macros/s/AKfycbxg1Z0dc4XhjTUz4ZGgbZ369TOTHcGpgLejHgL9WZsKcFsuZPiTNH5SSYe_0K_JYgYU/exec";
+function gasUrl(){
+  const q=new URLSearchParams(location.search).get("record");
+  if(q){localStorage.setItem(KGAS,q);return q;}
+  const saved=localStorage.getItem(KGAS);
+  if(saved) return saved;
+  localStorage.setItem(KGAS,FIXED_GAS_URL);
+  return FIXED_GAS_URL;
+}
+function now(){const d=new Date();return{date:d.toLocaleDateString("zh-TW"),time:d.toLocaleTimeString("zh-TW",{hour12:false})};}
+function secFmt(s){return String((s/60)|0).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
+function show(id,v){document.getElementById(id).classList.toggle("hidden",!v);}
+function rInt(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function pickFromPool(){return USER_IMG_POOL[rInt(0,USER_IMG_POOL.length-1)];}
+function mHpByFloor(f){return 20+f*8+rInt(0,7);}
+
+function enterGame(){
+  const uid=document.getElementById("uid").value.trim(); if(!uid)return sys("请先输入ID。");
+  G.uid=uid; localStorage.setItem(KID,uid);
+  show("loginCard",false); show("menuCard",true); document.getElementById("hello").textContent="玩家："+uid;
+  renderLootTotal();
+}
+
+function newMonster(floor){
+  const p=POKE_MONS[rInt(0,POKE_MONS.length-1)];
+  return {
+    name:p.name,
+    hp:mHpByFloor(floor),
+    maxHp:0,
+    reward:15+floor*6,
+    img:"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/"+p.id+".png",
+    counter:null
+  };
+}
+function newTask(floor){
+  const t=TASKS[(floor-1)%TASKS.length];
+  return {type:t.type,txt:t.txt,startedAt:Date.now(),done:false};
+}
+function isTaskFloor(floor){ return floor % 4 === 0 || floor % 7 === 0; }
+function isChestFloor(floor){ return floor % 5 === 0; }
+
+function startRun(){
+  if(!G.uid)return;
+  const br=Math.max(0,parseInt(document.getElementById("baseReply").value||"0",10));
+  const bq=Math.max(0,parseInt(document.getElementById("baseQuote").value||"0",10));
+  const mon=newMonster(1); mon.maxHp=mon.hp;
+  G.run={st:Date.now(),floor:1,reward:0,kill:0,hits:0,stockReply:br,stockQuote:bq,lastPassAt:0,monster:mon,task:null,chest:null,lastLoot:"-",lootBag:{"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0},done:false};
+  localStorage.setItem(KRUN,JSON.stringify(G.run));
+  openGame();
+}
+
+function resumeRun(){
+  if(!G.uid)return;
+  try{G.run=JSON.parse(localStorage.getItem(KRUN)||"null");}catch(e){G.run=null;}
+  if(!G.run||G.run.done)return startRun();
+  openGame();
+}
+
+function openGame(){show("menuCard",false);show("recordCard",false);show("gameCard",true);renderGame();}
+function backMenu(){show("gameCard",false);show("recordCard",false);show("menuCard",true);}
+
+function renderGame(){
+  const r=G.run;if(!r)return;
+  document.getElementById("pUid").textContent=G.uid;
+  document.getElementById("pFloor").textContent=String(r.floor);
+  document.getElementById("pReward").textContent=String(r.reward);
+  document.getElementById("pKill").textContent=String(r.kill);
+  document.getElementById("pStockR").textContent=String(r.stockReply||0);
+  document.getElementById("pStockQ").textContent=String(r.stockQuote||0);
+  document.getElementById("pLoot").textContent="节操"+(r.lootBag["节操"]||0)+" 羽毛"+(r.lootBag["羽毛"]||0)+" 勋章"+((r.lootBag["本期勋章30天"]||0)+(r.lootBag["字母勋章30天"]||0));
+  const onTask = !!r.task;
+  const onChest = !!r.chest;
+  show("fightActs", !onTask && !onChest);
+  show("dodgeActs", !onTask && !onChest && !!r.monster && !!r.monster.counter && r.monster.hp>0);
+  show("taskActs", onTask);
+  show("chestActs", onChest);
+  show("battlePanel", !onTask && !onChest);
+  if(onTask){
+    document.getElementById("encTxt").textContent="本层事件：执行任务推进探索";
+    document.getElementById("taskTxt").textContent=r.task.txt;
+    show("taskLink", r.task.type==="link");
+    document.getElementById("taskNextBtn").disabled = !r.task.done;
+    document.getElementById("monsterImg").src="./_split_output/1-1_r1_c1.png";
+    document.getElementById("monsterImg").onerror=()=>{document.getElementById("monsterImg").src=pickFromPool();};
+  }else if(onChest){
+    document.getElementById("encTxt").textContent="发现宝箱！提交行动尝试开锁";
+    show("battlePanel", false);
+    document.getElementById("chestNeed").textContent=String(r.chest.need);
+    document.getElementById("chNextBtn").disabled = !r.chest.done;
+    document.getElementById("monsterImg").src="./_split_output/1-1_r2_c1.png";
+    document.getElementById("monsterImg").onerror=()=>{document.getElementById("monsterImg").src=pickFromPool();};
+  }else{
+    document.getElementById("encTxt").textContent="遭遇怪物！请提交本层行动造成伤害";
+    document.getElementById("mName").textContent=r.monster.name;
+    document.getElementById("mHp").textContent=String(Math.max(0,r.monster.hp));
+    document.getElementById("mMax").textContent=String(r.monster.maxHp||r.monster.hp);
+    document.getElementById("mRw").textContent=String(r.monster.reward);
+    document.getElementById("nextBtn").disabled=r.monster.hp>0;
+    if(r.monster.counter){
+      document.getElementById("dodgeTxt").textContent = r.monster.counter.txt;
+    }
+  }
+  const bg=document.getElementById("towerBg"), mi=document.getElementById("monsterImg");
+  bg.src=TOWER_FALLBACK; bg.onerror=()=>{};
+  mi.src=onTask?pickFromPool():(onChest?"./_split_output/1-1_r2_c1.png":(r.monster.img||pickFromPool()));
+  mi.onerror=()=>{mi.src=pickFromPool();};
+}
+
+function submitAction(){
+  const r=G.run;if(!r)return;
+  if(r.task) return;
+  if(r.monster.hp<=0) return sys("该怪物已被击败。");
+  const addR=Math.max(0,parseInt(document.getElementById("actReply").value||"0",10));
+  const addQ=Math.max(0,parseInt(document.getElementById("actQuote").value||"0",10));
+  const need = r.monster.hp;
+  const maxQ = (r.stockQuote||0) + addQ, maxR = (r.stockReply||0) + addR;
+  if(maxQ+maxR<=0)return sys("请至少输入一种行动数量。");
+  let best = null;
+  for(let q=0;q<=maxQ;q++){
+    for(let rr=0;rr<=maxR;rr++){
+      const d = q*5+rr;
+      if(d < need) continue;
+      if(!best || d < best.d || (d===best.d && (q+rr)<(best.q+best.r))) best={q:q,r:rr,d:d};
+    }
+  }
+  if(best){
+    r.stockQuote = maxQ - best.q;
+    r.stockReply = maxR - best.r;
+    r.monster.hp=0;
+    r.kill+=1;
+    r.reward+=r.monster.reward;
+    r.lastLoot = LOOTS[rInt(0, LOOTS.length-1)];
+    r.lootBag[r.lastLoot]=(r.lootBag[r.lastLoot]||0)+1;
+    const t = loadLootTotal(); t[r.lastLoot]=(t[r.lastLoot]||0)+1; saveLootTotal(t); renderLootTotal();
+    sys("战斗成功！获得："+r.lastLoot+"。请继续爬塔。");
+    setTimeout(()=>nextFloor(), 500);
+  }else{
+    const dAll = maxQ*5 + maxR;
+    r.stockQuote = 0;
+    r.stockReply = 0;
+    r.monster.hp = Math.max(0, r.monster.hp - dAll);
+    if(r.monster.hp===0){
+      r.kill+=1;
+      r.reward+=r.monster.reward;
+      r.lastLoot = LOOTS[rInt(0, LOOTS.length-1)];
+      r.lootBag[r.lastLoot]=(r.lootBag[r.lastLoot]||0)+1;
+      const t = loadLootTotal(); t[r.lastLoot]=(t[r.lastLoot]||0)+1; saveLootTotal(t); renderLootTotal();
+      sys("战斗成功！获得："+r.lastLoot+"。请继续爬塔。");
+      setTimeout(()=>nextFloor(), 500);
+    }else{
+      // 怪物未死，触发反击
+      const mode = rInt(0,2);
+      if(mode===0){
+        const need=rInt(2,5);
+        r.monster.counter={type:"reply",need:need,txt:"怪物反击！输入至少 "+need+" 回复进行闪躲。"};
+      }else if(mode===1){
+        const need=rInt(1,2);
+        r.monster.counter={type:"quote",need:need,txt:"怪物反击！输入至少 "+need+" 被引用进行闪躲。"};
+      }else{
+        const act=["左闪","右闪","防御"][rInt(0,2)];
+        r.monster.counter={type:"action",need:act,txt:"怪物反击！请选择行动："+act+"。"};
+      }
+      sys("怪物开始反击！请在下方完成闪躲，或选择硬接伤害。");
+    }
+  }
+  document.getElementById("actReply").value="0";
+  document.getElementById("actQuote").value="0";
+  localStorage.setItem(KRUN,JSON.stringify(r));
+  renderGame();
+}
+
+function tryDodge(){
+  const r=G.run; if(!r||!r.monster||!r.monster.counter) return;
+  const c=r.monster.counter;
+  const addR=Math.max(0,parseInt(document.getElementById("dgReply").value||"0",10));
+  const addQ=Math.max(0,parseInt(document.getElementById("dgQuote").value||"0",10));
+  const act=document.getElementById("dgAction").value;
+  let ok=false;
+  if(c.type==="reply"){
+    const total=(r.stockReply||0)+addR;
+    if(total>=c.need){ r.stockReply = total - c.need; ok=true; }
+  }else if(c.type==="quote"){
+    const total=(r.stockQuote||0)+addQ;
+    if(total>=c.need){ r.stockQuote = total - c.need; ok=true; }
+  }else{
+    ok = (act===c.need);
+  }
+  document.getElementById("dgReply").value="0";
+  document.getElementById("dgQuote").value="0";
+  document.getElementById("dgAction").value="";
+  if(ok){
+    r.monster.counter=null;
+    sys("闪躲成功！可继续攻击怪物。");
+  }else{
+    takeHit();
+    return;
+  }
+  localStorage.setItem(KRUN,JSON.stringify(r));
+  renderGame();
+}
+
+function takeHit(){
+  const r=G.run; if(!r) return;
+  r.hits = (r.hits||0) + 1;
+  r.monster.counter=null;
+  if(r.hits>=3){
+    const keepLoot = r.lootBag || {"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0};
+    const br=r.stockReply||0, bq=r.stockQuote||0;
+    const mon=newMonster(1); mon.maxHp=mon.hp;
+    r.floor=1; r.reward=0; r.kill=0; r.hits=0; r.monster=mon; r.task=null; r.chest=null;
+    r.stockReply=br; r.stockQuote=bq; r.lootBag=keepLoot;
+    sys("你已累计承受3次伤害，已从第1层重新开始。");
+  }else{
+    sys("闪躲失败，受到1次伤害。当前受击："+r.hits+"/3");
+  }
+  localStorage.setItem(KRUN,JSON.stringify(r));
+  renderGame();
+}
+
+function submitTask(){
+  const r=G.run;if(!r||!r.task)return;
+  if(r.task.type==="link"){
+    const v=(document.getElementById("taskLink").value||"").trim();
+    if(!/^https:\/\/sstm\.moe\//i.test(v)) return sys("该任务链接必须以 https://sstm.moe/ 开头。");
+    r.task.done = true;
+  }else{
+    if(Date.now() - r.task.startedAt < 10000) return sys("任务验证未通过，请稍后再试。");
+    r.task.done = true;
+  }
+  sys("任务已通关，请继续爬塔！");
+  setTimeout(()=>nextFloor(), 500);
+  localStorage.setItem(KRUN,JSON.stringify(r));
+  renderGame();
+}
+
+function nextFloor(){
+  const r=G.run;if(!r)return;
+  const blockMsg="请打死怪物或开宝箱或完成任务，才可以继续爬塔。";
+  if(r.chest){
+    if(!r.chest.done) return sys(blockMsg);
+  }else if(r.task){
+    if(!r.task.done) return sys(blockMsg);
+  }else{
+    if(r.monster.hp>0)return sys(blockMsg);
+  }
+  r.floor+=1;
+  if(isTaskFloor(r.floor)){
+    r.task = newTask(r.floor);
+    r.monster = null; r.chest = null;
+  }else if(isChestFloor(r.floor)){
+    r.chest = {need: Math.max(10, 12 + r.floor * 2), done:false};
+    r.task = null; r.monster = null;
+  }else{
+    const mon=newMonster(r.floor); mon.maxHp=mon.hp; r.monster=mon; r.task=null; r.chest=null;
+  }
+  localStorage.setItem(KRUN,JSON.stringify(r));
+  renderGame();
+}
+
+function openChest(){
+  const r=G.run; if(!r||!r.chest) return;
+  if(r.chest.done) return sys("宝箱已经开锁完成，请继续爬塔。");
+  const addR=Math.max(0,parseInt(document.getElementById("chReply").value||"0",10));
+  const addQ=Math.max(0,parseInt(document.getElementById("chQuote").value||"0",10));
+  const totalR=(r.stockReply||0)+addR;
+  const totalQ=(r.stockQuote||0)+addQ;
+  const pts = totalR + totalQ*5;
+  const need = r.chest.need;
+  if(pts<=0) return sys("是否要消耗回复和被引用开锁？当前建议：回复 "+r.chest.need+" 或 被引用 "+Math.ceil(r.chest.need/5)+"。");
+  if(pts>=need){
+    // 计算最少消耗，优先扣待用
+    let best=null;
+    for(let q=0;q<=totalQ;q++){
+      for(let rr=0;rr<=totalR;rr++){
+        const d=q*5+rr; if(d<need) continue;
+        if(!best || d<best.d || (d===best.d && (q+rr)<(best.q+best.r))) best={q:q,r:rr,d:d};
+      }
+    }
+    r.stockQuote = totalQ - best.q;
+    r.stockReply = totalR - best.r;
+    r.chest.done = true;
+    const loot = LOOTS[rInt(0, LOOTS.length-1)];
+    r.lastLoot = loot;
+    r.reward += 1;
+    const t=loadLootTotal(); t[loot]=(t[loot]||0)+1; saveLootTotal(t); renderLootTotal();
+    sys("宝箱开启成功！获得："+loot+"。请继续爬塔。");
+    setTimeout(()=>nextFloor(), 500);
+  }else{
+    r.stockQuote = 0;
+    r.stockReply = 0;
+    const broken = Math.random() < 0.6;
+    r.chest.done = true;
+    if(broken){
+      sys("开锁失败，宝箱损坏，未获得奖励。请继续爬塔。");
+    }else{
+      const loot = LOOTS[rInt(0, LOOTS.length-1)];
+      r.lastLoot = loot;
+      const t=loadLootTotal(); t[loot]=(t[loot]||0)+1; saveLootTotal(t); renderLootTotal();
+      r.lootBag[loot]=(r.lootBag[loot]||0)+1;
+      sys("险些失败，但仍取出："+loot+"。请继续爬塔。");
+    }
+    setTimeout(()=>nextFloor(), 500);
+  }
+  document.getElementById("chReply").value="0";
+  document.getElementById("chQuote").value="0";
+  localStorage.setItem(KRUN,JSON.stringify(r));
+  renderGame();
+}
+
+function retreat(){if(!G.run)return; settle("撤退");}
+function settle(result){
+  const r=G.run; r.done=true;
+  const sec=((Date.now()-r.st)/1000)|0;
+  const t=now();
+  const unfinishedMonster = (!!r.monster && r.monster.hp > 0) ? 1 : 0;
+  const rec={id:G.uid,date:t.date,time:t.time,floors:r.floor-unfinishedMonster,tower_time:secFmt(sec),reward:r.reward,result:result};
+  const logs=JSON.parse(localStorage.getItem(KLOG)||"[]"); logs.unshift(rec); localStorage.setItem(KLOG,JSON.stringify(logs.slice(0,120)));
+  localStorage.removeItem(KRUN); sendCloud(rec);
+  sys("结算完成：层数 "+rec.floors+"，奖励 "+rec.reward+"，时间 "+rec.tower_time+"。");
+  backMenu();
+}
+
+function sendCloud(rec){
+  const u=gasUrl(); if(!u)return;
+  const p=new URLSearchParams({sheet:SHEET,date:rec.date,time:rec.time,user_id:rec.id,floors:String(rec.floors),tower_time:rec.tower_time,reward:String(rec.reward),result:rec.result});
+  const url=u+(u.includes("?")?"&":"?")+p.toString();
+  try{const img=new Image();img.referrerPolicy="no-referrer";img.src=url;}catch(e){}
+  fetch(url,{mode:"no-cors",cache:"no-store"}).catch(()=>{});
+}
+
+function openRecord(){show("menuCard",false);show("gameCard",false);show("recordCard",true);loadCloud();}
+function loadCloud(){
+  const u=gasUrl(),el=document.getElementById("cloudLog");
+  if(!u){el.textContent="未设置GAS，请使用 ?record=GAS_URL 打开。";return;}
+  const cb="tower_cb_"+Date.now(); window[cb]=function(res){
+    delete window[cb]; s.remove();
+    const d=(res&&res.data)||[];
+    el.innerHTML=d.length?d.slice(0,30).map((x,i)=>`<div class="rank"><div>#${i+1}</div><div>${x.id} ${x.time||""}</div><div>${x.floors}层</div><div>${x.reward}奖</div></div>`).join(""):"云端暂无记录";
+  };
+  const s=document.createElement("script");
+  s.src=u+(u.includes("?")?"&":"?")+"action=leaderboard_tower&callback="+cb+"&t="+Date.now();
+  s.onerror=function(){el.textContent="云端读取失败";delete window[cb];s.remove();};
+  document.head.appendChild(s);
+}
+
+window.addEventListener("DOMContentLoaded",()=>{
+  renderLootTotal();
+  const uid=localStorage.getItem(KID)||""; if(uid){document.getElementById("uid").value=uid; G.uid=uid; enterGame();}
+  sys("准备就绪。");
+});
+</script>
+</body>
+</html>
