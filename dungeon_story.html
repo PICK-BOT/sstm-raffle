@@ -15,8 +15,9 @@
     button{cursor:pointer;transition:.18s transform,.18s filter}.primary{background:#5c47d6}.good{background:#2b9f74}.warn{background:#a26a1a}
     button:hover{transform:translateY(-1px);filter:brightness(1.08)}
     .hud{display:block}
-    .menuStack{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
-    .menuStack button{width:100%}
+    /* 右侧上方按钮：集中一行显示，避免占用过多宽度 */
+    .menuStack{display:flex;flex-direction:row;gap:8px;flex-wrap:nowrap;align-items:center;margin-bottom:8px;justify-content:flex-start}
+    .menuStack button{width:auto;white-space:nowrap;padding:6px 8px;font-size:13px}
     .mapbox{
       background:linear-gradient(180deg,#0f1024,#090a1a);
       border:1px solid #4c4f86;border-radius:8px;padding:8px;
@@ -24,7 +25,7 @@
       display:flex;gap:12px;align-items:flex-start
     }
     .mapArea{flex:0 0 auto}
-    .panelCol{flex:1 1 auto;min-width:300px}
+    .panelCol{flex:0 0 360px;min-width:360px}
     .s{display:grid;grid-template-columns:95px 1fr;gap:6px;margin-bottom:7px}.k{color:#b8baf0}.v{color:#fbf8ff}
     .map{border-collapse:collapse}
     .map td{width:30px;height:30px;text-align:center;vertical-align:middle;border:1px solid #23274f;font-size:12px}
@@ -94,7 +95,7 @@
         <div class="s"><div class="k">待用被引用</div><div id="pQ" class="v"></div></div>
         <div class="s"><div class="k">叙事倾向</div><div id="pAlign" class="v">-</div></div>
         <div class="s"><div class="k">长线支线</div><div id="pQuest" class="v">-</div></div>
-        <div class="menuStack">
+        <div class="menuStack" id="topMenuStack">
           <button class="warn" onclick="settle('撤退结算')">撤退结算</button>
           <button onclick="backMenu()">主菜单</button>
           <button onclick="changeIdMidGame()">更改ID</button>
