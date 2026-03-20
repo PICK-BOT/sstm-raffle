@@ -27,8 +27,8 @@
       overflow:auto;max-height:520px;box-shadow:inset 0 0 28px #7f72ff1a;width:100%;
       display:flex;gap:12px;align-items:flex-start
     }
-    .mapArea{flex:0 0 auto}
-    .panelCol{flex:0 0 380px;min-width:360px}
+    .mapArea{flex:1 1 auto;min-width:0}
+    .panelCol{flex:0 0 34%;min-width:300px;max-width:420px}
     .panelCols{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
     .s{display:grid;grid-template-columns:95px 1fr;gap:6px;margin-bottom:7px}.k{color:#b8baf0}.v{color:#fbf8ff}
     .map{border-collapse:collapse}
@@ -37,6 +37,8 @@
     .wallHint{background:repeating-linear-gradient(45deg,#9a9a9a55 0,#9a9a9a55 3px,#1f1a2f 3px,#1f1a2f 7px),#1f1a2f;color:#cfcfcf}
     .water{background:#1a3f66;color:#b7e6ff}.stairs{background:#4d3c78;color:#ffe18f}.event{outline:1px dashed #9d8cff}
     .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#101536c9;border:1px solid #4f57a5;border-radius:8px;padding:8px}
+    /* 怪物战斗事件：让“攻击/逃跑”按钮同一行 */
+    #eventActs.monsterBattle #talkBtns{width:auto !important;margin-top:0 !important;flex-wrap:nowrap !important}
     .sysbox{margin-top:8px;background:#121634;border:1px solid #4f5ab0;border-radius:8px;padding:8px}
     .sysline{display:flex;gap:8px;align-items:flex-start}.sysicon{width:56px;height:56px;object-fit:contain}.sysc{font-size:13px;line-height:1.6}
     .log{max-height:230px;overflow:auto;border:1px dashed #626cb3;border-radius:8px;padding:8px;background:#0d1230;font-size:13px}
@@ -83,7 +85,7 @@
     <div class="hud">
       <div class="mapbox">
         <div class="mapArea">
-          <table id="mapTable" class="map"style="min-width:400px"></table>
+          <table id="mapTable" class="map"style="min-width:280px"></table>
         </div>
 
         <div id="panelCol" class="panelCol">
@@ -187,7 +189,7 @@
 </div>
 
 <script>
-const VER="v1.3.1-dungeon-story";
+const VER="v1.3.3-dungeon-story";
 const SYS_AVATARS=[
   "https://s.sstmlt.com/img/2026/03/19/1-108359ab38de728aad.png",
   "https://s.sstmlt.com/img/2026/03/19/1-11c14bafe31ee6ee1c.png",
@@ -453,6 +455,8 @@ async function enterGame(){
 }
 
 async function cloudConfirmAndLoad(){
+  // 让“云端读取中”提示尽量早出现，减少玩家等待感
+  setNotice("云端读取中…");
   setBusy(true,"系统正在读取中，请静候…");
   try{
     const res=await apiJsonp("load_state",{user_id:G.uid});
@@ -548,6 +552,17 @@ function makeStoryMonsterByFloor(floor){
     }else if(forbid.size>0){
       const ids=[...forbid];
       pool=pool.filter(x=>!ids.includes(x.id));
+    }
+  }
+  // “求救/帮忙”的怪物：你一旦击杀/撕破和平，后续不再以沟通事件出现
+  if(G.state && G.state.story && G.state.story.helpKilledMonsters){
+    const hk=G.state.story.helpKilledMonsters||{};
+    const filtered=pool.filter(x=>!hk[x.id]);
+    if(filtered.length>0) pool=filtered;
+    else{
+      const filteredBase=base.concat(chapter).filter(x=>!hk[x.id]);
+      if(filteredBase.length>0) pool=filteredBase;
+      else pool=base.concat(chapter);
     }
   }
   if(!pool.length) pool=base.concat(chapter);
@@ -794,6 +809,12 @@ function newState(uid){
       floorContext:{rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0},
       bossNextFloor:false,
       bossNextDesc:false,
+      // “帮我/求救”的怪物：若被你击杀，则后续不再以沟通事件出现（提升“强敌(BOSS)”触发）
+      helpKilledMonsters:{},
+      // 史莱姆特殊：你帮忙 10 次后，下次遇到会触发报恩奖励
+      slimeHelpCount:0,
+      slimeRepayPending:false,
+      slimeRepayNextAt:10,
       permCurMedal:0,
       permCurMedalGiven:false,
       permPastExchange:0,
@@ -898,6 +919,10 @@ function normalizeState(st){
   }
   if(st.story.bossNextFloor===undefined) st.story.bossNextFloor=false;
   if(st.story.bossNextDesc===undefined) st.story.bossNextDesc=false;
+  if(!st.story.helpKilledMonsters) st.story.helpKilledMonsters={};
+  if(st.story.slimeHelpCount===undefined) st.story.slimeHelpCount=0;
+  if(st.story.slimeRepayPending===undefined) st.story.slimeRepayPending=false;
+  if(st.story.slimeRepayNextAt===undefined) st.story.slimeRepayNextAt=10;
   if(!st.story.pendingNotes) st.story.pendingNotes=[];
   if(!st.story.log) st.story.log=[];
   return st;
@@ -978,6 +1003,14 @@ function tryAdvanceQuests(s,ctx){
       if(ctx.type==="chest_done" && ctx.eventQuest==="herb"){
         q.herb.stage=2;
         q.herb.hasHerb=true;
+        sysTransient("系统提醒：支线【药草与幼崽】已推进到 2/3（你已带上药草）。",SYS_AVATARS[1],1600);
+        // 强制清掉旧阶段描述，避免“推进后仍遇到第一段台词”
+        if(s.map && s.map.events){
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(ev && !ev.done && ev.type==="talk_monster" && ev.monsterId==="wolf") delete s.map.events[k];
+          }
+        }
         pushStoryLog(s,"支线【药草与幼崽】推进：你找到了灰狼所需的药草，并把它带在身上。");
       }
     }else if(q.herb.stage===2){
@@ -985,6 +1018,17 @@ function tryAdvanceQuests(s,ctx){
         q.herb.done=true;
         s.reward+=QUEST_DEFS.herb.reward;
         pushStoryLog(s,"支线【药草与幼崽】完成：你用药草为幼崽疗愈，灰狼终于露出安心的眼神。积分 +"+QUEST_DEFS.herb.reward);
+        // 清理本层未完成的同支线对话，避免结局后再次遇到同样描述
+        if(s.map && s.map.events){
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(ev && !ev.done && ev.type==="talk_monster" && ev.monsterId==="wolf") delete s.map.events[k];
+          }
+        }
+        showChapterCard(
+          "支线结局达成：【药草与幼崽】",
+          "你完成了长线支线的最终一段和平。灰狼与幼崽终于可以把戒备放下，也把感谢留给更远的夜。积分 +" + QUEST_DEFS.herb.reward
+        );
       }else if(ctx.type==="talk" && ctx.monsterId==="wolf" && ctx.outcome!=="peace"){
         cancelQuest_(q.herb,{talkMonsterId:"wolf",chestQuestKey:"herb"});
       }
@@ -1009,6 +1053,13 @@ function tryAdvanceQuests(s,ctx){
         q.lamp.stage=2;
         q.lamp.hasLamp=true;
         q.lamp.lit=true;
+        sysTransient("系统提醒：支线【夜灯守望】已推进到 2/3（灯已点亮）。",SYS_AVATARS[1],1600);
+        if(s.map && s.map.events){
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(ev && !ev.done && ev.type==="talk_monster" && ev.monsterId==="gargoyle") delete s.map.events[k];
+          }
+        }
         pushStoryLog(s,"支线【夜灯守望】推进：你真的找到了灯，并顺手把它点亮。");
       }
     }else if(q.lamp.stage===2){
@@ -1017,6 +1068,16 @@ function tryAdvanceQuests(s,ctx){
         s.reward+=QUEST_DEFS.lamp.reward;
         s.eventBias.peace=(s.eventBias.peace||0)+1;
         pushStoryLog(s,"支线【夜灯守望】完成：回廊被温暖的光照亮。积分 +"+QUEST_DEFS.lamp.reward);
+        if(s.map && s.map.events){
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(ev && !ev.done && ev.type==="talk_monster" && ev.monsterId==="gargoyle") delete s.map.events[k];
+          }
+        }
+        showChapterCard(
+          "支线结局达成：【夜灯守望】",
+          "你完成了长线支线的最终一段和平。回廊的黑暗终于被驱散，石像鬼也把夜里交给了光。积分 +" + QUEST_DEFS.lamp.reward
+        );
       }else if(ctx.type==="talk" && ctx.monsterId==="gargoyle" && ctx.outcome!=="peace"){
         cancelQuest_(q.lamp,{talkMonsterId:"gargoyle",chestQuestKey:"lamp"});
       }
@@ -1039,6 +1100,13 @@ function tryAdvanceQuests(s,ctx){
       if(ctx.type==="rescue_done" && ctx.eventQuest==="letter"){
         q.letter.stage=2;
         q.letter.delivered=true;
+        sysTransient("系统提醒：支线【未寄出的信】已推进到 2/3（你已交付信件）。",SYS_AVATARS[1],1600);
+        if(s.map && s.map.events){
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(ev && !ev.done && ev.type==="talk_monster" && ev.monsterId==="golem") delete s.map.events[k];
+          }
+        }
         pushStoryLog(s,"支线【未寄出的信】推进：你把信交出去了。收信人的目光终于有了方向。");
       }
     }else if(q.letter.stage===2){
@@ -1046,6 +1114,16 @@ function tryAdvanceQuests(s,ctx){
         q.letter.done=true;
         s.reward+=QUEST_DEFS.letter.reward;
         pushStoryLog(s,"支线【未寄出的信】完成：魔像终于把信抱在胸前不再颤抖。积分 +"+QUEST_DEFS.letter.reward);
+        if(s.map && s.map.events){
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(ev && !ev.done && ev.type==="talk_monster" && ev.monsterId==="golem") delete s.map.events[k];
+          }
+        }
+        showChapterCard(
+          "支线结局达成：【未寄出的信】",
+          "你完成了长线支线的最终一段和平。魔像把信交给了该去的地方，也把胸口的颤动慢慢停下。积分 +" + QUEST_DEFS.letter.reward
+        );
       }else if(ctx.type==="talk" && ctx.monsterId==="golem" && ctx.outcome!=="peace"){
         cancelQuest_(q.letter,{talkMonsterId:"golem",rescueQuestKey:"letter"});
       }
@@ -1278,6 +1356,8 @@ function renderHUD(){
   document.getElementById("pQuest").textContent=questSummaryText(s);
   const p=s.pending;
   show("eventActs",!!p);
+  const eventActs=document.getElementById("eventActs");
+  if(eventActs) eventActs.classList.remove("monsterBattle");
   document.getElementById("talkSel").classList.add("hidden");
   document.getElementById("eventBtn").classList.remove("hidden");
   const btnWrap=document.getElementById("talkBtns");
@@ -1305,6 +1385,7 @@ function renderHUD(){
       btnWrap.appendChild(b2);
     }
   }else if(p.type==="monster"){
+    if(eventActs) eventActs.classList.add("monsterBattle");
     document.getElementById("eventTxt").textContent="遭遇怪物，HP "+p.hp+"，击败可得积分 "+p.reward+"。";
     document.getElementById("eventBtn").textContent="攻击";
     if(btnWrap){
@@ -1423,6 +1504,14 @@ async function resumeRun(){
   if(G.busy) return;
   if(!G.uid) return;
   if(!gasUrl()) return setNotice("未提供 record=GAS_URL，无法继续。");
+  // 如果进入过云端确认且 state 已在内存中，无需再等一次拉取
+  if(G.state){
+    show("menuCard",false); show("recordCard",false); show("gameCard",true);
+    setNotice("云端进度已就绪，可继续冒险。");
+    sys("已就绪：继续你的地下城旅程。",SYS_AVATARS[0]);
+    renderMap(); renderHUD();
+    return;
+  }
   setBusy(true,"系统正在读取中，请静候…");
   try{
     const res=await apiJsonp("load_state",{user_id:G.uid});
@@ -1724,6 +1813,21 @@ async function resolveEvent(){
         const rewardBefore=s.reward;
         tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"peace"});
         const rewardDelta=s.reward-rewardBefore;
+        let repayBonus=0;
+        // 史莱姆无长线支线：你和平帮忙累计到阈值后，下次遇到会触发报恩奖励
+        if(p.monsterId==="slime" && s.story){
+          const story=s.story;
+          const hadPending=!!story.slimeRepayPending;
+          if(hadPending){
+            repayBonus=Math.max(10, Math.floor(p.reward*0.6));
+            story.slimeRepayPending=false;
+            story.slimeRepayNextAt=Number(story.slimeRepayNextAt||10)+10;
+            s.reward+=repayBonus;
+          }
+          story.slimeHelpCount=Number(story.slimeHelpCount||0)+1;
+          const nextAt=Number(story.slimeRepayNextAt||10);
+          if(!story.slimeRepayPending && story.slimeHelpCount>=nextAt) story.slimeRepayPending=true;
+        }
         let questNarr="";
         if(rewardDelta>0){
           if(!questBefore.herb && s.story.quest && s.story.quest.herb && s.story.quest.herb.done){
@@ -1735,9 +1839,11 @@ async function resolveEvent(){
           }
         }
         grantDungeonLootInstances_(s,1);
+        if(repayBonus>0) grantDungeonLootInstances_(s,2);
         sys(
           "你理解了它的难处，和平解决。积分 +"+p.reward+"。" +
           (questNarr?(" "+questNarr+" 积分 +" + rewardDelta + "。"):"") +
+          (repayBonus>0?(" 史莱姆的报恩奖励积分 +" + repayBonus + "。"):"") +
           "战利品已自动计入面板。下一层更可能出现可沟通/救助事件。",
           SYS_AVATARS[1]
         );
@@ -1749,6 +1855,11 @@ async function resolveEvent(){
         s.eventBias.conflict=(s.eventBias.conflict||0)+1;
         s.eventBias.peace=Math.max(0,(s.eventBias.peace||0)-1);
         s.story.violence=(s.story.violence||0)+1;
+        // 你击杀/破坏和平后：同类不再以“求救沟通”事件出现（提升后续强敌触发概率）
+        if(s.story && p.monsterId){
+          s.story.helpKilledMonsters=s.story.helpKilledMonsters||{};
+          s.story.helpKilledMonsters[p.monsterId]=true;
+        }
         tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"conflict"});
         grantDungeonLootInstances_(s,2);
         sys(
@@ -1763,6 +1874,10 @@ async function resolveEvent(){
         s.eventBias.conflict=(s.eventBias.conflict||0)+2;
         s.eventBias.peace=Math.max(0,(s.eventBias.peace||0)-1);
         s.story.violence=(s.story.violence||0)+2;
+        if(s.story && p.monsterId){
+          s.story.helpKilledMonsters=s.story.helpKilledMonsters||{};
+          s.story.helpKilledMonsters[p.monsterId]=true;
+        }
         tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"combat"});
         sys("沟通破裂，怪物情绪失控，进入战斗。接下来几层战斗风险上升。",SYS_AVATARS[2]);
         shouldSave=false; // 战斗未结束：减少云端写入
