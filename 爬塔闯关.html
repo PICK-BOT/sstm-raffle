@@ -80,8 +80,8 @@
       <label>初始被引用数 <input id="baseQuote" type="number" min="0" value="0" placeholder="输入被引用数"></label>
     </div>
     <div class="row">
-      <button class="primary" onclick="startRun()">开始爬塔</button>
-      <button class="good" onclick="resumeRun()">继续爬塔</button>
+      <button id="btnStartRun" class="primary" onclick="startRun()">开始爬塔</button>
+      <button id="btnResumeRun" class="good" onclick="resumeRun()">继续爬塔</button>
       <button onclick="openRecord()">查看记录</button>
       <button onclick="switchToIdInput_()">更改ID（可能影响记录）</button>
     </div>
@@ -285,9 +285,35 @@ const LOOTS=["节操","羽毛","本期勋章30天","字母勋章30天"];
 const STRICT_CLOUD_CONFIRM=true;
 // 全云端续档：继续爬塔优先从云端恢复，不再依赖 localStorage 的 KRUN
 const STRICT_CLOUD_RESUME=true;
-const G={uid:"",run:null,strict:{confirmed:false,loading:false,promise:null,totals:null,milestoneOnceMap:null,confirmedAt:0,lastSnapshotAt:0,snapshotTimer:null},pendingAliasFrom:""};
+const G={uid:"",run:null,strict:{confirmed:false,loading:false,promise:null,totals:null,milestoneOnceMap:null,confirmedAt:0,lastSnapshotAt:0,snapshotTimer:null},pendingAliasFrom:"",busy:false,busyAt:0};
 function sys(msg){ document.getElementById("sysMsg").textContent = msg; }
 function setMenuNotice(msg){ document.getElementById("menuNotice").textContent = msg || ""; }
+function setMenuButtonsDisabled_(disabled){
+  try{
+    const a=document.getElementById("btnStartRun");
+    const b=document.getElementById("btnResumeRun");
+    if(a) a.disabled=!!disabled;
+    if(b) b.disabled=!!disabled;
+  }catch(e){}
+}
+async function withBusyLock_(reason, fn){
+  if(G.busy){
+    setMenuNotice(reason ? ("正在处理中（" + reason + "）请稍后…") : "正在处理中，请稍后…");
+    return false;
+  }
+  G.busy=true;
+  G.busyAt=Date.now();
+  setMenuButtonsDisabled_(true);
+  setMenuNotice(reason ? ("系统正在读取（" + reason + "）请静候…") : "系统正在读取，请静候…");
+  try{
+    return await fn();
+  }finally{
+    G.busy=false;
+    G.busyAt=0;
+    setMenuButtonsDisabled_(false);
+    setMenuNotice("");
+  }
+}
 function applyLootCaps(obj){
   const t=Object.assign({},LOOT_DEFAULT,obj||{});
   let jc=Math.max(0,Math.floor(Number(t["节操"])||0));
@@ -740,72 +766,76 @@ function isTaskFloor(floor){ return floor % 4 === 0 || floor % 7 === 0; }
 function isChestFloor(floor){ return floor % 5 === 0; }
 
 async function startRun(){
-  if(!G.uid)return;
-  if(STRICT_CLOUD_CONFIRM && !await ensureCloudConfirmed_()) return;
-  setMenuNotice("");
-  if(STRICT_CLOUD_RESUME){
-    try{
-      const snap=await loadCloudRunSnapshot_(G.uid);
-      if(snap && !snap.done){
-        const ok=confirm("检测到你已有爬塔云端续档进度。开始爬塔将从第1层开始并清除现有云端续档，是否继续？");
-        if(!ok){
+  return withBusyLock_("启动爬塔", async ()=>{
+    if(!G.uid) return;
+    if(STRICT_CLOUD_CONFIRM && !await ensureCloudConfirmed_()) return;
+    setMenuNotice("");
+    if(STRICT_CLOUD_RESUME){
+      try{
+        const snap=await loadCloudRunSnapshot_(G.uid);
+        if(snap && !snap.done){
+          const ok=confirm("检测到你已有爬塔云端续档进度。开始爬塔将从第1层开始并清除现有云端续档，是否继续？");
+          if(!ok){
+            return resumeRun();
+          }
+          // 清空本地与云端续档（云端清空为异步 beacon）
+          cloudClearRunSnapshot_();
+          try{localStorage.removeItem(KRUN);}catch(e){}
+        }
+      }catch(e){}
+    }
+    const oldRunRaw = localStorage.getItem(KRUN);
+    if (oldRunRaw) {
+      let oldRun = null;
+      try { oldRun = JSON.parse(oldRunRaw); } catch (e) { oldRun = null; }
+      if (oldRun && !oldRun.done) {
+        const ok = confirm("检测到你已有爬塔进度。开始爬塔将从第1层开始并清除现有进度，是否继续？");
+        if (!ok) {
           return resumeRun();
         }
-        // 清空本地与云端续档（云端清空为异步 beacon）
-        cloudClearRunSnapshot_();
-        try{localStorage.removeItem(KRUN);}catch(e){}
+        localStorage.removeItem(KRUN);
       }
-    }catch(e){}
-  }
-  const oldRunRaw = localStorage.getItem(KRUN);
-  if (oldRunRaw) {
-    let oldRun = null;
-    try { oldRun = JSON.parse(oldRunRaw); } catch (e) { oldRun = null; }
-    if (oldRun && !oldRun.done) {
-      const ok = confirm("检测到你已有爬塔进度。开始爬塔将从第1层开始并清除现有进度，是否继续？");
-      if (!ok) {
-        return resumeRun();
-      }
-      localStorage.removeItem(KRUN);
     }
-  }
-  const s=readMenuAddStock_();
-  const br=s.addR, bq=s.addQ;
-  const mon=newMonster(1); mon.maxHp=mon.hp;
-  G.run={st:Date.now(),floor:1,reward:0,kill:0,hits:0,stockReply:br,stockQuote:bq,lastPassAt:0,monster:mon,task:null,chest:null,rest:null,lastLoot:"-",lootBag:{"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0},done:false};
-  localStorage.setItem(KRUN,JSON.stringify(G.run));
-  cloudSaveRunSnapshot_();
-  clearMenuAddStock_();
-  openGame();
+    const s=readMenuAddStock_();
+    const br=s.addR, bq=s.addQ;
+    const mon=newMonster(1); mon.maxHp=mon.hp;
+    G.run={st:Date.now(),floor:1,reward:0,kill:0,hits:0,stockReply:br,stockQuote:bq,lastPassAt:0,monster:mon,task:null,chest:null,rest:null,lastLoot:"-",lootBag:{"节操":0,"羽毛":0,"本期勋章30天":0,"字母勋章30天":0},done:false};
+    localStorage.setItem(KRUN,JSON.stringify(G.run));
+    cloudSaveRunSnapshot_();
+    clearMenuAddStock_();
+    openGame();
+  });
 }
 
 async function resumeRun(){
-  if(!G.uid)return;
-  if(STRICT_CLOUD_CONFIRM && !await ensureCloudConfirmed_()) return;
-  setMenuNotice("");
-  if(STRICT_CLOUD_RESUME){
-    try{
-      const snap=await loadCloudRunSnapshot_(G.uid);
-      if(snap && !snap.done){
-        G.run=snap;
-        localStorage.setItem(KRUN,JSON.stringify(G.run));
-        clearMenuAddStock_();
-        openGame();
-        return;
-      }
-    }catch(e){}
-  }
-  try{G.run=JSON.parse(localStorage.getItem(KRUN)||"null");}catch(e){G.run=null;}
-  if(!G.run||G.run.done)return startRun();
-  // 主菜单输入的“回复/被引用”视为补充待用存量
-  const s=readMenuAddStock_();
-  if(s.addR>0 || s.addQ>0){
-    G.run.stockReply = (G.run.stockReply||0) + s.addR;
-    G.run.stockQuote = (G.run.stockQuote||0) + s.addQ;
-    localStorage.setItem(KRUN,JSON.stringify(G.run));
-    clearMenuAddStock_();
-  }
-  openGame();
+  return withBusyLock_("继续爬塔", async ()=>{
+    if(!G.uid) return;
+    if(STRICT_CLOUD_CONFIRM && !await ensureCloudConfirmed_()) return;
+    setMenuNotice("");
+    if(STRICT_CLOUD_RESUME){
+      try{
+        const snap=await loadCloudRunSnapshot_(G.uid);
+        if(snap && !snap.done){
+          G.run=snap;
+          localStorage.setItem(KRUN,JSON.stringify(G.run));
+          clearMenuAddStock_();
+          openGame();
+          return;
+        }
+      }catch(e){}
+    }
+    try{G.run=JSON.parse(localStorage.getItem(KRUN)||"null");}catch(e){G.run=null;}
+    if(!G.run||G.run.done)return startRun();
+    // 主菜单输入的“回复/被引用”视为补充待用存量
+    const s=readMenuAddStock_();
+    if(s.addR>0 || s.addQ>0){
+      G.run.stockReply = (G.run.stockReply||0) + s.addR;
+      G.run.stockQuote = (G.run.stockQuote||0) + s.addQ;
+      localStorage.setItem(KRUN,JSON.stringify(G.run));
+      clearMenuAddStock_();
+    }
+    openGame();
+  });
 }
 
 function openGame(){show("menuCard",false);show("recordCard",false);show("gameCard",true);renderGame();}
