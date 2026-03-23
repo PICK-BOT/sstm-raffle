@@ -111,11 +111,10 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
 
 /* ===== CHARACTER ON BOARD ===== */
 #char-sprite{position:absolute;width:34px;height:46px;pointer-events:none;z-index:10;
-  background-image:url('images/char.png');
-  background-size:600% 400%;background-position:0% 0%;image-rendering:pixelated;
   filter:drop-shadow(0 2px 5px rgba(0,0,0,.9));
   transition:left .28s ease-in-out,top .28s ease-in-out;
   left:2px;top:-4px}
+#char-sprite img{width:100%;height:100%;object-fit:contain;display:block}
 
 /* ===== CONTROLS ===== */
 #controls{display:flex;flex-wrap:wrap;align-items:center;
@@ -163,6 +162,30 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
   color:#90CAF9;cursor:pointer;font-size:.78rem;transition:background .15s}
 .fbtn:hover{background:rgba(144,202,249,.28)}
 .fbtn:disabled{opacity:.3;cursor:not-allowed}
+.ov-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ===== BACKPACK ===== */
+#bag-btn{position:fixed;bottom:18px;right:18px;z-index:300;
+  width:46px;height:46px;background:linear-gradient(135deg,#f7971e,#ffd200);
+  color:#1a1a1a;border:none;border-radius:50%;cursor:pointer;font-size:1.25rem;
+  box-shadow:0 4px 14px rgba(247,151,30,.45);display:none;align-items:center;justify-content:center}
+#bag-badge{position:absolute;top:-4px;right:-4px;background:#e53935;color:#fff;
+  border-radius:50%;width:18px;height:18px;font-size:10px;
+  display:flex;align-items:center;justify-content:center;font-weight:700}
+#bag-panel{position:fixed;bottom:74px;right:18px;z-index:400;
+  background:rgba(20,20,35,.97);border:1px solid rgba(255,255,255,.15);
+  border-radius:16px;padding:16px;min-width:230px;max-width:290px;display:none;
+  box-shadow:0 8px 28px rgba(0,0,0,.6);font-family:'Microsoft YaHei',Arial,sans-serif}
+#bag-panel h4{color:#FFD93D;margin-bottom:10px;font-size:.95rem}
+.bag-item{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 10px;background:rgba(255,255,255,.07);border-radius:8px;margin-bottom:6px}
+.bag-item-name{font-size:.84rem;color:#fff}
+.bag-item-use{padding:4px 12px;background:rgba(144,202,249,.18);
+  border:1px solid rgba(144,202,249,.5);border-radius:10px;
+  color:#90CAF9;cursor:pointer;font-size:.78rem}
+.bag-item-use:hover{background:rgba(144,202,249,.35)}
+.bag-item-use:disabled{opacity:.3;cursor:not-allowed}
+#bag-empty{color:rgba(255,255,255,.45);font-size:.82rem;text-align:center;padding:8px 0}
 </style>
 </head>
 <body>
@@ -224,7 +247,7 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
 
   <div id="board-wrap">
     <div id="board"></div>
-    <div id="char-sprite"></div>
+    <div id="char-sprite"><img src="https://s.sstmlt.com/img/2026/03/19/1-108359ab38de728aad.png" alt=""></div>
   </div>
 
   <div id="controls">
@@ -244,6 +267,15 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
     <button id="roll-btn" onclick="doRoll()">🎲 投骰</button>
   </div>
   <div id="status-bar"></div>
+</div>
+
+<!-- ===== BACKPACK ===== -->
+<button id="bag-btn" onclick="toggleBag()" title="背包">
+  🎒<span id="bag-badge" style="display:none">0</span>
+</button>
+<div id="bag-panel">
+  <h4>🎒 背包</h4>
+  <div id="bag-list"></div>
 </div>
 
 <!-- ===== OVERLAY ===== -->
@@ -340,7 +372,6 @@ var FATE_CARDS = [
   {name:"宿命轮回",   desc:"传送回起点，且下次投骰点数翻倍",               type:"goto_double",   value:0},
   {name:"命运双刃",   desc:"下一次投骰点数翻倍",                           type:"double_next",   value:1},
   {name:"再抽机会",   desc:"立刻抽取一张机会卡",                           type:"extra_chance",  value:1},
-  {name:"宿命之图",   desc:"需在主题发布1张与活动相关的图片后方可继续",     type:"task_image",    value:1},
   {name:"命运厚礼",   desc:"随机获得 d6 × 1",                             type:"reward_dice",   value:{t:6,c:1}},
   {name:"命运之罚",   desc:"随机退后 1～3 格",                            type:"retreat_rnd",   value:3}
 ];
@@ -376,8 +407,10 @@ var G = {
   doubleNext:false,
   shield:false,
   pending:false,
-  nextRollCb:null
+  nextRollCb:null,
+  backpack:[]
 };
+var _taskUnlockAt = 0;
 
 // ================================================================
 // OVERLAY ACTION REGISTRY
@@ -468,10 +501,11 @@ function useBalance(){
   window._balanceDice=null;
   G.dice={4:r[4]||0,6:r[6]||0,8:r[8]||0,10:r[10]||0,12:r[12]||0};
   G.sel=[4,6,8,10,12].find(t=>G.dice[t]>0)||4;
+  G.pos=loadPos(G.userId); // 恢复上次位置
   buildBoard(); updateDiceUI(); updateBar();
-  charMove(0,true);
+  charMove(G.pos,true); hlCell(G.pos);
   setSp('p-avatar','idle'); setSp('center-char','idle');
-  saveBalance(); // 立即写入当前余额
+  saveBalance();
   showScreen('screen-main');
 }
 window.useBalance=useBalance;
@@ -486,6 +520,7 @@ window.goAddDice=goAddDice;
 
 // 重新开始（忽略余额）
 function goFresh(){
+  clearPos(G.userId);
   window._balanceDice=null;
   window._mergeBalance=false;
   calcDice();
@@ -521,18 +556,20 @@ window.calcDice=calcDice;
 
 function s2Start(){
   var r=window._pendingDice||{};
+  var isMerge=window._mergeBalance&&window._balanceDice;
   // 若是「追加骰子」模式，把余额并入
-  if(window._mergeBalance&&window._balanceDice){
+  if(isMerge){
     [4,6,8,10,12].forEach(t=>{ r[t]=(r[t]||0)+(window._balanceDice[t]||0); });
   }
   window._mergeBalance=false;
   window._balanceDice=null;
   G.dice={4:r[4]||0,6:r[6]||0,8:r[8]||0,10:r[10]||0,12:r[12]||0};
   G.sel=[4,6,8,10,12].find(t=>G.dice[t]>0)||4;
+  if(isMerge){ G.pos=loadPos(G.userId); } else { G.pos=0; clearPos(G.userId); }
   buildBoard(); updateDiceUI(); updateBar();
-  charMove(0,true);
+  charMove(G.pos,true); hlCell(G.pos);
   setSp('p-avatar','idle'); setSp('center-char','idle');
-  saveBalance(); // 游戏开始时同步写入初始余额
+  saveBalance();
   showScreen('screen-main');
 }
 window.s2Start=s2Start;
@@ -674,6 +711,7 @@ function updateBar(){
     fb.style.display='block';
     document.getElementById('freeze-n').textContent=G.frozen>=99?'任务':G.frozen;
   } else { fb.style.display='none'; }
+  savePos(G.userId, G.pos);
 }
 
 // ================================================================
@@ -847,7 +885,7 @@ function showChanceCard(card,diceStr){
     :card.type==='goto'?'跳到格 '+card.value
     :card.type==='random'?'随机传送！'
     :card.type==='extra_roll'?'获得额外投骰'
-    :card.type==='unfreeze'?'解除冻结！'
+    :card.type==='unfreeze'?'存入背包'
     :card.type==='next_reward'?'前进到奖励格'
     :'确认';
   showOv({cls:'chance',icon:'🃏',type:'🃏 机会卡',dice:diceStr,
@@ -865,7 +903,7 @@ function applyChance(card){
   } else if(t==='goto'){ jumpTo(v);
   } else if(t==='random'){ jumpTo(Math.floor(Math.random()*BOARD.length));
   } else if(t==='extra_roll'){ G.pending=false; updateDiceUI(); setMsg('获得额外投骰机会！');
-  } else if(t==='unfreeze'){ G.frozen=0; updateBar(); setSp('char-sprite','idle'); endTurn(); setMsg('冻结已解除！');
+  } else if(t==='unfreeze'){ G.backpack.push({type:'unfreeze',name:'解冻道具'}); updateBackpackBtn(); syncBackpack(); endTurn(); setMsg('获得解冻道具，已存入背包！');
   } else if(t==='next_reward'){ jumpTo(nextRewardCell());
   } else if(t==='nothing'){ endTurn(); setMsg('平安符生效，本次无效');
   } else { endTurn(); }
@@ -875,14 +913,21 @@ function applyChance(card){
 // FATE CARD
 // ================================================================
 function showFateCard(card,diceStr){
-  var isTask=(card.type==='task_reply'||card.type==='task_citation'||card.type==='task_image');
+  var isTask=(card.type==='task_reply'||card.type==='task_citation');
   if(isTask){
-    regA('done',()=>{ closeOv(); endTurn(); setMsg('任务完成！继续游戏'); });
+    _taskUnlockAt=Date.now()+10000;
+    regA('done',()=>{
+      if(Date.now()<_taskUnlockAt){ setMsg('任务完成了吗？请确认后再按'); return; }
+      closeOv(); endTurn(); setMsg('任务完成！继续游戏');
+    });
     regA('later',()=>{ closeOv(); G.frozen=99; updateBar();
       endTurn(); setMsg('任务待完成，完成后点「投骰」→「任务已完成」'); });
     showOv({cls:'fate',icon:'🎴',type:'🎴 命运卡',dice:diceStr,
       name:card.name,desc:card.desc,
       btns:[{lbl:'✅ 任务已完成，继续',k:'done',gold:true},{lbl:'稍后再来',k:'later'}]});
+    // 禁用「完成」按钮 10 秒
+    var doneBtn=document.querySelector('#ov-btns .ov-btn.gold');
+    if(doneBtn){ doneBtn.disabled=true; setTimeout(()=>{ doneBtn.disabled=false; },10000); }
   } else {
     regA('fate',()=>{ closeOv(); applyFate(card); });
     showOv({cls:'fate',icon:'🎴',type:'🎴 命运卡',dice:diceStr,
@@ -928,6 +973,15 @@ function showFreezeOv(){
     // Append unfreeze buttons
     var wrap=document.createElement('div');
     wrap.className='freeze-opts'; wrap.style.marginTop='8px';
+    // 背包解冻道具
+    var bagCount=G.backpack.filter(i=>i.type==='unfreeze').length;
+    if(bagCount>0){
+      var bb=document.createElement('button');
+      bb.className='fbtn';
+      bb.textContent='使用背包解冻道具（剩余'+bagCount+'个）';
+      bb.onclick=()=>{ useBackpackItem('unfreeze'); closeOv(); };
+      wrap.appendChild(bb);
+    }
     [4,6,8,10,12].forEach(t=>{
       if(G.dice[t]>=CONFIG.unfreeze_per_turn){
         var b=document.createElement('button');
@@ -945,8 +999,12 @@ function showFreezeOv(){
   if(isTask){
     var b1=document.createElement('button');
     b1.className='ov-btn gold'; b1.textContent='✅ 任务已完成，继续';
-    b1.onclick=()=>{ G.frozen=0; closeOv(); updateBar();
-      setSp('char-sprite','cheer'); setSp('p-avatar','happy');
+    var remaining=_taskUnlockAt-Date.now();
+    if(remaining>0){ b1.disabled=true; setTimeout(()=>{ b1.disabled=false; },remaining); }
+    b1.onclick=()=>{
+      if(Date.now()<_taskUnlockAt){ setMsg('任务完成了吗？请确认后再按'); return; }
+      G.frozen=0; closeOv(); updateBar();
+      setSp('p-avatar','happy');
       G.pending=false; updateDiceUI(); setMsg('任务完成！继续游戏'); };
     btnsEl.appendChild(b1);
   } else {
@@ -1013,6 +1071,96 @@ function sendRec(dice,raw,result,from,fin,cell){
 }
 
 // ================================================================
+// LOCALSTORAGE POSITION
+// ================================================================
+function savePos(uid, pos){
+  if(!uid) return;
+  try{ localStorage.setItem('bgame_pos_'+uid, pos); }catch(e){}
+}
+function loadPos(uid){
+  if(!uid) return 0;
+  try{ return parseInt(localStorage.getItem('bgame_pos_'+uid))||0; }catch(e){ return 0; }
+}
+function clearPos(uid){
+  if(!uid) return;
+  try{ localStorage.removeItem('bgame_pos_'+uid); }catch(e){}
+}
+
+// ================================================================
+// BACKPACK
+// ================================================================
+function updateBackpackBtn(){
+  var btn=document.getElementById('bag-btn');
+  var badge=document.getElementById('bag-badge');
+  if(!btn) return;
+  var n=G.backpack.length;
+  btn.style.display=n>0?'flex':'none';
+  if(badge){ badge.textContent=n; badge.style.display=n>0?'flex':'none'; }
+}
+
+function toggleBag(){
+  var panel=document.getElementById('bag-panel');
+  if(!panel) return;
+  var visible=panel.style.display==='block';
+  if(visible){ panel.style.display='none'; return; }
+  renderBagPanel();
+  panel.style.display='block';
+}
+window.toggleBag=toggleBag;
+
+function renderBagPanel(){
+  var list=document.getElementById('bag-list');
+  if(!list) return;
+  if(G.backpack.length===0){
+    list.innerHTML='<div id="bag-empty">背包是空的</div>';
+    return;
+  }
+  // 按类型汇总
+  var counts={};
+  G.backpack.forEach(i=>{ counts[i.type]=(counts[i.type]||0)+1; });
+  list.innerHTML='';
+  Object.keys(counts).forEach(type=>{
+    var item=G.backpack.find(i=>i.type===type);
+    var row=document.createElement('div');
+    row.className='bag-item';
+    var nameEl=document.createElement('span');
+    nameEl.className='bag-item-name';
+    nameEl.textContent=(item.name||type)+' ×'+counts[type];
+    var useBtn=document.createElement('button');
+    useBtn.className='bag-item-use';
+    useBtn.textContent='使用';
+    useBtn.disabled=(type==='unfreeze'&&G.frozen===0);
+    useBtn.onclick=()=>{ useBackpackItem(type); renderBagPanel(); };
+    row.appendChild(nameEl);
+    row.appendChild(useBtn);
+    list.appendChild(row);
+  });
+}
+
+function useBackpackItem(type){
+  var idx=G.backpack.findIndex(i=>i.type===type);
+  if(idx===-1) return;
+  if(type==='unfreeze'){
+    if(G.frozen===0){ setMsg('当前未被冻结，无需使用解冻道具'); return; }
+    G.backpack.splice(idx,1);
+    G.frozen=Math.max(0,G.frozen-1);
+    updateBar(); updateBackpackBtn(); syncBackpack();
+    if(G.frozen===0){ setSp('char-sprite','idle'); setSp('p-avatar','idle'); setSp('center-char','idle'); }
+    G.pending=false; updateDiceUI();
+    setMsg('使用解冻道具，剩余冻结 '+G.frozen+' 回');
+  }
+  var panel=document.getElementById('bag-panel');
+  if(panel&&panel.style.display==='block') renderBagPanel();
+}
+window.useBackpackItem=useBackpackItem;
+
+function syncBackpack(){
+  if(!GAS_URL||!G.userId) return;
+  new Image().src=GAS_URL+'?sheet=背包&user_id='+encodeURIComponent(G.userId)
+    +'&items='+encodeURIComponent(JSON.stringify(G.backpack));
+}
+
+// ================================================================
 // STATUS
 // ================================================================
 function setMsg(m){
@@ -1021,6 +1169,6 @@ function setMsg(m){
   if(cm) cm.textContent=m;
 }
 </script>
-<!-- v1.3 2026-03-19 GAS余额查询、继续/追加/重新开始、每投骰自动同步余额 -->
+<!-- v1.4 2026-03-23 移动小人改用图片、任务10秒等待、背包系统、localStorage记忆位置、移除task_image命运卡 -->
 </body>
 </html>
