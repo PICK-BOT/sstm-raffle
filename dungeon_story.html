@@ -18,6 +18,10 @@
     /* 右侧上方按钮：集中一行显示，避免占用过多宽度 */
     .menuStack{display:flex;flex-direction:row;gap:8px;flex-wrap:nowrap;align-items:center;margin-bottom:8px;justify-content:flex-start}
     .menuStack button{width:auto;white-space:nowrap;padding:6px 8px;font-size:13px}
+    .achMini{padding:6px 10px;min-width:34px;border-radius:8px}
+    .achMini:disabled{opacity:.35;cursor:not-allowed;filter:grayscale(0.6)}
+    #topMenuStack{flex-direction:column;gap:8px;align-items:flex-start}
+    .menuRow{display:flex;gap:8px;flex-wrap:nowrap;align-items:center}
     .menuActsRow{display:flex;gap:10px;align-items:flex-start}
     #navActs{display:flex;gap:8px;flex-wrap:nowrap}
     #navActs button{padding:8px 10px;font-size:13px}
@@ -50,6 +54,43 @@
     .chapter-box{min-width:320px;max-width:520px;background:linear-gradient(180deg,#261743,#12142e);border:1px solid #8f7aff;border-radius:14px;padding:16px;box-shadow:0 0 30px #8f7aff40}
     .chapter-title{font-size:20px;color:#ffe9b6;margin-bottom:8px}
     .chapter-text{line-height:1.7;color:#ece7ff;margin-bottom:12px}
+    /* 成就列表 / 任务清单：固定高度内纵向滚动 */
+    .overlayScrollList{
+      max-height:min(52vh,420px);
+      overflow-y:auto;
+      overflow-x:hidden;
+      padding-right:8px;
+      margin-top:8px;
+      margin-bottom:8px;
+      scrollbar-gutter:stable;
+    }
+    .overlayScrollList::-webkit-scrollbar{width:8px}
+    .overlayScrollList::-webkit-scrollbar-track{background:#1a1530;border-radius:4px}
+    .overlayScrollList::-webkit-scrollbar-thumb{background:#6a62a488;border-radius:4px}
+    /* 背包：内容区限高纵向滚动 */
+    #bagText.bagScrollArea{
+      max-height:min(52vh,380px);
+      overflow-y:auto;
+      overflow-x:hidden;
+      padding-right:8px;
+      margin-bottom:8px;
+      scrollbar-gutter:stable;
+    }
+    /* 成就弹窗：整体限高 + 中间区块滚动，避免详情过长顶掉关闭钮 */
+    .ach-modal-box{max-height:min(90vh,680px);display:flex;flex-direction:column;width:min(96vw,520px);box-sizing:border-box}
+    .ach-modal-body{flex:1;min-height:0;max-height:min(58vh,420px);overflow-y:auto;overflow-x:hidden;padding-right:8px;margin-top:6px;scrollbar-gutter:stable}
+    #achList{display:flex;flex-direction:column;flex-wrap:nowrap;gap:6px;align-content:flex-start}
+    #achList .achRow{flex:0 0 auto;width:100%;max-width:100%}
+    .taskLineMonster{color:#9fd8ff}
+    .taskLineHuman{color:#ffb8d9}
+    .taskSectionLabel{font-size:12px;font-weight:600;margin:10px 0 6px;letter-spacing:.04em}
+    .taskSectionMonster{color:#8ecfff}
+    .taskSectionHuman{color:#ff9ec8}
+    .taskIntro{margin-bottom:6px;color:#e8e4ff}
+    .achItemMonster{border-left:3px solid #6ab8ff;padding-left:8px}
+    .achItemHuman{border-left:3px solid #ff7eb3;padding-left:8px}
+    .achRow{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin-bottom:10px;width:100%}
+    .achHint{font-size:12px;color:#ffd66e;line-height:1.5;max-width:100%;padding:0 2px 0 0}
     .hpOuter{height:12px;background:#120b1f;border-radius:8px;overflow:hidden;border:1px solid #4633a0}
     .hpInner{height:100%;background:linear-gradient(90deg,#2ed573,#ff6b6b);width:100%;border-radius:8px;transition:width .22s}
     .hpNum{font-size:12px;color:#e9e9ff;margin-top:6px;text-align:center}
@@ -104,10 +145,10 @@
               <div class="s"><div class="k">待用回复</div><div id="pR" class="v"></div></div>
               <div class="s"><div class="k">待用被引用</div><div id="pQ" class="v"></div></div>
               <div class="s"><div class="k">叙事倾向</div><div id="pAlign" class="v">-</div></div>
-              <div class="s"><div class="k">长线支线</div><div id="pQuest" class="v">-</div></div>
+              <div class="s"><div class="k">任务</div><div id="pQuest" class="v">-</div></div>
             </div>
           </div>
-                   <div class="s"><div class="k">战利品</div><div id="pLoot" class="v"style="min-width:500px"></div></div>
+                   <div id="pLootRow" class="s" style="display:none"><div class="k">战利品</div><div id="pLoot" class="v"></div></div>
 
        <div id="offlineWarn" style="font-size:13px;color:#ffd66e;margin-top:6px;min-height:18px"></div>
           <!-- 事件面板（在系统提醒下方） -->
@@ -129,11 +170,18 @@
         <!-- 右侧按钮区：menuStack + 移动按钮并排 -->
         <div class="menuActsRow">
           <div class="menuStack" id="topMenuStack">
-            <button class="warn" onclick="settle('撤退结算')">撤退结算</button>
-            <button onclick="backMenu()">主菜单</button>
-            <button onclick="changeIdMidGame()">更改ID</button>
-            <button onclick="setOfflineMode(true)">离线游玩</button>
-            <button onclick="manualSaveToCloud()">保存进度(云端)</button>
+            <div class="menuRow">
+              <button class="warn" onclick="settle('撤退结算')">撤退结算</button>
+              <button onclick="backMenu()">主菜单</button>
+              <button onclick="changeIdMidGame()">更改ID</button>
+              <button onclick="setOfflineMode(true)">离线游玩</button>
+              <button onclick="manualSaveToCloud()">保存进度(云端)</button>
+            </div>
+            <div class="menuRow">
+              <button id="bagBtn" onclick="openBag()">背包</button>
+              <button id="achBtn" onclick="openAchievementsPage()">成就</button>
+              <button id="taskBtn" onclick="openTasksPage()">任务</button>
+            </div>
           </div>
 
           <div class="acts" id="navActs">
@@ -172,7 +220,7 @@
   <div id="loadingOverlay" class="overlay hidden" aria-hidden="true">
     <div class="box">
       <img id="loadingAvatar" alt="loading">
-      <div id="loadingText" class="t">系统正在读取中，请静候…</div>
+      <div id="loadingText" class="t">正在读取中…</div>
     </div>
   </div>
   <div id="chapterOverlay" class="overlay hidden" aria-hidden="true">
@@ -185,11 +233,61 @@
     </div>
   </div>
 
+  <div id="bagOverlay" class="overlay hidden" aria-hidden="true">
+    <div class="chapter-box" style="min-width:360px;max-width:520px">
+      <div class="chapter-title">背包</div>
+      <div class="chapter-text bagScrollArea" id="bagText" style="white-space:pre-wrap;line-height:1.7"></div>
+      <div class="row" id="bagToolRow" style="margin-top:10px;justify-content:flex-start;gap:8px;flex-wrap:wrap">
+        <button type="button" class="good" id="useStairBtn" onclick="useStairDetector()">使用楼梯探测器</button>
+        <button type="button" class="good" id="useCharmBtn" onclick="useMonsterCharmActive()">使用怪物护符（主动避战）</button>
+      </div>
+      <div class="row" style="justify-content:flex-end;margin-bottom:0">
+        <button class="primary" onclick="closeBag()">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="achievementOverlay" class="overlay hidden" aria-hidden="true">
+    <div class="chapter-box ach-modal-box">
+      <div class="chapter-title" id="achTitle">成就</div>
+      <div id="achBackRow" class="row hidden" style="margin-top:4px;justify-content:flex-start">
+        <button type="button" class="primary" onclick="achievementBackToList()">返回成就清单</button>
+      </div>
+      <div id="achModalBody" class="ach-modal-body">
+        <div class="chapter-text" id="achText" style="white-space:pre-wrap;line-height:1.7;margin-bottom:8px"></div>
+        <div id="achList"></div>
+      </div>
+      <div class="row" style="justify-content:flex-end;margin-bottom:0;margin-top:10px;flex-shrink:0">
+        <button class="primary" onclick="closeAchievement()">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="acquireOverlay" class="overlay hidden" aria-hidden="true" style="z-index:10050">
+    <div class="chapter-box" style="min-width:300px;max-width:420px">
+      <div class="chapter-title" id="acquireTitle">获得道具</div>
+      <div class="chapter-text" id="acquireText" style="white-space:pre-wrap;line-height:1.75;margin-bottom:12px"></div>
+      <div class="row" style="justify-content:flex-end;margin-bottom:0">
+        <button class="primary" type="button" onclick="closeAcquireOverlay()">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tasksOverlay" class="overlay hidden" aria-hidden="true">
+    <div class="chapter-box" style="min-width:360px;max-width:520px">
+      <div class="chapter-title">任务（主线·三阶段）</div>
+      <div class="chapter-text overlayScrollList" id="tasksText" style="white-space:pre-wrap;line-height:1.7"></div>
+      <div class="row" style="justify-content:flex-end;margin-bottom:0">
+        <button class="primary" onclick="closeTasks()">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <div class="version" id="versionTxt">版本：</div>
 </div>
 
 <script>
-const VER="v1.3.5-dungeon-story";
+const VER="v1.4.12-dungeon-story";
 const SYS_AVATARS=[
   "https://s.sstmlt.com/img/2026/03/19/1-108359ab38de728aad.png",
   "https://s.sstmlt.com/img/2026/03/19/1-11c14bafe31ee6ee1c.png",
@@ -232,6 +330,637 @@ const QUEST_DEFS={
   lamp:{title:"夜灯守望",steps:["答应石像鬼点灯","继续下探 2 层","收集温暖火种（宝箱）","点亮回廊"],reward:26},
   letter:{title:"未寄出的信",steps:["帮助魔像读信","再完成 2 次和平沟通","完成一次救助转交信件","收到回信"],reward:30}
 };
+function fillStoryName_(tpl,name){
+  return String(tpl||"").replace(/\{name\}/g,name);
+}
+// 怪物长线：第一次接取 / 中段（宝箱或救助）/ 终段领奖 均用剧情句，避免系统口吻
+const LL_INTRO_TEMPLATES=[
+  "雾影里，{name}拦住你的去路。它的声音很轻，像在试探你会不会先听完再拔剑。",
+  "你听见石屑落地的细响——{name}从暗处抬头望你，目光里一半是戒备，一半是恳求。",
+  "回廊的风忽然拐了个弯。{name}站在风口，像把未说完的故事堵在胸口。",
+  "前方的光忽明忽暗，{name}缩了缩肩：它想请你听一件事，而不是先听刀剑出鞘。",
+  "潮湿的空气里，{name}把脚步放得很慢。它说，它需要一个愿意慢下来的人。",
+  "你走近时，{name}先退半步，又停住：它想信你一次，却仍怕信得太快。",
+  "角落里，{name}用残破的翼或爪按住胸口。它问你：愿不愿意把耐心分它一点。",
+  "回声在墙缝里打转。{name}望着那些回声，像在问你：能不能替它把其中一声接住。"
+];
+const LL_MID_RESCUE_TEMPLATES=[
+  "回廊深处的风像你袖口的旧寒。{name}停在一块裂开的石边，把一枚微温的碎物塞进你掌心：它不敢再靠近那个地方——只能托你把剩下的故事带去。",
+  "潮湿的暗里，{name}把颤抖的指尖按在你袖角。远处有石屑在碎裂——它拜托你，把这句未竟的低语、连同这束仍在发亮的微光，交给还在等它的人。",
+  "{name}在岔路口把影子折成两半。一半留给它自己守住，另一半推向你：请替它走完这段不敢回头看的路。",
+  "火光一晃，{name}把一个裹着布的小小物件塞给你。你说不清那是什么，但你知道——若它自己去，会被当作闯入者。",
+  "雾起了。{name}把发烫的耳语贴在你耳畔：请把这份温度交给更深的井底——那里有人在喊它的名字，它却不敢回答。",
+  "铁锈与风声在廊里缠在一起。{name}把一枚冷硬的碎片塞进你掌心：它若再往前一步，回声就会把它认成敌人。",
+  "{name}在破碎的拱门下发抖。它把最后一点光抹在你掌心：请你把这份光交给它不敢去见的那张脸。",
+  "{name}退到墙边，把一件湿冷的东西塞进你怀里。那不是求救的喊叫，而是托付——把这份托付送到回声尽头。",
+  "你听见它的心跳比脚步还急。{name}把一枚发涩的种子按进你手心：请把它种在只有你能走到的那片土里。",
+  "夜色把它的轮廓磨得很薄。{name}望着你，像望着一条它不敢独自走下去的路：请你替它走一程，再把结果带回来。"
+];
+const LL_MID_CHEST_TEMPLATES=[
+  "箱里躺着与{name}心跳同频的碎片。你拾起的瞬间，它身后的走廊终于安静了一寸——那寸安静，是它用自己的恐惧换来的。",
+  "你打开箱盖时，{name}把额角抵在冷铁上。你取出的不是战利品，而是它终于敢承认的缺口：补上它，它才能继续往前走。",
+  "锁舌落下。{name}的呼吸跟着落了一拍：你取出的旧物，正是它不敢直呼其名的东西。",
+  "微光在箱里翻身。{name}低声说：请接住它——接住它，就等于把它的怯懦也一并接住。",
+  "尘里藏着一枚小小的誓约。{name}盯着你的指尖，仿佛你托起的是它最后一点体面。",
+  "你取出的东西很轻，{name}却把脊背压得更低：它终于把不能独自扛的那一角，交给你。",
+  "箱底的冷香与{name}的喘息同频。你拾起它，它闭了眼，像把一场风暴也顺便关进匣里。",
+  "你打开宝箱时，{name}眼里的雾散了一线：你带走的东西，会让它终于可以不再假装自己还完整。",
+  "铁锈味里混着旧日的誓。{name}望着箱中物，像望着一段它不敢独自读完的章节。",
+  "你指尖碰到那物的刹那，{name}轻轻吐出一口气：它等这一刻，已经等了很久。"
+];
+// 成就页文案：与药／灯／信同调，一句剧情收束，不讲系统流程
+const LL_ACHIEVEMENT_TEXT_TEMPLATES=[
+  "你把{name}不敢独自走完的那一小段路接住了——回廊里从此少了一声迟疑的叹息。",
+  "灯火终于照到{name}藏了许久的地方，它把感激留在你掌心，不再用躲闪代替语言。",
+  "你替{name}接住了那枚发烫的托付，它终于敢把胸口的颤动画成一声完整的谢谢。",
+  "风停了。{name}望着你，像望着一条不再回头的路：它把旧日的怯懦留在身后，把谢意递到你面前。",
+  "你把{name}说不出口的句子补全了——它眼里的硬壳裂开一线，世界也跟着软了一点。",
+  "回声尽头，{name}终于与自己的影子和解；你递过去的不只是帮助，还有被认真听见的证明。",
+  "你替{name}把故事交到该停下的地方，它不再用沉默假装自己不需要谁。",
+  "那一夜之后，{name}学会了把光分给别人——而你，是它学会的第一束。",
+  "你把{name}从自己的迷宫里领出来半步；半步之外，已是新的清晨。",
+  "霜与火都退了一步。{name}把谢礼放在你手里，像把一段旧伤也轻轻合上。",
+  "你听懂{name}的哑语了——它把最软的那一声谢谢，藏进你掌心的温度里。",
+  "从此{name}不必再假装坚强；你让它相信：求助不是软弱，而是仍愿意活下去。"
+];
+const HUMAN_ACHIEVEMENT_TEXT=[
+  "那位迷路的旅人终于认出了方向——你陪过的那一程，成了对方记忆里不灭的灯。",
+  "学徒的伤结了疤，也学会了开口求助；你见证的不只是痊愈，还有重新站起来的勇气。",
+  "守望者不再把沉默当盔甲；你让TA明白，有人听见的守望，才不算白守。",
+  "孩子攥回信物的那一刻，眼里的雾散了——你递回去的不只是东西，还有被接住的安心。",
+  "匠人还清最后一笔债时，脊背终于挺直；你说过的那句「可以慢慢来」，比任何金币都重。",
+  "水手把锚收进心里最稳的那格：离港的人终会靠岸，而你是TA愿意相信的岸。",
+  "哨兵记起了自己为何站在这里——你帮TA拾回的，不只是一段记忆，还有名字。",
+  "工坊的火重新温起来时，焦痕也成了纹——你知道，那户人家又能围炉说话了。",
+  "祭司把迷途的祷词念完最后一个音节；你站在旁边，像一盏不审判的灯。",
+  "见证者终于把最后一句证词说完——真相落地有声，而你是让声音不被风吹散的人。"
+];
+const LL_FINAL_TALK_TEMPLATES=[
+  "你回来了。{name}把怀里护着的物事轻轻举起，像举起一整个迟疑的晨：它终于敢把谢礼交给真正听懂它的人。",
+  "{name}的呼吸终于落稳。它把那份小小的报答推到你掌心：不是施舍，是还——还你肯听它把话说完的那一夜。",
+  "风停了。{name}把谢礼放在你们之间，像把一道歉也轻轻放下：它终于不再欠自己的沉默。",
+  "夜深了。{name}望着你，像望着一个不会再走回头的人：它把谢礼递上，连同一次迟到的安心。",
+  "你把它的故事接住了。{name}把谢礼放在你手心里：它终于能对自己说一句：不必再躲了。",
+  "{name}退后半步，把光让给你。谢礼在它掌心发烫：它说，这一份，只给真正把它从黑里带出来的人。",
+  "回廊尽头终于亮了一小片。{name}把谢礼举到你面前：那不是奖励，是承认——承认它也曾被你温柔对待。",
+  "你听见了。{name}把谢礼放在你掌心，像把一段未说完的尾音也收好：它说，谢谢。",
+  "{name}眼里的硬壳裂开一线。它把谢礼递给你：从此它不必再用冷漠假装自己不需要谁。",
+  "它把谢礼轻轻放在你手里，像把一块压了很久的石头也放下：谢谢你，让它终于敢把话说完。"
+];
+const HUMAN_MID_CHEST_TEMPLATES=[
+  "你撬开箱锁时，{name}的肩膀终于松了一点：箱里的东西，是它一直不敢独自面对的那一页。",
+  "尘光落在箱沿。{name}望着你取出的物件，像望着一段终于可以落地的往事。",
+  "箱里躺着的，是{name}迟迟不敢认领的答案。你拾起它，它才敢把下一句话说出口。",
+  "冷铁与旧纸的气味混在一起。{name}低声道：请你收下这份证明——证明它真的在努力把自己拼回去。",
+  "你打开箱子的瞬间，{name}先闭了闭眼：它怕看见，却又必须看见——而你在场，让它敢看。",
+  "箱底的微光像一声迟到的叹息。{name}说：把它带走吧，连同它不敢独自背负的那份重量。",
+  "锁开了。{name}的指尖在发抖：那不是宝物，是它终于愿意交出去的怯懦与希望。",
+  "你取出那物时，{name}轻轻吐出一口气：从这一刻起，它才算真正开始面对自己的难题。"
+];
+function buildLonglineRegistry(){
+  const tierNames=[
+    ["腐苔蛞蝓","洞窟蛛卫","锈铁傀儡","地脉地鼠","荧孢蛾"],
+    ["深岩甲虫","回声蝠","盐晶幽灵","锻铁矮灵","熔渣小魔"],
+    ["青藤树精","月影狐","沼泥蟾","古木守铃人","溪泉鱼人"],
+    ["霜晶蜥","冰墓哨兵","雪羽隼","寒风巫灵","冻土巨蛆"],
+    ["熔岩蝎","火舌灵","焦炭兽","烬纹蛇","地心蜗"],
+    ["星砂蟹","港潮使","泡沫海妖","铁锚幽魂","栈桥灯童"],
+    ["月井花妖","银泉精灵","藤蔓窃贼","花庭园丁","月光蛾"],
+    ["霜羽乌鸦","圣钟残魂","冰晶圣女像","墓园引路人","铁栅骑士"],
+    ["书蠹虫灵","墨水人","纸页猎犬","回廊学者","尘埃妖精"],
+    ["晨曦纸鸢","破晓信使","晨光狮","日轮守望","终章书记"]
+  ];
+  const monsters=[];
+  for(let ti=0;ti<10;ti++){
+    for(let mi=0;mi<5;mi++){
+      const id="ll_t"+ti+"_m"+mi;
+      const name=tierNames[ti][mi];
+      const step2=(mi%2===0)?"chest":"rescue";
+      const idx=ti*5+mi;
+      monsters.push({
+        key:id,
+        monsterId:id,
+        title:name+"的祈望",
+        tier:ti,
+        floorMin:ti*5+1,
+        floorMax:ti*5+5,
+        reward:18+ti*2+mi,
+        step2:step2,
+        talkStage0:fillStoryName_(LL_INTRO_TEMPLATES[idx%LL_INTRO_TEMPLATES.length],name)+" 你怎么回应？",
+        storyMidRescue:fillStoryName_(LL_MID_RESCUE_TEMPLATES[idx%LL_MID_RESCUE_TEMPLATES.length],name),
+        storyMidChest:fillStoryName_(LL_MID_CHEST_TEMPLATES[idx%LL_MID_CHEST_TEMPLATES.length],name),
+        storyFinalTalk:fillStoryName_(LL_FINAL_TALK_TEMPLATES[idx%LL_FINAL_TALK_TEMPLATES.length],name)+" 你怎么回应？",
+        achievementText:fillStoryName_(LL_ACHIEVEMENT_TEXT_TEMPLATES[idx%LL_ACHIEVEMENT_TEXT_TEMPLATES.length],name),
+        opts:["好意协助","冷淡拒绝","直接开战"],
+        outcomes:["peace","conflict","combat"]
+      });
+    }
+  }
+  const humanTitles=[
+    "迷路的旅人","受伤的学徒","沉默的守望者","失去信物的孩子","负债的匠人",
+    "离港的水手","失忆的哨兵","失火的工坊主","迷途的祭司","最后的见证者"
+  ];
+  const humans=[];
+  for(let ti=0;ti<10;ti++){
+    const id="human_t"+ti;
+    const hn=humanTitles[ti];
+    humans.push({
+      key:id,
+      title:hn+"之线",
+      tier:ti,
+      floorMin:ti*5+1,
+      floorMax:ti*5+5,
+      reward:20+ti*2,
+      rescueStage0:"你在转角遇见"+hn+"。对方眼里有迟疑，也有不肯熄灭的求助：你愿意先听，再决定帮不帮吗？",
+      storyMidChest:fillStoryName_(HUMAN_MID_CHEST_TEMPLATES[ti%HUMAN_MID_CHEST_TEMPLATES.length],hn),
+      rescueStage2:"再次相见时，"+hn+"把一份谢礼郑重递到你面前。对方说，这不是报酬，而是终于能说出口的那句谢谢。",
+      achievementText:HUMAN_ACHIEVEMENT_TEXT[ti]
+    });
+  }
+  return {monsters,humans};
+}
+const LONGLINE_REG=buildLonglineRegistry();
+const LONGLINE_MONSTER_DEFS=LONGLINE_REG.monsters;
+const HUMAN_LONGLINE_DEFS=LONGLINE_REG.humans;
+const LONGLINE_MONSTER_MAP=(function(){
+  const o={};
+  LONGLINE_MONSTER_DEFS.forEach(d=>{ o[d.key]=d; });
+  return o;
+})();
+const HUMAN_LONGLINE_MAP=(function(){
+  const o={};
+  HUMAN_LONGLINE_DEFS.forEach(d=>{ o[d.key]=d; });
+  return o;
+})();
+function achievementTitle_(key){
+  if(key==="herb") return "药草与幼崽";
+  if(key==="lamp") return "夜灯守望";
+  if(key==="letter") return "未寄出的信";
+  if(HUMAN_LONGLINE_MAP[key]) return HUMAN_LONGLINE_MAP[key].title;
+  if(LONGLINE_MONSTER_MAP[key]) return LONGLINE_MONSTER_MAP[key].title;
+  return key;
+}
+/** 当前层、当前进度下：处于 2/3 且需「开宝箱」的支线 questKey（不含「未寄出的信」等需救助的线） */
+function listPendingChestQuestKeys_(s){
+  const out=[];
+  if(!s||!s.story) return out;
+  const q=s.story.quest;
+  const nf=Number(s.floor||1);
+  if(q&&q.herb && Number(q.herb.stage||0)===1 && !q.herb.done && !q.herb.combatBlocked) out.push("herb");
+  if(q&&q.lamp && Number(q.lamp.stage||0)===1 && !q.lamp.done && !q.lamp.combatBlocked) out.push("lamp");
+  try{
+    const lq=s.story.longQuests||{};
+    LONGLINE_MONSTER_DEFS.forEach(def=>{
+      const qq=lq[def.key];
+      if(!qq||qq.done||qq.combatBlocked) return;
+      if(Number(qq.stage||0)!==1 || def.step2!=="chest") return;
+      if(nf<def.floorMin||nf>def.floorMax) return;
+      out.push(def.key);
+    });
+    HUMAN_LONGLINE_DEFS.forEach(def=>{
+      const qq=lq[def.key];
+      if(!qq||qq.done||qq.combatBlocked) return;
+      if(Number(qq.stage||0)!==1) return;
+      if(nf<def.floorMin||nf>def.floorMax) return;
+      out.push(def.key);
+    });
+  }catch(e){}
+  return out;
+}
+/** 若宝箱上的 questKey 与当前进度不符（例如旧层残留），清空以免误显示「支线宝箱」 */
+function stripStaleChestQuestKey_(s,chestEv){
+  if(!s||!chestEv||chestEv.type!=="chest"||chestEv.done) return;
+  const qk=String(chestEv.questKey||"");
+  if(!qk) return;
+  const pending=new Set(listPendingChestQuestKeys_(s));
+  if(pending.has(qk)) return;
+  chestEv.questKey="";
+}
+/** 本层是否已有「未开启且已绑定某 questKey」的宝箱 */
+function hasOpenChestWithQuestKey_(s,qKey){
+  if(!s||!s.map||!s.map.events) return false;
+  const ks=String(qKey||"");
+  for(const k in s.map.events){
+    const ev=s.map.events[k];
+    if(ev&&!ev.done&&ev.type==="chest"&&String(ev.questKey||"")===ks) return true;
+  }
+  return false;
+}
+/**
+ * 随机刷出的宝箱常无 questKey，开启不会推进任何任务。
+ * 踏进格子时：仅一项待开宝箱任务则绑定此项；多项则绑定到本层尚未出现「专属宝箱」的那条（顺序：药草→夜灯→人类线→怪物长线）。
+ */
+function maybeAutoBindChestQuestKey_(s,chestEv){
+  if(!s||!chestEv||chestEv.type!=="chest"||chestEv.done) return;
+  stripStaleChestQuestKey_(s,chestEv);
+  if(String(chestEv.questKey||"")) return;
+  const need=listPendingChestQuestKeys_(s);
+  if(!need.length) return;
+  if(need.length===1){
+    chestEv.questKey=need[0];
+    return;
+  }
+  const set=new Set(need);
+  const priority=[];
+  if(set.has("herb")) priority.push("herb");
+  if(set.has("lamp")) priority.push("lamp");
+  HUMAN_LONGLINE_DEFS.forEach(d=>{ if(set.has(d.key)) priority.push(d.key); });
+  LONGLINE_MONSTER_DEFS.forEach(d=>{
+    if(d.step2==="chest" && set.has(d.key)) priority.push(d.key);
+  });
+  for(let i=0;i<priority.length;i++){
+    const k=priority[i];
+    if(hasOpenChestWithQuestKey_(s,k)) continue;
+    chestEv.questKey=k;
+    return;
+  }
+}
+function chestEventPanelText_(s,p,keyHint){
+  stripStaleChestQuestKey_(s,p);
+  maybeAutoBindChestQuestKey_(s,p);
+  const qk=String(p.questKey||"");
+  const tail=" "+(keyHint||"");
+  const mid="需要点数 "+(p.need||0)+"（回复1点/被引用5点）。开锁后获得积分与战利品。";
+  if(qk){
+    return "【支线宝箱 · "+achievementTitle_(qk)+"】开启会计入该任务第二阶段。"+mid+tail;
+  }
+  const pend=listPendingChestQuestKeys_(s);
+  let msg="【普通宝箱】"+mid+tail+" 说明：任务进度只认「支线宝箱」；本格未绑定任何支线时，开启仅有积分与战利品。";
+  if(pend.length===1){
+    msg+=" 提示：你仍有「"+achievementTitle_(pend[0])+"」待客箱，专属宝箱应在其它未开格（或下层探索后由系统补齐）。";
+  }else if(pend.length>1){
+    msg+=" 提示：你同时有 "+pend.length+" 条任务待客箱，请找已绑定支线的宝箱格；多线并行时本层会逐步补齐多个专属宝箱。";
+  }
+  return msg;
+}
+/** 支线宝箱开启后用于章节弹窗的剧情句（与系统行并存） */
+function buildChestLineQuestStory_(questKey){
+  const qk=String(questKey||"");
+  if(!qk) return "";
+  if(qk==="herb") return "你找到灰狼所需的药草，并把它带在身上。";
+  if(qk==="lamp") return "你真的找到了灯，并顺手把它点亮了。";
+  if(LONGLINE_MONSTER_MAP[qk]){
+    const t=(LONGLINE_MONSTER_MAP[qk].storyMidChest||"").trim();
+    return t;
+  }
+  if(HUMAN_LONGLINE_MAP[qk]){
+    const t=(HUMAN_LONGLINE_MAP[qk].storyMidChest||"").trim();
+    return t;
+  }
+  return "";
+}
+/** 怪物长线 stage1（等宝箱/救助）时，地图上不应再出现同 ID 的「接任务」沟通格 */
+function purgeStage1LonglineMonsterTalks_(s){
+  if(!s||!s.map||!s.map.events||!s.story||!s.story.longQuests) return;
+  try{
+    LONGLINE_MONSTER_DEFS.forEach(def=>{
+      const qq=s.story.longQuests[def.key];
+      if(!qq||qq.done||qq.combatBlocked) return;
+      if(Number(qq.stage||0)!==1) return;
+      for(const k in s.map.events){
+        const ev=s.map.events[k];
+        if(ev&&!ev.done&&ev.type==="talk_monster"&&ev.monsterId===def.monsterId) delete s.map.events[k];
+      }
+    });
+  }catch(e){}
+}
+function achievementBackToList(){
+  openAchievementsPage();
+}
+function achievementDetail_(key){
+  const base={
+    herb:{text:"你完成了灰狼的长线支线最终一段和平。"},
+    lamp:{text:"你让回廊在黑暗中重新被点亮。"},
+    letter:{text:"你把信交到该去的地方。"}
+  };
+  if(base[key]) return base[key];
+  if(LONGLINE_MONSTER_MAP[key]){
+    const d=LONGLINE_MONSTER_MAP[key];
+    return {text:d.achievementText||"你完成了这段故事。"};
+  }
+  if(HUMAN_LONGLINE_MAP[key]){
+    const d=HUMAN_LONGLINE_MAP[key];
+    return {text:d.achievementText||"你完成了这段故事。"};
+  }
+  return {text:"暂无说明。"};
+}
+function countAchievementTotal(s){
+  if(!s||!s.story||!s.story.achievements) return 0;
+  let n=0;
+  const a=s.story.achievements;
+  for(const k in a){ if(a[k]) n++; }
+  return n;
+}
+/** 怪物侧成就计数（经典三线药/灯/信 + 各怪物长线成就键，不含人类际遇线） */
+function countMonsterAchievements_(s){
+  if(!s||!s.story||!s.story.achievements) return 0;
+  const a=s.story.achievements;
+  let n=0;
+  if(a.herb) n++; if(a.lamp) n++; if(a.letter) n++;
+  try{ LONGLINE_MONSTER_DEFS.forEach(d=>{ if(a[d.key]) n++; }); }catch(e){}
+  return n;
+}
+function maybeGrantMonsterCharm_(s){
+  if(!s||!s.story) return;
+  if(s.story.monsterCharmGranted) return;
+  if(countMonsterAchievements_(s)<5) return;
+  s.story.monsterCharmGranted=true;
+  s.story.monsterCharmOwned=true;
+  showAcquireNotify_("获得道具",[
+    "怪物护符 ×1",
+    "效果：遭遇非 BOSS 怪物时选择「逃跑」必定成功。",
+    "已记入背包。"
+  ]);
+}
+/** 清除地图上未完成的同 questKey 救助格（人类线进入「等宝箱」阶段时避免重复阶段1际遇） */
+function purgeUnfinishedRescuesByQuestKey_(s,qKey){
+  if(!s||!s.map||!s.map.events) return;
+  const ks=String(qKey||"");
+  for(const k in s.map.events){
+    const ev=s.map.events[k];
+    if(ev&&!ev.done&&ev.type==="rescue"&&String(ev.questKey||"")===ks) delete s.map.events[k];
+  }
+}
+/** 累计完成救助次数 c 之后，下一次发钥匙的阈值（每满 10 次一把） */
+function nextKeyThresholdAfterCount(totalCompletedRescues){
+  const c=Math.max(0,Number(totalCompletedRescues)||0);
+  if(c===0) return 10;
+  if(c%10===0) return c+10;
+  return Math.ceil(c/10)*10;
+}
+/** 当前累计 c 次救助时，再完成 1 次是否刚好跨里程碑拿钥匙（用于特别感谢文案） */
+function rescueGratitudeNext_(completedSoFar){
+  const c=Number(completedSoFar)||0;
+  return (c+1)%10===0;
+}
+/** 当前存档下，救助格上的 questKey 是否仍对应「需要完成的一次救助」 */
+function rescueQuestKeyStillValid_(s,qk){
+  if(!s||!s.story) return false;
+  const k=String(qk||"");
+  if(!k) return false;
+  if(k==="letter"){
+    const q=s.story.quest && s.story.quest.letter;
+    return !!(q && !q.done && !q.combatBlocked && Number(q.stage||0)===1);
+  }
+  if(HUMAN_LONGLINE_MAP[k]){
+    const def=HUMAN_LONGLINE_MAP[k];
+    const qq=s.story.longQuests && s.story.longQuests[k];
+    if(!qq||qq.done||qq.combatBlocked) return false;
+    const nf=Number(s.floor||1);
+    if(nf<def.floorMin||nf>def.floorMax) return false;
+    const st=Number(qq.stage||0);
+    return st===0 || st===2;
+  }
+  if(LONGLINE_MONSTER_MAP[k]){
+    const def=LONGLINE_MONSTER_MAP[k];
+    if(def.step2!=="rescue") return false;
+    const qq=s.story.longQuests && s.story.longQuests[k];
+    if(!qq||qq.done||qq.combatBlocked) return false;
+    const nf=Number(s.floor||1);
+    if(nf<def.floorMin||nf>def.floorMax) return false;
+    return Number(qq.stage||0)===1;
+  }
+  return false;
+}
+/** 旧层/重复格残留：questKey 与当前进度不符时清空并改为普通救助文案 */
+function stripStaleRescueQuestKey_(s,ev){
+  if(!s||!ev||ev.type!=="rescue"||ev.done) return;
+  const qk=String(ev.questKey||"");
+  if(!qk) return;
+  if(rescueQuestKeyStillValid_(s,qk)) return;
+  ev.questKey="";
+  try{
+    const gratitude=!!ev.gratitude;
+    ev.story=gratitude?makeStoryRescueGratitudeByKind_("generic"):makeStoryRescueByQuest_("");
+  }catch(e){
+    try{ ev.story=makeStoryRescue(); }catch(e2){}
+  }
+}
+function unlockAchievementIfNot(s,key){
+  if(!s||!s.story) return false;
+  if(!s.story.achievements) s.story.achievements={};
+  if(s.story.achievements[key]) return false;
+  s.story.achievements[key]=true;
+  sysTransient("成就解锁："+achievementTitle_(key),SYS_AVATARS[1],2200);
+  const before=Number(s.story._achievementSnap||0);
+  const now=countAchievementTotal(s);
+  const oldPairs=Math.floor(before/2);
+  const newPairs=Math.floor(now/2);
+  if(newPairs>oldPairs){
+    const add=newPairs-oldPairs;
+    s.story.stairDetectorCount=Number(s.story.stairDetectorCount||0)+add;
+    const tot=s.story.stairDetectorCount;
+    showAcquireNotify_("获得道具",[
+      "楼梯探测器 +"+add,
+      "背包累计：楼梯探测器 ×"+tot
+    ]);
+  }
+  if(now>=10 && !s.story.permMedal10Bonus){
+    s.story.permMedal10Bonus=true;
+    s.story.permCurMedal=Number(s.story.permCurMedal||0)+1;
+    const tot=s.story.permCurMedal;
+    showAcquireNotify_("获得道具",[
+      "永久本期勋章 +1",
+      "背包累计：永久本期勋章 ×"+tot,
+      "十种成就达成纪念。"
+    ]);
+  }
+  s.story._achievementSnap=now;
+  maybeGrantMonsterCharm_(s);
+  return true;
+}
+function getLongQuest(s,key){
+  if(!s||!s.story) return null;
+  if(!s.story.longQuests) s.story.longQuests={};
+  if(!s.story.longQuests[key]){
+    s.story.longQuests[key]={stage:0,done:false,combatBlocked:false,hasItem:false,delivered:false};
+  }
+  const o=s.story.longQuests[key];
+  o.stage=Number(o.stage||0);
+  return o;
+}
+/** 成就/任务界面：仅在第二阶段未达成前显示（stage===1），明确点数宝箱与钥匙均可 */
+function questStage2HintForAchKey_(s,key){
+  if(!s||!s.story||!key) return "";
+  const q=s.story.quest;
+  const chestUiNote=" 踩到宝箱时请看事件栏：【支线宝箱 · 任务名】才会推进本任务；【普通宝箱】仅有积分与战利品。";
+  const chestHint="进行指引：第二阶段需开启与本线关联的宝箱——用回复/被引用凑够点数开锁即可，亦可使用钥匙免点数开启；并非必须用钥匙。"+chestUiNote;
+  const rescueHint="进行指引：第二阶段需完成一次与本线关联的际遇救助，消耗点数即可。";
+  const humanChestHint="进行指引：第二阶段需开启与该人类际遇线关联的宝箱——点数开锁与使用钥匙任选其一。"+chestUiNote;
+  if(key==="herb"){
+    const st=q&&q.herb;
+    if(st && !st.done && !st.combatBlocked && Number(st.stage||0)===1) return chestHint;
+    return "";
+  }
+  if(key==="lamp"){
+    const st=q&&q.lamp;
+    if(st && !st.done && !st.combatBlocked && Number(st.stage||0)===1) return chestHint;
+    return "";
+  }
+  if(key==="letter"){
+    const st=q&&q.letter;
+    if(st && !st.done && !st.combatBlocked && Number(st.stage||0)===1) return rescueHint;
+    return "";
+  }
+  if(LONGLINE_MONSTER_MAP[key]){
+    const lq=getLongQuest(s,key);
+    const d=LONGLINE_MONSTER_MAP[key];
+    if(!lq||lq.done||lq.combatBlocked||Number(lq.stage||0)!==1) return "";
+    if(d.step2==="chest") return "进行指引：【"+d.title+"】第二阶段为关联宝箱——点数开锁与钥匙开锁任选其一，无需强制用钥匙。"+chestUiNote;
+    return "进行指引：【"+d.title+"】第二阶段为完成关联际遇救助（消耗点数）。";
+  }
+  if(HUMAN_LONGLINE_MAP[key]){
+    const lq=getLongQuest(s,key);
+    if(!lq||lq.done||lq.combatBlocked||Number(lq.stage||0)!==1) return "";
+    return humanChestHint;
+  }
+  return "";
+}
+function cancelLongQuestMonster_(s,qKey,monsterId){
+  const q=getLongQuest(s,qKey);
+  if(!q) return;
+  q.combatBlocked=true;
+  q.stage=0;
+  q.hasItem=false;
+  q.delivered=false;
+  if(!s.map||!s.map.events) return;
+  for(const k in s.map.events){
+    const ev=s.map.events[k];
+    if(!ev) continue;
+    if(ev.type==="chest" && ev.questKey===qKey) delete s.map.events[k];
+    if(ev.type==="rescue" && ev.questKey===qKey) delete s.map.events[k];
+    if(ev.type==="talk_monster" && ev.monsterId===monsterId) delete s.map.events[k];
+  }
+}
+function cancelHumanLongQuest_(s,qKey){
+  const q=getLongQuest(s,qKey);
+  if(!q) return;
+  q.combatBlocked=true;
+  q.stage=0;
+  q.hasItem=false;
+  q.delivered=false;
+  if(!s.map||!s.map.events) return;
+  for(const k in s.map.events){
+    const ev=s.map.events[k];
+    if(!ev) continue;
+    if(ev.type==="chest" && ev.questKey===qKey) delete s.map.events[k];
+    if(ev.type==="rescue" && ev.questKey===qKey) delete s.map.events[k];
+  }
+}
+function tryAdvanceLongQuestsMonster_(s,ctx){
+  if(!s||!s.story||!ctx) return;
+  const eq=String(ctx.eventQuest||"");
+  for(let i=0;i<LONGLINE_MONSTER_DEFS.length;i++){
+    const def=LONGLINE_MONSTER_DEFS[i];
+    const q=getLongQuest(s,def.key);
+    if(!q||q.done||q.combatBlocked) continue;
+    const st=Number(q.stage||0);
+    if(st===0){
+      if(ctx.type==="talk" && ctx.monsterId===def.monsterId){
+        if(ctx.outcome==="peace"){
+          q.stage=1;
+          q.hasItem=false;
+          q.delivered=false;
+          pushStoryLog(s,"长线【"+def.title+"】开启：你答应协助。");
+          if(s.map&&s.map.events){
+            for(const k in s.map.events){
+              const ev=s.map.events[k];
+              if(ev&&!ev.done&&ev.type==="talk_monster"&&ev.monsterId===def.monsterId) delete s.map.events[k];
+            }
+          }
+        }else{
+          cancelLongQuestMonster_(s,def.key,def.monsterId);
+        }
+      }
+    }else if(st===1){
+      if(def.step2==="chest" && ctx.type==="chest_done" && eq===String(def.key)){
+        q.stage=2;
+        q.hasItem=true;
+        sysTransient("系统提醒：长线【"+def.title+"】已推进到 2/3。",SYS_AVATARS[1],1600);
+        if(s.map&&s.map.events){
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(ev&&!ev.done&&ev.type==="talk_monster"&&ev.monsterId===def.monsterId) delete s.map.events[k];
+          }
+        }
+        pushStoryLog(s,"长线【"+def.title+"】推进：你取得了关键物。");
+      }else if(def.step2==="rescue" && ctx.type==="rescue_done" && eq===String(def.key)){
+        q.stage=2;
+        q.delivered=true;
+        sysTransient("系统提醒：长线【"+def.title+"】已推进到 2/3。",SYS_AVATARS[1],1600);
+        if(s.map&&s.map.events){
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(ev&&!ev.done&&ev.type==="talk_monster"&&ev.monsterId===def.monsterId) delete s.map.events[k];
+          }
+        }
+        pushStoryLog(s,"长线【"+def.title+"】推进：救助已落实。");
+      }
+    }else if(st===2){
+      if(ctx.type==="talk" && ctx.monsterId===def.monsterId){
+        if(ctx.outcome==="peace"){
+          const ok=(def.step2==="chest"&&q.hasItem)||(def.step2==="rescue"&&q.delivered);
+          if(ok){
+            q.done=true;
+            unlockAchievementIfNot(s,def.key);
+            s.reward+=def.reward;
+            pushStoryLog(s,"长线【"+def.title+"】完成。积分 +"+def.reward);
+            if(s.map&&s.map.events){
+              for(const k in s.map.events){
+                const ev=s.map.events[k];
+                if(ev&&!ev.done&&ev.type==="talk_monster"&&ev.monsterId===def.monsterId) delete s.map.events[k];
+              }
+            }
+            showChapterCard("长线结局：【"+def.title+"】","你完成了三段和平流程。积分 +"+def.reward);
+          }
+        }else{
+          cancelLongQuestMonster_(s,def.key,def.monsterId);
+        }
+      }
+    }
+  }
+}
+function tryAdvanceLongQuestsHuman_(s,ctx){
+  if(!s||!s.story||!ctx) return;
+  const eq=String(ctx.eventQuest||"");
+  for(let i=0;i<HUMAN_LONGLINE_DEFS.length;i++){
+    const def=HUMAN_LONGLINE_DEFS[i];
+    const q=getLongQuest(s,def.key);
+    if(!q||q.done||q.combatBlocked) continue;
+    const st=Number(q.stage||0);
+    if(st===0){
+      if(ctx.type==="rescue_done" && eq===String(def.key)){
+        q.stage=1;
+        q.hasItem=false;
+        purgeUnfinishedRescuesByQuestKey_(s,def.key);
+        sysTransient("系统提醒：人类长线【"+def.title+"】已推进到 1/3。",SYS_AVATARS[1],1600);
+        pushStoryLog(s,"人类长线【"+def.title+"】开启。");
+      }
+    }else if(st===1){
+      if(ctx.type==="chest_done" && eq===String(def.key)){
+        q.stage=2;
+        q.hasItem=true;
+        sysTransient("系统提醒：人类长线【"+def.title+"】已推进到 2/3。",SYS_AVATARS[1],1600);
+        pushStoryLog(s,"人类长线【"+def.title+"】推进：难题已解决。");
+      }
+    }else if(st===2){
+      if(ctx.type==="rescue_done" && eq===String(def.key)){
+        q.done=true;
+        unlockAchievementIfNot(s,def.key);
+        s.reward+=def.reward;
+        pushStoryLog(s,"人类长线【"+def.title+"】完成。积分 +"+def.reward);
+        if(s.map&&s.map.events){
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(!ev||ev.done) continue;
+            if((ev.type==="rescue"||ev.type==="chest")&&(ev.questKey||"")===def.key) delete s.map.events[k];
+          }
+        }
+        showChapterCard("人类长线结局：【"+def.title+"】","谢礼已交到你手中。积分 +"+def.reward);
+      }
+    }
+  }
+}
 const G={
   uid:"",
   state:null,
@@ -260,6 +989,31 @@ function sysTransient(msg, avatar, ms){
       if(el && el.textContent===text) el.textContent="";
     }
   }, ms||1600);
+}
+
+let _acquireTimer=null;
+function closeAcquireOverlay(){
+  show("acquireOverlay",false);
+  const o=document.getElementById("acquireOverlay");
+  if(o) o.setAttribute("aria-hidden","true");
+  if(_acquireTimer){ try{ clearTimeout(_acquireTimer);}catch(e){} _acquireTimer=null; }
+}
+/** 获得钥匙/楼梯探测器等：弹窗 + 系统行 + 面板提示（类似下楼时的醒目反馈） */
+function showAcquireNotify_(title, lines){
+  const overlay=document.getElementById("acquireOverlay");
+  if(!overlay) return;
+  const tt=document.getElementById("acquireTitle");
+  const tx=document.getElementById("acquireText");
+  const arr=(lines||[]).concat(["可点击「背包」核对数量与使用方式。"]);
+  if(tt) tt.textContent=title||"获得道具";
+  if(tx) tx.textContent=arr.join("\n");
+  show("acquireOverlay",true);
+  overlay.setAttribute("aria-hidden","false");
+  if(lines&&lines[0]) sysTransient(lines[0],SYS_AVATARS[1],3600);
+  try{ setNotice("背包已更新：请查看「背包」与下方系统提示。"); }catch(e){}
+  try{ renderHUD(); }catch(e){}
+  if(_acquireTimer) try{ clearTimeout(_acquireTimer);}catch(e){}
+  _acquireTimer=setTimeout(()=>{ closeAcquireOverlay(); }, 3400);
 }
 
 function eventGlyph_(ev){
@@ -416,6 +1170,230 @@ function closeChapterCard(){
   if(_chapterResolver){ const r=_chapterResolver; _chapterResolver=null; r(); }
 }
 
+function renderStoryQuestItemsLines_(s){
+  const out=[];
+  if(!s||!s.story||!s.story.quest) return out;
+  const q=s.story.quest;
+  const qh=q.herb;
+  if(qh && !qh.done && !qh.combatBlocked && qh.hasHerb && Number(qh.stage||0)>=2){
+    out.push("【药草与幼崽】药草（已携带）");
+  }
+  const ql=q.lamp;
+  if(ql && !ql.done && !ql.combatBlocked && Number(ql.stage||0)>=2 && (ql.lit||ql.hasLamp)){
+    out.push("【夜灯守望】灯/火种（已携带）");
+  }
+  const qy=q.letter;
+  if(qy && !qy.done && !qy.combatBlocked && qy.hasLetter && Number(qy.stage||0)>=1){
+    out.push("【未寄出的信】信件（已携带）");
+  }
+  try{
+    const lq=s.story.longQuests||{};
+    LONGLINE_MONSTER_DEFS.forEach(def=>{
+      const qq=lq[def.key];
+      if(!qq||qq.done||qq.combatBlocked) return;
+      const stg=Number(qq.stage||0);
+      if(def.step2==="chest" && stg>=2 && qq.hasItem){
+        out.push("【"+def.title+"】关键物（已携带）");
+      }else if(def.step2==="rescue" && stg>=2 && qq.delivered){
+        out.push("【"+def.title+"】托付物（已落实）");
+      }
+    });
+    HUMAN_LONGLINE_DEFS.forEach(def=>{
+      const qq=lq[def.key];
+      if(!qq||qq.done||qq.combatBlocked) return;
+      if(Number(qq.stage||0)>=2 && qq.hasItem){
+        out.push("【"+def.title+"】任务相关物（已携带）");
+      }
+    });
+  }catch(e){}
+  return out;
+}
+function renderBagText_(){
+  const s=G.state; if(!s) return "";
+  const lb=s.lootBag||{jiecao:0,yumao:0,bqMedal30:0,zmMedal30:0};
+  const feather30=Math.floor((Number(lb.yumao)||0)/3);
+  const keys=Number(s.story&&s.story.rescueKeyCount||0);
+  const permCur=Number(s.story&&s.story.permCurMedal||0);
+  const permPast=Number(s.story&&s.story.permPastExchange||0);
+  const stair=Number(s.story&&s.story.stairDetectorCount||0);
+  const charm=!!(s.story&&s.story.monsterCharmOwned);
+  const storyItems=renderStoryQuestItemsLines_(s);
+  const storyBlock=storyItems.length
+    ? ["","支线任务道具","----------------"].concat(storyItems)
+    : ["","支线任务道具","----------------","（暂无：完成开箱/救助推进后会显示于此）"];
+  return [
+    "战利品（背包）",
+    "----------------",
+    "30节操：X"+(lb.jiecao||0),
+    "30羽毛：X"+feather30,
+    "本期勋章30天：X"+(lb.bqMedal30||0),
+    "字母勋章30天：X"+(lb.zmMedal30||0),
+    "永久本期勋章：X"+permCur,
+    "永久往期兑换机会：X"+permPast,
+    "",
+    "钥匙：X"+keys+"（可直接打开宝箱）",
+    "楼梯探测器：X"+stair+"（使用后显示本层楼梯格）",
+    charm?"怪物护符：×1（非BOSS「逃跑」必成功）；主动避战剩余："+(Number(s.story.monsterCharmActiveRemaining)||0)+" 次（背包按钮可重设）":""
+  ].filter(Boolean).concat(storyBlock).join("\n");
+}
+function useStairDetector(){
+  const s=G.state; if(!s||!s.map) return;
+  if(G.busy||G.actionBusy) return;
+  if((s.story.stairDetectorCount||0)<=0) return sys("你没有楼梯探测器。",SYS_AVATARS[2]);
+  s.story.stairDetectorCount=Number(s.story.stairDetectorCount||0)-1;
+  s.map.stairsRevealed=true;
+  s.map.revealed[key(s.map.stairs.x,s.map.stairs.y)]=1;
+  sysTransient("楼梯探测器：已标记本层楼梯位置。",SYS_AVATARS[1],2200);
+  renderMap();
+  renderHUD();
+  const txt=document.getElementById("bagText");
+  if(txt) txt.textContent=renderBagText_();
+  const b=document.getElementById("useStairBtn");
+  if(b) b.disabled=(s.story.stairDetectorCount||0)<=0;
+}
+/** 背包：启用怪物护符主动效果——接下来若干次「普通战斗怪」踏格即自动脱身（不耗点数、不计对战胜利） */
+function useMonsterCharmActive(){
+  const s=G.state; if(!s||!s.story) return;
+  if(G.busy||G.actionBusy) return;
+  if(!s.story.monsterCharmOwned) return sys("你还没有怪物护符（需解锁怪物侧成就）。",SYS_AVATARS[2]);
+  const raw=prompt("请输入要自动脱身的普通战斗遭遇次数（1～30）：","3");
+  if(raw===null) return;
+  const n=parseInt(String(raw).trim(),10);
+  if(isNaN(n)||n<1||n>30) return sys("请输入 1～30 之间的整数。",SYS_AVATARS[2]);
+  s.story.monsterCharmActiveRemaining=n;
+  sysTransient("怪物护符主动：已启用 "+n+" 次免战。踏到非BOSS战斗怪将自动脱身。",SYS_AVATARS[1],3200);
+  const txt=document.getElementById("bagText");
+  if(txt) txt.textContent=renderBagText_();
+}
+/** 踏到普通战斗怪且已启用护符主动：不进入战斗面板，直接脱身 */
+function maybeAutoMonsterCharmBypass_(s){
+  const p=s.pending;
+  if(!p||p.type!=="monster"||p.boss) return false;
+  const n=Number(s.story&&s.story.monsterCharmActiveRemaining||0);
+  if(n<=0) return false;
+  s.story.monsterCharmActiveRemaining=n-1;
+  p.done=true; p.resolvedKind="escape"; s.pending=null;
+  sysTransient("怪物护符（主动）：已避开此次战斗（剩余 "+s.story.monsterCharmActiveRemaining+" 次）。",SYS_AVATARS[1],2400);
+  renderMap(); renderHUD();
+  if(!G.offlineMode){
+    saveStateCloud("charm_bypass",false).catch(()=>{});
+  }
+  try{ popStoryNote(s); }catch(e){}
+  return true;
+}
+
+function openBag(){
+  const overlay=document.getElementById("bagOverlay");
+  if(!overlay) return;
+  const txt=document.getElementById("bagText");
+  if(txt) txt.textContent=renderBagText_();
+  const b=document.getElementById("useStairBtn");
+  if(b && G.state && G.state.story) b.disabled=(G.state.story.stairDetectorCount||0)<=0;
+  const c=document.getElementById("useCharmBtn");
+  if(c && G.state && G.state.story){
+    c.style.display=G.state.story.monsterCharmOwned?"inline-block":"none";
+  }
+  show("bagOverlay",true);
+  overlay.setAttribute("aria-hidden","false");
+}
+
+function closeBag(){
+  show("bagOverlay",false);
+  const overlay=document.getElementById("bagOverlay");
+  if(overlay) overlay.setAttribute("aria-hidden","true");
+}
+
+function openAchievementsPage(){
+  const overlay=document.getElementById("achievementOverlay");
+  if(!overlay) return;
+  if(!G.state||!G.state.story||!G.state.story.achievements) return;
+  const ach=G.state.story.achievements;
+
+  const t=document.getElementById("achTitle");
+  const tx=document.getElementById("achText");
+  const list=document.getElementById("achList");
+  const back=document.getElementById("achBackRow");
+  const body=document.getElementById("achModalBody");
+  if(list) list.classList.remove("hidden");
+  if(back) back.classList.add("hidden");
+  if(body) body.scrollTop=0;
+  if(tx) tx.textContent="点击任一成就可以查看说明（未达成会以灰色显示）。清单与说明可在下方区域内滚动。";
+
+  if(list){
+    const items=[
+      {k:"herb",label:"药草与幼崽",mini:"药",kind:"monster"},
+      {k:"lamp",label:"夜灯守望",mini:"灯",kind:"monster"},
+      {k:"letter",label:"未寄出的信",mini:"信",kind:"monster"}
+    ];
+    LONGLINE_MONSTER_DEFS.forEach(d=>{
+      items.push({k:d.key,label:d.title,mini:d.title.slice(0,1),kind:"monster"});
+    });
+    HUMAN_LONGLINE_DEFS.forEach(d=>{
+      items.push({k:d.key,label:d.title,mini:d.title.slice(0,1),kind:"human"});
+    });
+    list.innerHTML="";
+    const s=G.state;
+    if(t) t.textContent="成就（共 "+items.length+" 项）";
+    items.forEach(it=>{
+      const row=document.createElement("div");
+      row.className="achRow "+(it.kind==="human"?"achItemHuman":"achItemMonster");
+      const ok=!!ach[it.k];
+      const btn=document.createElement("button");
+      btn.className=ok?"btn primary":"btn";
+      btn.textContent=it.mini+" "+(ok?"已点亮":"未达成");
+      btn.style.margin="0";
+      btn.style.opacity=ok?"1":"0.45";
+      btn.style.filter=ok?"none":"grayscale(1)";
+      btn.disabled=false;
+      btn.onclick=()=>openAchievementDetail(it.k);
+      row.appendChild(btn);
+      if(!ok && s){
+        const hint=questStage2HintForAchKey_(s,it.k);
+        if(hint){
+          const hd=document.createElement("div");
+          hd.className="achHint";
+          hd.textContent=hint;
+          row.appendChild(hd);
+        }
+      }
+      list.appendChild(row);
+    });
+  }
+  show("achievementOverlay",true);
+  overlay.setAttribute("aria-hidden","false");
+}
+
+function openAchievementDetail(achKey){
+  const overlay=document.getElementById("achievementOverlay");
+  if(!overlay) return;
+  if(!G.state||!G.state.story||!G.state.story.achievements) return;
+  const ok=!!G.state.story.achievements[achKey];
+  const det=achievementDetail_(achKey);
+  const t=document.getElementById("achTitle");
+  const tx=document.getElementById("achText");
+  const list=document.getElementById("achList");
+  const back=document.getElementById("achBackRow");
+  const body=document.getElementById("achModalBody");
+  if(list) list.classList.add("hidden");
+  if(back) back.classList.remove("hidden");
+  if(t) t.textContent="成就：" + achievementTitle_(achKey);
+  let txt=(ok?"【已点亮】":"【未达成】")+"\n\n"+det.text;
+  if(!ok){
+    const hi=questStage2HintForAchKey_(G.state,achKey);
+    if(hi) txt+="\n\n"+hi;
+  }
+  if(tx) tx.textContent=txt;
+  if(body) body.scrollTop=0;
+  show("achievementOverlay",true);
+  overlay.setAttribute("aria-hidden","false");
+}
+
+function closeAchievement(){
+  show("achievementOverlay",false);
+  const overlay=document.getElementById("achievementOverlay");
+  if(overlay) overlay.setAttribute("aria-hidden","true");
+}
+
 function apiJsonp(action, params){
   return new Promise((resolve,reject)=>{
     const u=gasUrl(); if(!u) return reject(new Error("未提供 record=GAS_URL"));
@@ -456,16 +1434,16 @@ async function enterGame(){
 
 async function cloudConfirmAndLoad(){
   // 让“云端读取中”提示尽量早出现，减少玩家等待感
-  setNotice("云端读取中…");
-  setBusy(true,"系统正在读取中，请静候…");
+  setNotice("云端读取中… 请等待读取结束后再点「开始新冒险」或「继续冒险」，以免进度未就绪。");
+  setBusy(true,"正在读取中…");
   try{
     const res=await apiJsonp("load_state",{user_id:G.uid});
     if(res.data && res.data.state){
       G.state=normalizeState(res.data.state);
-      setNotice("云端确认成功：检测到可继续的地下城进度。");
+      setNotice("读取完毕：检测到可继续进度。请点「继续冒险」或「开始新冒险」（新开局将覆盖云端存档）。");
     }else{
       G.state=null;
-      setNotice("云端确认成功：暂无进度，可开始新冒险。");
+      setNotice("读取完毕：暂无存档。请点「开始新冒险」。");
     }
   }catch(e){
     G.state=null;
@@ -485,6 +1463,20 @@ function makeStoryRescue(){
   ];
   return pool[rInt(0,pool.length-1)];
 }
+function makeStoryRescueGratitudeByKind_(kindKey){
+  const pool={
+    generic:[
+      "同样的求助你已经见过太多次，而你依旧愿意伸手。那一次的你，终于被它记住了：今天轮到它用更郑重的方式感谢你。",
+      "当你再次停下脚步，救助本身就不再只是“需求被完成”。它说：你给过的温柔终于回到它手里。"
+    ],
+    letter:[
+      "它再次守在原地，像把过往的等待收拢成一声轻响。你把它应得的那份回应带来——这一次，它把“钥匙”托给你。",
+      "旧信已经不再沉默，因为你曾经把它送到该去的地方。它用特别的方式感谢你，并交出能打开宝箱的钥匙。"
+    ]
+  };
+  const arr=pool[kindKey]||pool.generic;
+  return arr[rInt(0,arr.length-1)];
+}
 function makeStoryRescueByQuest_(questKey){
   if(questKey==="letter"){
     const pool=[
@@ -493,6 +1485,17 @@ function makeStoryRescueByQuest_(questKey){
       "一位沉默的街灯守护者抱着空白的封蜡。它不识字，但它知道“把信送回该去的地方”会让世界重新发亮。"
     ];
     return pool[rInt(0,pool.length-1)];
+  }
+  if(HUMAN_LONGLINE_MAP[questKey]){
+    const d=HUMAN_LONGLINE_MAP[questKey];
+    const q=G.state?getLongQuest(G.state,questKey):null;
+    const st=q?Number(q.stage||0):0;
+    if(st>=2) return d.rescueStage2;
+    return d.rescueStage0;
+  }
+  if(LONGLINE_MONSTER_MAP[questKey]){
+    const d=LONGLINE_MONSTER_MAP[questKey];
+    if(d.step2==="rescue") return d.storyMidRescue||makeStoryRescue();
   }
   return makeStoryRescue();
 }
@@ -521,6 +1524,12 @@ function makeStoryMonsterByFloor(floor){
   const tier=chapterTierByFloor(floor);
   const chapter=CHAPTER_MONSTER_PACKS[tier]||[];
   let pool=base.concat(chapter);
+  const tierIdx=Math.min(9,Math.floor((Math.max(1,Number(floor)||1)-1)/5));
+  const tierMon=LONGLINE_MONSTER_DEFS.filter(d=>d.tier===tierIdx);
+  if(tierMon.length){
+    const extra=tierMon.map(d=>({id:d.monsterId,txt:d.talkStage0,opts:d.opts.slice(),outcomes:d.outcomes.slice()}));
+    pool=pool.concat(extra);
+  }
   // 支线严格性：
   // - stage=1 时禁止出现该支线相关怪物（避免重复“还在找”的重复触发）
   // - stage=2 时只允许出现该支线相关怪物（保证第三次遇到能结算奖励）
@@ -531,19 +1540,34 @@ function makeStoryMonsterByFloor(floor){
     const allow=new Set();
 
     if(q.herb){
+      const hs=Number(q.herb.stage||0);
       if(!!q.herb.done) forbid.add("wolf");
-      if((q.herb.stage===1 && !q.herb.done) || q.herb.combatBlocked) forbid.add("wolf");
-      if(q.herb.stage===2 && !q.herb.done && !q.herb.combatBlocked) allow.add("wolf");
+      if((hs===1 && !q.herb.done) || q.herb.combatBlocked) forbid.add("wolf");
+      if(hs===2 && !q.herb.done && !q.herb.combatBlocked) allow.add("wolf");
     }
     if(q.lamp){
+      const ls=Number(q.lamp.stage||0);
       if(!!q.lamp.done) forbid.add("gargoyle");
-      if((q.lamp.stage===1 && !q.lamp.done) || q.lamp.combatBlocked) forbid.add("gargoyle");
-      if(q.lamp.stage===2 && !q.lamp.done && !q.lamp.combatBlocked) allow.add("gargoyle");
+      if((ls===1 && !q.lamp.done) || q.lamp.combatBlocked) forbid.add("gargoyle");
+      if(ls===2 && !q.lamp.done && !q.lamp.combatBlocked) allow.add("gargoyle");
     }
     if(q.letter){
+      const ys=Number(q.letter.stage||0);
       if(!!q.letter.done) forbid.add("golem");
-      if((q.letter.stage===1 && !q.letter.done) || q.letter.combatBlocked) forbid.add("golem");
-      if(q.letter.stage===2 && !q.letter.done && !q.letter.combatBlocked) allow.add("golem");
+      if((ys===1 && !q.letter.done) || q.letter.combatBlocked) forbid.add("golem");
+      if(ys===2 && !q.letter.done && !q.letter.combatBlocked) allow.add("golem");
+    }
+    if(G.state && G.state.story && G.state.story.longQuests){
+      const lq=G.state.story.longQuests;
+      for(let i=0;i<LONGLINE_MONSTER_DEFS.length;i++){
+        const d=LONGLINE_MONSTER_DEFS[i];
+        const qq=lq[d.key];
+        if(!qq) continue;
+        const qs=Number(qq.stage||0);
+        if(!!qq.done) forbid.add(d.monsterId);
+        if((qs===1 && !qq.done) || qq.combatBlocked) forbid.add(d.monsterId);
+        if(qs===2 && !qq.done && !qq.combatBlocked) allow.add(d.monsterId);
+      }
     }
 
     if(allow.size>0){
@@ -565,11 +1589,21 @@ function makeStoryMonsterByFloor(floor){
       else pool=base.concat(chapter);
     }
   }
-  if(!pool.length) pool=base.concat(chapter);
+  if(!pool.length){
+    pool=base.concat(chapter);
+    if(tierMon.length){
+      const extra=tierMon.map(d=>({id:d.monsterId,txt:d.talkStage0,opts:d.opts.slice(),outcomes:d.outcomes.slice()}));
+      pool=pool.concat(extra);
+    }
+  }
   return pool[rInt(0,pool.length-1)];
 }
 
 function makeStoryMonsterById_(monsterId){
+  if(LONGLINE_MONSTER_MAP[monsterId]){
+    const d=LONGLINE_MONSTER_MAP[monsterId];
+    return {id:d.monsterId,txt:d.talkStage0,opts:d.opts.slice(),outcomes:d.outcomes.slice()};
+  }
   // 仅用基础四类怪物：保证在“强制补齐/严谨连贯”时能稳定生成目标怪物对话
   const base=[
     {id:"wolf",txt:"灰狼守在药草旁，它在为受伤幼崽找药。你怎么回应？",opts:["先听它说明并一起找药","质疑它在说谎并恐吓","直接开战"],outcomes:["peace","conflict","combat"]},
@@ -582,6 +1616,10 @@ function makeStoryMonsterById_(monsterId){
 
 function makeStageTalkStoryByQuest_(monsterId, questKey){
   const base=makeStoryMonsterById_(monsterId);
+  if(LONGLINE_MONSTER_MAP[questKey]){
+    const d=LONGLINE_MONSTER_MAP[questKey];
+    return {...base,txt:(d.storyFinalTalk||d.talkStage2||base.txt)};
+  }
   if(questKey==="herb"){
     return {
       ...base,
@@ -695,7 +1733,7 @@ function buildFloor(floor){
       eventsBoss[kk]={type:"monster",hp:bossHp,reward:baseMonsterReward,boss:true,done:false};
       break;
     }
-    return {w:w,h:h,tiles:tiles,revealed:revealed,events:eventsBoss,start:start,stairs:stairs,learnedWalls:{}};
+    return {w:w,h:h,tiles:tiles,revealed:revealed,events:eventsBoss,start:start,stairs:stairs,learnedWalls:{},stairsRevealed:false};
   }
   const bias=(G.state&&G.state.eventBias)?G.state.eventBias:{peace:0,conflict:0};
   const peaceBoost=Math.min(0.08,0.02*Number(bias.peace||0));
@@ -703,9 +1741,9 @@ function buildFloor(floor){
 
   // 支线步骤：根据当前进行中的支线，提升后续“需要的事件类型”遭遇率
   const q=(G.state&&G.state.story&&G.state.story.quest)?G.state.story.quest:null;
-  const herbNeedChest=!!(q&&q.herb && q.herb.stage===1 && !q.herb.done && !q.herb.combatBlocked);
-  const lampNeedChest=!!(q&&q.lamp && q.lamp.stage===1 && !q.lamp.done && !q.lamp.combatBlocked);
-  const letterNeedRescue=!!(q&&q.letter && q.letter.stage===1 && !q.letter.done && !q.letter.combatBlocked);
+  const herbNeedChest=!!(q&&q.herb && Number(q.herb.stage||0)===1 && !q.herb.done && !q.herb.combatBlocked);
+  const lampNeedChest=!!(q&&q.lamp && Number(q.lamp.stage||0)===1 && !q.lamp.done && !q.lamp.combatBlocked);
+  const letterNeedRescue=!!(q&&q.letter && Number(q.letter.stage||0)===1 && !q.letter.done && !q.letter.combatBlocked);
   // 严谨支线：当某条支线走到“第三次和平结算(完成)”后，提高后续支线的触发率
   let preferredTalkMonsterId=null;
   if(q && q.herb && q.herb.done && (!q.lamp || !q.lamp.done) && !(q.lamp&&q.lamp.combatBlocked)){
@@ -714,13 +1752,40 @@ function buildFloor(floor){
     preferredTalkMonsterId="golem";
   }
 
-  const chestNeedCount=(herbNeedChest?1:0)+(lampNeedChest?1:0);
-  const rescueNeedCount=(letterNeedRescue?1:0);
+  let chestNeedCount=(herbNeedChest?1:0)+(lampNeedChest?1:0);
+  let rescueNeedCount=(letterNeedRescue?1:0);
+  try{
+    const lq=(G.state&&G.state.story&&G.state.story.longQuests)?G.state.story.longQuests:{};
+    const nf=Number(floor||1);
+    LONGLINE_MONSTER_DEFS.forEach(def=>{
+      const qq=lq[def.key];
+      if(!qq||qq.done||qq.combatBlocked) return;
+      const qs=Number(qq.stage||0);
+      if(qs===1 && def.step2==="chest") chestNeedCount++;
+      if(qs===1 && def.step2==="rescue" && nf>=def.floorMin && nf<=def.floorMax) rescueNeedCount++;
+    });
+    HUMAN_LONGLINE_DEFS.forEach(def=>{
+      const qq=lq[def.key];
+      if(!qq||qq.done||qq.combatBlocked) return;
+      const qs=Number(qq.stage||0);
+      if(qs===1 && nf>=def.floorMin && nf<=def.floorMax) chestNeedCount++;
+      if(qs===2 && nf>=def.floorMin && nf<=def.floorMax) rescueNeedCount++;
+    });
+  }catch(e){}
+  const rescueHelpCounts=(G.state&&G.state.story&&G.state.story.rescueHelpCounts)?G.state.story.rescueHelpCounts:{};
+  const totalRescueKeyCountKey="all";
 
   let chestRate=0.10;
   let talkRate=Math.max(0.06, Math.min(0.20, 0.10 + peaceBoost - conflictBoost*0.4));
   let rescueRate=Math.max(0.08, Math.min(0.22, 0.12 + peaceBoost*0.8 - conflictBoost*0.5));
   let monsterRate=Math.max(0.12, Math.min(0.36, 0.18 + conflictBoost - peaceBoost*0.6));
+  // 上一层曾踩过救助格（出现完成救助/不救助选项）时：本层随机战斗怪略减；对话怪 talk_monster 与 ensureQuestFollowup 不受影响
+  try{
+    if(G.state && G.state.story && G.state.story.prevFloorHadRescueMonsterDiscount){
+      monsterRate=Math.max(0.06, monsterRate-0.08);
+      G.state.story.prevFloorHadRescueMonsterDiscount=false;
+    }
+  }catch(e){}
 
   // 救助可拒绝：拒绝后下一层不再生成救助事件（让遭遇变成更偏“必须战斗”的怪物）
   try{
@@ -737,6 +1802,8 @@ function buildFloor(floor){
   // 由于 chest/rescue 提升，重新计算总分段
   // （整体的“monster 与 talk”仍保留之前的 bias）
   const tChest=chestRate, tMonster=tChest+monsterRate, tRescue=tMonster+rescueRate, tTalk=tRescue+talkRate;
+  // 每层每种「支线救助」questKey 最多只占用一次，避免同层刷出大量重复「未寄出的信」等导致无法推进
+  const rescueQuestKeyUsed={};
   for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
     if(tiles[y][x]===1 || tiles[y][x]===2) continue;
     if((x===start.x&&y===start.y)||(x===stairs.x&&y===stairs.y)) continue;
@@ -747,13 +1814,71 @@ function buildFloor(floor){
         questKey=(Math.random()<0.5)?"herb":"lamp";
       }else if(herbNeedChest) questKey="herb";
       else if(lampNeedChest) questKey="lamp";
+      else{
+        try{
+          const lq=(G.state&&G.state.story&&G.state.story.longQuests)?G.state.story.longQuests:{};
+          const nf=Number(floor||1);
+          const needyC=[];
+          LONGLINE_MONSTER_DEFS.forEach(def=>{
+            const qq=lq[def.key];
+            if(!qq||qq.done||qq.combatBlocked) return;
+            const qs=Number(qq.stage||0);
+            if(qs===1 && def.step2==="chest" && nf>=def.floorMin && nf<=def.floorMax) needyC.push(def.key);
+          });
+          HUMAN_LONGLINE_DEFS.forEach(def=>{
+            const qq=lq[def.key];
+            if(!qq||qq.done||qq.combatBlocked) return;
+            const qs=Number(qq.stage||0);
+            if(qs===1 && nf>=def.floorMin && nf<=def.floorMax) needyC.push(def.key);
+          });
+          if(needyC.length) questKey=needyC[rInt(0,needyC.length-1)];
+        }catch(e){}
+      }
       events[key(x,y)]={type:"chest",need:rInt(10,24),reward:baseChestReward,questKey:questKey,done:false};
     }else if(r<tMonster){
       events[key(x,y)]={type:"monster",hp:rInt(8,24)+floor,reward:baseMonsterReward,done:false};
     }else if(r<tRescue){
       let questKey="";
-      if(letterNeedRescue) questKey="letter";
-      events[key(x,y)]={type:"rescue",need:rInt(10,22),story:makeStoryRescueByQuest_(questKey),reward:baseRescueReward,questKey:questKey,done:false};
+      try{
+        const lq=(G.state&&G.state.story&&G.state.story.longQuests)?G.state.story.longQuests:{};
+        const nf=Number(floor||1);
+        const needyR=[];
+        if(letterNeedRescue) needyR.push("letter");
+        LONGLINE_MONSTER_DEFS.forEach(def=>{
+          const qq=lq[def.key];
+          if(!qq||qq.done||qq.combatBlocked) return;
+          const qs=Number(qq.stage||0);
+          if(qs===1 && def.step2==="rescue" && nf>=def.floorMin && nf<=def.floorMax) needyR.push(def.key);
+        });
+        HUMAN_LONGLINE_DEFS.forEach(def=>{
+          const qq=lq[def.key];
+          if(!qq||qq.done||qq.combatBlocked) return;
+          const qs=Number(qq.stage||0);
+          if((qs===0 || qs===2) && nf>=def.floorMin && nf<=def.floorMax) needyR.push(def.key);
+        });
+        const candidates=needyR.filter(k=>!rescueQuestKeyUsed[k]);
+        if(candidates.length){
+          let pick;
+          if(candidates.includes("letter") && letterNeedRescue) pick="letter";
+          else pick=candidates[rInt(0,candidates.length-1)];
+          questKey=pick;
+          rescueQuestKeyUsed[pick]=true;
+        }
+      }catch(e){}
+      // 每完成任意救助达到“下一次阈值”时，会出现特别感谢剧情与钥匙
+      const cnt=Number(rescueHelpCounts[totalRescueKeyCountKey]||0);
+      const gratitude=rescueGratitudeNext_(cnt);
+      const story=gratitude?makeStoryRescueGratitudeByKind_("generic"):makeStoryRescueByQuest_(questKey);
+      events[key(x,y)]={
+        type:"rescue",
+        need:rInt(10,22),
+        story:story,
+        reward:baseRescueReward,
+        questKey:questKey,
+        done:false,
+        rescueKindKey:totalRescueKeyCountKey,
+        gratitude:gratitude
+      };
     }else if(r<tTalk){
       let s=makeStoryMonsterByFloor(floor);
       // 若前置支线已完成，则提高后续支线“接任务(和平)怪物对话”的出现率
@@ -787,7 +1912,7 @@ function buildFloor(floor){
       break;
     }
   }
-  return {w:w,h:h,tiles:tiles,revealed:revealed,events:events,start:start,stairs:stairs,learnedWalls:{}};
+  return {w:w,h:h,tiles:tiles,revealed:revealed,events:events,start:start,stairs:stairs,learnedWalls:{},stairsRevealed:false};
 }
 
 function xBlockedPath(x,y,start,stairs){
@@ -806,7 +1931,9 @@ function newState(uid){
     story:{
       kindness:0,violence:0,peaceTalks:0,rescueDone:0,chestOpen:0,floorsDescended:0,
       rescueSkipUntilFloor:0,
-      floorContext:{rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0},
+      // 本层实际“对战胜利”次数：用于按战斗次数提升下一层遭遇 BOSS 概率
+      // （逃跑成功不计入）
+      floorContext:{rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0,monsterBattleCount:0},
       bossNextFloor:false,
       bossNextDesc:false,
       // “帮我/求救”的怪物：若被你击杀，则后续不再以沟通事件出现（提升“强敌(BOSS)”触发）
@@ -819,12 +1946,28 @@ function newState(uid){
       permCurMedalGiven:false,
       permPastExchange:0,
       permPastExchangeGivenFloors:{},
+      // 救助可重复奖励：同类型救助完成达到阈值后，下一次剧情变为特别感谢并发放“钥匙”
+      rescueHelpCounts:{},
+      rescueKeyCount:0,
+      rescueKeyGivenByKind:{},
+      // 每累计完成救助达到下一个阈值（默认每10次）就会发放钥匙
+      rescueKeyNextAt:10,
       quest:{
         herb:{stage:0,done:false,combatBlocked:false,hasHerb:false},
         lamp:{stage:0,done:false,startFloor:0,combatBlocked:false,hasLamp:false,lit:false},
         letter:{stage:0,done:false,combatBlocked:false,hasLetter:false,delivered:false}
       },
       endings:{herb:false,lamp:false,letter:false,all:false},
+      // 长线支线成就：完成后不再显示在面板，改在主菜单区域以按钮展示
+      achievements:{herb:false,lamp:false,letter:false},
+      longQuests:{},
+      stairDetectorCount:0,
+      permMedal10Bonus:false,
+      monsterCharmGranted:false,
+      monsterCharmOwned:false,
+      monsterCharmActiveRemaining:0,
+      prevFloorHadRescueMonsterDiscount:false,
+      _achievementSnap:0,
       pendingNotes:[],
       log:[]
     },
@@ -862,11 +2005,12 @@ function normalizeState(st){
     if(typeof st.lootBag.zmMedal30!=="number") st.lootBag.zmMedal30=Number(st.lootBag.zmMedal30||0);
   }
   if(st.map && !st.map.learnedWalls) st.map.learnedWalls={};
+  if(st.map && st.map.stairsRevealed===undefined) st.map.stairsRevealed=false;
   // 事件屏蔽：从云端恢复后，按当前支线状态清理已被禁用的 golem 对话事件。
   try{
     if(st && st.map && st.map.events && st.story && st.story.quest){
       const q=st.story.quest;
-      const forbidGoL=!!(q.letter && !q.letter.done && ((q.letter.stage===1) || q.letter.combatBlocked));
+      const forbidGoL=!!(q.letter && !q.letter.done && ((Number(q.letter.stage||0)===1) || q.letter.combatBlocked));
       if(forbidGoL){
         for(const k in st.map.events){
           const ev=st.map.events[k];
@@ -888,13 +2032,16 @@ function normalizeState(st){
   }
   if(!st.story.quest) st.story.quest={};
   if(!st.story.quest.herb) st.story.quest.herb={stage:0,done:false,combatBlocked:false,hasHerb:false};
+  st.story.quest.herb.stage=Number(st.story.quest.herb.stage||0);
   if(st.story.quest.herb.combatBlocked===undefined) st.story.quest.herb.combatBlocked=false;
   if(st.story.quest.herb.hasHerb===undefined) st.story.quest.herb.hasHerb=false;
   if(!st.story.quest.lamp) st.story.quest.lamp={stage:0,done:false,startFloor:0,combatBlocked:false,hasLamp:false,lit:false};
+  st.story.quest.lamp.stage=Number(st.story.quest.lamp.stage||0);
   if(st.story.quest.lamp.combatBlocked===undefined) st.story.quest.lamp.combatBlocked=false;
   if(st.story.quest.lamp.hasLamp===undefined) st.story.quest.lamp.hasLamp=false;
   if(st.story.quest.lamp.lit===undefined) st.story.quest.lamp.lit=false;
   if(!st.story.quest.letter) st.story.quest.letter={stage:0,done:false,combatBlocked:false,hasLetter:false,delivered:false};
+  st.story.quest.letter.stage=Number(st.story.quest.letter.stage||0);
   if(st.story.quest.letter.combatBlocked===undefined) st.story.quest.letter.combatBlocked=false;
   if(st.story.quest.letter.hasLetter===undefined) st.story.quest.letter.hasLetter=false;
   if(st.story.quest.letter.delivered===undefined) st.story.quest.letter.delivered=false;
@@ -903,19 +2050,93 @@ function normalizeState(st){
   if(st.story.quest.lamp && Number(st.story.quest.lamp.stage||0)>=2) st.story.quest.lamp.lit=true;
   if(st.story.quest.letter && Number(st.story.quest.letter.stage||0)>=2) st.story.quest.letter.delivered=true;
   if(!st.story.endings) st.story.endings={herb:false,lamp:false,letter:false,all:false};
+  if(!st.story.achievements) st.story.achievements={herb:false,lamp:false,letter:false};
+  if(st.story.achievements.herb===undefined) st.story.achievements.herb=false;
+  if(st.story.achievements.lamp===undefined) st.story.achievements.lamp=false;
+  if(st.story.achievements.letter===undefined) st.story.achievements.letter=false;
   if(st.story.rescueSkipUntilFloor===undefined) st.story.rescueSkipUntilFloor=0;
   if(typeof st.story.rescueSkipUntilFloor!=="number") st.story.rescueSkipUntilFloor=Number(st.story.rescueSkipUntilFloor||0);
   if(st.story.permCurMedal===undefined) st.story.permCurMedal=0;
   if(st.story.permCurMedalGiven===undefined) st.story.permCurMedalGiven=false;
   if(st.story.permPastExchange===undefined) st.story.permPastExchange=0;
   if(!st.story.permPastExchangeGivenFloors) st.story.permPastExchangeGivenFloors={};
+  if(!st.story.rescueHelpCounts) st.story.rescueHelpCounts={};
+  try{
+    const rc=Number(st.story.rescueHelpCounts.all||0);
+    st.story.rescueKeyNextAt=nextKeyThresholdAfterCount(rc);
+  }catch(e){}
+  if(st.story.rescueKeyCount===undefined) st.story.rescueKeyCount=0;
+  if(!st.story.rescueKeyGivenByKind) st.story.rescueKeyGivenByKind={};
+  if(!st.story.longQuests) st.story.longQuests={};
+  try{
+    LONGLINE_MONSTER_DEFS.forEach(d=>{
+      if(!st.story.longQuests[d.key]) st.story.longQuests[d.key]={stage:0,done:false,combatBlocked:false,hasItem:false,delivered:false};
+      const qq=st.story.longQuests[d.key];
+      qq.stage=Number(qq.stage||0);
+      if(qq.combatBlocked===undefined) qq.combatBlocked=false;
+      if(qq.hasItem===undefined) qq.hasItem=false;
+      if(qq.delivered===undefined) qq.delivered=false;
+      if(qq.done===undefined) qq.done=false;
+    });
+    HUMAN_LONGLINE_DEFS.forEach(d=>{
+      if(!st.story.longQuests[d.key]) st.story.longQuests[d.key]={stage:0,done:false,combatBlocked:false,hasItem:false,delivered:false};
+      const qq=st.story.longQuests[d.key];
+      qq.stage=Number(qq.stage||0);
+      if(qq.combatBlocked===undefined) qq.combatBlocked=false;
+      if(qq.hasItem===undefined) qq.hasItem=false;
+      if(qq.delivered===undefined) qq.delivered=false;
+      if(qq.done===undefined) qq.done=false;
+    });
+    LONGLINE_MONSTER_DEFS.forEach(d=>{
+      const qq=st.story.longQuests[d.key];
+      if(!qq) return;
+      if(Number(qq.stage||0)>=2){
+        if(d.step2==="chest") qq.hasItem=true;
+        else qq.delivered=true;
+      }
+    });
+    HUMAN_LONGLINE_DEFS.forEach(d=>{
+      const qq=st.story.longQuests[d.key];
+      if(!qq) return;
+      if(Number(qq.stage||0)>=2) qq.hasItem=true;
+    });
+    // 人类线已进入「等宝箱」阶段：清掉地图上残留的同名救助格（避免重复阶段1）
+    HUMAN_LONGLINE_DEFS.forEach(d=>{
+      const qq=st.story.longQuests[d.key];
+      if(!qq||qq.done||qq.combatBlocked) return;
+      if(Number(qq.stage||0)!==1) return;
+      if(!st.map||!st.map.events) return;
+      for(const k in st.map.events){
+        const ev=st.map.events[k];
+        if(ev&&!ev.done&&ev.type==="rescue"&&String(ev.questKey||"")===String(d.key)) delete st.map.events[k];
+      }
+    });
+  }catch(e){}
+  try{
+    LONGLINE_MONSTER_DEFS.forEach(d=>{
+      if(st.story.achievements[d.key]===undefined) st.story.achievements[d.key]=false;
+    });
+    HUMAN_LONGLINE_DEFS.forEach(d=>{
+      if(st.story.achievements[d.key]===undefined) st.story.achievements[d.key]=false;
+    });
+  }catch(e){}
+  if(st.story.stairDetectorCount===undefined) st.story.stairDetectorCount=0;
+  if(typeof st.story.stairDetectorCount!=="number") st.story.stairDetectorCount=Number(st.story.stairDetectorCount||0);
+  if(st.story.permMedal10Bonus===undefined) st.story.permMedal10Bonus=false;
+  if(st.story.monsterCharmGranted===undefined) st.story.monsterCharmGranted=false;
+  if(st.story.monsterCharmOwned===undefined) st.story.monsterCharmOwned=false;
+  if(st.story.monsterCharmActiveRemaining===undefined) st.story.monsterCharmActiveRemaining=0;
+  if(typeof st.story.monsterCharmActiveRemaining!=="number") st.story.monsterCharmActiveRemaining=Number(st.story.monsterCharmActiveRemaining||0);
+  if(st.story.prevFloorHadRescueMonsterDiscount===undefined) st.story.prevFloorHadRescueMonsterDiscount=false;
+  if(st.story._achievementSnap===undefined) st.story._achievementSnap=countAchievementTotal(st);
   if(!st.story.floorContext){
-    st.story.floorContext={rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0};
+    st.story.floorContext={rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0,monsterBattleCount:0};
   }else{
     if(st.story.floorContext.rescueEncountered===undefined) st.story.floorContext.rescueEncountered=0;
     if(st.story.floorContext.rescueRefused===undefined) st.story.floorContext.rescueRefused=0;
     if(st.story.floorContext.talkHelpAccepted===undefined) st.story.floorContext.talkHelpAccepted=0;
     if(st.story.floorContext.talkHelpDeclined===undefined) st.story.floorContext.talkHelpDeclined=0;
+    if(st.story.floorContext.monsterBattleCount===undefined) st.story.floorContext.monsterBattleCount=0;
   }
   if(st.story.bossNextFloor===undefined) st.story.bossNextFloor=false;
   if(st.story.bossNextDesc===undefined) st.story.bossNextDesc=false;
@@ -925,6 +2146,25 @@ function normalizeState(st){
   if(st.story.slimeRepayNextAt===undefined) st.story.slimeRepayNextAt=10;
   if(!st.story.pendingNotes) st.story.pendingNotes=[];
   if(!st.story.log) st.story.log=[];
+  // 旧档：已达成 5 个怪物侧成就但未写入护符标记时，静默补齐（避免反复弹窗）
+  try{
+    if(!st.story.monsterCharmGranted && countMonsterAchievements_(st)>=5){
+      st.story.monsterCharmGranted=true;
+      st.story.monsterCharmOwned=true;
+    }
+  }catch(e){}
+  try{
+    if(st.map&&st.story) purgeStage1LonglineMonsterTalks_(st);
+  }catch(e2){}
+  try{
+    if(st.map&&st.map.events&&st.story){
+      for(const k in st.map.events){
+        const ev=st.map.events[k];
+        if(ev&&ev.type==="chest"&&!ev.done) stripStaleChestQuestKey_(st,ev);
+        else if(ev&&ev.type==="rescue"&&!ev.done) stripStaleRescueQuestKey_(st,ev);
+      }
+    }
+  }catch(e3){}
   return st;
 }
 function pushStoryLog(s,msg){
@@ -967,9 +2207,46 @@ function tryUnlockEndings(s){
     enqueueStoryNote(s,"【终章结局】共灯之夜：你不是征服了地下城，而是让它重新学会温柔。积分 +40，生命 +1。",SYS_AVATARS[1]);
   }
 }
+function coreTaskKeyState_(st){
+  if(!st) return 0;
+  if(st.combatBlocked) return -1;
+  if(st.done) return 3;
+  return Number(st.stage||0);
+}
+function readCoreTaskSnap_(s){
+  const q=(s&&s.story&&s.story.quest)?s.story.quest:{};
+  return {
+    herb:coreTaskKeyState_(q.herb),
+    lamp:coreTaskKeyState_(q.lamp),
+    letter:coreTaskKeyState_(q.letter)
+  };
+}
+function notifyCoreTaskProgress_(s,before){
+  if(!s||!s.story||!s.story.quest||!before) return;
+  const q=s.story.quest;
+  const ids=["herb","lamp","letter"];
+  for(let i=0;i<ids.length;i++){
+    const id=ids[i];
+    const prev=before[id];
+    const cur=coreTaskKeyState_(q[id]);
+    if(cur===prev) continue;
+    const title=QUEST_DEFS[id].title;
+    if(prev===0 && cur===1){
+      sysTransient("新任务："+title+"（1/3）",SYS_AVATARS[1],2400);
+    }else if(prev===1 && cur===2){
+      sysTransient("任务进度："+title+" 已推进至 2/3",SYS_AVATARS[1],2200);
+    }else if(prev===2 && cur===3){
+      sysTransient("任务完成："+title,SYS_AVATARS[1],2400);
+    }else if(prev>=0 && prev<=2 && cur===-1){
+      sysTransient("任务中止："+title+"（你已选择战斗路线）",SYS_AVATARS[2],2400);
+    }
+  }
+}
 function tryAdvanceQuests(s,ctx){
   if(!s||!s.story) return;
+  const _coreSnapBefore=readCoreTaskSnap_(s);
   const q=s.story.quest;
+  const eq=String((ctx&&ctx.eventQuest)||"");
   function cancelQuest_(questObj, opts){
     questObj.combatBlocked=true;
     questObj.stage=0;
@@ -989,7 +2266,8 @@ function tryAdvanceQuests(s,ctx){
   }
   // 药草与幼崽：第1次和平=接任务(1/3)；第2次开宝箱拿药草(2/3)；第3次和平治好=奖励(结束)
   if(q.herb && !q.herb.done && !q.herb.combatBlocked){
-    if(q.herb.stage===0){
+    const hs=Number(q.herb.stage||0);
+    if(hs===0){
       if(ctx.type==="talk" && ctx.monsterId==="wolf"){
         if(ctx.outcome==="peace"){
           q.herb.stage=1;
@@ -999,11 +2277,10 @@ function tryAdvanceQuests(s,ctx){
           cancelQuest_(q.herb,{talkMonsterId:"wolf",chestQuestKey:"herb"});
         }
       }
-    }else if(q.herb.stage===1){
-      if(ctx.type==="chest_done" && ctx.eventQuest==="herb"){
+    }else if(hs===1){
+      if(ctx.type==="chest_done" && eq==="herb"){
         q.herb.stage=2;
         q.herb.hasHerb=true;
-        sysTransient("系统提醒：支线【药草与幼崽】已推进到 2/3（你已带上药草）。",SYS_AVATARS[1],1600);
         // 强制清掉旧阶段描述，避免“推进后仍遇到第一段台词”
         if(s.map && s.map.events){
           for(const k in s.map.events){
@@ -1013,9 +2290,10 @@ function tryAdvanceQuests(s,ctx){
         }
         pushStoryLog(s,"支线【药草与幼崽】推进：你找到了灰狼所需的药草，并把它带在身上。");
       }
-    }else if(q.herb.stage===2){
+    }else if(hs===2){
       if(ctx.type==="talk" && ctx.monsterId==="wolf" && ctx.outcome==="peace" && q.herb.hasHerb){
         q.herb.done=true;
+        if(unlockAchievementIfNot(s,"herb")) pushStoryLog(s,"成就解锁：【药草与幼崽】");
         s.reward+=QUEST_DEFS.herb.reward;
         pushStoryLog(s,"支线【药草与幼崽】完成：你用药草为幼崽疗愈，灰狼终于露出安心的眼神。积分 +"+QUEST_DEFS.herb.reward);
         // 清理本层未完成的同支线对话，避免结局后再次遇到同样描述
@@ -1037,7 +2315,8 @@ function tryAdvanceQuests(s,ctx){
 
   // 夜灯守望：第1次和平=接任务(1/3)；第2次开宝箱找到灯并点亮(2/3)；第3次和平=奖励(结束)
   if(q.lamp && !q.lamp.done && !q.lamp.combatBlocked){
-    if(q.lamp.stage===0){
+    const ls=Number(q.lamp.stage||0);
+    if(ls===0){
       if(ctx.type==="talk" && ctx.monsterId==="gargoyle"){
         if(ctx.outcome==="peace"){
           q.lamp.stage=1;
@@ -1048,12 +2327,11 @@ function tryAdvanceQuests(s,ctx){
           cancelQuest_(q.lamp,{talkMonsterId:"gargoyle",chestQuestKey:"lamp"});
         }
       }
-    }else if(q.lamp.stage===1){
-      if(ctx.type==="chest_done" && ctx.eventQuest==="lamp"){
+    }else if(ls===1){
+      if(ctx.type==="chest_done" && eq==="lamp"){
         q.lamp.stage=2;
         q.lamp.hasLamp=true;
         q.lamp.lit=true;
-        sysTransient("系统提醒：支线【夜灯守望】已推进到 2/3（灯已点亮）。",SYS_AVATARS[1],1600);
         if(s.map && s.map.events){
           for(const k in s.map.events){
             const ev=s.map.events[k];
@@ -1062,9 +2340,10 @@ function tryAdvanceQuests(s,ctx){
         }
         pushStoryLog(s,"支线【夜灯守望】推进：你真的找到了灯，并顺手把它点亮。");
       }
-    }else if(q.lamp.stage===2){
+    }else if(ls===2){
       if(ctx.type==="talk" && ctx.monsterId==="gargoyle" && ctx.outcome==="peace" && q.lamp.lit){
         q.lamp.done=true;
+        if(unlockAchievementIfNot(s,"lamp")) pushStoryLog(s,"成就解锁：【夜灯守望】");
         s.reward+=QUEST_DEFS.lamp.reward;
         s.eventBias.peace=(s.eventBias.peace||0)+1;
         pushStoryLog(s,"支线【夜灯守望】完成：回廊被温暖的光照亮。积分 +"+QUEST_DEFS.lamp.reward);
@@ -1086,7 +2365,8 @@ function tryAdvanceQuests(s,ctx){
 
   // 未寄出的信：第1次和平=接到信(1/3)；第2次救助交付(2/3)；第3次和平=奖励(结束)
   if(q.letter && !q.letter.done && !q.letter.combatBlocked){
-    if(q.letter.stage===0){
+    const ys=Number(q.letter.stage||0);
+    if(ys===0){
       if(ctx.type==="talk" && ctx.monsterId==="golem"){
         if(ctx.outcome==="peace"){
           q.letter.stage=1;
@@ -1096,11 +2376,10 @@ function tryAdvanceQuests(s,ctx){
           cancelQuest_(q.letter,{talkMonsterId:"golem",rescueQuestKey:"letter"});
         }
       }
-    }else if(q.letter.stage===1){
-      if(ctx.type==="rescue_done" && ctx.eventQuest==="letter"){
+    }else if(ys===1){
+      if(ctx.type==="rescue_done" && eq==="letter"){
         q.letter.stage=2;
         q.letter.delivered=true;
-        sysTransient("系统提醒：支线【未寄出的信】已推进到 2/3（你已交付信件）。",SYS_AVATARS[1],1600);
         if(s.map && s.map.events){
           for(const k in s.map.events){
             const ev=s.map.events[k];
@@ -1109,9 +2388,10 @@ function tryAdvanceQuests(s,ctx){
         }
         pushStoryLog(s,"支线【未寄出的信】推进：你把信交出去了。收信人的目光终于有了方向。");
       }
-    }else if(q.letter.stage===2){
+    }else if(ys===2){
       if(ctx.type==="talk" && ctx.monsterId==="golem" && ctx.outcome==="peace" && q.letter.delivered){
         q.letter.done=true;
+        if(unlockAchievementIfNot(s,"letter")) pushStoryLog(s,"成就解锁：【未寄出的信】");
         s.reward+=QUEST_DEFS.letter.reward;
         pushStoryLog(s,"支线【未寄出的信】完成：魔像终于把信抱在胸前不再颤抖。积分 +"+QUEST_DEFS.letter.reward);
         if(s.map && s.map.events){
@@ -1129,6 +2409,9 @@ function tryAdvanceQuests(s,ctx){
       }
     }
   }
+  notifyCoreTaskProgress_(s,_coreSnapBefore);
+  tryAdvanceLongQuestsMonster_(s,ctx);
+  tryAdvanceLongQuestsHuman_(s,ctx);
   tryUnlockEndings(s);
   // 如果当前支线已经进入“需要玩家继续应对”的阶段，则在当前楼层补齐对应格子
   if(ctx && ctx.type && ctx.type!=="descend") ensureQuestFollowupEvents_(s);
@@ -1140,20 +2423,107 @@ function storyAlignmentText(s){
   if(v-k>=3) return "裂锋之影（强硬）";
   return "暮色平衡（中立）";
 }
-function questSummaryText(s){
-  if(!s||!s.story||!s.story.quest) return "-";
+/** 进行中三阶段任务数量（用于 HUD 提示，不在面板展开清单） */
+function countActiveThreeStageTasks_(s){
+  if(!s||!s.story||!s.story.quest) return 0;
+  let n=0;
   const q=s.story.quest;
-  const parts=[];
-  for(const id of ["herb","lamp","letter"]){
-    const st=q[id]||{stage:0,done:false};
-    if(st.done) parts.push(QUEST_DEFS[id].title+"·已完成");
-    else if(st.stage>0) parts.push(QUEST_DEFS[id].title+"·进行中("+st.stage+"/3)");
+  ["herb","lamp","letter"].forEach(id=>{
+    const st=q[id]||{};
+    if(!st.done && !st.combatBlocked && Number(st.stage||0)>0) n++;
+  });
+  try{
+    const lq=s.story.longQuests||{};
+    LONGLINE_MONSTER_DEFS.forEach(def=>{
+      const st=lq[def.key];
+      if(st && !st.done && !st.combatBlocked && Number(st.stage||0)>0) n++;
+    });
+    HUMAN_LONGLINE_DEFS.forEach(def=>{
+      const st=lq[def.key];
+      if(st && !st.done && !st.combatBlocked && Number(st.stage||0)>0) n++;
+    });
+  }catch(e){}
+  return n;
+}
+function taskLineFromState_(title,st){
+  if(!st) return title+"：未开放";
+  if(st.done) return title+"：已完成（成就可查看）";
+  if(st.combatBlocked) return title+"：已中止（曾选择战斗路线）";
+  if(!st.stage) return title+"：未接取";
+  return title+"：进行中（"+st.stage+"/3）";
+}
+function appendTaskBlock_(container, className, text, hintKey){
+  const s=G.state;
+  const line=document.createElement("div");
+  line.className=className;
+  line.textContent=text;
+  container.appendChild(line);
+  if(hintKey && s){
+    const h=questStage2HintForAchKey_(s,hintKey);
+    if(h){
+      const hd=document.createElement("div");
+      hd.className="achHint";
+      hd.textContent=h;
+      container.appendChild(hd);
+    }
   }
-  return parts.length?parts.join("；"):"暂无长线进行中";
+}
+function openTasksPage(){
+  const overlay=document.getElementById("tasksOverlay");
+  if(!overlay) return;
+  const tx=document.getElementById("tasksText");
+  if(!tx) return;
+  const s=G.state;
+  tx.innerHTML="";
+  if(!s||!s.story||!s.story.quest){ tx.textContent="无状态"; show("tasksOverlay",true); overlay.setAttribute("aria-hidden","false"); return; }
+  const q=s.story.quest;
+  const intro=document.createElement("div");
+  intro.className="taskIntro";
+  intro.textContent="以下为任务（主线·三阶段）。蓝色为怪物/经典三线，粉色为人类际遇线。";
+  tx.appendChild(intro);
+
+  const labM=document.createElement("div");
+  labM.className="taskSectionLabel taskSectionMonster";
+  labM.textContent="【怪物与经典主线】";
+  tx.appendChild(labM);
+  ["herb","lamp","letter"].forEach(id=>{
+    const st=q[id]||{stage:0,done:false};
+    appendTaskBlock_(tx,"taskLineMonster",taskLineFromState_(QUEST_DEFS[id].title,st),id);
+  });
+  try{
+    const lq=s.story.longQuests||{};
+    LONGLINE_MONSTER_DEFS.forEach(def=>{
+      const st=lq[def.key];
+      if(!st) return;
+      appendTaskBlock_(tx,"taskLineMonster",taskLineFromState_(def.title,st),def.key);
+    });
+  }catch(e){}
+
+  const labH=document.createElement("div");
+  labH.className="taskSectionLabel taskSectionHuman";
+  labH.textContent="【人类际遇线】";
+  tx.appendChild(labH);
+  try{
+    const lq=s.story.longQuests||{};
+    HUMAN_LONGLINE_DEFS.forEach(def=>{
+      const st=lq[def.key];
+      if(!st) return;
+      appendTaskBlock_(tx,"taskLineHuman",taskLineFromState_(def.title,st),def.key);
+    });
+  }catch(e){}
+
+  show("tasksOverlay",true);
+  overlay.setAttribute("aria-hidden","false");
+}
+function closeTasks(){
+  show("tasksOverlay",false);
+  const overlay=document.getElementById("tasksOverlay");
+  if(overlay) overlay.setAttribute("aria-hidden","true");
 }
 
 function ensureQuestFollowupEvents_(s){
   if(!s||!s.map||!s.map.events||!s.story||!s.story.quest) return;
+  purgeStage1LonglineMonsterTalks_(s);
   const q=s.story.quest;
 
   // 使用当前楼层的基础掉落，保证数值一致
@@ -1162,6 +2532,10 @@ function ensureQuestFollowupEvents_(s){
   const baseTalkReward=talkRewardByFloor(s.floor);
 
   function ensureOne(type, questKey, storyForQuest){
+    const totalRescueKeyCountKey="all";
+    const cnt=Number((s.story&&s.story.rescueHelpCounts&&s.story.rescueHelpCounts[totalRescueKeyCountKey])||0);
+    // 特别感谢：下一次救助将满 10/20/30… 次时标记（与 rescueKeyNextAt 存盘无关，避免错位）
+    const gratitude=rescueGratitudeNext_(cnt);
     // 1) 已存在且未完成的专属事件
     for(const k in s.map.events){
       const ev=s.map.events[k];
@@ -1172,7 +2546,11 @@ function ensureQuestFollowupEvents_(s){
       const ev=s.map.events[k];
       if(ev && !ev.done && ev.type===type && (!ev.questKey || ev.questKey==="")){
         ev.questKey=questKey;
-        if(type==="rescue") ev.story=storyForQuest||makeStoryRescueByQuest_(questKey);
+        if(type==="rescue"){
+          ev.story=gratitude?makeStoryRescueGratitudeByKind_("generic"):(storyForQuest||makeStoryRescueByQuest_(questKey));
+          ev.rescueKindKey=totalRescueKeyCountKey;
+          ev.gratitude=gratitude;
+        }
         return;
       }
     }
@@ -1188,14 +2566,23 @@ function ensureQuestFollowupEvents_(s){
       if(type==="chest"){
         s.map.events[kk]={type:"chest",need:rInt(10,24),reward:baseChestReward,questKey:questKey,done:false};
       }else if(type==="rescue"){
-        s.map.events[kk]={type:"rescue",need:rInt(10,22),story:storyForQuest||makeStoryRescueByQuest_(questKey),reward:baseRescueReward,questKey:questKey,done:false};
+        s.map.events[kk]={
+          type:"rescue",
+          need:rInt(10,22),
+          story:gratitude?makeStoryRescueGratitudeByKind_("generic"):(storyForQuest||makeStoryRescueByQuest_(questKey)),
+          reward:baseRescueReward,
+          questKey:questKey,
+          done:false,
+          rescueKindKey:totalRescueKeyCountKey,
+          gratitude:gratitude
+        };
       }
       return;
     }
   }
 
   // 只对“需要下一步应对”的进行强制补齐
-  if(q.letter && q.letter.stage===1 && !q.letter.done && !q.letter.combatBlocked){
+  if(q.letter && Number(q.letter.stage||0)===1 && !q.letter.done && !q.letter.combatBlocked){
     ensureOne("rescue","letter",makeStoryRescueByQuest_("letter"));
     // 严谨连贯：stage=1 阶段不再允许出现“旧信/魔像沟通”类怪物对话
     for(const k in s.map.events){
@@ -1203,7 +2590,7 @@ function ensureQuestFollowupEvents_(s){
       if(ev && !ev.done && ev.type==="talk_monster" && ev.monsterId==="golem") delete s.map.events[k];
     }
   }
-  if(q.herb && q.herb.stage===1 && !q.herb.done && !q.herb.combatBlocked){
+  if(q.herb && Number(q.herb.stage||0)===1 && !q.herb.done && !q.herb.combatBlocked){
     ensureOne("chest","herb",null);
     // 严谨连贯：stage=1 阶段不再允许出现“继续找药草”的灰狼对话
     for(const k in s.map.events){
@@ -1211,7 +2598,7 @@ function ensureQuestFollowupEvents_(s){
       if(ev && !ev.done && ev.type==="talk_monster" && ev.monsterId==="wolf") delete s.map.events[k];
     }
   }
-  if(q.lamp && q.lamp.stage===1 && !q.lamp.done && !q.lamp.combatBlocked){
+  if(q.lamp && Number(q.lamp.stage||0)===1 && !q.lamp.done && !q.lamp.combatBlocked){
     ensureOne("chest","lamp",null);
     // 严谨连贯：stage=1 阶段不再允许出现“继续点灯”的石像鬼对话
     for(const k in s.map.events){
@@ -1220,11 +2607,68 @@ function ensureQuestFollowupEvents_(s){
     }
   }
 
+  try{
+    if(s.story.longQuests){
+      LONGLINE_MONSTER_DEFS.forEach(def=>{
+        const qq=s.story.longQuests[def.key];
+        if(qq && qq.done){
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(ev && !ev.done && ev.type==="talk_monster" && ev.monsterId===def.monsterId) delete s.map.events[k];
+          }
+        }
+      });
+      HUMAN_LONGLINE_DEFS.forEach(def=>{
+        const qq=s.story.longQuests[def.key];
+        if(qq && qq.done){
+          for(const k in s.map.events){
+            const ev=s.map.events[k];
+            if(!ev||ev.done) continue;
+            if((ev.type==="rescue"||ev.type==="chest")&&(ev.questKey||"")===def.key) delete s.map.events[k];
+          }
+        }
+      });
+    }
+  }catch(e){}
+
+  if(s.story.longQuests){
+    LONGLINE_MONSTER_DEFS.forEach(def=>{
+      const qq=s.story.longQuests[def.key];
+      if(!qq||qq.done||qq.combatBlocked) return;
+      const qs=Number(qq.stage||0);
+      if(qs===1){
+        if(def.step2==="chest") ensureOne("chest",def.key,null);
+        else ensureOne("rescue",def.key,makeStoryRescueByQuest_(def.key));
+        for(const k in s.map.events){
+          const ev=s.map.events[k];
+          if(ev && !ev.done && ev.type==="talk_monster" && ev.monsterId===def.monsterId) delete s.map.events[k];
+        }
+      }
+    });
+    HUMAN_LONGLINE_DEFS.forEach(def=>{
+      const qq=s.story.longQuests[def.key];
+      if(!qq||qq.done||qq.combatBlocked) return;
+      if(s.floor<def.floorMin||s.floor>def.floorMax) return;
+      const qs=Number(qq.stage||0);
+      if(qs===0) ensureOne("rescue",def.key,makeStoryRescueByQuest_(def.key));
+      if(qs===1) ensureOne("chest",def.key,null);
+      if(qs===2) ensureOne("rescue",def.key,makeStoryRescueByQuest_(def.key));
+    });
+  }
+
   // stage=2：第三次遇到对应怪物并在“和平”结算奖励
   const desiredTalkIds=[];
-  if(q.herb && q.herb.stage===2 && !q.herb.done && !q.herb.combatBlocked) desiredTalkIds.push("wolf");
-  if(q.lamp && q.lamp.stage===2 && !q.lamp.done && !q.lamp.combatBlocked) desiredTalkIds.push("gargoyle");
-  if(q.letter && q.letter.stage===2 && !q.letter.done && !q.letter.combatBlocked) desiredTalkIds.push("golem");
+  if(q.herb && Number(q.herb.stage||0)===2 && !q.herb.done && !q.herb.combatBlocked) desiredTalkIds.push("wolf");
+  if(q.lamp && Number(q.lamp.stage||0)===2 && !q.lamp.done && !q.lamp.combatBlocked) desiredTalkIds.push("gargoyle");
+  if(q.letter && Number(q.letter.stage||0)===2 && !q.letter.done && !q.letter.combatBlocked) desiredTalkIds.push("golem");
+  try{
+    if(s.story.longQuests){
+      LONGLINE_MONSTER_DEFS.forEach(def=>{
+        const qq=s.story.longQuests[def.key];
+        if(qq && Number(qq.stage||0)===2 && !qq.done && !qq.combatBlocked) desiredTalkIds.push(def.monsterId);
+      });
+    }
+  }catch(e){}
 
   if(desiredTalkIds.length>0){
     // 为了“严谨连贯”，在当前楼层只保留需要的那类怪物对话事件
@@ -1253,6 +2697,7 @@ function ensureQuestFollowupEvents_(s){
         if(monsterId==="wolf") questKey="herb";
         else if(monsterId==="gargoyle") questKey="lamp";
         else if(monsterId==="golem") questKey="letter";
+        else if(LONGLINE_MONSTER_MAP[monsterId]) questKey=monsterId;
         const st=makeStageTalkStoryByQuest_(monsterId,questKey);
         s.map.events[kk]={
           type:"talk_monster",
@@ -1272,11 +2717,47 @@ function ensureQuestFollowupEvents_(s){
       ensureTalkMonster(id);
     }
   }
+
+  // 长线支线完成后：不再允许出现该怪物的“求助/对话”版本
+  try{
+    for(const k in s.map.events){
+      const ev=s.map.events[k];
+      if(!ev || ev.done || ev.type!=="talk_monster") continue;
+      if(q.herb && q.herb.done && ev.monsterId==="wolf") delete s.map.events[k];
+      if(q.lamp && q.lamp.done && ev.monsterId==="gargoyle") delete s.map.events[k];
+      if(q.letter && q.letter.done && ev.monsterId==="golem") delete s.map.events[k];
+      try{
+        LONGLINE_MONSTER_DEFS.forEach(def=>{
+          if(s.story.longQuests && s.story.longQuests[def.key] && s.story.longQuests[def.key].done && ev.monsterId===def.monsterId) delete s.map.events[k];
+        });
+      }catch(e2){}
+    }
+  }catch(e){}
+  // 人类长线完成后：清掉地图上仍残留的同 questKey 救助/宝箱（避免完成後又遇到）
+  try{
+    if(s.story.longQuests){
+      HUMAN_LONGLINE_DEFS.forEach(def=>{
+        const qq=s.story.longQuests[def.key];
+        if(!qq||!qq.done) return;
+        for(const k in s.map.events){
+          const ev=s.map.events[k];
+          if(!ev||ev.done) continue;
+          if((ev.type==="rescue"||ev.type==="chest")&&(ev.questKey||"")===def.key) delete s.map.events[k];
+        }
+      });
+    }
+  }catch(e3){}
+  purgeStage1LonglineMonsterTalks_(s);
 }
 
 function renderMap(){
   const s=G.state;if(!s) return;
   const m=s.map, tb=document.getElementById("mapTable");
+  try{
+    if(m && m.stairsRevealed && m.stairs){
+      m.revealed[key(m.stairs.x,m.stairs.y)]=1;
+    }
+  }catch(e){}
   // 地图背景保持“每 5 层一换”，让第 6 层开始能明显看到主题变化
   try{
     const box=document.querySelector(".mapbox");
@@ -1342,18 +2823,27 @@ function renderHUD(){
   document.getElementById("pReward").textContent=String(s.reward);
   const lb=s.lootBag||{jiecao:0,yumao:0,bqMedal30:0,zmMedal30:0};
   const pLoot=document.getElementById("pLoot");
-  const feather30=Math.floor((Number(lb.yumao)||0)/3);
-  if(pLoot) pLoot.textContent=
-    "30节操X"+(lb.jiecao||0)+
-    " 30羽毛X"+feather30+
-    " 本期勋章30天X"+(lb.bqMedal30||0)+
-    " 字母勋章30天X"+(lb.zmMedal30||0)+
-    " 永久本期勋章X"+(s.story&&s.story.permCurMedal||0)+
-    " 永久往期兑换机会X"+(s.story&&s.story.permPastExchange||0);
+  const keys=Number(s.story&&s.story.rescueKeyCount||0);
+  // 面板只保留“背包入口+钥匙数量”，详细内容在背包弹窗中查看
+  if(pLoot) pLoot.textContent="战利品（背包）：钥匙X"+keys;
+  const bagBtn=document.getElementById("bagBtn");
+  if(bagBtn) bagBtn.textContent=keys>0 ? ("背包（钥匙X"+keys+"）") : "背包";
+
+  const ach=s.story&&s.story.achievements?s.story.achievements:{};
+  const achBtn=document.getElementById("achBtn");
+  if(achBtn){
+    achBtn.disabled=false;
+    achBtn.textContent="成就";
+  }
   document.getElementById("pR").textContent=String(s.stockReply||0);
   document.getElementById("pQ").textContent=String(s.stockQuote||0);
   document.getElementById("pAlign").textContent=storyAlignmentText(s);
-  document.getElementById("pQuest").textContent=questSummaryText(s);
+  const nTask=countActiveThreeStageTasks_(s);
+  const pQuestEl=document.getElementById("pQuest");
+  if(pQuestEl){
+    if(nTask>0) pQuestEl.textContent="有 "+nTask+" 项进行中任务，请点击「任务」查看详情。";
+    else pQuestEl.textContent="暂无进行中任务（完整清单请点「任务」）。";
+  }
   const p=s.pending;
   show("eventActs",!!p);
   const eventActs=document.getElementById("eventActs");
@@ -1366,8 +2856,11 @@ function renderHUD(){
     if(!document.getElementById("sysMsg").textContent) sys("地下城安静下来。你可以继续探索。",SYS_AVATARS[0]);
     return;
   }
+  if(p.type==="rescue") stripStaleRescueQuestKey_(s,p);
   if(p.type==="chest"){
-    document.getElementById("eventTxt").textContent="宝箱上锁，需要点数 "+p.need+"（回复1点/被引用5点）。开锁后获得积分与战利品。";
+    const keys=Number(s.story&&s.story.rescueKeyCount||0);
+    const keyHint=keys>0?" 你也可以使用钥匙直接打开（不消耗回复/被引用）。":"";
+    document.getElementById("eventTxt").textContent=chestEventPanelText_(s,p,keyHint);
     document.getElementById("eventBtn").textContent="尝试开锁";
     document.getElementById("eventBtn").classList.add("hidden");
     if(btnWrap){
@@ -1378,6 +2871,13 @@ function renderHUD(){
       b1.textContent="打开宝箱";
       b1.onclick=()=>{ G.chestPick=null; resolveEvent(); };
       btnWrap.appendChild(b1);
+      if(keys>0){
+        const bKey=document.createElement("button");
+        bKey.className="good";
+        bKey.textContent="使用钥匙打开宝箱";
+        bKey.onclick=()=>{ G.chestPick="key"; resolveEvent(); };
+        btnWrap.appendChild(bKey);
+      }
       const b2=document.createElement("button");
       b2.className="warn";
       b2.textContent="不开宝箱(下次再开)";
@@ -1398,7 +2898,11 @@ function renderHUD(){
       btnWrap.appendChild(b);
     }
   }else if(p.type==="rescue"){
-    document.getElementById("eventTxt").textContent="拯救任务： "+p.story+"（需求点数 "+p.need+"）";
+    let title=p.gratitude?"拯救任务（特别感谢）：":"拯救任务：";
+    try{
+      if(!p.gratitude && p.questKey && (LONGLINE_MONSTER_MAP[p.questKey] || HUMAN_LONGLINE_MAP[p.questKey])) title="际遇：";
+    }catch(e){}
+    document.getElementById("eventTxt").textContent=title+" "+p.story+"（需求点数 "+p.need+"）"+" 提示：在「新增回复/被引用」填数字后点「完成救助」会加入待用并结算；待用不足时可点「不救助」，或点数不足时系统会允许你先离开格子。";
     document.getElementById("eventBtn").textContent="完成救助";
     document.getElementById("eventBtn").classList.add("hidden");
     // 救助可选择拒绝：拒绝不消耗点数，但提升战斗遭遇，并阻断该救助链
@@ -1431,13 +2935,13 @@ function renderHUD(){
       // stage=2 时的“和平”按钮需要替换为更明确的“交付/治疗/点亮/递信”文本
       if(i===0 && s && s.story && s.story.quest){
         const q=s.story.quest;
-        if(p.monsterId==="wolf" && q.herb && q.herb.stage===2 && !q.herb.done && q.herb.hasHerb){
+        if(p.monsterId==="wolf" && q.herb && Number(q.herb.stage||0)===2 && !q.herb.done && q.herb.hasHerb){
           opt="给灰狼药草（治疗幼崽）";
         }
-        if(p.monsterId==="gargoyle" && q.lamp && q.lamp.stage===2 && !q.lamp.done && q.lamp.lit){
+        if(p.monsterId==="gargoyle" && q.lamp && Number(q.lamp.stage||0)===2 && !q.lamp.done && q.lamp.lit){
           opt="真的把灯点亮了（继续回廊）";
         }
-        if(p.monsterId==="golem" && q.letter && q.letter.stage===2 && !q.letter.done && q.letter.delivered){
+        if(p.monsterId==="golem" && q.letter && Number(q.letter.stage||0)===2 && !q.letter.done && q.letter.delivered){
           opt="把信送到收信人面前";
         }
       }
@@ -1488,12 +2992,14 @@ async function startNew(){
   if(!gasUrl()) return setNotice("未提供 record=GAS_URL，无法开始。");
   const ok=!G.state || confirm("开始新冒险将覆盖当前云端续档，是否继续？");
   if(!ok) return;
-  setBusy(true,"系统正在读取中，请静候…");
+  setBusy(true,"正在创建游戏…");
   try{
     G.state=newState(G.uid);
     await saveStateCloud("start_new");
     show("menuCard",false); show("recordCard",false); show("gameCard",true);
     sys("你踏入地下城。黑暗里，也许藏着等待被帮助的故事。",SYS_AVATARS[1]);
+    purgeStage1LonglineMonsterTalks_(G.state);
+    ensureQuestFollowupEvents_(G.state);
     renderMap(); renderHUD();
   }catch(e){
     setNotice("云端写入失败：无法开始新冒险。");
@@ -1506,13 +3012,16 @@ async function resumeRun(){
   if(!gasUrl()) return setNotice("未提供 record=GAS_URL，无法继续。");
   // 如果进入过云端确认且 state 已在内存中，无需再等一次拉取
   if(G.state){
+    setBusy(true,"正在读取中…");
+    await new Promise(r=>setTimeout(r,400));
+    setBusy(false);
     show("menuCard",false); show("recordCard",false); show("gameCard",true);
     setNotice("云端进度已就绪，可继续冒险。");
     sys("已就绪：继续你的地下城旅程。",SYS_AVATARS[0]);
     renderMap(); renderHUD();
     return;
   }
-  setBusy(true,"系统正在读取中，请静候…");
+  setBusy(true,"正在读取中…");
   try{
     const res=await apiJsonp("load_state",{user_id:G.uid});
     if(!res.data || !res.data.state){
@@ -1531,7 +3040,15 @@ async function resumeRun(){
 
 function touchTileEvent(){
   const s=G.state,m=s.map,k=key(s.player.x,s.player.y),ev=m.events[k];
-  if(ev && !ev.done){ s.pending=ev; s.lastEventKey=k; }
+  if(ev && !ev.done){
+    if(ev.type==="chest"){
+      stripStaleChestQuestKey_(s,ev);
+      maybeAutoBindChestQuestKey_(s,ev);
+    }else if(ev.type==="rescue"){
+      stripStaleRescueQuestKey_(s,ev);
+    }
+    s.pending=ev; s.lastEventKey=k;
+  }
 }
 
 async function move(dx,dy){
@@ -1542,7 +3059,10 @@ async function move(dx,dy){
     try{
       const lastKey= s.lastEventKey || key(s.player.x,s.player.y);
       const ev= (s.map && s.map.events && lastKey) ? s.map.events[lastKey] : null;
-      if(s.pending.done || !ev || !!ev.done){
+      // 仅当“pending 对应到同一类事件格”且该格已 done 时，才允许自动清空
+      // 否则会误把“由 talk_monster 进入战斗 pending（monster）”清掉，从而闪掉战斗环节
+      const sameType = !!(ev && ev.type===s.pending.type);
+      if(s.pending.done || (sameType && !!ev.done)){
         s.pending=null;
         s.lastEventKey="";
         renderHUD();
@@ -1573,6 +3093,23 @@ async function move(dx,dy){
     const el=document.getElementById("sysMsg");
     if(el) el.textContent="";
   }catch(e){}
+  if(maybeAutoMonsterCharmBypass_(s)){
+    if(!G.offlineMode){
+      if(G.moveSaveTimer){ try{ clearTimeout(G.moveSaveTimer); }catch(e){} }
+      G.moveSaveTimer=setTimeout(()=>{
+        if(G.offlineMode||G.busy||G.actionBusy||!G.state) return;
+        const nowTs=Date.now();
+        if(nowTs - G.lastMoveSaveAt < 900) return;
+        G.lastMoveSaveAt=nowTs;
+        if(G.moveSaving) return;
+        G.moveSaving=true;
+        saveStateCloud("move_auto", false)
+          .catch(()=>sysTransient("云端保存失败：本次移动可能未被确认。",SYS_AVATARS[2],1800))
+          .finally(()=>{G.moveSaving=false;});
+      }, 1200);
+    }
+    return;
+  }
   renderMap(); renderHUD();
 
   // 走到楼梯格：询问是否下楼
@@ -1614,14 +3151,17 @@ async function resolveEvent(){
 
   G.actionBusy=true;
   try{
-    // 记录本层遇到/选择（用于判断是否“全部救助+怪物帮忙都拒绝”触发强敌）
-    if(p.type==="rescue"){
-      if(!s.story.floorContext) s.story.floorContext={rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0};
-      s.story.floorContext.rescueEncountered=(Number(s.story.floorContext.rescueEncountered||0)+1);
+    if(p.type==="chest"){
+      stripStaleChestQuestKey_(s,p);
+      maybeAutoBindChestQuestKey_(s,p);
+    }else if(p.type==="rescue"){
+      stripStaleRescueQuestKey_(s,p);
     }
     // 救助可拒绝：拒绝后不消耗点数，并提高“战斗怪物”遭遇，且不再刷同类型救助链
     if(p.type==="rescue" && G.rescuePick==="refuse"){
       G.rescuePick=null;
+      if(!s.story.floorContext) s.story.floorContext={rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0};
+      s.story.floorContext.rescueEncountered=(Number(s.story.floorContext.rescueEncountered||0)+1);
       if(s.story && s.story.floorContext) s.story.floorContext.rescueRefused=(Number(s.story.floorContext.rescueRefused||0)+1);
       // 清空输入，避免玩家误把点数加进待用
       const addREl=document.getElementById("addR"); if(addREl) addREl.value="0";
@@ -1643,6 +3183,9 @@ async function resolveEvent(){
         const q=s.story.quest.letter;
         q.stage=0; q.done=false; q.combatBlocked=true;
         q.hasLetter=false; q.delivered=false;
+      }
+      if(p.questKey && /^human_t\d+$/.test(String(p.questKey||""))){
+        cancelHumanLongQuest_(s,p.questKey);
       }
 
       // 提高战斗倾向：减少救助、增加“必须战斗”的怪物遭遇
@@ -1683,7 +3226,8 @@ async function resolveEvent(){
         renderMap(); renderHUD();
         return;
       }
-      const success=Math.random()<0.45; // 仅用于逃跑结果，不向玩家显示概率
+      const charmOk=!!(s.story&&s.story.monsterCharmOwned);
+      const success=charmOk?true:(Math.random()<0.45); // 护符：非BOSS 逃跑必成
       if(success){
         p.done=true; p.resolvedKind="escape"; s.pending=null;
         sysTransient("你成功逃离了这场遭遇。",SYS_AVATARS[1],1600);
@@ -1705,8 +3249,12 @@ async function resolveEvent(){
 
     const addR=Math.max(0,parseInt(document.getElementById("addR").value||"0",10));
     const addQ=Math.max(0,parseInt(document.getElementById("addQ").value||"0",10));
-    s.stockReply=(s.stockReply||0)+addR;
-    s.stockQuote=(s.stockQuote||0)+addQ;
+    // 钥匙打开宝箱：不消耗点数，也不把玩家输入计入待用
+    const usingChestKey=(p.type==="chest" && G.chestPick==="key");
+    if(!usingChestKey){
+      s.stockReply=(s.stockReply||0)+addR;
+      s.stockQuote=(s.stockQuote||0)+addQ;
+    }
     document.getElementById("addR").value="0";
     document.getElementById("addQ").value="0";
 
@@ -1714,7 +3262,45 @@ async function resolveEvent(){
     let shouldSave=true;
 
     if(p.type==="chest"){
-      if(pts<p.need) { renderHUD(); return sys("点数不足，宝箱未开。可继续积累回复/被引用。",SYS_AVATARS[2]); }
+      // 钥匙打开宝箱：绕过点数消耗与扣除逻辑
+      if(G.chestPick==="key"){
+        const keys=Number(s.story&&s.story.rescueKeyCount||0);
+        if(keys<=0){
+          G.chestPick=null;
+          s.pending=null;
+          renderHUD();
+          return sys("你没有钥匙，无法直接打开宝箱。已离开事件格，可移动后再来。",SYS_AVATARS[2]);
+        }
+        G.chestPick=null;
+        p.done=true; s.pending=null;
+        s.reward+=(p.reward||1);
+        s.story.chestOpen=(s.story.chestOpen||0)+1;
+        s.story.rescueKeyCount=keys-1;
+        tryAdvanceQuests(s,{type:"chest_done",eventQuest:p.questKey||""});
+        const loot=grantDungeonLootInstances_(s,1);
+        let keyNarr="";
+        if(p.questKey && LONGLINE_MONSTER_MAP[p.questKey]) keyNarr=" "+(LONGLINE_MONSTER_MAP[p.questKey].storyMidChest||"");
+        else if(p.questKey && HUMAN_LONGLINE_MAP[p.questKey]) keyNarr=" "+(HUMAN_LONGLINE_MAP[p.questKey].storyMidChest||"");
+        sys(
+          "宝箱开启（钥匙）！积分 +" + (p.reward||1) +
+          "，战利品：随机获得 " + lootKindLabelDungeon_(loot.primaryKind) + "。" +
+          (keyNarr?keyNarr:"") +
+          "扣除待用：回复 0；被引用 0。",
+          SYS_AVATARS[1]
+        );
+        renderMap(); renderHUD();
+        const chestTaleK=buildChestLineQuestStory_(p.questKey);
+        if(chestTaleK){
+          await showChapterCard("支线宝箱 · "+achievementTitle_(p.questKey), chestTaleK);
+        }
+      }else{
+      if(pts<p.need) {
+        G.chestPick=null;
+        s.pending=null;
+        sys("点数不足，宝箱未开。已先离开事件格；凑够待用后可再踩上来开启，或下次选「不开宝箱」离开。",SYS_AVATARS[1]);
+        renderMap(); renderHUD();
+        return;
+      }
       const before=consumePts(s,p.need);
       const usedR=before.usedR||0;
       const usedQ=before.usedQ||0;
@@ -1728,6 +3314,12 @@ async function resolveEvent(){
         questNarr="你找到灰狼所需的药草，并把它带在身上。";
       }else if(p.questKey==="lamp"){
         questNarr="你真的找到了灯，并顺手把它点亮了。";
+      }else if(p.questKey && LONGLINE_MONSTER_MAP[p.questKey]){
+        const d=LONGLINE_MONSTER_MAP[p.questKey];
+        questNarr=d.storyMidChest||"";
+      }else if(p.questKey && HUMAN_LONGLINE_MAP[p.questKey]){
+        const d=HUMAN_LONGLINE_MAP[p.questKey];
+        questNarr=d.storyMidChest||"";
       }
       sys(
         "宝箱开启！积分 +" + (p.reward||1) +
@@ -1737,8 +3329,24 @@ async function resolveEvent(){
         SYS_AVATARS[1]
       );
       renderMap(); renderHUD();
+      const chestTaleP=buildChestLineQuestStory_(p.questKey);
+      if(chestTaleP){
+        await showChapterCard("支线宝箱 · "+achievementTitle_(p.questKey), chestTaleP);
+      }
+      }
     }else if(p.type==="rescue"){
-      if(pts<p.need) { renderHUD(); return sys("救助点数不足（需要 "+p.need+"）。",SYS_AVATARS[2]); }
+      if(pts<p.need) {
+        G.rescuePick=null;
+        s.pending=null;
+        sys(
+          "救助点数不足（需要 "+p.need+"）。已先离开该事件格，你可移动探索；请先在「新增回复/被引用」输入数字加入「待用」后再来踩格，或点「不救助」放弃该次际遇。",
+          SYS_AVATARS[1]
+        );
+        renderMap(); renderHUD();
+        return;
+      }
+      if(!s.story.floorContext) s.story.floorContext={rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0};
+      s.story.floorContext.rescueEncountered=(Number(s.story.floorContext.rescueEncountered||0)+1);
       const before=consumePts(s,p.need);
       const usedR=before.usedR||0;
       const usedQ=before.usedQ||0;
@@ -1747,15 +3355,38 @@ async function resolveEvent(){
       s.story.kindness=(s.story.kindness||0)+1;
       s.story.rescueDone=(s.story.rescueDone||0)+1;
       tryAdvanceQuests(s,{type:"rescue_done",eventQuest:p.questKey||""});
+      if(p.questKey) purgeUnfinishedRescuesByQuestKey_(s,p.questKey);
+      // 特别感谢：不限定同类型/同个人/是否连续，只看“累计完成救助次数”
+      // 每累计到第 10/20/30... 次救助，会得到一把钥匙，并显示特别感谢剧情/系统提醒
+      const totalRescueKeyCountKey="all";
+      if(!s.story.rescueHelpCounts) s.story.rescueHelpCounts={};
+      s.story.rescueHelpCounts[totalRescueKeyCountKey]=Number(s.story.rescueHelpCounts[totalRescueKeyCountKey]||0)+1;
+      const afterRescueCnt=Number(s.story.rescueHelpCounts[totalRescueKeyCountKey]||0);
+      const prevCnt=afterRescueCnt-1;
+      // 按里程碑 10/20/30… 次发放钥匙，不依赖存盘的 rescueKeyNextAt（避免错位导致“特别感谢却不加钥匙”）
+      const keysAdded=Math.floor(afterRescueCnt/10)-Math.floor(prevCnt/10);
+      if(keysAdded>0){
+        s.story.rescueKeyCount=Number(s.story.rescueKeyCount||0)+keysAdded;
+      }
+      s.story.rescueKeyNextAt=nextKeyThresholdAfterCount(afterRescueCnt);
+      if(keysAdded>0){
+        p.gratitude=true;
+        showAcquireNotify_("获得道具",[
+          "钥匙 +"+keysAdded,
+          "背包累计：钥匙 ×"+s.story.rescueKeyCount
+        ]);
+      }
       const nLoot=Math.min(3, Math.max(1, Math.floor((p.reward||0)/25)+1));
       grantDungeonLootInstances_(s,nLoot);
       let questNarr="";
       if(p.questKey==="letter"){
         questNarr="你把信交给了收信人。那道心结终于松动。";
       }
+      const keyNarr=keysAdded>0?" 并获得钥匙：可直接打开宝箱（详见背包）。":"";
       sys(
         "你成功救助了对方，收获了真诚感谢。积分 +"+p.reward+"，生命 +1。战利品已自动计入面板。" +
         (questNarr?(" " + questNarr):"") +
+        keyNarr +
         "扣除待用：回复 " + usedR + "；被引用 " + usedQ + "。",
         SYS_AVATARS[1]
       );
@@ -1788,6 +3419,10 @@ async function resolveEvent(){
         shouldSave=false; // 战斗未结束：减少云端写入频率
       }else{
         p.done=true; s.pending=null;
+        // 实际“对战胜利”+1，用于下一层 BOSS 概率加成
+        if(s.story && s.story.floorContext){
+          s.story.floorContext.monsterBattleCount=Number(s.story.floorContext.monsterBattleCount||0)+1;
+        }
         s.reward+=p.reward;
         const nLoot=Math.min(4, Math.max(1, Math.floor((p.reward||0)/60)+1));
         grantDungeonLootInstances_(s,nLoot);
@@ -1872,6 +3507,17 @@ async function resolveEvent(){
           s.story.helpKilledMonsters=s.story.helpKilledMonsters||{};
           s.story.helpKilledMonsters[p.monsterId]=true;
         }
+        // 立刻从当前楼层移除同怪物的未完成 talk_monster，避免你“打走一次后仍再次遇到同样史莱姆/星砂”
+        try{
+          if(s.map && s.map.events){
+            for(const k in s.map.events){
+              const ev=s.map.events[k];
+              if(ev && !ev.done && ev.type==="talk_monster" && ev.monsterId===p.monsterId){
+                delete s.map.events[k];
+              }
+            }
+          }
+        }catch(e){}
         tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"conflict"});
         grantDungeonLootInstances_(s,2);
         sys(
@@ -1890,6 +3536,17 @@ async function resolveEvent(){
           s.story.helpKilledMonsters=s.story.helpKilledMonsters||{};
           s.story.helpKilledMonsters[p.monsterId]=true;
         }
+        // 立刻从当前楼层移除同怪物的未完成 talk_monster（你已经选择开战/战斗，将其视为“打走”）
+        try{
+          if(s.map && s.map.events){
+            for(const k in s.map.events){
+              const ev=s.map.events[k];
+              if(ev && !ev.done && ev.type==="talk_monster" && ev.monsterId===p.monsterId){
+                delete s.map.events[k];
+              }
+            }
+          }
+        }catch(e){}
         tryAdvanceQuests(s,{type:"talk",monsterId:p.monsterId||"",outcome:"combat"});
         sys("沟通破裂，怪物情绪失控，进入战斗。接下来几层战斗风险上升。",SYS_AVATARS[2]);
         shouldSave=false; // 战斗未结束：减少云端写入
@@ -1909,6 +3566,11 @@ async function resolveEvent(){
       }
     }
 
+    renderMap(); renderHUD();
+  }catch(e){
+    // 兜底：避免事件分支报错导致 UI/状态残留卡死
+    console.error("resolveEvent error:", e);
+    sys("事件处理出错，请稍后再试。",SYS_AVATARS[2]);
     renderMap(); renderHUD();
   }finally{
     G.actionBusy=false;
@@ -1976,12 +3638,23 @@ async function goDown(){
   try{
     // 根据“上一层是否全部救助/怪物帮忙都拒绝”来决定下一层是否出现 BOSS 并更换下楼提示文案
     let bossThisNext=false;
+    let prevHadRescueForMonsterDiscount=false;
     try{
       const fc=s.story && s.story.floorContext ? s.story.floorContext : null;
+      prevHadRescueForMonsterDiscount=!!(fc && Number(fc.rescueEncountered||0)>0);
       const rescueOk=fc && fc.rescueEncountered>0 && fc.rescueRefused===fc.rescueEncountered;
       const talkTotal=(fc ? Number(fc.talkHelpAccepted||0)+Number(fc.talkHelpDeclined||0) : 0);
       const talkOk=fc && talkTotal>0 && Number(fc.talkHelpAccepted||0)===0 && Number(fc.talkHelpDeclined||0)===talkTotal;
       bossThisNext=!!(rescueOk && talkOk);
+
+      // 额外：按“对战胜利次数”提高下一层遭遇 BOSS 概率
+      // 对战10次：有机会；对战20次：更容易；依此类推（概率不向玩家展示）
+      const battleCnt = fc ? Number(fc.monsterBattleCount||0) : 0;
+      if(!bossThisNext && battleCnt>=10){
+        const k=Math.floor(battleCnt/10); // 1=10次,2=20次...
+        const chance=Math.min(0.12*k, 0.85);
+        if(Math.random()<chance) bossThisNext=true;
+      }
       if(s.story){
         s.story.bossNextFloor=bossThisNext;
         s.story.bossNextDesc=bossThisNext;
@@ -1990,25 +3663,29 @@ async function goDown(){
 
     // 重置下一层的“本层统计”（从新楼层开始重新统计）
     if(s.story){
-      s.story.floorContext={rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0};
+      s.story.floorContext={rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0,monsterBattleCount:0};
     }
 
     s.floor+=1;
+    let showFloor10MedalAcquire=false;
+    if(s.story){
+      s.story.prevFloorHadRescueMonsterDiscount=prevHadRescueForMonsterDiscount;
+    }
     // 永久本期勋章 / 永久往期兑换机会触发（通关到指定楼层时弹出）
     if(s.story){
-      if(s.floor===20 && !s.story.permCurMedalGiven){
+      if(s.floor===10 && !s.story.permCurMedalGiven){
         s.story.permCurMedalGiven=true;
         s.story.permCurMedal=Number(s.story.permCurMedal||0)+1;
-        sysTransient("通关第 20 层：获得永久本期勋章！",SYS_AVATARS[1],2600);
-        pushStoryLog(s,"永久奖章已解锁：永久本期勋章（第20层）。积分不受影响。");
+        showFloor10MedalAcquire=true;
+        pushStoryLog(s,"永久奖章已解锁：永久本期勋章（第10层）。积分不受影响。");
       }
-      const floors=[40,60,80,100,120];
+      const floors=[20,40,60,80,100,120];
       if(floors.includes(s.floor)){
         const fk=String(s.floor);
         if(!s.story.permPastExchangeGivenFloors[fk]){
           s.story.permPastExchangeGivenFloors[fk]=true;
           s.story.permPastExchange=Number(s.story.permPastExchange||0)+1;
-          sysTransient("通关第 "+s.floor+" 层：获得永久往期勋章兑换机会 +1！",SYS_AVATARS[1],2600);
+          sysTransient("抵达第 "+s.floor+" 层：永久往期勋章兑换机会 +1！",SYS_AVATARS[1],2600);
           pushStoryLog(s,"永久奖章已解锁：永久往期勋章兑换机会（第"+s.floor+"层）+1。");
         }
       }
@@ -2037,6 +3714,14 @@ async function goDown(){
         sys("章节推进完成："+chapter.title+"。",SYS_AVATARS[1]);
       }
     }
+    if(showFloor10MedalAcquire && s.story){
+      const tot=Number(s.story.permCurMedal||0);
+      showAcquireNotify_("获得道具",[
+        "永久本期勋章 ×1",
+        "背包累计：永久本期勋章 ×"+tot,
+        "第 10 层章节剧情后发放。"
+      ]);
+    }
     // 倾向逐层衰减，避免永久锁定某一类事件
     s.eventBias.peace=Math.max(0,(s.eventBias.peace||0)-1);
     s.eventBias.conflict=Math.max(0,(s.eventBias.conflict||0)-1);
@@ -2044,6 +3729,7 @@ async function goDown(){
     tryAdvanceQuests(s,{type:"descend"});
     const hasNote=popStoryNote(s);
     const m=buildFloor(s.floor); s.map=m; s.player={x:m.start.x,y:m.start.y}; s.pending=null; s.lastEventKey="";
+    purgeStage1LonglineMonsterTalks_(s);
     s.hp=Math.min(s.maxHp,s.hp+1);
     try{ await saveStateCloud("next_floor"); }catch(e){ return sys("云端写入失败，无法下楼确认。",SYS_AVATARS[2]); }
     if(!(s.floor%10===0 && s.chapterSeen[String(s.floor)])){
