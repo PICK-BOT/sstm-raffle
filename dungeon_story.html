@@ -95,7 +95,20 @@
     .hpInner{height:100%;background:linear-gradient(90deg,#2ed573,#ff6b6b);width:100%;border-radius:8px;transition:width .22s}
     .hpNum{font-size:12px;color:#e9e9ff;margin-top:6px;text-align:center}
     #belowInteract{grid-column:2;display:flex;flex-direction:column;gap:10px}
-  </style>
+  
+/* ===== FORUM FETCH ===== */
+.fff-modal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.85);align-items:center;justify-content:center}
+.fff-box{background:#1a1a2e;border:1px solid #555;border-radius:12px;padding:24px;width:90%;max-width:380px;text-align:center;font-family:inherit}
+.fff-box h3{color:#FFD93D;margin:0 0 16px;font-size:1.05rem}
+.fff-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.fff-row label{min-width:72px;font-size:.85rem;color:rgba(255,255,255,.8);text-align:left;flex-shrink:0}
+.fff-inp{flex:1;padding:8px 10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);border-radius:6px;color:#fff;font-size:.9rem;outline:none;font-family:inherit}
+.fff-inp:focus{border-color:#FFD93D}
+.fff-btn-ok{padding:8px 18px;background:#4a9;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:.9rem;font-family:inherit}
+.fff-btn-cancel{padding:8px 14px;background:rgba(255,255,255,.1);color:#ccc;border:1px solid rgba(255,255,255,.3);border-radius:6px;cursor:pointer;font-size:.85rem;font-family:inherit}
+.fff-spinner{width:34px;height:34px;border:3px solid rgba(255,255,255,.15);border-top-color:#4a9;border-radius:50%;animation:fffSpin .8s linear infinite}
+@keyframes fffSpin{to{transform:rotate(360deg)}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -113,6 +126,7 @@
     <div class="row"><strong id="hello"></strong></div>
     <div class="row"><span id="menuNotice" style="color:#ffd66e"></span></div>
     <div class="row">
+      <button onclick="fffOpenModal(false)" style="background:#3a7;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-family:inherit;font-size:.9rem">📡 论坛读取</button>
       <button id="btnStart" class="primary" onclick="startNew()">开始新冒险</button>
       <button id="btnResume" class="good" onclick="resumeRun()">继续冒险</button>
       <button onclick="setOfflineMode(true)">离线游玩</button>
@@ -151,6 +165,7 @@
                    <div id="pLootRow" class="s" style="display:none"><div class="k">战利品</div><div id="pLoot" class="v"></div></div>
 
        <div id="offlineWarn" style="font-size:13px;color:#ffd66e;margin-top:6px;min-height:18px"></div>
+       <div id="saveModeBar" style="font-size:12px;color:#b7bee8;margin-top:6px;min-height:18px;white-space:pre-wrap"></div>
           <!-- 事件面板（在系统提醒下方） -->
         <div id="belowInteract" style="display:flex;flex-direction:column;gap:10px;min-width:600px">
           <div id="eventActs" class="acts hidden">
@@ -172,6 +187,7 @@
           <div class="menuStack" id="topMenuStack">
             <div class="menuRow">
               <button class="warn" onclick="settle('撤退结算')">撤退结算</button>
+              <button onclick="fffOpenModal(true)" style="background:#3a7;color:#fff;border:none;border-radius:4px;padding:5px 10px;cursor:pointer;font-family:inherit;font-size:.85rem">📡 论坛更新</button>
               <button onclick="backMenu()">主菜单</button>
               <button onclick="changeIdMidGame()">更改ID</button>
               <button onclick="setOfflineMode(true)">离线游玩</button>
@@ -209,11 +225,15 @@
       <button onclick="backMenu()">回主菜单</button>
       <button class="primary" onclick="loadRecords(1)">刷新</button>
     </div>
+    <div id="recordMeta" style="font-size:12px;color:#b7bee8;line-height:1.6;white-space:pre-wrap;margin-top:4px"></div>
     <div id="recordLog" class="log"></div>
     <div class="row">
       <button onclick="prevPage()">上一页</button>
       <span id="pageTxt">第 1 页</span>
       <button onclick="nextPage()">下一页</button>
+    </div>
+    <div class="row" style="justify-content:flex-end;margin-top:10px;margin-bottom:0">
+      <button class="primary" onclick="backMenu()">返回主画面</button>
     </div>
   </div>
 
@@ -287,7 +307,7 @@
 </div>
 
 <script>
-const VER="v1.4.12-dungeon-story";
+const VER="v1.4.14-dungeon-story";
 const SYS_AVATARS=[
   "https://s.sstmlt.com/img/2026/03/19/1-108359ab38de728aad.png",
   "https://s.sstmlt.com/img/2026/03/19/1-11c14bafe31ee6ee1c.png",
@@ -417,6 +437,78 @@ const HUMAN_MID_CHEST_TEMPLATES=[
   "锁开了。{name}的指尖在发抖：那不是宝物，是它终于愿意交出去的怯懦与希望。",
   "你取出那物时，{name}轻轻吐出一口气：从这一刻起，它才算真正开始面对自己的难题。"
 ];
+/* --- 1. 长线成就任务扩展 (追加 10怪物 + 30人类) --- */
+const EXTRA_LL_MONSTER_NAMES=[
+  ["深渊断角兽","无名骸骨龙","裂谷泣血蝶","吞噬影之狼","残翼大天使"],
+  ["锈迹古铁卫","空壳祭坛灵","盲目美杜莎","诅咒千手妖","沉沦末日僧"]
+];
+const EXTRA_HUMAN_TITLES=[
+  "断剑的逃兵","盲眼的画师","无名的守墓人","寻找家园的枯骨","破碎的木偶师",
+  "执灯的亡魂","等待回信的遗孀","铸造空壳的铁匠","贩卖余温的商人","采集泪水的少女",
+  "背负整座城的苦修者","遗忘战歌的鼓手","缝补影子的裁缝","挖掘星骸的矿工","凋零的吟游诗人",
+  "守着空巢的灰发人","被箭镞贯穿的信使","寻找心跳的构装体","祈求风停的航海家","亲吻墓碑的刺客",
+  "放逐荒野的先知","凋谢在王座的骑士","书写无字史书的学者","熄灭圣火的祭司","寻找倒影的流浪儿",
+  "背叛黎明的逆行者","缝合记忆的医者","守望枯井的农夫","丢失名字的罪人","把余生交给荒野的旅伴"
+];
+/* --- 2. 章节即时救助扩展 (每个章节 10人类 + 10怪物) --- */
+const CHAPTER_EXTRA_RESCUES={
+  10:{
+    monsters:[
+      "焦黑的幼犬正试图唤醒已经冰冷的母兽。","余烬元素在风中散开，它想在熄灭前再看一眼火光。","残破的石像鬼拒绝挪位，它脚下护着一只雏鸟。",
+      "自燃的爬行者在沙地上写下求救的符号。","灰烬蝴蝶绕着枯萎的花扇动焦灼的翅膀。","受伤的熔岩爬虫正把体内的热量分给冻僵的昆虫。",
+      "断裂的骨刺兽在墙角低吼，它在祈求一个痛快。","迷途的火灵守着一盏快要干涸的灯油。","受惊的烟雾怪把自己缩进石缝，不敢看任何光芒。",
+      "被箭贯穿的影豹守着通往废墟的入口，眼神悲凉。"
+    ],
+    humans:[
+      "年幼的学徒抱着断掉的法杖在灰堆里哭泣。","年迈的斥候正用最后的力气擦拭战友的铭牌。","拾荒者在碎石下发现了一张被烧毁的全家福。",
+      "沉默的信使握紧那封永远寄不出的染血遗书。","受伤的矿工指着深处：『救救里面的同伴，别管我。』","盲目的乞讨者在余烬里寻找神像的碎片。",
+      "发疯的工匠正试图用灰烬修补破损的城墙。","流浪的乐师对着焦黑的树木弹奏断掉弦的竖琴。","失去记忆的卫兵守着空无一物的仓库。",
+      "年轻的母亲在浓烟中寻找孩子留下的木马。"
+    ]
+  },
+  20:{
+    monsters:[
+      "搁浅的海妖在沙滩上唱着诅咒自己的挽歌。","锈蚀的船首像灵体在寻找它早已沉没的战舰。","星砂蟹把晶体堆成坟冢，祭奠逝去的族群。",
+      "幻影水母在干涸的海槽里透出微弱的求救光芒。","断裂的锚点怪把自己锁在岸边，怕被巨浪卷走。","盐化的触手兽在礁石间挣扎，它快被风化了。",
+      "失落的灯笼鱼怪守着空掉的渡口，等候永不归航的船。","满身藤壶的巨龟在沙滩上刻下古老的悼词。","受惊的潮汐灵把自己藏进破碎的贝壳里。",
+      "被遗弃的港口守卫灵在雾中寻找早已腐烂的航海志。"
+    ],
+    humans:[
+      "老船长坐在断船头上，望着没有海的海平线。","走私者紧紧抱着一箱毫无价值的湿透旧衣物。","寻找父亲的女孩在沙堆里翻找一枚褪色的珍珠。",
+      "失去双腿的水手正用双手爬向那个无法触及的灯塔。","祭司在祭坛前哭泣，因为星辰不再给予任何回应。","落水的商人试图用金币换取一口干净的淡水。",
+      "满头白发的领航员在破碎的罗盘前迷失了方向。","守港的老人正把最后一点面包喂给海鸟。","被浪冲上岸的逃难者握着湿透的家书。",
+      "潜水员在寻找那枚沉入深渊却代表承诺的戒指。"
+    ]
+  },
+  30:{
+    monsters:[
+      "枯萎的花妖用根须护住最后一滴清净的井水。","月影狐的尾巴被荆棘缠住，它却不肯挣扎怕毁了花瓣。","守井的灵体正逐渐透明，它快被世人遗忘了。",
+      "断翅的月光蛾在腐烂的叶片上写下凋零的诗句。","古老的树精因为缺水而裂开，伤口里长满悲伤的苔藓。","迷失的藤蔓怪试图修补破碎的凉亭。",
+      "受伤的蜂群首领在花庭中心跳起最后的死亡之舞。","被石化的夜莺灵体仍保持着歌唱的姿态。","残破的园丁魔像机械地重复着除草的动作。",
+      "月井里的倒影怪在哭泣，因为它再也照不出美好。"
+    ],
+    humans:[
+      "采药人在断崖边望着够不到的救命草药。","守陵人正细心地把断掉的石碑重新对齐。","诗人把写满爱意的诗稿撒入枯干的井底。",
+      "寻找奇迹的朝圣者倒在最后级台阶前。","丢失了童年的老人坐在秋千上自言自语。","园艺师在照顾那株永远不会再开花的枯木。",
+      "祭祀月亮的少女在黑暗中寻找失落的火种。","流亡的贵族在废墟中试图找回家族的徽章。","受伤的刺客在花丛中抹去自己留下的血迹。",
+      "寻找归宿的流浪汉在破损的喷泉边沉沉睡去。"
+    ]
+  },
+  40:{
+    monsters:[
+      "冻僵的枭兽把羽毛拔下，覆盖在濒死的幼兽身上。","冰墓守卫在寒风中颤抖，它守着的墓穴空无一人。","雪原狼的利爪被冻在冰面上，它发出了哀鸣。",
+      "霜晶怪正在融化，因为它试图靠近那盆微弱的火迹。","断裂的十字架灵体在雪中寻找它曾护佑的信徒。","受惊的白鹿闯进了空荡荡的忏悔室。",
+      "寒风灵在风中哭号，它找不到可以依靠的山谷。","被冰封的石像鬼眼角流下了一滴红色的冰泪。","残破的圣钟灵体发出沙哑的低鸣，像是在求饶。",
+      "霜羽乌鸦在祭坛上衔着一串断掉的念珠。"
+    ],
+    humans:[
+      "冻伤的修女在破窗前缝补那面残破的旗帜。","寻找温暖的乞丐在冰冷的圣像下蜷缩成一团。","执着的骑士在雪中拄着剑，守护着空无一人的小镇。",
+      "失去亲人的孤儿在教堂墙壁上画着太阳。","年迈的牧师在没有光的礼拜堂里大声诵读经文。","寻找解药的冒险者在冰层下看着被冻住的手术刀。",
+      "逃避追杀的难民在告解室里不敢发出一丝声音。","垂死的老兵在雪地里试图点燃最后一根烟草。","失去双眼的琴师在寒风中摸索着风琴的键盘。",
+      "把唯一的毛毯让给同伴的少年在角落里发抖。"
+    ]
+  }
+};
 function buildLonglineRegistry(){
   const tierNames=[
     ["腐苔蛞蝓","洞窟蛛卫","锈铁傀儡","地脉地鼠","荧孢蛾"],
@@ -475,6 +567,73 @@ function buildLonglineRegistry(){
       storyMidChest:fillStoryName_(HUMAN_MID_CHEST_TEMPLATES[ti%HUMAN_MID_CHEST_TEMPLATES.length],hn),
       rescueStage2:"再次相见时，"+hn+"把一份谢礼郑重递到你面前。对方说，这不是报酬，而是终于能说出口的那句谢谢。",
       achievementText:HUMAN_ACHIEVEMENT_TEXT[ti]
+    });
+  }
+  // 追加成就怪物 (10种，Tier 10-11)
+  for(let ti=10;ti<12;ti++){
+    for(let mi=0;mi<5;mi++){
+      const name=EXTRA_LL_MONSTER_NAMES[ti-10][mi];
+      const id="ll_ext_m"+ti+"_"+mi;
+      monsters.push({
+        key:id,
+        monsterId:id,
+        title:name+"的绝响",
+        tier:ti,
+        floorMin:ti*5+1,
+        floorMax:ti*5+5,
+        reward:40+mi,
+        step2:"rescue",
+        talkStage0:"深渊中，"+name+"拦住了去路，它的双眼已被黑暗侵蚀，却执着地伸出前肢。你怎么回应？",
+        storyMidRescue:name+"将一枚沾满血迹的信物交出，它终于能放下那段沉重的宿命。",
+        storyMidChest:name+"在你面前低下头，把最后一段执念托付给你。",
+        storyFinalTalk:name+"消失在暗影中，留下的谢礼带着铁锈的味道。你怎么回应？",
+        achievementText:name+"的故事在回廊里回荡，你是那个让它灵魂安息的见证者。",
+        opts:["献上祈祷","默哀离开","彻底终结"],
+        outcomes:["peace","conflict","combat"]
+      });
+    }
+  }
+  // 追加成就人类 (30种)
+  for(let i=0;i<30;i++){
+    const id="human_ext_"+i;
+    const hn=EXTRA_HUMAN_TITLES[i];
+    const titleEnds=["的归途","的余响","的回声","的断章","的祈愿","的余影","的未寄","的旧誓"];
+    const titleEnd=titleEnds[i%titleEnds.length]||"的归途";
+    const stage0Variants=[
+      "你在残垣断壁中遇到了"+hn+"。对方的眼神像还在找路，却仍把求助递到你面前：愿意接手这份托付吗？",
+      "废墟的风穿过裂墙时，你看见"+hn+"。对方低声说出请求，语气既急又克制：你愿意先听，再决定帮不帮吗？",
+      "昏暗巷口的阴影里藏着"+hn+"。对方似乎早就知道你会出现：『别停下，把最后一步走完。』你会答应吗？"
+    ];
+    const stage2Variants=[
+      "再次相见时，"+hn+"没有立刻开口，只把一个包裹推到你手心：『谢谢……你找回了最后的东西。』",
+      "当重逢的灯火终于落定，"+hn+"对你点了点头。对方递出包裹，声音压得很低却清晰：『请把它带回该回的地方。』",
+      "你完成了关键一步后，"+hn+"的呼吸像是终于顺过来。对方把托付交到你手里：『别问那么多，继续走就好。』"
+    ];
+    const chestVariants=[
+      hn+"在看到你取出的旧物时，眼神先是躲闪，随即对焦。对方低低喘息，像是把压在胸口的东西终于吐出来。",
+      "当你把那件旧物递到"+hn+"面前时，对方的指尖轻轻颤了颤。『就是它……』像是无声的确认。",
+      "旧物被你取出后，"+hn+"的沉默开始松动。对方缓慢地闭上眼，仿佛把一段痛苦的枷锁放下。"
+    ];
+    const achVariants=[
+      "你替「"+hn+"」把那份最后的托付交还。故事在终点合上，余光也变得温柔。",
+      "「"+hn+"」的执念终于落地。你让对方的回声穿过黑暗，抵达该抵达的地方。",
+      "你替「"+hn+"」完成了最后一页。回廊的灯火因此不再摇晃。"
+    ];
+    const stage0=stage0Variants[i%stage0Variants.length]||stage0Variants[0];
+    const stage2=stage2Variants[i%stage2Variants.length]||stage2Variants[0];
+    const storyMidChest=chestVariants[i%chestVariants.length]||chestVariants[0];
+    const achievementText=achVariants[i%achVariants.length]||achVariants[0];
+    humans.push({
+      key:id,
+      title:hn+titleEnd,
+      tier:Math.floor(i/3),
+      floorMin:i+1,
+      floorMax:i+15,
+      reward:25+i,
+      rescueStage0:stage0,
+      storyMidChest:storyMidChest,
+      rescueStage2:stage2,
+      achievementText:achievementText
     });
   }
   return {monsters,humans};
@@ -693,6 +852,19 @@ function rescueGratitudeNext_(completedSoFar){
   const c=Number(completedSoFar)||0;
   return (c+1)%10===0;
 }
+/** 救助格「特别感谢」与当前累计是否匹配；不匹配则降级为普通救助文本 */
+function normalizeRescueGratitudeFlag_(s,ev){
+  if(!s||!ev||ev.type!=="rescue"||ev.done) return;
+  if(!ev.gratitude) return;
+  const cnt=Number((s.story&&s.story.rescueHelpCounts&&s.story.rescueHelpCounts.all)||0);
+  if(rescueGratitudeNext_(cnt)) return;
+  ev.gratitude=false;
+  try{
+    ev.story=makeStoryRescueByQuest_(String(ev.questKey||""));
+  }catch(e){
+    try{ ev.story=makeStoryRescue(); }catch(e2){}
+  }
+}
 /** 当前存档下，救助格上的 questKey 是否仍对应「需要完成的一次救助」 */
 function rescueQuestKeyStillValid_(s,qk){
   if(!s||!s.story) return false;
@@ -763,6 +935,17 @@ function unlockAchievementIfNot(s,key){
       "永久本期勋章 +1",
       "背包累计：永久本期勋章 ×"+tot,
       "十种成就达成纪念。"
+    ]);
+  }
+  // 隐形手链：累计成就完成达到 30 项后获得一次性跳过关卡BOSS道具
+  if(now>=30 && !s.story.ghostBraceletGranted){
+    s.story.ghostBraceletGranted=true;
+    s.story.ghostBraceletCount=Number(s.story.ghostBraceletCount||0)+1;
+    const cnt=s.story.ghostBraceletCount;
+    showAcquireNotify_("获得道具",[
+      "隐形手链 ×1",
+      "效果：关卡BOSS出现时可跳过一次（用完即消失）。",
+      "背包累计：隐形手链 ×"+cnt
     ]);
   }
   s.story._achievementSnap=now;
@@ -969,13 +1152,16 @@ const G={
   recordBase:[],
   moveSaving:false,
   actionBusy:false,
+  // 默认关闭“随时云端存档”，手动开启才会在移动/触发事件时自动写云端
+  instantSaveMode:false,
   offlineMode:false,
   moveSaveTimer:null,
   lastMoveSaveAt:0,
   talkPick:null,
   rescuePick:null,
   monsterPick:null,
-  chestPick:null
+  chestPick:null,
+  bossGatePick:null
 };
 
 let _sysToken=0;
@@ -1102,7 +1288,17 @@ function now(){ const d=new Date(); return {date:d.toLocaleDateString("zh-TW"),t
 function rInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
 function key(x,y){ return x+","+y; }
 function sys(msg,avatar){ document.getElementById("sysAvatar").src=avatar||SYS_AVATARS[0]; document.getElementById("sysMsg").textContent=msg||""; }
-function show(id,v){ document.getElementById(id).classList.toggle("hidden",!v); }
+function show(id,v){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.classList.toggle("hidden",!v);
+  // 防止被其它逻辑写过 style.display 后无法恢复显示
+  if(v){
+    el.style.display="";
+  }else{
+    el.style.display="none";
+  }
+}
 function setNotice(msg){ document.getElementById("menuNotice").textContent=msg||""; }
 
 function setBusy(v,text){
@@ -1118,21 +1314,43 @@ function setBusy(v,text){
 function updateOfflineWarn(){
   const el=document.getElementById("offlineWarn");
   if(!el) return;
-  if(G.offlineMode){
-    el.textContent="离线游玩中：同层移动不自动云端存档。需要时请点“保存进度(云端)”写入进度。";
+  if(G.instantSaveMode){
+    el.textContent="随时存档已开启：每次遭遇事件会自动写入云端，可能带来卡顿。";
   }else{
-    el.textContent="";
+    el.textContent="默认模式：不做随时云端存档（更流畅）。需要时可手动点“保存进度(云端)”。";
   }
+  try{
+    const btns=document.querySelectorAll('button[onclick*="setOfflineMode(true)"]');
+    btns.forEach(b=>{ b.textContent=G.instantSaveMode?"关闭随时存档":"开启随时存档"; });
+  }catch(e){}
+}
+
+function updateSaveModeBar(){
+  const el=document.getElementById("saveModeBar");
+  if(!el) return;
+  const on=!!G.instantSaveMode;
+  el.textContent="随时存档："+
+    (on?"开启（可能更卡顿）":"关闭（更流畅）");
+  el.style.color=on?"#ffd66e":"#b7bee8";
 }
 
 function setOfflineMode(v){
-  G.offlineMode=!!v;
-  updateOfflineWarn();
-  if(G.offlineMode){
-    sysTransient("离线游玩已启用：同层移动不会频繁写云端。需要时请点击“保存进度(云端)”。",SYS_AVATARS[2],2000);
+  const toEnable=!G.instantSaveMode;
+  if(toEnable){
+    const ok=confirm("开启随时云端存档？\n说明：每次遭遇事件会自动写入云端，可能稍有卡顿。");
+    if(!ok) return;
+    G.instantSaveMode=true;
   }else{
-    sysTransient("已恢复在线模式：同层移动会自动节流云端存档。",SYS_AVATARS[2],1600);
+    G.instantSaveMode=false;
   }
+  G.offlineMode=!G.instantSaveMode;
+  updateOfflineWarn();
+  if(G.instantSaveMode){
+    sysTransient("已开启随时存档：遭遇事件将自动写入云端（可能轻微卡顿）。",SYS_AVATARS[2],2200);
+  }else{
+    sysTransient("已关闭随时存档：恢复更流畅模式。",SYS_AVATARS[2],1600);
+  }
+  updateSaveModeBar();
 }
 
 async function manualSaveToCloud(){
@@ -1217,6 +1435,7 @@ function renderBagText_(){
   const permPast=Number(s.story&&s.story.permPastExchange||0);
   const stair=Number(s.story&&s.story.stairDetectorCount||0);
   const charm=!!(s.story&&s.story.monsterCharmOwned);
+  const bracelet=Number(s.story&&s.story.ghostBraceletCount||0);
   const storyItems=renderStoryQuestItemsLines_(s);
   const storyBlock=storyItems.length
     ? ["","支线任务道具","----------------"].concat(storyItems)
@@ -1233,12 +1452,16 @@ function renderBagText_(){
     "",
     "钥匙：X"+keys+"（可直接打开宝箱）",
     "楼梯探测器：X"+stair+"（使用后显示本层楼梯格）",
-    charm?"怪物护符：×1（非BOSS「逃跑」必成功）；主动避战剩余："+(Number(s.story.monsterCharmActiveRemaining)||0)+" 次（背包按钮可重设）":""
+    charm?"怪物护符：×1（非BOSS「逃跑」必成功）；主动避战剩余："+(Number(s.story.monsterCharmActiveRemaining)||0)+" 次（背包按钮可重设）":"", 
+    bracelet>0?"隐形手链：×"+bracelet+"（关卡BOSS可跳过一次，使用后消失）":""
   ].filter(Boolean).concat(storyBlock).join("\n");
 }
 function useStairDetector(){
   const s=G.state; if(!s||!s.map) return;
   if(G.busy||G.actionBusy) return;
+  if(s.map.stairsRevealed){
+    return sysTransient("本层下楼格已标注，无需再次使用楼梯探测器。",SYS_AVATARS[1],2200);
+  }
   if((s.story.stairDetectorCount||0)<=0) return sys("你没有楼梯探测器。",SYS_AVATARS[2]);
   s.story.stairDetectorCount=Number(s.story.stairDetectorCount||0)-1;
   s.map.stairsRevealed=true;
@@ -1249,7 +1472,7 @@ function useStairDetector(){
   const txt=document.getElementById("bagText");
   if(txt) txt.textContent=renderBagText_();
   const b=document.getElementById("useStairBtn");
-  if(b) b.disabled=(s.story.stairDetectorCount||0)<=0;
+  if(b) b.disabled=(s.story.stairDetectorCount||0)<=0 || !!s.map.stairsRevealed;
 }
 /** 背包：启用怪物护符主动效果——接下来若干次「普通战斗怪」踏格即自动脱身（不耗点数、不计对战胜利） */
 function useMonsterCharmActive(){
@@ -1275,7 +1498,7 @@ function maybeAutoMonsterCharmBypass_(s){
   p.done=true; p.resolvedKind="escape"; s.pending=null;
   sysTransient("怪物护符（主动）：已避开此次战斗（剩余 "+s.story.monsterCharmActiveRemaining+" 次）。",SYS_AVATARS[1],2400);
   renderMap(); renderHUD();
-  if(!G.offlineMode){
+  if(G.instantSaveMode){
     saveStateCloud("charm_bypass",false).catch(()=>{});
   }
   try{ popStoryNote(s); }catch(e){}
@@ -1288,7 +1511,9 @@ function openBag(){
   const txt=document.getElementById("bagText");
   if(txt) txt.textContent=renderBagText_();
   const b=document.getElementById("useStairBtn");
-  if(b && G.state && G.state.story) b.disabled=(G.state.story.stairDetectorCount||0)<=0;
+  if(b && G.state && G.state.story){
+    b.disabled=(G.state.story.stairDetectorCount||0)<=0 || !!(G.state.map && G.state.map.stairsRevealed);
+  }
   const c=document.getElementById("useCharmBtn");
   if(c && G.state && G.state.story){
     c.style.display=G.state.story.monsterCharmOwned?"inline-block":"none";
@@ -1333,7 +1558,8 @@ function openAchievementsPage(){
     });
     list.innerHTML="";
     const s=G.state;
-    if(t) t.textContent="成就（共 "+items.length+" 项）";
+    const doneCount=items.reduce((acc,it)=>acc+(ach&&ach[it.k]?1:0),0);
+    if(t) t.textContent="成就（共 "+doneCount+"/"+items.length+" 项）";
     items.forEach(it=>{
       const row=document.createElement("div");
       row.className="achRow "+(it.kind==="human"?"achItemHuman":"achItemMonster");
@@ -1437,14 +1663,66 @@ async function cloudConfirmAndLoad(){
   setNotice("云端读取中… 请等待读取结束后再点「开始新冒险」或「继续冒险」，以免进度未就绪。");
   setBusy(true,"正在读取中…");
   try{
-    const res=await apiJsonp("load_state",{user_id:G.uid});
+    const uid0=String(G.uid||"").trim();
+    if(!uid0){
+      G.state=null;
+      setNotice("读取完毕：ID 为空。");
+      return;
+    }
+
+    const res=await apiJsonp("load_state",{user_id:uid0});
     if(res.data && res.data.state){
       G.state=normalizeState(res.data.state);
       setNotice("读取完毕：检测到可继续进度。请点「继续冒险」或「开始新冒险」（新开局将覆盖云端存档）。");
-    }else{
-      G.state=null;
-      setNotice("读取完毕：暂无存档。请点「开始新冒险」。");
+      return;
     }
+
+    // 英文名仅大小写不同：尝试用大小写别名匹配已有存档
+    if(/^[A-Za-z]+$/.test(uid0)){
+      const upper=uid0.toUpperCase();
+      const lower=uid0.toLowerCase();
+      const candidates=[];
+      if(upper && upper!==uid0) candidates.push(upper);
+      if(lower && lower!==uid0 && lower!==upper) candidates.push(lower);
+
+      for(let i=0;i<candidates.length;i++){
+        const cand=candidates[i];
+        if(!cand) continue;
+        const r2=await apiJsonp("load_state",{user_id:cand});
+        if(r2 && r2.data && r2.data.state){
+          let hasRecord=false;
+          try{
+            const r3=await apiJsonp("list_records",{page:"1",page_size:"30"});
+            const list=(r3.data && r3.data.list)||[];
+            hasRecord=list.some(x=>String(x.id||"").trim()===cand);
+          }catch(e){}
+
+          const inputIsLower = uid0 === lower && uid0 !== upper;
+          const aliasType = inputIsLower ? "小写" : "大写";
+          const ok=confirm(
+            "我查到云端有ID「"+cand+"」的"+(hasRecord?"相关记录与存档":"存档")+"（大小写不同）。\n"+
+            "你输入的「"+uid0+"」是否为它的“"+aliasType+"版本”？\n"+
+            "确认后将切换为「"+cand+"」继续；取消则以新ID新开局（可能导致记录分裂）。"
+          );
+          if(ok){
+            G.uid=cand;
+            const uidEl=document.getElementById("uid");
+            if(uidEl) uidEl.value=cand;
+            const helloEl=document.getElementById("hello");
+            if(helloEl) helloEl.textContent="玩家："+cand;
+            G.state=normalizeState(r2.data.state);
+            setNotice("读取完毕：检测到可继续进度（已按大小写关联）。请点「继续冒险」。");
+          }else{
+            G.state=null;
+            setNotice("读取完毕：当前ID暂无可继续进度。请点「开始新冒险」。");
+          }
+          return;
+        }
+      }
+    }
+
+    G.state=null;
+    setNotice("读取完毕：暂无存档。请点「开始新冒险」。");
   }catch(e){
     G.state=null;
     setNotice("云端抓取失败：无法进入游戏，请稍后重试。");
@@ -1461,6 +1739,14 @@ function makeStoryRescue(){
     "一位独居老人摔伤后情绪低落，请温柔协助。",
     "一位被误解的学徒不敢开口，请帮他表达需求。"
   ];
+  try{
+    const f=Number(G.state&&G.state.floor||1);
+    const chapter=CHAPTER_EXTRA_RESCUES[chapterTierByFloor(f)];
+    if(chapter){
+      const ext=(chapter.monsters||[]).concat(chapter.humans||[]);
+      if(ext.length && Math.random()<0.6) return ext[rInt(0,ext.length-1)];
+    }
+  }catch(e){}
   return pool[rInt(0,pool.length-1)];
 }
 function makeStoryRescueGratitudeByKind_(kindKey){
@@ -1524,7 +1810,7 @@ function makeStoryMonsterByFloor(floor){
   const tier=chapterTierByFloor(floor);
   const chapter=CHAPTER_MONSTER_PACKS[tier]||[];
   let pool=base.concat(chapter);
-  const tierIdx=Math.min(9,Math.floor((Math.max(1,Number(floor)||1)-1)/5));
+  const tierIdx=Math.min(11,Math.floor((Math.max(1,Number(floor)||1)-1)/5));
   const tierMon=LONGLINE_MONSTER_DEFS.filter(d=>d.tier===tierIdx);
   if(tierMon.length){
     const extra=tierMon.map(d=>({id:d.monsterId,txt:d.talkStage0,opts:d.opts.slice(),outcomes:d.outcomes.slice()}));
@@ -1720,8 +2006,16 @@ function buildFloor(floor){
   if(G.state && G.state.story && G.state.story.bossNextFloor){
     // 单次触发：生成后清除标记
     try{ G.state.story.bossNextFloor=false; }catch(e){}
+    let bossGate=false;
+    try{ bossGate=!!G.state.story.bossGateNextFloor; }catch(e){}
+    try{ G.state.story.bossGateNextFloor=false; }catch(e){}
     const eventsBoss={};
     const bossHp=Math.floor((rInt(40,80)+floor)*1.9);
+    if(bossGate){
+      const kk=key(stairs.x,stairs.y);
+      eventsBoss[kk]={type:"monster",hp:bossHp,reward:baseMonsterReward,boss:true,bossGate:true,done:false};
+      return {w:w,h:h,tiles:tiles,revealed:revealed,events:eventsBoss,start:start,stairs:stairs,learnedWalls:{},stairsRevealed:false,bossGateKey:kk};
+    }
     const maxTries=240;
     for(let i=0;i<maxTries;i++){
       const x=rInt(1,w-2), y=rInt(1,h-2);
@@ -1730,7 +2024,7 @@ function buildFloor(floor){
       if(x===stairs.x && y===stairs.y) continue;
       const kk=key(x,y);
       if(eventsBoss[kk]) continue;
-      eventsBoss[kk]={type:"monster",hp:bossHp,reward:baseMonsterReward,boss:true,done:false};
+      eventsBoss[kk]={type:"monster",hp:bossHp,reward:baseMonsterReward,boss:true,bossGate:false,done:false};
       break;
     }
     return {w:w,h:h,tiles:tiles,revealed:revealed,events:eventsBoss,start:start,stairs:stairs,learnedWalls:{},stairsRevealed:false};
@@ -1804,6 +2098,7 @@ function buildFloor(floor){
   const tChest=chestRate, tMonster=tChest+monsterRate, tRescue=tMonster+rescueRate, tTalk=tRescue+talkRate;
   // 每层每种「支线救助」questKey 最多只占用一次，避免同层刷出大量重复「未寄出的信」等导致无法推进
   const rescueQuestKeyUsed={};
+  let gratitudeAssigned=false;
   for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
     if(tiles[y][x]===1 || tiles[y][x]===2) continue;
     if((x===start.x&&y===start.y)||(x===stairs.x&&y===stairs.y)) continue;
@@ -1867,7 +2162,8 @@ function buildFloor(floor){
       }catch(e){}
       // 每完成任意救助达到“下一次阈值”时，会出现特别感谢剧情与钥匙
       const cnt=Number(rescueHelpCounts[totalRescueKeyCountKey]||0);
-      const gratitude=rescueGratitudeNext_(cnt);
+      const gratitude=(rescueGratitudeNext_(cnt) && !gratitudeAssigned);
+      if(gratitude) gratitudeAssigned=true;
       const story=gratitude?makeStoryRescueGratitudeByKind_("generic"):makeStoryRescueByQuest_(questKey);
       events[key(x,y)]={
         type:"rescue",
@@ -1936,6 +2232,10 @@ function newState(uid){
       floorContext:{rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0,monsterBattleCount:0},
       bossNextFloor:false,
       bossNextDesc:false,
+      // 关卡BOSS：守在“楼梯前”，需要击败后才能继续下楼
+      bossGateNextFloor:false,
+      // 关卡BOSS：用于标记“已击败关卡BOSS后，允许继续下楼到指定下一层”
+      bossGateResolvedToFloor:0,
       // “帮我/求救”的怪物：若被你击杀，则后续不再以沟通事件出现（提升“强敌(BOSS)”触发）
       helpKilledMonsters:{},
       // 史莱姆特殊：你帮忙 10 次后，下次遇到会触发报恩奖励
@@ -1967,6 +2267,9 @@ function newState(uid){
       monsterCharmOwned:false,
       monsterCharmActiveRemaining:0,
       prevFloorHadRescueMonsterDiscount:false,
+      // 隐形手链：完成 30 项成就后获得一次性跳过关卡BOSS道具
+      ghostBraceletCount:0,
+      ghostBraceletGranted:false,
       _achievementSnap:0,
       pendingNotes:[],
       log:[]
@@ -2128,7 +2431,16 @@ function normalizeState(st){
   if(st.story.monsterCharmActiveRemaining===undefined) st.story.monsterCharmActiveRemaining=0;
   if(typeof st.story.monsterCharmActiveRemaining!=="number") st.story.monsterCharmActiveRemaining=Number(st.story.monsterCharmActiveRemaining||0);
   if(st.story.prevFloorHadRescueMonsterDiscount===undefined) st.story.prevFloorHadRescueMonsterDiscount=false;
+  if(st.story.ghostBraceletCount===undefined) st.story.ghostBraceletCount=0;
+  if(st.story.ghostBraceletGranted===undefined) st.story.ghostBraceletGranted=false;
   if(st.story._achievementSnap===undefined) st.story._achievementSnap=countAchievementTotal(st);
+  // 旧档修复：若已完成 >=30 成就但未触发过护符领取逻辑，则静默补发一次性手链
+  try{
+    if(st.story && !st.story.ghostBraceletGranted && countAchievementTotal(st)>=30){
+      st.story.ghostBraceletGranted=true;
+      st.story.ghostBraceletCount=Number(st.story.ghostBraceletCount||0)+1;
+    }
+  }catch(e){}
   if(!st.story.floorContext){
     st.story.floorContext={rescueEncountered:0,rescueRefused:0,talkHelpAccepted:0,talkHelpDeclined:0,monsterBattleCount:0};
   }else{
@@ -2140,6 +2452,10 @@ function normalizeState(st){
   }
   if(st.story.bossNextFloor===undefined) st.story.bossNextFloor=false;
   if(st.story.bossNextDesc===undefined) st.story.bossNextDesc=false;
+  if(st.story.bossGateNextFloor===undefined) st.story.bossGateNextFloor=false;
+  // 当前实现使用“楼梯前转门BOSS拦截推进”，不再依赖新楼层的门卫BOSS标记
+  st.story.bossGateNextFloor=false;
+  if(st.story.bossGateResolvedToFloor===undefined) st.story.bossGateResolvedToFloor=0;
   if(!st.story.helpKilledMonsters) st.story.helpKilledMonsters={};
   if(st.story.slimeHelpCount===undefined) st.story.slimeHelpCount=0;
   if(st.story.slimeRepayPending===undefined) st.story.slimeRepayPending=false;
@@ -2530,12 +2846,14 @@ function ensureQuestFollowupEvents_(s){
   const baseRescueReward=rescueRewardByFloor(s.floor);
   const baseChestReward=chestRewardByFloor();
   const baseTalkReward=talkRewardByFloor(s.floor);
+  let gratitudeAssigned=false;
 
   function ensureOne(type, questKey, storyForQuest){
     const totalRescueKeyCountKey="all";
     const cnt=Number((s.story&&s.story.rescueHelpCounts&&s.story.rescueHelpCounts[totalRescueKeyCountKey])||0);
-    // 特别感谢：下一次救助将满 10/20/30… 次时标记（与 rescueKeyNextAt 存盘无关，避免错位）
-    const gratitude=rescueGratitudeNext_(cnt);
+    // 特别感谢：同层只标记一次，避免连续多次“特别感谢”但只给一把钥匙的体感错位
+    const gratitude=(rescueGratitudeNext_(cnt) && !gratitudeAssigned);
+    if(gratitude) gratitudeAssigned=true;
     // 1) 已存在且未完成的专属事件
     for(const k in s.map.events){
       const ev=s.map.events[k];
@@ -2651,7 +2969,8 @@ function ensureQuestFollowupEvents_(s){
       if(s.floor<def.floorMin||s.floor>def.floorMax) return;
       const qs=Number(qq.stage||0);
       if(qs===0) ensureOne("rescue",def.key,makeStoryRescueByQuest_(def.key));
-      if(qs===1) ensureOne("chest",def.key,null);
+      // qs===1：人类长线进入“等宝箱”阶段时，不在地图上强制生成宝箱事件
+      // 避免玩家在接取救助后看到“宝箱虚线提醒”（不影响进度：宝箱仍会在随机生成/自动绑定时出现）
       if(qs===2) ensureOne("rescue",def.key,makeStoryRescueByQuest_(def.key));
     });
   }
@@ -2844,6 +3163,7 @@ function renderHUD(){
     if(nTask>0) pQuestEl.textContent="有 "+nTask+" 项进行中任务，请点击「任务」查看详情。";
     else pQuestEl.textContent="暂无进行中任务（完整清单请点「任务」）。";
   }
+  updateSaveModeBar();
   const p=s.pending;
   show("eventActs",!!p);
   const eventActs=document.getElementById("eventActs");
@@ -2856,7 +3176,10 @@ function renderHUD(){
     if(!document.getElementById("sysMsg").textContent) sys("地下城安静下来。你可以继续探索。",SYS_AVATARS[0]);
     return;
   }
-  if(p.type==="rescue") stripStaleRescueQuestKey_(s,p);
+  if(p.type==="rescue"){
+    stripStaleRescueQuestKey_(s,p);
+    normalizeRescueGratitudeFlag_(s,p);
+  }
   if(p.type==="chest"){
     const keys=Number(s.story&&s.story.rescueKeyCount||0);
     const keyHint=keys>0?" 你也可以使用钥匙直接打开（不消耗回复/被引用）。":"";
@@ -2896,6 +3219,28 @@ function renderHUD(){
       b.textContent=(p.boss?"逃跑（BOSS不可）":"逃跑");
       b.onclick=()=>{ G.monsterPick="escape"; resolveEvent(); };
       btnWrap.appendChild(b);
+    }
+  }else if(p.type==="boss_gate"){
+    // 章节BOSS：楼梯守关的“选择事件”，先让玩家点按钮决定
+    const hasBracelet=Number(s.story&&s.story.ghostBraceletCount||0)>0;
+    document.getElementById("eventTxt").textContent=
+      "章节BOSS守在楼梯前。\n你需要击败它，才能继续下楼。\n（也可以使用隐形手链跳过）";
+    document.getElementById("eventBtn").classList.add("hidden");
+    if(btnWrap){
+      btnWrap.innerHTML="";
+      btnWrap.classList.remove("hidden");
+      const bFight=document.createElement("button");
+      bFight.className="good";
+      bFight.textContent="开打";
+      bFight.onclick=()=>{ G.bossGatePick="fight"; resolveEvent(); };
+      btnWrap.appendChild(bFight);
+      if(hasBracelet){
+        const bBr=document.createElement("button");
+        bBr.className="warn";
+        bBr.textContent="使用隐形手链（跳过）";
+        bBr.onclick=()=>{ G.bossGatePick="bracelet"; resolveEvent(); };
+        btnWrap.appendChild(bBr);
+      }
     }
   }else if(p.type==="rescue"){
     let title=p.gratitude?"拯救任务（特别感谢）：":"拯救任务：";
@@ -2980,6 +3325,28 @@ async function saveStateCloud(eventName, verifyAfter){
   }
 }
 
+/** 关键节点低频存档：不 await，且做节流，避免卡顿 */
+function scheduleKeySave_(eventName){
+  if(!G.instantSaveMode) return;
+  try{
+    if(!G.state) return;
+    const now=Date.now();
+    const minInterval=200; // 尽量保证关键节点也能落盘，同时避免写入风暴
+    if(G._keySaveInFlight){
+      // 如果正在写，就不叠加（下一次关键节点再写）
+      return;
+    }
+    if(G._lastKeySaveAt && (now-G._lastKeySaveAt)<minInterval){
+      return;
+    }
+    G._lastKeySaveAt=now;
+    G._keySaveInFlight=true;
+    saveStateCloud(eventName||"key_save", false)
+      .catch(()=>{})
+      .finally(()=>{ G._keySaveInFlight=false; });
+  }catch(e){}
+}
+
 async function appendRecord(result){
   const s=G.state;if(!s)return;
   const t=now();
@@ -3046,14 +3413,31 @@ function touchTileEvent(){
       maybeAutoBindChestQuestKey_(s,ev);
     }else if(ev.type==="rescue"){
       stripStaleRescueQuestKey_(s,ev);
+      normalizeRescueGratitudeFlag_(s,ev);
     }
     s.pending=ev; s.lastEventKey=k;
+    // 防堵：事件格触发时写入一次即可（不在结算完成后立刻再写）
+    // 避免同一次移动后仍触发 move_auto 延迟存档
+    try{
+      G._skipMoveAutoSave=true;
+    }catch(e){}
+    if(G.instantSaveMode){
+      try{
+        if(!ev._cloudTouchSaved){
+          ev._cloudTouchSaved=true;
+          // 后台写入，不阻塞 UI（verifyAfter=false）
+          saveStateCloud("touch_event", false).catch(()=>{});
+        }
+      }catch(e2){}
+    }
   }
 }
 
 async function move(dx,dy){
   const s=G.state;
   if(!s||G.busy||G.actionBusy) return;
+  // 本次移动是否需要跳过“延迟 move_auto 存档”（由 touchTileEvent 在事件格触发时决定）
+  G._skipMoveAutoSave=false;
   // 容错：有时事件已结算但 pending 未及时清空（例如史莱姆报恩类结算），避免卡住无法移动
   if(s.pending){
     try{
@@ -3062,7 +3446,8 @@ async function move(dx,dy){
       // 仅当“pending 对应到同一类事件格”且该格已 done 时，才允许自动清空
       // 否则会误把“由 talk_monster 进入战斗 pending（monster）”清掉，从而闪掉战斗环节
       const sameType = !!(ev && ev.type===s.pending.type);
-      if(s.pending.done || (sameType && !!ev.done)){
+      // 防堵：如果地图上对应事件已经不存在（或已完成），直接解除 pending
+      if(!ev || s.pending.done || (sameType && !!ev.done)){
         s.pending=null;
         s.lastEventKey="";
         renderHUD();
@@ -3094,10 +3479,10 @@ async function move(dx,dy){
     if(el) el.textContent="";
   }catch(e){}
   if(maybeAutoMonsterCharmBypass_(s)){
-    if(!G.offlineMode){
+    if(G.instantSaveMode){
       if(G.moveSaveTimer){ try{ clearTimeout(G.moveSaveTimer); }catch(e){} }
       G.moveSaveTimer=setTimeout(()=>{
-        if(G.offlineMode||G.busy||G.actionBusy||!G.state) return;
+        if(!G.instantSaveMode||G.busy||G.actionBusy||!G.state) return;
         const nowTs=Date.now();
         if(nowTs - G.lastMoveSaveAt < 900) return;
         G.lastMoveSaveAt=nowTs;
@@ -3114,6 +3499,8 @@ async function move(dx,dy){
 
   // 走到楼梯格：询问是否下楼
   if(nx===m.stairs.x && ny===m.stairs.y && !s.pending){
+    // 楼梯格已“显现”：后续无需再用楼梯探测器，避免浪费
+    m.stairsRevealed=true;
     const ok=confirm("你已经踩到了下楼的楼梯。是否下楼？");
     if(ok){
       if(G.moveSaveTimer){ try{ clearTimeout(G.moveSaveTimer); }catch(e){} }
@@ -3124,19 +3511,23 @@ async function move(dx,dy){
   }
 
   // 同一楼层移动不频繁云存档：做“延迟合并”
-  if(!G.offlineMode){
-    if(G.moveSaveTimer){ try{ clearTimeout(G.moveSaveTimer); }catch(e){} }
-    G.moveSaveTimer=setTimeout(()=>{
-      if(G.offlineMode||G.busy||G.actionBusy||!G.state) return;
-      const nowTs=Date.now();
-      if(nowTs - G.lastMoveSaveAt < 900) return; // 额外节流
-      G.lastMoveSaveAt=nowTs;
-      if(G.moveSaving) return;
-      G.moveSaving=true;
-      saveStateCloud("move_auto", false)
-        .catch(()=>sysTransient("云端保存失败：本次移动可能未被确认。",SYS_AVATARS[2],1800))
-        .finally(()=>{G.moveSaving=false;});
-    }, 1200);
+  if(G.instantSaveMode){
+    if(G._skipMoveAutoSave){
+      try{ G._skipMoveAutoSave=false; }catch(e){}
+    }else{
+      if(G.moveSaveTimer){ try{ clearTimeout(G.moveSaveTimer); }catch(e){} }
+      G.moveSaveTimer=setTimeout(()=>{
+        if(!G.instantSaveMode||G.busy||G.actionBusy||!G.state) return;
+        const nowTs=Date.now();
+        if(nowTs - G.lastMoveSaveAt < 900) return; // 额外节流
+        G.lastMoveSaveAt=nowTs;
+        if(G.moveSaving) return;
+        G.moveSaving=true;
+        saveStateCloud("move_auto", false)
+          .catch(()=>sysTransient("云端保存失败：本次移动可能未被确认。",SYS_AVATARS[2],1800))
+          .finally(()=>{G.moveSaving=false;});
+      }, 1200);
+    }
   }
 }
 
@@ -3156,6 +3547,60 @@ async function resolveEvent(){
       maybeAutoBindChestQuestKey_(s,p);
     }else if(p.type==="rescue"){
       stripStaleRescueQuestKey_(s,p);
+    }
+    // 章节BOSS守关：事件选择（开打 / 使用隐形手链跳过）
+    if(p.type==="boss_gate"){
+      const pick=G.bossGatePick;
+      const targetFloor=Number(p.bossGateFloor||0);
+      const stairsKey=String(p.stairsKey||"");
+      if(!pick) return sys("请先选择一个行动。",SYS_AVATARS[2]);
+      G.bossGatePick=null;
+
+      if(pick==="fight"){
+        // 生成真正的 BOSS 战斗事件
+        if(!s.map || !s.map.events || !stairsKey){
+          // 容错：若缺少 map/事件表，回到普通可继续探索
+          s.pending=null; s.lastEventKey="";
+          return sysTransient("关卡BOSS准备失败，请稍后重试。",SYS_AVATARS[2],2200);
+        }
+        const bossEvent={
+          type:"monster",
+          hp:Number(p.bossHp||0),
+          reward:Number(p.reward||0),
+          boss:true,
+          bossGate:true,
+          bossGateFloor:targetFloor,
+          done:false
+        };
+        s.map.events[stairsKey]=bossEvent;
+        s.pending=bossEvent;
+        s.lastEventKey=stairsKey;
+        renderMap(); renderHUD();
+        return;
+      }
+
+      if(pick==="bracelet"){
+        const cnt=Number(s.story&&s.story.ghostBraceletCount||0);
+        if(cnt<=0){
+          s.pending=null; s.lastEventKey="";
+          renderHUD();
+          return sys("你没有隐形手链可用。",SYS_AVATARS[2]);
+        }
+        s.story.ghostBraceletCount=cnt-1;
+        s.story.bossGateResolvedToFloor=targetFloor;
+        s.pending=null; s.lastEventKey="";
+        renderHUD();
+        scheduleKeySave_("boss_gate_bracelet_done");
+        sysTransient("隐形手链生效：你跳过了关卡BOSS。",SYS_AVATARS[1],2600);
+        // 等待本次 resolveEvent 结束后再执行下楼推进
+        setTimeout(()=>{ try{ goDown(); }catch(e){} }, 30);
+        return;
+      }
+
+      // 兜底：未知 pick
+      s.pending=null; s.lastEventKey="";
+      renderHUD();
+      return;
     }
     // 救助可拒绝：拒绝后不消耗点数，并提高“战斗怪物”遭遇，且不再刷同类型救助链
     if(p.type==="rescue" && G.rescuePick==="refuse"){
@@ -3200,9 +3645,11 @@ async function resolveEvent(){
       sys("你选择放弃救助。下一次更可能遭遇需要战斗的怪物。",SYS_AVATARS[2]);
       renderMap(); renderHUD();
       popStoryNote(s);
+      // 关键节点：事件结算完成后写一次，避免刷新回滚到未结算状态
+      scheduleKeySave_("rescue_refused_done");
 
-      if(!G.offlineMode){
-        try{ await saveStateCloud("rescue_refused", false); }catch(e){}
+      if(G.instantSaveMode){
+        try{ saveStateCloud("rescue_refused", false).catch(()=>{}); }catch(e){}
       }
       return;
     }
@@ -3232,8 +3679,9 @@ async function resolveEvent(){
         p.done=true; p.resolvedKind="escape"; s.pending=null;
         sysTransient("你成功逃离了这场遭遇。",SYS_AVATARS[1],1600);
         renderMap(); renderHUD();
-        if(!G.offlineMode){
-          try{ await saveStateCloud("escape_success", false); }catch(e){}
+        scheduleKeySave_("escape_success_done");
+        if(G.instantSaveMode){
+          try{ saveStateCloud("escape_success", false).catch(()=>{}); }catch(e){}
         }
       }else{
         s.hp=Number(s.hp||0)-1;
@@ -3431,6 +3879,24 @@ async function resolveEvent(){
           SYS_AVATARS[1]
         );
         renderMap(); renderHUD();
+        // 关卡BOSS：若放在楼梯格上，击败后引导玩家继续下楼
+        try{
+          if(p.boss && p.bossGate && s.player && s.map){
+            if(s.player.x===s.map.stairs.x && s.player.y===s.map.stairs.y){
+              if(s.story){
+                s.story.bossGateResolvedToFloor=
+                  Number(p.bossGateFloor||0) || (Number(s.floor||0)+1);
+              }
+              setTimeout(()=>{
+                if(G.state && G.state.pending) return;
+                const ok=confirm("你击败了关卡BOSS。是否下楼？");
+                if(ok){
+                  try{ goDown(); }catch(e){}
+                }
+              },80);
+            }
+          }
+        }catch(e){}
       }
     }else if(p.type==="talk_monster"){
       let v;
@@ -3557,20 +4023,27 @@ async function resolveEvent(){
     if(s.hp<=0){ await onDeath(); return; }
     popStoryNote(s);
 
-    // 离线游玩：不写入同层事件存档
-    if(!G.offlineMode && shouldSave){
-      try{
-        await saveStateCloud("resolve_event", false);
-      }catch(e){
-        sys("云端写入失败，本次事件未确认。",SYS_AVATARS[2]);
+    // 随时云端存档调整：在“踩到事件格触发 pending”时已写入
+    // 事件结算完成后不再立即 saveStateCloud，减少写入频率与卡顿感。
+    // 关键节点低频存档：仅当“事件已结算完毕（p.done）且 pending 已清空”时再写一次
+    try{
+      if(p && p.done && !s.pending){
+        scheduleKeySave_("event_done_done");
       }
-    }
+    }catch(e){}
 
     renderMap(); renderHUD();
   }catch(e){
     // 兜底：避免事件分支报错导致 UI/状态残留卡死
     console.error("resolveEvent error:", e);
     sys("事件处理出错，请稍后再试。",SYS_AVATARS[2]);
+    // 防堵：避免“pending 残留”把玩家卡在移动/交互之外
+    try{
+      if(s && s.pending){
+        s.pending=null;
+        s.lastEventKey="";
+      }
+    }catch(e2){}
     renderMap(); renderHUD();
   }finally{
     G.actionBusy=false;
@@ -3640,6 +4113,8 @@ async function goDown(){
     let bossThisNext=false;
     let prevHadRescueForMonsterDiscount=false;
     try{
+      const nextFloor=Number(s.floor||0)+1;
+      const gateFloors=[20,40,60,80,100,120];
       const fc=s.story && s.story.floorContext ? s.story.floorContext : null;
       prevHadRescueForMonsterDiscount=!!(fc && Number(fc.rescueEncountered||0)>0);
       const rescueOk=fc && fc.rescueEncountered>0 && fc.rescueRefused===fc.rescueEncountered;
@@ -3655,6 +4130,34 @@ async function goDown(){
         const chance=Math.min(0.12*k, 0.85);
         if(Math.random()<chance) bossThisNext=true;
       }
+
+      // 关卡BOSS：到达 20/40/60/… 层前，需要先击败“转门BOSS”（发生在当前楼梯格，阻止下楼推进）
+      const isGateFloor=gateFloors.includes(nextFloor);
+      const alreadyCleared = !!(s.story && Number(s.story.bossGateResolvedToFloor||0)===nextFloor);
+      // 门卫层：避免“门卫之外再额外生成一只随机BOSS”
+      if(isGateFloor) bossThisNext=false;
+
+      if(isGateFloor && !alreadyCleared){
+        const kk=key(s.map.stairs.x,s.map.stairs.y);
+        const bossHp=Math.floor((rInt(40,80)+Number(s.floor||0))*1.9);
+        const bossReward=monsterRewardByFloor(Number(s.floor||0));
+        if(!s.map.events) s.map.events={};
+        // 先进入“选择事件”：开打/使用手链跳过
+        s.pending={
+          type:"boss_gate",
+          stairsKey:kk,
+          bossHp:bossHp,
+          bossGateFloor:nextFloor,
+          reward:bossReward,
+          done:false
+        };
+        s.lastEventKey="";
+        renderMap(); renderHUD();
+        sysTransient("关卡BOSS守在楼梯前。",SYS_AVATARS[2],2200);
+        // 不在这里生成战斗事件，直到用户点击“开打”
+        return;
+      }
+
       if(s.story){
         s.story.bossNextFloor=bossThisNext;
         s.story.bossNextDesc=bossThisNext;
@@ -3667,6 +4170,7 @@ async function goDown(){
     }
 
     s.floor+=1;
+    if(s.story && Number(s.story.bossGateResolvedToFloor||0)===s.floor) s.story.bossGateResolvedToFloor=0;
     let showFloor10MedalAcquire=false;
     if(s.story){
       s.story.prevFloorHadRescueMonsterDiscount=prevHadRescueForMonsterDiscount;
@@ -3798,19 +4302,68 @@ async function changeIdMidGame(){
   if(G.state){ try{ await saveStateCloud("change_id_midgame"); }catch(e){} renderHUD(); }
 }
 
-function openRecords(){ show("menuCard",false); show("gameCard",false); show("recordCard",true); loadRecords(1); }
+function openRecords(){
+  // 修复：未初始化 G.uid 时，loadRecords 直接 return 导致“查看记录”看起来坏掉
+  const uidEl=document.getElementById("uid");
+  if(uidEl){
+    const uid=String(uidEl.value||"").trim();
+    if(uid) G.uid=uid;
+  }
+  // 强制显示：避免 UI 状态异常导致 recordCard 不出现
+  try{
+    const rc=document.getElementById("recordCard");
+    const mc=document.getElementById("menuCard");
+    const gc=document.getElementById("gameCard");
+    if(rc){
+      rc.classList.remove("hidden");
+      rc.style.display="block";
+    }
+    if(mc){ mc.classList.add("hidden"); mc.style.display="none"; }
+    if(gc){ gc.classList.add("hidden"); gc.style.display="none"; }
+  }catch(e){}
+  const meta=document.getElementById("recordMeta");
+  if(meta){
+    const uid=String(G.uid||"").trim();
+    meta.textContent="版本："+VER+" | UID："+(uid||"(空)")+" | 说明：结算/阵亡后才会写入云端记录。";
+  }
+  const log=document.getElementById("recordLog");
+  if(log) log.textContent="读取中…";
+  // 防堵：确保滚动位置能看到记录卡片
+  try{ const rc=document.getElementById("recordCard"); if(rc) rc.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){}
+  loadRecords(1);
+}
 async function loadRecords(page){
-  if(!G.uid) return;
+  if(!G.uid){
+    const log=document.getElementById("recordLog");
+    if(log) log.textContent="请先输入论坛ID。";
+    return;
+  }
   G.page=Math.max(1,page||1);
   const log=document.getElementById("recordLog");
-  log.textContent="读取中…";
+  if(log){
+    const uid=String(G.uid||"").trim();
+    const u=gasUrl();
+    log.textContent="读取云端记录中…\nUID："+uid+"\nGAS："+(u?(String(u).slice(0,60)+"…"):"(空)")+"\n页码："+G.page;
+  }
   try{
     const res=await apiJsonp("list_records",{page:String(G.page),page_size:String(PAGE_SIZE)});
     const list=(res.data&&res.data.list)||[];
-    if(!list.length){ log.textContent="暂无记录。"; document.getElementById("pageTxt").textContent="第 "+G.page+" 页"; return; }
+    const total=Number((res.data&&res.data.total) || 0);
+    if(!list.length){
+      if(log){
+        const uid=String(G.uid||"").trim();
+        log.textContent="暂无记录（total="+total+"）。\nUID："+uid+"\n说明：若你刚开始游戏，需完成结算/阵亡后才会写入云端记录。";
+      }
+      document.getElementById("pageTxt").textContent="第 "+G.page+" 页";
+      return;
+    }
     log.innerHTML=list.map((x,i)=>'<div class="rank"><div>#'+((G.page-1)*PAGE_SIZE+i+1)+'</div><div>'+escapeHtml(x.id||"")+'</div><div>'+(x.time||"")+'</div><div>'+(x.reward||0)+'</div></div>').join("");
     document.getElementById("pageTxt").textContent="第 "+G.page+" 页";
-  }catch(e){ log.textContent="云端读取失败。"; }
+  }catch(e){
+    if(log){
+      log.textContent="云端读取失败："+((e&&e.message)?e.message:"unknown")+"\n请检查 ?record=GAS_URL 是否正确、以及 GAS 是否已部署最新版本。";
+    }
+  }
 }
 function prevPage(){ if(G.page>1) loadRecords(G.page-1); }
 function nextPage(){ loadRecords(G.page+1); }
@@ -3818,7 +4371,33 @@ function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;"
 
 function backMenu(){ show("gameCard",false); show("recordCard",false); show("menuCard",true); }
 
+/** 运行时修复：把记录/弹层节点挂到 app 根层，避免被隐藏父容器连带隐藏 */
+function normalizeTopLevelCards_(){
+  try{
+    const app=document.querySelector(".app");
+    if(!app) return;
+    const ids=[
+      "recordCard",
+      "loadingOverlay",
+      "chapterOverlay",
+      "bagOverlay",
+      "achievementOverlay",
+      "acquireOverlay",
+      "tasksOverlay",
+      "versionTxt"
+    ];
+    ids.forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el) return;
+      if(el.parentElement!==app) app.appendChild(el);
+    });
+  }catch(e){}
+}
+
 window.addEventListener("DOMContentLoaded",()=>{
+  normalizeTopLevelCards_();
+  updateOfflineWarn();
+  updateSaveModeBar();
   const d=new Date();
   const stamp=d.getFullYear().toString()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+"-"+String(d.getHours()).padStart(2,"0")+String(d.getMinutes()).padStart(2,"0")+String(d.getSeconds()).padStart(2,"0");
   document.getElementById("versionTxt").textContent="版本："+VER+"+"+stamp;
@@ -3842,7 +4421,214 @@ window.addEventListener("DOMContentLoaded",()=>{
     else if(key==="ArrowRight" || key.toLowerCase()==="d") { e.preventDefault(); move(1,0); }
   });
 });
+
+// ===== FORUM AUTO-FETCH (dungeon v1.4.14) =====
+const FFF_PROXY='https://api.codetabs.com/v1/proxy?quest=';
+const FFF_IMP='fff_imp_dungeon';
+let _fffResult=null,_fffIsUpdate=false,_fffPendingR=0,_fffPendingQ=0;
+
+function fffGetCurrentUid(){return (G&&G.uid)||'';}
+function fffSetStatus(m){const e=document.getElementById('fff-status');if(e)e.textContent=m;}
+function fffOpenLoading(){document.getElementById('fff-loading').style.display='flex';}
+function fffCloseLoading(){document.getElementById('fff-loading').style.display='none';}
+function fffOpenResult(html,btnTxt){
+  document.getElementById('fff-result-text').innerHTML=html;
+  document.getElementById('fff-confirm-btn').textContent=btnTxt||'确认';
+  document.getElementById('fff-result').style.display='flex';
+}
+function fffCloseResult(){document.getElementById('fff-result').style.display='none';}
+function fffCancelResult(){fffCloseResult();}
+function fffLoadCC(uid){try{return new Map(Object.entries(JSON.parse(localStorage.getItem('fff_cc_'+uid)||'{}')))}catch(e){return new Map();}}
+function fffSaveCC(uid,map){try{localStorage.setItem('fff_cc_'+uid,JSON.stringify(Object.fromEntries(map)));}catch(e){}}
+function fffLoadPI(slug){try{return JSON.parse(localStorage.getItem('fff_pi_'+slug)||'{}')}catch(e){return {};}}
+function fffSavePI(slug,idx){try{localStorage.setItem('fff_pi_'+slug,JSON.stringify(idx));}catch(e){}}
+function fffGetImp(uid){try{return JSON.parse(localStorage.getItem(FFF_IMP+'_'+uid)||'null');}catch(e){return null;}}
+function fffSaveImp(uid,key,r,c){try{localStorage.setItem(FFF_IMP+'_'+uid,JSON.stringify({key,r,c}));}catch(e){}}
+
+async function fffProxyGet(url){
+  const sk='fff_'+url,hit=sessionStorage.getItem(sk);
+  if(hit)return hit;
+  const resp=await fetch(FFF_PROXY+encodeURIComponent(url),{signal:AbortSignal.timeout(30000)});
+  if(!resp.ok)throw new Error('网络错误 '+resp.status);
+  const text=await resp.text();
+  try{sessionStorage.setItem(sk,text);}catch(e){}
+  return text;
+}
+async function fffGetUsername(uid){
+  const html=await fffProxyGet('https://sstm.moe/?app=core&module=members&controller=profile&id='+uid);
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  for(const a of doc.querySelectorAll('a[href]')){
+    const href=a.getAttribute('href')||'';
+    const m=href.match(/\/profile\/(\d+-[^\/\?#"]+)/);
+    if(m&&m[1].startsWith(uid+'-'))return m[1];
+  }
+  throw new Error('无法获取用户名，请确认 UID 是否正确');
+}
+async function fffCheckQuote(cid,tid,uid,cache){
+  if(cache.has(cid))return cache.get(cid);
+  const url='https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id='+tid+'&content_commentid='+cid;
+  try{
+    const html=await fffProxyGet(url);
+    if(!/forum\/32[-\/]/.test(html)){cache.set(cid,false);return false;}
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    const el=doc.querySelector('article#elComment_'+cid);
+    if(!el){cache.set(cid,false);return false;}
+    const qs=el.querySelectorAll('.ipsQuote[data-ipsquote-userid="'+uid+'"]');
+    const res=Array.from(qs).some(q=>!q.parentElement.closest('.ipsQuote'));
+    cache.set(cid,res);return res;
+  }catch(e){cache.set(cid,false);return false;}
+}
+async function fffScrape(uid,slug,startDate,endDate){
+  const RE=/forum\/32[-\/]/;
+  let replies=0;const citedIds=new Set();
+  const sTs=startDate?new Date(startDate).getTime():0;
+  const eTs=endDate?new Date(endDate+'T23:59:59Z').getTime():Date.now();
+  let page=1,done=false;
+  const cache=fffLoadCC(uid),pi=fffLoadPI(slug);
+  const ips=Object.keys(pi).map(Number).sort((a,b)=>a-b);
+  for(const pp of ips){if(new Date(pi[pp]).getTime()>eTs)page=pp;else break;}
+  while(!done){
+    fffSetStatus('正在读取第 '+page+' 页（回复:'+replies+' 被引用:'+citedIds.size+'）...');
+    const url=page===1
+      ?'https://sstm.moe/profile/'+slug+'/content/?type=forums_topic_post&change_section=1'
+      :'https://sstm.moe/profile/'+slug+'/content/page/'+page+'/?type=forums_topic_post';
+    const html=await fffProxyGet(url);
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    const items=doc.querySelectorAll('ol.cProfileContent > li');
+    if(!items.length)break;
+    const ft=doc.querySelector('ol.cProfileContent > li time[datetime]');
+    if(ft){pi[page]=ft.getAttribute('datetime');fffSavePI(slug,pi);}
+    let foundInRange=false;const toCheck=[];
+    for(const item of items){
+      const te=item.querySelector('time[datetime]');if(!te)continue;
+      const ts=new Date(te.getAttribute('datetime')).getTime();
+      if(ts>eTs)continue;
+      if(ts<sTs){done=true;break;}
+      foundInRange=true;
+      const fa=item.querySelector('p.ipsType_light a[href]');
+      if(!fa||!RE.test(fa.getAttribute('href')||''))continue;
+      replies++;
+      const bq=item.querySelector('.ipsQuote');if(!bq)continue;
+      const c2=bq.getAttribute('data-ipsquote-contentcommentid');
+      const t2=bq.getAttribute('data-ipsquote-contentid');
+      if(c2&&t2)toCheck.push({cid:c2,tid:t2});
+    }
+    if(toCheck.length){
+      const BATCH=5;
+      for(let i=0;i<toCheck.length;i+=BATCH){
+        const batch=toCheck.slice(i,i+BATCH);
+        fffSetStatus('第'+page+'页验证引用 '+(i+1)+'–'+Math.min(i+BATCH,toCheck.length)+'/'+toCheck.length+'（被引用:'+citedIds.size+'）...');
+        const results=await Promise.all(batch.map(x=>fffCheckQuote(x.cid,x.tid,uid,cache)));
+        batch.forEach((x,j)=>{if(results[j])citedIds.add(x.cid);});
+        if(i+BATCH<toCheck.length)await new Promise(r=>setTimeout(r,150));
+      }
+    }
+    if(done)break;
+    const next=doc.querySelector('li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel="next"]');
+    if(!next)break;
+    page++;
+    await new Promise(r=>setTimeout(r,foundInRange?400:100));
+  }
+  fffSaveCC(uid,cache);
+  return{replies,citations:citedIds.size};
+}
+function fffOpenModal(isUpdate){
+  _fffIsUpdate=isUpdate;
+  const uid=isUpdate?fffGetCurrentUid():'';
+  const el=document.getElementById('fff-uid');
+  if(el){el.value=uid;el.disabled=isUpdate&&!!uid;}
+  document.getElementById('fff-modal-title').textContent=isUpdate?'📡 论坛更新（游戏中）':'📡 论坛自动读取';
+  document.getElementById('fff-modal').style.display='flex';
+}
+function fffCloseModal(){document.getElementById('fff-modal').style.display='none';}
+async function fffDoFetch(){
+  const uid=parseInt((document.getElementById('fff-uid').value||'').trim());
+  if(!uid||isNaN(uid)){alert('请输入有效的论坛 UID（数字）');return;}
+  const startDate=document.getElementById('fff-date-start').value;
+  const endDate=document.getElementById('fff-date-end').value;
+  const dateKey=(startDate||'')+'_'+(endDate||'');
+  fffCloseModal();fffOpenLoading();
+  try{
+    fffSetStatus('正在获取用户资料...');
+    const slug=await fffGetUsername(uid);
+    fffSetStatus('开始统计回复...');
+    const raw=await fffScrape(uid,slug,startDate,endDate);
+    fffCloseLoading();
+    const prev=fffGetImp(uid);
+    const isSame=!!(prev&&prev.key===dateKey);
+    const netR=isSame?Math.max(0,raw.replies-prev.r):raw.replies;
+    const netC=isSame?Math.max(0,raw.citations-prev.c):raw.citations;
+    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,isSame};
+    const html=isSame
+      ?'同区间净增：<b style="color:#4eb">'+netR+'</b> 回复 / <b style="color:#4eb">'+netC+'</b> 被引用<br><small style="opacity:.6">（总计'+raw.replies+'/'+raw.citations+'，已记录'+prev.r+'/'+prev.c+'）</small>'
+      :'读取结果：<b style="color:#4eb">'+netR+'</b> 回复 / <b style="color:#4eb">'+netC+'</b> 被引用';
+    fffOpenResult(html,_fffIsUpdate?'确认添加':'确认存入待用');
+  }catch(err){
+    fffCloseLoading();fffOpenModal(_fffIsUpdate);
+    alert('读取失败：'+err.message);
+  }
+}
+function fffConfirm(){
+  fffCloseResult();
+  if(!_fffResult)return;
+  const {uid,dateKey,rawR,rawC,netR,netC}=_fffResult;
+  fffSaveImp(uid,dateKey,rawR,rawC);
+  if(_fffIsUpdate&&G&&G.state){
+    // 游戏中：直接加入 stockReply/stockQuote
+    G.state.stockReply=(G.state.stockReply||0)+netR;
+    G.state.stockQuote=(G.state.stockQuote||0)+netC;
+    renderHUD();
+    sys('论坛更新：+'+netR+' 回复 / +'+netC+' 被引用');
+  }else{
+    // 开局前：暂存，开始/继续时自动加入
+    _fffPendingR+=netR;
+    _fffPendingQ+=netC;
+    setNotice('已暂存 '+_fffPendingR+' 回复 / '+_fffPendingQ+' 被引用，开始冒险时生效');
+  }
+}
+// 拦截 renderHUD，首次调用时将暂存值写入 state
+(function(){
+  const _orig=window.renderHUD;
+  window.renderHUD=function(){
+    if((_fffPendingR>0||_fffPendingQ>0)&&G&&G.state){
+      G.state.stockReply=(G.state.stockReply||0)+_fffPendingR;
+      G.state.stockQuote=(G.state.stockQuote||0)+_fffPendingQ;
+      _fffPendingR=0;_fffPendingQ=0;
+    }
+    return _orig.apply(this,arguments);
+  };
+})();
+
 </script>
+
+<!-- ===== FORUM FETCH OVERLAYS ===== -->
+<div id="fff-modal" class="fff-modal">
+  <div class="fff-box">
+    <h3 id="fff-modal-title">📡 论坛自动读取</h3>
+    <div class="fff-row"><label>UID</label><input id="fff-uid" class="fff-inp" type="number" placeholder="论坛数字 UID" inputmode="numeric"></div>
+    <div class="fff-row"><label>开始日期</label><input id="fff-date-start" class="fff-inp" type="date" value="2026-03-01"></div>
+    <div class="fff-row"><label>结束日期</label><input id="fff-date-end" class="fff-inp" type="date" value="2026-03-20"></div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:16px">
+      <button class="fff-btn-ok" onclick="fffDoFetch()">🔍 开始读取</button>
+      <button class="fff-btn-cancel" onclick="fffCloseModal()">取消</button>
+    </div>
+  </div>
+</div>
+<div id="fff-loading" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.92);flex-direction:column;align-items:center;justify-content:center;gap:16px">
+  <div class="fff-spinner"></div>
+  <div id="fff-status" style="color:#ddd;font-size:.9rem;text-align:center;max-width:320px;line-height:1.8">正在连接论坛...</div>
+  <div style="color:#555;font-size:.78rem">这可能需要数十秒，请耐心等候</div>
+</div>
+<div id="fff-result" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.92);flex-direction:column;align-items:center;justify-content:center">
+  <div class="fff-box">
+    <h3>📊 读取完成</h3>
+    <div id="fff-result-text" style="color:#ddd;font-size:1rem;line-height:2;margin-bottom:20px"></div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button id="fff-confirm-btn" class="fff-btn-ok" onclick="fffConfirm()">确认</button>
+      <button class="fff-btn-cancel" onclick="fffCancelResult()">取消</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 
