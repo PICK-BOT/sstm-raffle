@@ -780,6 +780,47 @@ input[type="text"]:focus, input[type="number"]:focus {
   background: rgba(192,57,79,0.15); border: 1px solid rgba(192,57,79,0.3);
   border-radius: 20px; padding: 4px 12px; margin-top: 4px; display: none;
 }
+
+/* ===== FORUM AUTO-FETCH（与 board_game / gal-story 同逻辑）===== */
+.fff-modal {
+  display: none; position: fixed; inset: 0; z-index: 450;
+  background: rgba(5, 2, 16, 0.92); align-items: center; justify-content: center;
+}
+.fff-box {
+  background: linear-gradient(145deg, #12082a 0%, #1a1035 100%);
+  border: 1px solid rgba(201, 168, 76, 0.45); border-radius: 14px;
+  padding: 22px; width: 90%; max-width: 380px; text-align: center;
+}
+.fff-box h3 { color: var(--gold-light); margin: 0 0 14px; font-size: 1.05rem; }
+.fff-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.fff-row label {
+  min-width: 72px; font-size: 0.82rem; color: var(--white-dim);
+  text-align: left; flex-shrink: 0; margin-bottom: 0;
+}
+.fff-inp {
+  flex: 1; padding: 8px 10px; background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(201, 168, 76, 0.35); border-radius: 8px;
+  color: var(--white); font-size: 0.9rem; outline: none; font-family: inherit;
+}
+.fff-inp:focus { border-color: var(--gold); }
+.fff-btn-ok {
+  padding: 9px 20px; background: linear-gradient(135deg, var(--gold), #8a6a20);
+  color: #1a1200; border: none; border-radius: 10px; cursor: pointer;
+  font-weight: 800; font-size: 0.88rem; font-family: inherit;
+}
+.fff-btn-cancel {
+  padding: 7px 18px; background: transparent; color: var(--white-dim);
+  border: 1px solid rgba(201, 168, 76, 0.35); border-radius: 10px;
+  cursor: pointer; font-size: 0.85rem; font-family: inherit;
+}
+.fff-spinner {
+  width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.12);
+  border-top-color: var(--gold); border-radius: 50%;
+  animation: fffSpinDs 0.8s linear infinite;
+}
+@keyframes fffSpinDs { to { transform: rotate(360deg); } }
+#fff-loading { flex-direction: column; }
+#fff-result { flex-direction: column; }
 </style>
 </head>
 <body>
@@ -829,6 +870,8 @@ input[type="text"]:focus, input[type="number"]:focus {
       <button class="btn btn-primary" style="flex:2;" id="btnResume" onclick="resumeGame()">继续投骰 →</button>
       <button class="btn btn-ghost" style="flex:1;" onclick="goScreen2NoCheck()">重新输入</button>
     </div>
+    <button type="button" class="btn btn-ghost" style="width:100%;margin-top:10px;font-size:0.85rem;"
+      onclick="fffOpenModal(true)">📡 论坛更新（按区间净增骰子）</button>
 
     <!-- 故事完成度格子 -->
     <p style="font-size:0.78rem;color:var(--white-dim);margin-bottom:8px;width:100%;text-align:center;">
@@ -865,6 +908,9 @@ input[type="text"]:focus, input[type="number"]:focus {
         </div>
         <p class="calc-note">每5回复 = 1个正骰子 &nbsp;|&nbsp; 每次被引用 = 1个混合骰子（可 +4 或 −4）</p>
       </div>
+      <button type="button" class="btn btn-ghost" style="width:100%;margin-bottom:8px;font-size:0.88rem;"
+        onclick="fffOpenModal(false)">📡 论坛自动读取（新手区）</button>
+      <p class="calc-note" style="margin-top:0;">读取需论坛<strong>数字 UID</strong>（可与上方昵称 ID 不同）；结果会累加到上方回复/被引用。</p>
       <button class="btn btn-primary" onclick="goScreen3()">记录并继续 →</button>
     </div>
   </div>
@@ -999,6 +1045,8 @@ input[type="text"]:focus, input[type="number"]:focus {
   <!-- ===================== SCREEN 5: 投骰界面 ===================== -->
   <div id="screen5" class="screen">
     <h2>投掷命运之骰</h2>
+    <button type="button" class="btn btn-ghost" style="width:100%;max-width:320px;margin-bottom:12px;font-size:0.85rem;"
+      onclick="fffOpenModal(true)">📡 论坛更新（游戏中）</button>
     <p class="roll-header">你拥有的正骰子</p>
     <p class="roll-big"><span id="s5TotalDice">0</span> 个 d4</p>
 
@@ -1098,6 +1146,35 @@ input[type="text"]:focus, input[type="number"]:focus {
     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
       <button class="btn btn-primary" onclick="claimReward()" style="flex:2;max-width:200px;">领取奖励 ✓</button>
       <button class="btn btn-ghost" onclick="claimAndViewProgress()" style="flex:1;max-width:140px;font-size:0.85rem;">查看记录 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FORUM FETCH OVERLAYS ===== -->
+<div id="fff-modal" class="fff-modal">
+  <div class="fff-box">
+    <h3 id="fff-modal-title">📡 论坛自动读取</h3>
+    <div class="fff-row"><label>UID</label><input id="fff-uid" class="fff-inp" type="number" placeholder="论坛数字 UID" inputmode="numeric"></div>
+    <div class="fff-row"><label>开始日期</label><input id="fff-date-start" class="fff-inp" type="date" value="2026-03-01"></div>
+    <div class="fff-row"><label>结束日期</label><input id="fff-date-end" class="fff-inp" type="date" value="2026-03-28"></div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
+      <button type="button" class="fff-btn-ok" onclick="fffDoFetch()">🔍 开始读取</button>
+      <button type="button" class="fff-btn-cancel" onclick="fffCloseModal()">取消</button>
+    </div>
+  </div>
+</div>
+<div id="fff-loading" class="fff-modal" style="flex-direction:column;gap:14px;">
+  <div class="fff-spinner"></div>
+  <div id="fff-status" style="color:var(--white-dim);font-size:0.88rem;text-align:center;max-width:300px;line-height:1.75">正在连接论坛…</div>
+  <div style="color:#555;font-size:0.75rem">可能需要数十秒</div>
+</div>
+<div id="fff-result" class="fff-modal" style="flex-direction:column;">
+  <div class="fff-box">
+    <h3>📊 读取完成</h3>
+    <div id="fff-result-text" style="color:var(--white-dim);font-size:0.95rem;line-height:1.9;margin-bottom:18px"></div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button type="button" id="fff-confirm-btn" class="fff-btn-ok" onclick="fffConfirm()">确认</button>
+      <button type="button" class="fff-btn-cancel" onclick="fffCancelResult()">取消</button>
     </div>
   </div>
 </div>
@@ -1422,6 +1499,335 @@ function pushDiceToGAS(posLeft, pendingNeg, storiesDone) {
       stories_done: storiesDone || {}
     })
   }).catch(() => {});
+}
+
+// ===== 论坛抓取 → GAS 独立分页「论坛抓取记录_骰子故事」（gal 仍用「论坛抓取记录」） =====
+async function logForumFetchToGAS_(opts) {
+  try {
+    const o = opts || {};
+    if (!GAS_URL) return;
+    await fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sheet: '论坛抓取记录_骰子故事',
+        type: 'fetch_log',
+        id: String(o.forum_uid || state.id || '').trim(),
+        forum_uid: String(o.forum_uid || state.id || '').trim(),
+        mode: String(o.mode || ''),
+        reply_count: Number(o.reply_count || 0),
+        citation_count: Number(o.citation_count || 0),
+        timestamp: String(o.timestamp || new Date().toISOString()),
+        startDate: String(o.startDate || ''),
+        endDate: String(o.endDate || ''),
+        game: '骰子故事v2'
+      })
+    });
+  } catch (e) { console.warn('GAS forum fetch log failed', e); }
+}
+
+// ===== FORUM AUTO-FETCH（论坛32 新手区；逻辑对齐 board_game） =====
+const FFF_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
+const FFF_IMP = 'fff_imp_dicestory_v2';
+let _fffResult = null;
+let _fffIsUpdate = false;
+
+function fffGetCurrentUid() {
+  const id = (state && state.id) ? String(state.id).trim() : '';
+  if (/^\d+$/.test(id)) return id;
+  try { return (localStorage.getItem('diceStoryForumUid_v2') || '').trim(); } catch (e) { return ''; }
+}
+
+function fffSetStatus(m) {
+  const e = document.getElementById('fff-status');
+  if (e) e.textContent = m;
+}
+
+function fffOpenLoading() {
+  const el = document.getElementById('fff-loading');
+  if (el) el.style.display = 'flex';
+}
+
+function fffCloseLoading() {
+  const el = document.getElementById('fff-loading');
+  if (el) el.style.display = 'none';
+}
+
+function fffOpenResult(html, btnTxt) {
+  const rt = document.getElementById('fff-result-text');
+  const cb = document.getElementById('fff-confirm-btn');
+  const fr = document.getElementById('fff-result');
+  if (rt) rt.innerHTML = html;
+  if (cb) cb.textContent = btnTxt || '确认';
+  if (fr) fr.style.display = 'flex';
+}
+
+function fffCloseResult() {
+  const fr = document.getElementById('fff-result');
+  if (fr) fr.style.display = 'none';
+}
+
+function fffCancelResult() { fffCloseResult(); }
+
+function fffLoadCC(uid) {
+  try { return new Map(Object.entries(JSON.parse(localStorage.getItem('fff_cc_' + uid) || '{}'))); } catch (e) { return new Map(); }
+}
+
+function fffSaveCC(uid, map) {
+  try { localStorage.setItem('fff_cc_' + uid, JSON.stringify(Object.fromEntries(map))); } catch (e) {}
+}
+
+function fffLoadPI(slug) {
+  try { return JSON.parse(localStorage.getItem('fff_pi_' + slug) || '{}'); } catch (e) { return {}; }
+}
+
+function fffSavePI(slug, idx) {
+  try { localStorage.setItem('fff_pi_' + slug, JSON.stringify(idx)); } catch (e) {}
+}
+
+function fffGetImp(uid) {
+  try { return JSON.parse(localStorage.getItem(FFF_IMP + '_' + uid) || 'null'); } catch (e) { return null; }
+}
+
+function fffSaveImp(uid, key, r, c) {
+  try { localStorage.setItem(FFF_IMP + '_' + uid, JSON.stringify({ key, r, c })); } catch (e) {}
+}
+
+async function fffProxyGet(url) {
+  const sk = 'fff_' + url;
+  const hit = sessionStorage.getItem(sk);
+  if (hit) return hit;
+  const resp = await fetch(FFF_PROXY + encodeURIComponent(url), { signal: AbortSignal.timeout(30000) });
+  if (!resp.ok) throw new Error('网络错误 ' + resp.status);
+  const text = await resp.text();
+  try { sessionStorage.setItem(sk, text); } catch (e) {}
+  return text;
+}
+
+async function fffGetUsername(uid) {
+  const html = await fffProxyGet('https://sstm.moe/?app=core&module=members&controller=profile&id=' + uid);
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  for (const a of doc.querySelectorAll('a[href]')) {
+    const href = a.getAttribute('href') || '';
+    const m = href.match(/\/profile\/(\d+-[^\/\?#"]+)/);
+    if (m && m[1].startsWith(uid + '-')) return m[1];
+  }
+  throw new Error('无法获取用户名，请确认 UID 是否正确');
+}
+
+async function fffCheckQuote(cid, tid, uid, cache) {
+  if (cache.has(cid)) return cache.get(cid);
+  const url = 'https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id=' + tid + '&content_commentid=' + cid;
+  try {
+    const html = await fffProxyGet(url);
+    if (!/forum\/32[-\/]/.test(html)) { cache.set(cid, false); return false; }
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const el = doc.querySelector('article#elComment_' + cid);
+    if (!el) { cache.set(cid, false); return false; }
+    const qs = el.querySelectorAll('.ipsQuote[data-ipsquote-userid="' + uid + '"]');
+    const res = Array.from(qs).some(q => !q.parentElement.closest('.ipsQuote'));
+    cache.set(cid, res);
+    return res;
+  } catch (e) {
+    cache.set(cid, false);
+    return false;
+  }
+}
+
+async function fffScrape(uid, slug, startDate, endDate) {
+  const RE = /forum\/32[-\/]/;
+  let replies = 0;
+  const citedIds = new Set();
+  const sTs = startDate ? new Date(startDate).getTime() : 0;
+  const eTs = endDate ? new Date(endDate + 'T23:59:59Z').getTime() : Date.now();
+  let page = 1;
+  let done = false;
+  const cache = fffLoadCC(uid);
+  const pi = fffLoadPI(slug);
+  const ips = Object.keys(pi).map(Number).sort((a, b) => a - b);
+  for (const pp of ips) {
+    if (new Date(pi[pp]).getTime() > eTs) page = pp;
+    else break;
+  }
+  while (!done) {
+    fffSetStatus('正在读取第 ' + page + ' 页（回复:' + replies + ' 被引用:' + citedIds.size + '）...');
+    const url = page === 1
+      ? 'https://sstm.moe/profile/' + slug + '/content/?type=forums_topic_post&change_section=1'
+      : 'https://sstm.moe/profile/' + slug + '/content/page/' + page + '/?type=forums_topic_post';
+    const html = await fffProxyGet(url);
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const items = doc.querySelectorAll('ol.cProfileContent > li');
+    if (!items.length) break;
+    const ft = doc.querySelector('ol.cProfileContent > li time[datetime]');
+    if (ft) { pi[page] = ft.getAttribute('datetime'); fffSavePI(slug, pi); }
+    let foundInRange = false;
+    const toCheck = [];
+    for (const item of items) {
+      const te = item.querySelector('time[datetime]');
+      if (!te) continue;
+      const ts = new Date(te.getAttribute('datetime')).getTime();
+      if (ts > eTs) continue;
+      if (ts < sTs) { done = true; break; }
+      foundInRange = true;
+      const fa = item.querySelector('p.ipsType_light a[href]');
+      if (!fa || !RE.test(fa.getAttribute('href') || '')) continue;
+      replies++;
+      const bq = item.querySelector('.ipsQuote');
+      if (!bq) continue;
+      const c2 = bq.getAttribute('data-ipsquote-contentcommentid');
+      const t2 = bq.getAttribute('data-ipsquote-contentid');
+      if (c2 && t2) toCheck.push({ cid: c2, tid: t2 });
+    }
+    if (toCheck.length) {
+      const BATCH = 5;
+      for (let i = 0; i < toCheck.length; i += BATCH) {
+        const batch = toCheck.slice(i, i + BATCH);
+        fffSetStatus('第' + page + '页验证引用 ' + (i + 1) + '–' + Math.min(i + BATCH, toCheck.length) + '/' + toCheck.length + '（被引用:' + citedIds.size + '）...');
+        const results = await Promise.all(batch.map(x => fffCheckQuote(x.cid, x.tid, uid, cache)));
+        batch.forEach((x, j) => { if (results[j]) citedIds.add(x.cid); });
+        if (i + BATCH < toCheck.length) await new Promise(r => setTimeout(r, 150));
+      }
+    }
+    if (done) break;
+    const next = doc.querySelector('li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel="next"]');
+    if (!next) break;
+    page++;
+    await new Promise(r => setTimeout(r, foundInRange ? 400 : 100));
+  }
+  fffSaveCC(uid, cache);
+  return { replies, citations: citedIds.size };
+}
+
+function fffOpenModal(isUpdate) {
+  _fffIsUpdate = !!isUpdate;
+  const modal = document.getElementById('fff-modal');
+  if (!modal) return;
+  const uid = isUpdate ? String(fffGetCurrentUid() || '') : '';
+  const el = document.getElementById('fff-uid');
+  if (el) {
+    el.value = uid;
+    el.disabled = false;
+    el.readOnly = false;
+  }
+  const tit = document.getElementById('fff-modal-title');
+  if (tit) tit.textContent = isUpdate ? '📡 论坛更新（游戏中）' : '📡 论坛自动读取';
+  modal.style.display = 'flex';
+}
+
+function fffCloseModal() {
+  const modal = document.getElementById('fff-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function fffDoFetch() {
+  const uid = parseInt((document.getElementById('fff-uid').value || '').trim(), 10);
+  if (!uid || isNaN(uid)) { alert('请输入有效的论坛 UID（数字）'); return; }
+  const startDate = document.getElementById('fff-date-start').value;
+  const endDate = document.getElementById('fff-date-end').value;
+  const dateKey = (startDate || '') + '_' + (endDate || '');
+  fffCloseModal();
+  fffOpenLoading();
+  try {
+    fffSetStatus('正在获取用户资料...');
+    const slug = await fffGetUsername(uid);
+    fffSetStatus('开始统计回复...');
+    const raw = await fffScrape(uid, slug, startDate, endDate);
+    fffCloseLoading();
+    const prev = fffGetImp(uid);
+    const isSame = !!(prev && prev.key === dateKey);
+    const netR = isSame ? Math.max(0, raw.replies - prev.r) : raw.replies;
+    const netC = isSame ? Math.max(0, raw.citations - prev.c) : raw.citations;
+    _fffResult = { uid, dateKey, rawR: raw.replies, rawC: raw.citations, netR, netC, isSame, startDate, endDate };
+    const html = isSame
+      ? '同区间净增：<b style="color:var(--gold-light)">' + netR + '</b> 回复 / <b style="color:var(--gold-light)">' + netC + '</b> 被引用<br><small style="opacity:.65">（总计' + raw.replies + '/' + raw.citations + '，已记录' + prev.r + '/' + prev.c + '）</small>'
+      : '读取结果：<b style="color:var(--gold-light)">' + netR + '</b> 回复 / <b style="color:var(--gold-light)">' + netC + '</b> 被引用';
+    fffOpenResult(html, _fffIsUpdate ? '确认添加' : '确认填入');
+  } catch (err) {
+    fffCloseLoading();
+    fffOpenModal(_fffIsUpdate);
+    alert('读取失败：' + err.message);
+  }
+}
+
+/** 游戏中/进度页：净增回复→正骰子；净增被引用→混合骰子（进度页写入 pending，投骰页加本轮 −4 可用数） */
+function applyForumDeltaToDiceState_(netR, netC) {
+  const posAdd = Math.floor(netR / 5);
+  const mixAdd = netC;
+  if (posAdd <= 0 && mixAdd <= 0) {
+    alert('本次区间内没有可折算的新增回复/被引用。');
+    return;
+  }
+  let msg = '论坛更新：+' + posAdd + ' 个正骰子（d4）';
+  if (mixAdd > 0) msg += '，+' + mixAdd + ' 个混合骰子（被引用）';
+
+  const s5 = document.getElementById('screen5');
+  const s1b = document.getElementById('screen1b');
+  if (s5 && s5.classList.contains('active')) {
+    state.pos_dice += posAdd;
+    state.minus_dice += mixAdd;
+    const td = document.getElementById('s5TotalDice');
+    if (td) td.textContent = state.pos_dice;
+    const sl = document.getElementById('s5Slider');
+    if (sl) {
+      sl.max = state.pos_dice;
+      let v = parseInt(sl.value, 10) || 1;
+      if (v > state.pos_dice) v = state.pos_dice;
+      sl.value = v;
+      const mi = document.getElementById('s5ManualInput');
+      if (mi) { mi.max = state.pos_dice; mi.value = v; }
+    }
+    document.getElementById('s5SliderMax').textContent = state.pos_dice;
+    document.getElementById('s5SliderMaxRight').textContent = state.pos_dice;
+    document.getElementById('s5SliderVal').textContent = document.getElementById('s5Slider').value;
+    const nav = document.getElementById('s5NegAvail');
+    if (nav) nav.textContent = state.minus_dice;
+    if (state.minus_dice > 0) {
+      document.getElementById('s5NegSection').classList.remove('hidden');
+    }
+    saveProgressToStorage();
+    msg += '。「−4」骰子为本轮投骰界面即时可用；正骰子已写入存档同步。';
+    alert(msg);
+    return;
+  }
+  if (s1b && s1b.classList.contains('active')) {
+    const all = loadAllProgress();
+    if (!all[state.id]) all[state.id] = { pos_dice_left: 0, pending_neg_dice: 0, stories_done: {} };
+    all[state.id].pos_dice_left = (all[state.id].pos_dice_left || 0) + posAdd;
+    all[state.id].pending_neg_dice = (all[state.id].pending_neg_dice || 0) + mixAdd;
+    saveAllProgress(all);
+    pushDiceToGAS(all[state.id].pos_dice_left, all[state.id].pending_neg_dice, all[state.id].stories_done || {});
+    showProgressScreen(all[state.id]);
+    msg += '。混合骰子将在下次「记录并继续」时进入分配。';
+    alert(msg);
+    return;
+  }
+  alert(msg + '\n请到进度页或投骰页使用「论坛更新」，或开局前在输入页确认读取。');
+}
+
+function fffConfirm() {
+  fffCloseResult();
+  if (!_fffResult) return;
+  const { uid, dateKey, rawR, rawC, netR, netC, startDate, endDate } = _fffResult;
+  fffSaveImp(uid, dateKey, rawR, rawC);
+  try { localStorage.setItem('diceStoryForumUid_v2', String(uid)); } catch (e) {}
+  logForumFetchToGAS_({
+    mode: _fffIsUpdate ? 'dicestory_v2_fetch_confirm_update' : 'dicestory_v2_fetch_confirm_menu',
+    forum_uid: String(uid),
+    reply_count: netR,
+    citation_count: netC,
+    startDate: String(startDate || ''),
+    endDate: String(endDate || '')
+  });
+  if (_fffIsUpdate) {
+    applyForumDeltaToDiceState_(netR, netC);
+  } else {
+    const ir = document.getElementById('inputReplies');
+    const ic = document.getElementById('inputCitations');
+    ir.value = String((parseInt(ir.value, 10) || 0) + netR);
+    ic.value = String((parseInt(ic.value, 10) || 0) + netC);
+    updateCalc();
+  }
 }
 
 // ===== 同步更新两层缓存（localStorage + GAS） =====
@@ -2286,6 +2692,7 @@ function restart() {
     id: '', replies: 0, citations: 0,
     pos_dice: 0, neg_dice: 0,
     mixAssignments: [], plus_dice: 0, minus_dice: 0,
+    unassigned_dice: 0, pending_neg_dice: 0,
     rolled: 0, diceResults: [], raw_result: 0,
     neg_used: 0, final_result: 0, story_index: 0, chosen: null
   };
@@ -2295,5 +2702,6 @@ function restart() {
   showScreen('screen1');
 }
 </script>
+<!-- v1.3 2026-03-28 论坛抓取写入 GAS「论坛抓取记录_骰子故事」独立分页 -->
 </body>
 </html>

@@ -97,7 +97,7 @@
     #belowInteract{grid-column:2;display:flex;flex-direction:column;gap:10px}
   
 /* ===== FORUM FETCH ===== */
-.fff-modal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.85);align-items:center;justify-content:center}
+.fff-modal{display:none;position:fixed;inset:0;z-index:10120;background:rgba(0,0,0,.85);align-items:center;justify-content:center}
 .fff-box{background:#1a1a2e;border:1px solid #555;border-radius:12px;padding:24px;width:90%;max-width:380px;text-align:center;font-family:inherit}
 .fff-box h3{color:#FFD93D;margin:0 0 16px;font-size:1.05rem}
 .fff-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
@@ -4384,7 +4384,10 @@ function normalizeTopLevelCards_(){
       "achievementOverlay",
       "acquireOverlay",
       "tasksOverlay",
-      "versionTxt"
+      "versionTxt",
+      "fff-modal",
+      "fff-loading",
+      "fff-result"
     ];
     ids.forEach(id=>{
       const el=document.getElementById(id);
@@ -4426,6 +4429,32 @@ window.addEventListener("DOMContentLoaded",()=>{
 const FFF_PROXY='https://api.codetabs.com/v1/proxy?quest=';
 const FFF_IMP='fff_imp_dungeon';
 let _fffResult=null,_fffIsUpdate=false,_fffPendingR=0,_fffPendingQ=0;
+
+async function logForumFetchToGAS_(opts){
+  try{
+    const o=opts||{};
+    const u=gasUrl();
+    if(!u) return;
+    await fetch(u,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        sheet:'论坛抓取记录_地下城',
+        type:'fetch_log',
+        id:String(o.forum_uid||G.uid||'').trim(),
+        forum_uid:String(o.forum_uid||G.uid||'').trim(),
+        mode:String(o.mode||''),
+        reply_count:Number(o.reply_count||0),
+        citation_count:Number(o.citation_count||0),
+        timestamp:String(o.timestamp||new Date().toISOString()),
+        startDate:String(o.startDate||''),
+        endDate:String(o.endDate||''),
+        game:'地下城'
+      })
+    });
+  }catch(e){ console.warn('GAS forum fetch log failed', e); }
+}
 
 function fffGetCurrentUid(){return (G&&G.uid)||'';}
 function fffSetStatus(m){const e=document.getElementById('fff-status');if(e)e.textContent=m;}
@@ -4534,11 +4563,18 @@ async function fffScrape(uid,slug,startDate,endDate){
 }
 function fffOpenModal(isUpdate){
   _fffIsUpdate=isUpdate;
-  const uid=isUpdate?fffGetCurrentUid():'';
+  const modal=document.getElementById('fff-modal');
+  if(!modal){ return; }
+  const uid=isUpdate?String(fffGetCurrentUid()||''):'';
   const el=document.getElementById('fff-uid');
-  if(el){el.value=uid;el.disabled=isUpdate&&!!uid;}
-  document.getElementById('fff-modal-title').textContent=isUpdate?'📡 论坛更新（游戏中）':'📡 论坛自动读取';
-  document.getElementById('fff-modal').style.display='flex';
+  if(el){
+    el.value=uid;
+    el.disabled=false;
+    el.readOnly=false;
+  }
+  const tit=document.getElementById('fff-modal-title');
+  if(tit) tit.textContent=isUpdate?'📡 论坛更新（游戏中）':'📡 论坛自动读取';
+  modal.style.display='flex';
 }
 function fffCloseModal(){document.getElementById('fff-modal').style.display='none';}
 async function fffDoFetch(){
@@ -4558,7 +4594,7 @@ async function fffDoFetch(){
     const isSame=!!(prev&&prev.key===dateKey);
     const netR=isSame?Math.max(0,raw.replies-prev.r):raw.replies;
     const netC=isSame?Math.max(0,raw.citations-prev.c):raw.citations;
-    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,isSame};
+    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,isSame,startDate,endDate};
     const html=isSame
       ?'同区间净增：<b style="color:#4eb">'+netR+'</b> 回复 / <b style="color:#4eb">'+netC+'</b> 被引用<br><small style="opacity:.6">（总计'+raw.replies+'/'+raw.citations+'，已记录'+prev.r+'/'+prev.c+'）</small>'
       :'读取结果：<b style="color:#4eb">'+netR+'</b> 回复 / <b style="color:#4eb">'+netC+'</b> 被引用';
@@ -4571,8 +4607,16 @@ async function fffDoFetch(){
 function fffConfirm(){
   fffCloseResult();
   if(!_fffResult)return;
-  const {uid,dateKey,rawR,rawC,netR,netC}=_fffResult;
+  const {uid,dateKey,rawR,rawC,netR,netC,startDate,endDate}=_fffResult;
   fffSaveImp(uid,dateKey,rawR,rawC);
+  logForumFetchToGAS_({
+    mode:_fffIsUpdate?'dungeon_fetch_confirm_update':'dungeon_fetch_confirm_menu',
+    forum_uid:String(uid),
+    reply_count:netR,
+    citation_count:netC,
+    startDate:String(startDate||''),
+    endDate:String(endDate||''),
+  });
   if(_fffIsUpdate&&G&&G.state){
     // 游戏中：直接加入 stockReply/stockQuote
     G.state.stockReply=(G.state.stockReply||0)+netR;
@@ -4614,12 +4658,12 @@ function fffConfirm(){
     </div>
   </div>
 </div>
-<div id="fff-loading" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.92);flex-direction:column;align-items:center;justify-content:center;gap:16px">
+<div id="fff-loading" style="display:none;position:fixed;inset:0;z-index:10130;background:rgba(0,0,0,.92);flex-direction:column;align-items:center;justify-content:center;gap:16px">
   <div class="fff-spinner"></div>
   <div id="fff-status" style="color:#ddd;font-size:.9rem;text-align:center;max-width:320px;line-height:1.8">正在连接论坛...</div>
   <div style="color:#555;font-size:.78rem">这可能需要数十秒，请耐心等候</div>
 </div>
-<div id="fff-result" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.92);flex-direction:column;align-items:center;justify-content:center">
+<div id="fff-result" style="display:none;position:fixed;inset:0;z-index:10130;background:rgba(0,0,0,.92);flex-direction:column;align-items:center;justify-content:center">
   <div class="fff-box">
     <h3>📊 读取完成</h3>
     <div id="fff-result-text" style="color:#ddd;font-size:1rem;line-height:2;margin-bottom:20px"></div>

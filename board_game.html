@@ -394,6 +394,32 @@ var FATE_CARDS = [
 // ================================================================
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsiAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec';
 
+/** 论坛抓取写入 GAS：用 GET + Image Beacon（与同页 saveBalance 一致）。对 script.google.com 发 JSON POST 常被 CORS 预检拦下，doPost 实际收不到。 */
+function logForumFetchToGAS_(opts){
+  try{
+    var o=opts||{};
+    if(!GAS_URL) return;
+    var uid=String(o.forum_uid||G.userId||'').trim();
+    var pairs={
+      sheet:'论坛抓取记录_大富翁',
+      type:'fetch_log',
+      id:uid,
+      forum_uid:uid,
+      mode:String(o.mode||''),
+      reply_count:String(Number(o.reply_count||0)),
+      citation_count:String(Number(o.citation_count||0)),
+      timestamp:String(o.timestamp||new Date().toISOString()),
+      startDate:String(o.startDate||''),
+      endDate:String(o.endDate||''),
+      game:'大富翁'
+    };
+    var qs=Object.keys(pairs).map(function(k){
+      return encodeURIComponent(k)+'='+encodeURIComponent(pairs[k]);
+    }).join('&');
+    (new Image()).src=GAS_URL+'?'+qs;
+  }catch(e){ console.warn('GAS forum fetch log failed', e); }
+}
+
 // ================================================================
 // SPRITE  (6 列 × 4 行，每格 256×256)
 // ================================================================
@@ -1296,9 +1322,13 @@ async function fffScrape(uid,slug,startDate,endDate){
 }
 function fffOpenModal(isUpdate){
   _fffIsUpdate=isUpdate;
-  const uid=isUpdate?fffGetCurrentUid():'';
+  const uid=isUpdate?String(fffGetCurrentUid()||''):'';
   const el=document.getElementById('fff-uid');
-  if(el){el.value=uid;el.disabled=isUpdate&&!!uid;}
+  if(el){
+    el.value=uid;
+    el.disabled=false;
+    el.readOnly=false;
+  }
   document.getElementById('fff-modal-title').textContent=isUpdate?'📡 论坛更新（游戏中）':'📡 论坛自动读取';
   document.getElementById('fff-modal').style.display='flex';
 }
@@ -1320,7 +1350,7 @@ async function fffDoFetch(){
     const isSame=!!(prev&&prev.key===dateKey);
     const netR=isSame?Math.max(0,raw.replies-prev.r):raw.replies;
     const netC=isSame?Math.max(0,raw.citations-prev.c):raw.citations;
-    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,isSame};
+    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,isSame,startDate,endDate};
     const html=isSame
       ?'同区间净增：<b style="color:#FFD93D">'+netR+'</b> 回复 / <b style="color:#FFD93D">'+netC+'</b> 被引用<br><small style="opacity:.6">（总计'+raw.replies+'/'+raw.citations+'，已记录'+prev.r+'/'+prev.c+'）</small>'
       :'读取结果：<b style="color:#FFD93D">'+netR+'</b> 回复 / <b style="color:#FFD93D">'+netC+'</b> 被引用';
@@ -1333,8 +1363,16 @@ async function fffDoFetch(){
 function fffConfirm(){
   fffCloseResult();
   if(!_fffResult)return;
-  const {uid,dateKey,rawR,rawC,netR,netC}=_fffResult;
+  const {uid,dateKey,rawR,rawC,netR,netC,startDate,endDate}=_fffResult;
   fffSaveImp(uid,dateKey,rawR,rawC);
+  logForumFetchToGAS_({
+    mode:_fffIsUpdate?'board_fetch_confirm_update':'board_fetch_confirm_menu',
+    forum_uid:String(uid),
+    reply_count:netR,
+    citation_count:netC,
+    startDate:String(startDate||''),
+    endDate:String(endDate||''),
+  });
   if(_fffIsUpdate){
     // 游戏中：将 delta 转换为骰子并加入当前池
     const res={4:0,6:0,8:0,10:0,12:0};
