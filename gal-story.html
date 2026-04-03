@@ -236,9 +236,44 @@ body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;
 /* ── FD SCREEN ── same as story, extra label ── */
 #fd-label{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(155,89,182,0.35);border:1px solid #9b59b6;color:#d7bde2;padding:4px 14px;border-radius:12px;font-size:0.8rem;z-index:20}
 
+/* ── REWARD POPUP ── */
+#reward-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.88);background:linear-gradient(160deg,#1a0533,#0d0221 60%,#1a0533);border:2px solid #f0c040;border-radius:14px;padding:28px 32px;z-index:300;display:none;flex-direction:column;align-items:center;gap:14px;min-width:280px;max-width:380px;box-shadow:0 0 40px rgba(240,192,64,0.3);opacity:0;transition:opacity .3s,transform .3s}
+#reward-popup.show{display:flex;opacity:1;transform:translate(-50%,-50%) scale(1)}
+#reward-popup-title{color:#f0c040;font-size:1.1rem;font-weight:bold;text-align:center}
+#reward-popup-body{color:#e8daef;font-size:0.9rem;line-height:1.8;text-align:center;white-space:pre-wrap}
+#reward-popup-close{padding:8px 28px;border:1px solid #9b59b6;background:rgba(155,89,182,0.2);color:#e8daef;border-radius:6px;cursor:pointer;font-family:inherit;font-size:0.9rem;margin-top:4px}
+#reward-popup-close:hover{background:rgba(155,89,182,0.45);color:#fff}
+
+/* ── 彼岸回響 DIALOG ── */
+#overlay-kanata{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:290;display:none;align-items:center;justify-content:center}
+#overlay-kanata.open{display:flex}
+#kanata-box{background:linear-gradient(160deg,#0d0221,#1a0533 50%,#0d0221);border:2px solid #9b59b6;border-radius:14px;padding:32px 28px;max-width:440px;width:90%;color:#e8daef;text-align:center}
+#kanata-box h2{color:#f0c040;font-size:1.2rem;margin-bottom:16px}
+#kanata-box p{font-size:0.88rem;line-height:1.85;color:#d7bde2;margin-bottom:20px}
+.kanata-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+/* ── STATS TABS ── */
+.stats-tabs{display:flex;gap:8px;margin-bottom:16px;width:100%;max-width:440px}
+.stats-tab{flex:1;padding:8px 6px;border:1px solid #6c3483;background:rgba(255,255,255,0.04);color:#b39ddb;border-radius:6px;cursor:pointer;font-family:inherit;font-size:0.82rem;transition:all .2s;text-align:center}
+.stats-tab.active{border-color:#f0c040;color:#f0c040;background:rgba(240,192,64,0.1)}
+.stats-tab-panel{display:none;width:100%;max-width:440px}
+.stats-tab-panel.active{display:block}
+.stats-section-hd{color:#d7bde2;font-size:0.85rem;margin-bottom:8px;margin-top:14px}
+.reward-item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:0.88rem}
+.reward-item:last-child{border-bottom:none}
+.reward-label{color:#888}
+.reward-val{color:#f0c040}
+details.fd-detail summary{cursor:pointer;color:#9b59b6;font-size:0.82rem;list-style:none;display:flex;align-items:center;gap:6px;padding:4px 0}
+details.fd-detail summary::before{content:'▶';font-size:0.7rem;transition:transform .2s}
+details[open].fd-detail summary::before{transform:rotate(90deg)}
+
 /* ── TOAST ── */
 #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(60px);background:rgba(13,2,33,0.95);border:1px solid #9b59b6;color:#e8daef;padding:10px 24px;border-radius:20px;font-size:0.88rem;transition:transform .3s,opacity .3s;opacity:0;z-index:200;pointer-events:none}
 #toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* ── OFFLINE MODE ── */
+#offline-warning{display:none;position:fixed;bottom:14px;right:14px;background:rgba(180,40,40,0.92);border:1px solid #e55;color:#fdd;padding:8px 14px;border-radius:8px;font-size:0.8rem;cursor:pointer;z-index:110;transition:all .2s;line-height:1.4;text-align:center}
+#offline-warning:hover{background:rgba(200,60,60,0.95);box-shadow:0 0 10px rgba(220,60,60,.4)}
 
 /* ── CG GALLERY ── */
 #overlay-cg{position:absolute;inset:0;background:rgba(0,0,0,0.9);z-index:130;display:none;flex-direction:column;padding:20px;overflow-y:auto}
@@ -457,11 +492,15 @@ body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;
   </div>
   <div class="menu-btns">
     <button class="btn" onclick="openStats();closeMenu()">查看玩家面板</button>
+    <button class="btn" onclick="downloadGameData_();closeMenu()">📥 下载游玩数据</button>
     <button class="btn" onclick="closeMenu();showScreen('title')">返回标题</button>
     <button class="btn" onclick="closeMenu()">继续游戏</button>
   </div>
   <div class="menu-hotkeys-panel">
     快捷键：G 功能 / V 存读档 / U 更新 / A 已读快转 / F 强制快转 / C 图鉴 / L 记录 / R 继续 / T 标题 / K 停止快转
+  </div>
+  <div id="menu-offline-row" style="display:none;margin-top:10px;padding:8px 12px;background:rgba(180,40,40,0.2);border:1px solid #c44;border-radius:6px;color:#fbb;font-size:0.8rem;cursor:pointer;text-align:center;width:100%;max-width:340px" onclick="retryCloudConnection_()">
+    🔴 目前离线游玩中 — 点击尝试重新连线
   </div>
 </div>
 
@@ -506,7 +545,7 @@ body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;
   <div id="fetch-status" style="color:#d7bde2;font-size:0.95rem;text-align:center;max-width:320px;line-height:1.8">正在连接论坛...</div>
   <div style="color:#444;font-size:0.78rem">这可能需要数十秒，请耐心等候</div>
   <button class="btn" style="margin-top:8px;font-size:0.82rem;background:rgba(255,255,255,0.06);border-color:#444;color:#aaa"
-    onclick="closeFetchOverlay();openUpdateStats();">改为手动输入</button>
+    onclick="abortFetchToManual_();">改为手动输入</button>
 </div>
 
 <!-- FORUM FETCH: RESULT -->
@@ -554,12 +593,41 @@ body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;
 <!-- STATS OVERLAY -->
 <div id="overlay-stats">
   <h3>📊 玩家面板</h3>
-  <div class="stats-panel" id="stats-panel-content"></div>
+  <div class="stats-tabs">
+    <button class="stats-tab active" onclick="switchStatsTab('main')">本篇讯息</button>
+    <button class="stats-tab" onclick="switchStatsTab('fd')">番外讯息</button>
+    <button class="stats-tab" onclick="switchStatsTab('rewards')">得到奖励</button>
+  </div>
+  <div class="stats-tab-panel active" id="stats-tab-main"></div>
+  <div class="stats-tab-panel" id="stats-tab-fd"></div>
+  <div class="stats-tab-panel" id="stats-tab-rewards"></div>
   <button class="btn" style="margin-top:18px" onclick="closeStats()">关闭</button>
+</div>
+
+<!-- REWARD POPUP -->
+<div id="reward-popup">
+  <div id="reward-popup-title"></div>
+  <div id="reward-popup-body"></div>
+  <button id="reward-popup-close" onclick="closeRewardPopup_()">知道了</button>
+</div>
+
+<!-- 彼岸回響 DIALOG -->
+<div id="overlay-kanata">
+  <div id="kanata-box">
+    <h2>✨ 特殊路线解锁</h2>
+    <p id="kanata-desc"></p>
+    <div class="kanata-btns">
+      <button class="btn gold" onclick="enterKanataRoute_()">进入【彼岸回響】</button>
+      <button class="btn" onclick="declineKanataRoute_()">跳过，正常游玩</button>
+    </div>
+  </div>
 </div>
 
 <!-- TOAST -->
 <div id="toast"></div>
+
+<!-- OFFLINE WARNING -->
+<div id="offline-warning" onclick="retryCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 
 </div><!-- #app -->
 
@@ -588,6 +656,8 @@ let G = {
   fdProgress: {},
   fdEndingsCleared: [], // [{ route, endingKey, title, at }] 番外已打通的结局档（A/B/C）
   cgUnlocked: {},
+  rewards: { returnMedal:0, legacyMedalChances:0, seiso:0, feather:0, letterBadge30d:0, rewardLog:[] },
+  kanataRouteSeen: false, // 彼岸回響路线已进入过
   seenScenes: {},
   savedAt: '',
   trueUnlocked: false,
@@ -678,28 +748,37 @@ const CG_CDN = {
   'SNOW-R3':'https://s.sstmlt.com/img/2026/03/26/SNOW-R3P1Prompt882ca458f8024b94.jpeg',
   'FDA-01':'https://s.sstmlt.com/img/2026/03/26/FDA-01P2Promptbaf86f7f420bbe4a.jpeg',
   'FDA-02':'https://s.sstmlt.com/img/2026/03/26/FDA-02P2Prompt224e343bbef7587e.jpeg',
-  'FDA-EG':'https://s.sstmlt.com/img/2026/03/27/FDA-EGP2Prompt23221640b43b2779.jpeg',
-  'FDA-EM':'https://s.sstmlt.com/img/2026/03/27/FDA-EMP2Prompt70bc88de475c2cda.jpeg',
-  'FDA-EB':'https://s.sstmlt.com/img/2026/03/27/FDA-EBP2Prompt0adb75b470d2671c.jpeg',
+  'FDA-EG':'https://s.sstmlt.com/img/2026/03/30/FD-A--A66d66cdc9e7f1c3f.jpeg',
+  'FDA-EM':'https://s.sstmlt.com/img/2026/03/30/FD-A--B9336806dd1fb2722.jpeg',
+  'FDA-EB':'https://s.sstmlt.com/img/2026/03/30/FD-A--Caba2fe90cd66ba34.jpeg',
+  'FDA-m1':'https://s.sstmlt.com/img/2026/03/27/FDA-EGP2Prompt23221640b43b2779.jpeg',
+  'FDA-m2':'https://s.sstmlt.com/img/2026/03/27/FDA-EMP2Prompt70bc88de475c2cda.jpeg',
+  'FDA-m3':'https://s.sstmlt.com/img/2026/03/27/FDA-EBP2Prompt0adb75b470d2671c.jpeg',
   'FDB-01':'https://s.sstmlt.com/img/2026/03/27/FDB-01P2Prompt5c0377dffc672aea.jpeg',
   'FDB-02':'https://s.sstmlt.com/img/2026/03/27/FDB-02P2Promptaa5411c6a9ad1e0c.png',
-  'FDB-EG':'https://s.sstmlt.com/img/2026/03/27/FDB-EGP2Promptfbf668b5401c3725.jpeg',
-  'FDB-EM':'https://s.sstmlt.com/img/2026/03/27/FDB-EMP2Promptc42e84441e6cb1e3.jpeg',
-  'FDB-EB':'https://s.sstmlt.com/img/2026/03/27/FDB-EBP2Promptb2d40f77945a06bb.jpeg',
+  'FDB-EG':'https://s.sstmlt.com/img/2026/03/30/FD-B--Aeaad7b863a297e9b.jpeg',
+  'FDB-EM':'https://s.sstmlt.com/img/2026/03/30/FD-B--Bc68a28091d20d546.jpeg',
+  'FDB-EB':'https://s.sstmlt.com/img/2026/03/30/FD-B--Cca88482efde71057.jpeg',
+  'FDB-m1':'https://s.sstmlt.com/img/2026/03/27/FDB-EGP2Promptfbf668b5401c3725.jpeg',
+  'FDB-m2':'https://s.sstmlt.com/img/2026/03/27/FDB-EMP2Promptc42e84441e6cb1e3.jpeg',
+  'FDB-m3':'https://s.sstmlt.com/img/2026/03/27/FDB-EBP2Promptb2d40f77945a06bb.jpeg',
   'FDC-01':'https://s.sstmlt.com/img/2026/03/27/FDC-01P2Prompt389c1a0d97c56218.jpeg',
   'FDC-02':'https://s.sstmlt.com/img/2026/03/27/FDC-02P2Prompt9bb7592f4cb24241.jpeg',
-  'FDC-EG':'https://s.sstmlt.com/img/2026/03/27/FDC-EGP2Prompt9a0e11ecab229c49.jpeg',
-  'FDC-EM':'https://s.sstmlt.com/img/2026/03/27/FDC-EMP2Prompt36cc591d16bb0277.jpeg',
-  'FDC-EB':'https://s.sstmlt.com/img/2026/03/27/FDC-EBP2Prompt56207613834c26af.jpeg'
+  'FDC-EG':'https://s.sstmlt.com/img/2026/03/30/FD-C--A4821ae2e079dc9d1.jpeg',
+  'FDC-EM':'https://s.sstmlt.com/img/2026/03/30/FD-C--B65827ab2fbae24be.jpeg',
+  'FDC-EB':'https://s.sstmlt.com/img/2026/03/30/FD-C--C489557b9ba3d78f7.jpeg',
+  'FDC-m1':'https://s.sstmlt.com/img/2026/03/27/FDC-EGP2Prompt9a0e11ecab229c49.jpeg',
+  'FDC-m2':'https://s.sstmlt.com/img/2026/03/27/FDC-EMP2Prompt36cc591d16bb0277.jpeg',
+  'FDC-m3':'https://s.sstmlt.com/img/2026/03/27/FDC-EBP2Prompt56207613834c26af.jpeg'
 };
 // 本地档 tier（与 gal-story_CG_prompts 中 P0/P1/P2 一致），供图鉴缩略图路径
 const CG_LOCAL_TIER = {
   'CH1-01':'P0','CH1-02':'P0','CH2-01':'P0','CH2-02':'P1','CH3-01':'P0','CH3-02':'P1','CH3-03':'P1','CH4-01':'P0','CH4-02':'P0',
   'AMY-R1':'P1','AMY-R2':'P1','AMY-R3':'P1','LILY-R1':'P1','LILY-R2':'P1','LILY-R3':'P1',
   'SNOW-R1':'P1','SNOW-R2':'P1','SNOW-R3':'P1',
-  'FDA-01':'P2','FDA-02':'P2','FDA-EG':'P2','FDA-EM':'P2','FDA-EB':'P2',
-  'FDB-01':'P2','FDB-02':'P2','FDB-EG':'P2','FDB-EM':'P2','FDB-EB':'P2',
-  'FDC-01':'P2','FDC-02':'P2','FDC-EG':'P2','FDC-EM':'P2','FDC-EB':'P2'
+  'FDA-01':'P2','FDA-02':'P2','FDA-EG':'P2','FDA-EM':'P2','FDA-EB':'P2','FDA-m1':'P2','FDA-m2':'P2','FDA-m3':'P2',
+  'FDB-01':'P2','FDB-02':'P2','FDB-EG':'P2','FDB-EM':'P2','FDB-EB':'P2','FDB-m1':'P2','FDB-m2':'P2','FDB-m3':'P2',
+  'FDC-01':'P2','FDC-02':'P2','FDC-EG':'P2','FDC-EM':'P2','FDC-EB':'P2','FDC-m1':'P2','FDC-m2':'P2','FDC-m3':'P2'
 };
 function cgBest_(base, tier){
   // 优先图床，避免本地中文括号文件名在部分浏览器路径解析失败导致“黑底无背景”
@@ -781,10 +860,19 @@ const FD_CG_BG = {
   // FDA-02：艾米线主流程中 renderFDScene 的第二个场景（intro 结束后 fdIdx===1，即第一选项后的下一句主场景）
   'amy:0': cgBest_('FDA-01','P2'),
   'amy:1': cgBest_('FDA-02','P2'),
+  'amy:5': cgBest_('FDA-m1','P2'),
+  'amy:8': cgBest_('FDA-m2','P2'),
+  'amy:18': cgBest_('FDA-m3','P2'),
   'lily:0': cgBest_('FDB-01','P2'),
   'lily:1': cgBest_('FDB-02','P2'),
+  'lily:5': cgBest_('FDB-m1','P2'),
+  'lily:9': cgBest_('FDB-m2','P2'),
+  'lily:15': cgBest_('FDB-m3','P2'),
   'snow:0': cgBest_('FDC-01','P2'),
   'snow:1': cgBest_('FDC-02','P2'),
+  'snow:4': cgBest_('FDC-m1','P2'),
+  'snow:8': cgBest_('FDC-m2','P2'),
+  'snow:14': cgBest_('FDC-m3','P2'),
   'amy:epA': cgBest_('FDA-EG','P2'),
   'amy:epB': cgBest_('FDA-EM','P2'),
   'amy:epC': cgBest_('FDA-EB','P2'),
@@ -816,9 +904,9 @@ const SCENE_CG_ID_BY_KEY = {
   'snow:7':'SNOW-R3','snow:8':'SNOW-R3','snow:9':'SNOW-R3'
 };
 const FD_CG_ID_BY_KEY = {
-  'amy:0':'FDA-01','amy:1':'FDA-02',
-  'lily:0':'FDB-01','lily:1':'FDB-02',
-  'snow:0':'FDC-01','snow:1':'FDC-02',
+  'amy:0':'FDA-01','amy:1':'FDA-02','amy:5':'FDA-m1','amy:8':'FDA-m2','amy:18':'FDA-m3',
+  'lily:0':'FDB-01','lily:1':'FDB-02','lily:5':'FDB-m1','lily:9':'FDB-m2','lily:15':'FDB-m3',
+  'snow:0':'FDC-01','snow:1':'FDC-02','snow:4':'FDC-m1','snow:8':'FDC-m2','snow:14':'FDC-m3',
   'amy:epA':'FDA-EG','amy:epB':'FDA-EM','amy:epC':'FDA-EB',
   'lily:epA':'FDB-EG','lily:epB':'FDB-EM','lily:epC':'FDB-EB',
   'snow:epA':'FDC-EG','snow:epB':'FDC-EM','snow:epC':'FDC-EB'
@@ -826,9 +914,9 @@ const FD_CG_ID_BY_KEY = {
 const CG_GALLERY_ORDER = [
   'CH1-01','CH1-02','CH2-01','CH2-02','CH3-01','CH3-02','CH3-03','CH4-01','CH4-02',
   'AMY-R1','AMY-R2','AMY-R3','LILY-R1','LILY-R2','LILY-R3','SNOW-R1','SNOW-R2','SNOW-R3',
-  'FDA-01','FDA-02','FDA-EG','FDA-EM','FDA-EB',
-  'FDB-01','FDB-02','FDB-EG','FDB-EM','FDB-EB',
-  'FDC-01','FDC-02','FDC-EG','FDC-EM','FDC-EB'
+  'FDA-01','FDA-02','FDA-m1','FDA-m2','FDA-m3','FDA-EG','FDA-EM','FDA-EB',
+  'FDB-01','FDB-02','FDB-m1','FDB-m2','FDB-m3','FDB-EG','FDB-EM','FDB-EB',
+  'FDC-01','FDC-02','FDC-m1','FDC-m2','FDC-m3','FDC-EG','FDC-EM','FDC-EB'
 ];
 const CG_LABELS = {
   'CH1-01':'CH1-01 主线','CH1-02':'CH1-02 主线','CH2-01':'CH2-01 主线','CH2-02':'CH2-02 主线',
@@ -836,9 +924,15 @@ const CG_LABELS = {
   'AMY-R1':'艾米线 R1','AMY-R2':'艾米线 R2','AMY-R3':'艾米线 R3',
   'LILY-R1':'莉莉线 R1','LILY-R2':'莉莉线 R2','LILY-R3':'莉莉线 R3',
   'SNOW-R1':'雪线 R1','SNOW-R2':'雪线 R2','SNOW-R3':'雪线 R3',
-  'FDA-01':'番外·艾米 01','FDA-02':'番外·艾米 02','FDA-EG':'番外·艾米 结局A','FDA-EM':'番外·艾米 结局B','FDA-EB':'番外·艾米 结局C',
-  'FDB-01':'番外·莉莉 01','FDB-02':'番外·莉莉 02','FDB-EG':'番外·莉莉 结局A','FDB-EM':'番外·莉莉 结局B','FDB-EB':'番外·莉莉 结局C',
-  'FDC-01':'番外·雪 01','FDC-02':'番外·雪 02','FDC-EG':'番外·雪 结局A','FDC-EM':'番外·雪 结局B','FDC-EB':'番外·雪 结局C'
+  'FDA-01':'番外·艾米 01','FDA-02':'番外·艾米 02',
+  'FDA-m1':'番外·艾米 03','FDA-m2':'番外·艾米 04','FDA-m3':'番外·艾米 05',
+  'FDA-EG':'番外·艾米 结局A【归灯】','FDA-EM':'番外·艾米 结局B【余温】','FDA-EB':'番外·艾米 结局C【未熄】',
+  'FDB-01':'番外·莉莉 01','FDB-02':'番外·莉莉 02',
+  'FDB-m1':'番外·莉莉 03','FDB-m2':'番外·莉莉 04','FDB-m3':'番外·莉莉 05',
+  'FDB-EG':'番外·莉莉 结局A【新序】','FDB-EM':'番外·莉莉 结局B【缓写】','FDB-EB':'番外·莉莉 结局C【未竟】',
+  'FDC-01':'番外·雪 01','FDC-02':'番外·雪 02',
+  'FDC-m1':'番外·雪 03','FDC-m2':'番外·雪 04','FDC-m3':'番外·雪 05',
+  'FDC-EG':'番外·雪 结局A【回响】','FDC-EM':'番外·雪 结局B【续奏】','FDC-EB':'番外·雪 结局C【未完待续】'
 };
 const CG_REPLAY_DEF = {
   'CH1-01':{chapter:'ch1',start:0,end:2}, 'CH1-02':{chapter:'ch1',start:3,end:9},
@@ -1455,7 +1549,29 @@ function selectGender(el){
 }
 
 function startNewGame(){
-  if(hasAllFourEndingsUnlocked_()) G.trueUnlocked = true;
+  // 新游戏：彻底重置状态，防止不同玩家间数据继承
+  G.id=''; G.name='旅人'; G.gender='other';
+  G.replies=0; G.citations=0;
+  G.chapter='ch1'; G.sceneIdx=0;
+  G.choices={}; G.affinity={amy:0,lily:0,snow:0};
+  G.route=null; G.endingsUnlocked=[];
+  G.fdProgress={}; G.fdEndingsCleared=[];
+  G.cgUnlocked={};
+  G.rewards={returnMedal:0,legacyMedalChances:0,seiso:0,feather:0,letterBadge30d:0,rewardLog:[]};
+  G.kanataRouteSeen=false; G.seenScenes={};
+  G.savedAt=''; G.trueUnlocked=false;
+  G.lastFetchTime=''; G.fetchUsername='';
+  G.fetchRangeHistory={}; G.fetchAudit=[];
+  G.storyLog=[];
+  G._skipMode=false; G._replayMode=false;
+  G._dlgParts=null; G._dlgBindKey=''; G._dlgPartIdx=0;
+  G._fdDlgParts=null; G._fdDlgBindKey=''; G._fdDlgPartIdx=0;
+  G.forceSkipAll=false; G.autoSkipSeen=false;
+  // 清除输入框
+  const nameIn=document.getElementById('input-name');
+  const idIn=document.getElementById('input-id');
+  if(nameIn) nameIn.value='';
+  if(idIn) idIn.value='';
   showScreen('setup');
 }
 
@@ -1523,12 +1639,21 @@ function beginGame(){
   G.choices = {};
   G.affinity = {amy:0, lily:0, snow:0};
   G.route = null;
-  // 已读自动快转只走 playScene 里 (autoSkipSeen&&seen) 分支；勿把 _skipMode 绑在 auto 上，否则「当前句已看过」时 stopSkip 不会执行，关菜单后仍会误快转
   G._skipMode = false;
   G._dlgParts=null; G._dlgBindKey=''; G._dlgPartIdx=0;
   G._fdDlgParts=null; G._fdDlgBindKey=''; G._fdDlgPartIdx=0;
-  // 开局同步一次账号全局进度（含手填回复/引用数、CG 等到云端 slot0）
   saveProfileNow_();
+  // 背景连线检查（若已离线则弹提示）
+  if(_offlineMode){
+    setTimeout(()=>showToast('⚠ 目前离线游玩，数据将存于本机'),400);
+  } else {
+    checkCloudConnection_();
+  }
+  // 检查是否解锁彼岸回響路线
+  if(hasAllNineFDEndings_() && !G.kanataRouteSeen){
+    showKanataDialog_();
+    return; // 待玩家选择后再进入
+  }
   showScreen('story');
   playScene();
 }
@@ -1617,6 +1742,24 @@ function mergeAdjacentCornerQuotes_(text){
   return t;
 }
 function polishFDLine_(text, char, speakerName){
+  // 番外旁白仅含"X说/补/问"类归属句，改为动作描述
+  if(!char || char==='narrator'){
+    const t0=String(text||'').trim();
+    const m=t0.match(/^(艾米|莉莉|雪|她|他|同伴)(说|补|问|答)[。]?$/);
+    if(m){
+      const actionMap={
+        艾米:{说:'轻声开口',补:'补充道',问:'开口问道',答:'轻声回答'},
+        莉莉:{说:'轻声接道',补:'补充了一句',问:'问道',答:'回答道'},
+        雪:  {说:'低声说道',补:'低声补了一句',问:'低声问道',答:'低声答道'},
+        她:  {说:'轻声接着道',补:'补了一句',问:'轻声问道',答:'轻声回答'},
+        他:  {说:'低声道',补:'补充道',问:'开口问道',答:'回答道'},
+        同伴:{说:'轻声道',补:'补充道',问:'问道',答:'回答道'}
+      };
+      const name=m[1], verb=m[2];
+      const action=(actionMap[name]&&actionMap[name][verb])||'说道';
+      text=name+action+'。';
+    }
+  }
   let t = normalizeFDDialogueBrackets_(stripRedundantSpeakerSaid_(text, char));
   t = mergeAdjacentCornerQuotes_(t);
   const t2 = t.trim();
@@ -2260,6 +2403,14 @@ function makeChoice(choiceData, opt, idx){
   }
   // log to GAS
   logChoiceToGAS(choiceData.key, idx, opt.text||opt.textM||'', opt.aff||{});
+  // 每次成功选择时随机抽取道具奖励
+  (()=>{
+    const item=grantRandomReward_();
+    const itemMsg=formatItemMsg_(item);
+    logRewardToGAS_({rewardType:'choice_reward',routeKey:choiceData.key,item});
+    showToast('📦 随机获得：'+itemMsg);
+    scheduleProfileSave_();
+  })();
   // 选项消费：扣除该选项门槛所需资源
   try{
     const needR=Math.max(0, Number(opt.needReplies||0));
@@ -2337,13 +2488,25 @@ function triggerEnding(routeKey){
   G._saveFromFdEnding = false;
   G._lastFdEndingMeta = null;
   const data = ENDING_DATA[routeKey] || ENDING_DATA.normal;
-  if(!G.endingsUnlocked.includes(routeKey)){
+  const isNewEnding = !G.endingsUnlocked.includes(routeKey);
+  if(isNewEnding){
     G.endingsUnlocked.push(routeKey);
   }
   if(hasAllFourEndingsUnlocked_()){
     G.trueUnlocked = true;
   }
   G._currentRoute = routeKey;
+  // 本期返乡勋章（每结局首次打通发放）
+  if(isNewEnding){
+    if(!G.rewards) G.rewards={returnMedal:0,legacyMedalChances:0,seiso:0,feather:0,letterBadge30d:0,rewardLog:[]};
+    G.rewards.returnMedal=(G.rewards.returnMedal||0)+1;
+    const endingLabel={amy:'艾米结局',lily:'莉莉结局',snow:'小雪结局',normal:'普通结局',true:'真实结局'}[routeKey]||routeKey;
+    logRewardToGAS_({rewardType:'main_ending_reward',routeKey,returnMedal:1});
+    setTimeout(()=>{
+      showRewardPopup_('🏅 本篇通关奖励',
+        `「${data.name}」\n${endingLabel}\n\n获得 【本期返乡勋章】×1\n（累计：${G.rewards.returnMedal} 枚）`);
+    },800);
+  }
 
   document.getElementById('ending-name').textContent = '【结局：'+data.name+'】';
   document.getElementById('ending-text').textContent = data.text;
@@ -2442,9 +2605,29 @@ function recordFdEndingCleared_(route, endingKey, title){
   const k=r+'|'+ek;
   const now=new Date().toISOString();
   const idx=G.fdEndingsCleared.findIndex(x=>String(x.route)+'|'+String(x.endingKey)===k);
+  const isNew = idx<0;
   const row={route:r, endingKey:ek, title:String(title||''), at:now};
   if(idx>=0) G.fdEndingsCleared[idx]=row;
   else G.fdEndingsCleared.push(row);
+  // 修复：解锁对应结局 CG（番外结局画面的 CG 在 inject 队列中无法自动触发）
+  const cgKey=FD_CG_ID_BY_KEY[r+':ep'+ek];
+  if(cgKey) markCGUnlocked_(cgKey, 'fd_'+r);
+  // 仅首次打通时发放奖励
+  if(isNew){
+    // 往期返乡勋章兑换机会 +1
+    if(!G.rewards) G.rewards={returnMedal:0,legacyMedalChances:0,seiso:0,feather:0,letterBadge30d:0,rewardLog:[]};
+    G.rewards.legacyMedalChances=(G.rewards.legacyMedalChances||0)+1;
+    const routeNames={amy:'艾米',lily:'莉莉',snow:'雪'};
+    const rn=routeNames[r]||r;
+    const endingLabel={A:'A',B:'B',C:'C'}[ek]||ek;
+    // GAS 记录
+    logRewardToGAS_({rewardType:'fd_ending_reward',route:r,endingKey:ek,legacyMedalChances:1});
+    // 延迟显示弹窗（等结局画面渲染完）
+    setTimeout(()=>{
+      showRewardPopup_('🎖 番外结局通关奖励',
+        `${rn}路线 结局${endingLabel}「${String(title||'').trim()}」\n\n获得 【往期返乡勋章兑换机会】×1\n（累计：${G.rewards.legacyMedalChances} 次）`);
+    },600);
+  }
   scheduleProfileSave_();
 }
 function mergeFdEndingsCleared_(a, b){
@@ -2503,6 +2686,9 @@ function startFD(routeKey){
   fdScore = 0;
   fdChoiceStep = 0;
   G._fdDlgParts=null; G._fdDlgBindKey=''; G._fdDlgPartIdx=0;
+  // 每次重新开始番外时重置该路线的选择历史，让每次游玩独立计算结局
+  if(!G.fdChoiceHistory) G.fdChoiceHistory={};
+  G.fdChoiceHistory[routeKey] = [];
   fdInjectQueue = buildFDIntroScenes_(routeKey);
   G.fdProgress[routeKey] = 'playing';
   showScreen('fd');
@@ -3184,6 +3370,14 @@ function makeFDChoice(opt){
   if(needC>0) G.citations=Math.max(0,Number(G.citations||0)-needC);
   fdScore += Number(opt && opt.score || 0);
   fdChoiceStep = Number(fdChoiceStep||0)+1;
+  // 每次成功选择时随机抽取道具奖励
+  (()=>{
+    const item=grantRandomReward_();
+    const itemMsg=formatItemMsg_(item);
+    logRewardToGAS_({rewardType:'fd_choice_reward',route:fdRouteKey,item});
+    showToast('📦 随机获得：'+itemMsg);
+    scheduleProfileSave_();
+  })();
   // 记录分支路径（用于番外结局与调试）
   G.fdChoiceHistory = G.fdChoiceHistory || {};
   const rk=String(fdRouteKey||'');
@@ -4387,6 +4581,18 @@ function mergeProfileIntoState_(profile){
     G.fetchUsername=String(profile.fetchUsername||'');
   }
   if(profile.trueUnlocked) G.trueUnlocked=true;
+  if(typeof profile.kanataRouteSeen==='boolean') G.kanataRouteSeen=G.kanataRouteSeen||profile.kanataRouteSeen;
+  if(profile.rewards && typeof profile.rewards==='object'){
+    if(!G.rewards) G.rewards={returnMedal:0,legacyMedalChances:0,seiso:0,feather:0,letterBadge30d:0,rewardLog:[]};
+    G.rewards.returnMedal=Math.max(G.rewards.returnMedal||0,Number(profile.rewards.returnMedal||0));
+    G.rewards.legacyMedalChances=Math.max(G.rewards.legacyMedalChances||0,Number(profile.rewards.legacyMedalChances||0));
+    G.rewards.seiso=Math.max(G.rewards.seiso||0,Number(profile.rewards.seiso||0));
+    G.rewards.feather=Math.max(G.rewards.feather||0,Number(profile.rewards.feather||0));
+    G.rewards.letterBadge30d=Math.max(G.rewards.letterBadge30d||0,Number(profile.rewards.letterBadge30d||0));
+    const prevLog=Array.isArray(G.rewards.rewardLog)?G.rewards.rewardLog:[];
+    const cloudLog=Array.isArray(profile.rewards.rewardLog)?profile.rewards.rewardLog:[];
+    G.rewards.rewardLog=[...cloudLog,...prevLog].slice(-120);
+  }
   if(typeof profile.autoSkipSeen==='boolean'){
     G.autoSkipSeen=profile.autoSkipSeen;
     if(!G.autoSkipSeen && !G.forceSkipAll){
@@ -4419,6 +4625,8 @@ function buildProfileData_(){
     storyLog:(G.storyLog||[]).slice(-260),
     trueUnlocked:!!G.trueUnlocked,
     autoSkipSeen:!!G.autoSkipSeen,
+    kanataRouteSeen:!!G.kanataRouteSeen,
+    rewards:G.rewards||{returnMedal:0,legacyMedalChances:0,seiso:0,feather:0,letterBadge30d:0,rewardLog:[]},
     savedAt:new Date().toISOString()
   };
 }
@@ -4650,6 +4858,7 @@ const CORS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
 let _fetchResult = null;
 let _fetchIsUpdate = false;
 let _fetchMeta = null;
+let _fetchAborted = false;
 function fetchRangeKey_(uid,startDate,endDate){
   return [String(uid||'').trim(), String(startDate||''), String(endDate||'')].join('|');
 }
@@ -4778,6 +4987,19 @@ function cancelFetchResult() {
   }
   document.getElementById('manual-input-section').style.display = 'block';
 }
+function abortFetchToManual_(){
+  // 中途放弃自动读取，切换为手动输入
+  _fetchAborted = true;
+  closeFetchOverlay();
+  if(!_fetchIsUpdate){
+    // 初始读取：回到 ID 输入页面，展开手动输入区
+    document.getElementById('manual-input-section').style.display = 'block';
+    showScreen('id');
+  } else {
+    // 更新读取：开启手动更新弹窗
+    openUpdateStats();
+  }
+}
 function toggleManualInput() {
   const s = document.getElementById('manual-input-section');
   s.style.display = s.style.display === 'none' ? 'block' : 'none';
@@ -4792,14 +5014,17 @@ async function startFetchForumData() {
   const startDate = document.getElementById('fetch-start').value;
   const endDate   = document.getElementById('fetch-end').value;
   _fetchIsUpdate = false;
+  _fetchAborted = false;
   _fetchMeta = {uid,startDate,endDate,mode:'start_auto'};
   openFetchOverlay();
   try {
     setFetchStatus('正在获取用户资料...');
     const slug = await getForumUsername(parseInt(uid));
+    if(_fetchAborted){ closeFetchOverlay(); return; }
     G.fetchUsername = slug;
     setFetchStatus('找到用户档案，开始统计回复...');
     const result = await scrapeForumPosts(parseInt(uid), slug, startDate, endDate);
+    if(_fetchAborted){ closeFetchOverlay(); return; }
     _fetchResult = result;
     // 开局读取：抓取成功后自动进入，不要求再点确认
     G.replies = result.replies;
@@ -4818,6 +5043,7 @@ async function startFetchForumData() {
     closeFetchOverlay();
     enterGameAfterFetch_();
   } catch(err) {
+    if(_fetchAborted){ closeFetchOverlay(); return; }
     closeFetchOverlay();
     showToast('自动读取失败：' + err.message);
     document.getElementById('manual-input-section').style.display = 'block';
@@ -4832,6 +5058,7 @@ async function startUpdateFetch() {
   const endDate   = String(opts.endDate || new Date().toISOString().slice(0, 10));
   closeMenu();
   _fetchIsUpdate = true;
+  _fetchAborted = false;
   _fetchMeta = {uid,startDate,endDate,mode:'update_auto'};
   openFetchOverlay();
   try {
@@ -5044,64 +5271,260 @@ function formatSlotSceneText_(slotData){
 // ══════════════════════════════════════════════
 //  STATS OVERLAY
 // ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+//  REWARD POPUP (游戏内弹窗，非浏览器 alert)
+// ══════════════════════════════════════════════
+let _rewardQueue=[];
+let _rewardShowing=false;
+function showRewardPopup_(title, body){
+  _rewardQueue.push({title,body});
+  if(!_rewardShowing) _flushRewardQueue_();
+}
+function _flushRewardQueue_(){
+  if(!_rewardQueue.length){ _rewardShowing=false; return; }
+  _rewardShowing=true;
+  const {title,body}=_rewardQueue.shift();
+  const el=document.getElementById('reward-popup');
+  document.getElementById('reward-popup-title').textContent=title;
+  document.getElementById('reward-popup-body').textContent=body;
+  if(el){ el.style.display='flex'; requestAnimationFrame(()=>el.classList.add('show')); }
+}
+function closeRewardPopup_(){
+  const el=document.getElementById('reward-popup');
+  if(el){ el.classList.remove('show'); setTimeout(()=>{ el.style.display='none'; _flushRewardQueue_(); },320); }
+}
+
+// ══════════════════════════════════════════════
+//  RANDOM REWARD
+// ══════════════════════════════════════════════
+function grantRandomReward_(){
+  if(!G.rewards) G.rewards={returnMedal:0,legacyMedalChances:0,seiso:0,feather:0,letterBadge30d:0,rewardLog:[]};
+  const seisoFull=(G.rewards.seiso||0)>=5000;
+  const featherFull=(G.rewards.feather||0)>=2000;
+  // 概率池：节操50% 羽毛45% 30天字母勋章5%，满了替换为字母勋章
+  let pool=[];
+  if(!seisoFull){ for(let i=0;i<50;i++) pool.push('seiso'); }
+  if(!featherFull){ for(let i=0;i<45;i++) pool.push('feather'); }
+  const letterCount=5+(seisoFull?50:0)+(featherFull?45:0);
+  for(let i=0;i<letterCount;i++) pool.push('letterBadge30d');
+  const type=pool[Math.floor(Math.random()*pool.length)];
+  const amounts={seiso:30,feather:10,letterBadge30d:1};
+  const amount=amounts[type]||1;
+  G.rewards[type]=(G.rewards[type]||0)+amount;
+  const now=new Date().toISOString();
+  if(!Array.isArray(G.rewards.rewardLog)) G.rewards.rewardLog=[];
+  G.rewards.rewardLog.push({type,amount,at:now});
+  G.rewards.rewardLog=G.rewards.rewardLog.slice(-120);
+  return {type,amount};
+}
+function formatItemMsg_(item){
+  if(!item) return '（无）';
+  const labels={seiso:'节操',feather:'羽毛',letterBadge30d:'30天字母勋章'};
+  const units={seiso:'点',feather:'根',letterBadge30d:'枚'};
+  return `${labels[item.type]||item.type} ×${item.amount}${units[item.type]||''}`;
+}
+
+// ══════════════════════════════════════════════
+//  GAS: 奖励记录
+// ══════════════════════════════════════════════
+async function logRewardToGAS_(data){
+  try{
+    await fetch(GAS_URL,{
+      method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        ...data,
+        sheet:'GAL奖励',
+        type:'reward',          // 必须放在 ...data 之后，避免被覆盖
+        id:String(G.id||'').trim(),
+        name:String(G.name||''),
+        timestamp:new Date().toISOString()
+      })
+    });
+  }catch(e){ console.warn('GAS reward log failed',e); }
+}
+
+// ══════════════════════════════════════════════
+//  彼岸回響 特殊路线
+// ══════════════════════════════════════════════
+function hasAllNineFDEndings_(){
+  const fd=G.fdEndingsCleared||[];
+  const need=['amy|A','amy|B','amy|C','lily|A','lily|B','lily|C','snow|A','snow|B','snow|C'];
+  return need.every(k=>fd.some(x=>x.route+'|'+x.endingKey===k));
+}
+function showKanataDialog_(){
+  const desc=document.getElementById('kanata-desc');
+  if(desc) desc.innerHTML=
+    '你已走遍了艾米、莉莉与雪的所有番外结局——每一条路都有了归宿。<br><br>'+
+    '忽然，三人同时在梦里见到同一扇门，门后是一家既熟悉又陌生的食堂：<b>星落食堂</b>。<br><br>'+
+    '这里是所有可能性的交汇点。番外的时间线里，「忘却之嵐」已经平息，食堂不再需要抵挡遗忘——'+
+    '它变成了三条路线共同的记忆锚点，将三人同时召唤到此处。<br><br>'+
+    '<span style="color:#f0c040">这是只有集齐全部番外结局才会出现的路线：<b>【彼岸回響】</b></span><br>'+
+    '<span style="color:#aaa;font-size:0.82rem">（此提示只出现一次，选择跳过后可从菜单进入）</span>';
+  document.getElementById('overlay-kanata').classList.add('open');
+}
+function enterKanataRoute_(){
+  document.getElementById('overlay-kanata').classList.remove('open');
+  G.kanataRouteSeen=true;
+  saveProfileNow_();
+  playKanataRoute_();
+}
+function declineKanataRoute_(){
+  document.getElementById('overlay-kanata').classList.remove('open');
+  G.kanataRouteSeen=true;
+  saveProfileNow_();
+  showScreen('story');
+  playScene();
+}
+function playKanataRoute_(){
+  // 彼岸回響路线剧情：三人在梦中的食堂相遇
+  const scenes_kanata=[
+    {char:'narrator',expr:null,bg:'kitchen',text:'夜深了。城市里每一扇灯窗都开始一点一点熄灭。'},
+    {char:'narrator',expr:null,bg:'kitchen',text:'就在那一刻，艾米、莉莉和雪，在各自的梦里，踏上了同一块石板路。'},
+    {char:'narrator',expr:null,bg:'kitchen',text:'三条本不相交的路线，在某个无人命名的地方，汇成了一个入口。'},
+    {char:'Amy',expr:'normal',bg:'kitchen',text:'「……这里是……」'},
+    {char:'narrator',expr:null,bg:'kitchen',text:'门上挂着半旧的木牌，字迹熟悉：「星落食堂」。'},
+    {char:'Lily',expr:'normal',bg:'kitchen',text:'「奇怪。我明明没打算来这里。」'},
+    {char:'Snow',expr:'normal',bg:'kitchen',text:'「……我也是。」'},
+    {char:'narrator',expr:null,bg:'kitchen',text:'三人站在门口，彼此望着彼此，沉默了一拍。然后——不约而同地推开了门。'},
+    {char:'narrator',expr:null,bg:'kitchen',text:'食堂里的炉火还亮着。旅人坐在惯常的位子，像是等了很久，又像是刚刚到。'},
+    {char:'Amy',expr:'happy',bg:'kitchen',text:'「……你也在。」'},
+    {char:'narrator',expr:null,bg:'kitchen',text:'这不是普通的梦。这里储存着所有「本可能发生」却因为选择而分叉的瞬间。'},
+    {char:'narrator',expr:null,bg:'kitchen',text:'忘却之嵐平息之后，食堂失去了抵御遗忘的使命，却留下了另一件事——'},
+    {char:'narrator',expr:null,bg:'kitchen',text:'它成了所有支线记忆的聚集地。凡是在这里留下过什么的人，都会在某一天，在梦里找到路回来。'},
+    {char:'Lily',expr:'shy',bg:'kitchen',text:'「所以……这就是为什么我们三个都在这里？」'},
+    {char:'narrator',expr:null,bg:'kitchen',text:'旅人点了点头。'},
+    {char:'Snow',expr:'happy',bg:'kitchen',text:'「那我们就……再多待一会儿吧。」'},
+    {char:'narrator',expr:null,bg:'kitchen',text:'那一晚，没有风暴，没有选择，没有分叉。只有四个人，在同一盏灯下，说了很多很久以前没说完的话。'},
+    {char:'narrator',expr:null,bg:'kitchen',text:'不是所有故事都需要结局。有些时刻，只是想被记住。'},
+    {char:'narrator',expr:null,bg:'outside',text:'——天亮时，三人各自回到了自己的路。食堂的灯熄了，但炉里的火还暖着。'},
+    {char:'narrator',expr:null,bg:'outside',text:'「彼岸回響」就此落幕。感谢你走过了所有的路。'},
+  ];
+  // 注入到主故事流程（临时覆盖）
+  injectQueue=scenes_kanata.map((s,i)=>({...s,_kanata:true,_kanataIdx:i}));
+  injectActive=true;
+  G._kanataMode=true;
+  showScreen('story');
+  playScene();
+}
+
+// ══════════════════════════════════════════════
+//  STATS TABS
+// ══════════════════════════════════════════════
+let _statsActiveTab='main';
+function switchStatsTab(tab){
+  _statsActiveTab=tab;
+  ['main','fd','rewards'].forEach(t=>{
+    const panel=document.getElementById('stats-tab-'+t);
+    const btn=document.querySelector('.stats-tab[onclick*="\''+t+'\'"]');
+    if(panel) panel.classList.toggle('active',t===tab);
+    if(btn) btn.classList.toggle('active',t===tab);
+  });
+}
+
 function openStats(){
-  const panel=document.getElementById('stats-panel-content');
+  _statsActiveTab='main';
+  ['main','fd','rewards'].forEach(t=>{
+    const panel=document.getElementById('stats-tab-'+t);
+    if(panel) panel.classList.toggle('active',t==='main');
+  });
+  document.querySelectorAll('.stats-tab').forEach((btn,i)=>btn.classList.toggle('active',i===0));
+
+  // ── 本篇讯息 ──
+  const mainPanel=document.getElementById('stats-tab-main');
   const allEndings=['amy','lily','snow','normal','true'];
-  const allFDs=['amy','lily','snow'];
-  panel.innerHTML=`
-    <div class="stats-row"><span class="stats-label">论坛ID</span><span class="stats-val">${G.id||'（未设定）'}</span></div>
-    <div class="stats-row"><span class="stats-label">玩家名</span><span class="stats-val">${playerName()}</span></div>
-    <div class="stats-row"><span class="stats-label">性别</span><span class="stats-val">${{male:'男',female:'女',other:'其他'}[G.gender]||G.gender}</span></div>
-    <div class="stats-row"><span class="stats-label">累计回复</span><span class="stats-val">${G.replies} 次</span></div>
-    <div class="stats-row"><span class="stats-label">被引用</span><span class="stats-val">${G.citations} 次</span></div>
-    <div class="stats-row"><span class="stats-label">当前章节</span><span class="stats-val">${CHAPTER_LABELS[G.chapter]||G.chapter}</span></div>
-    <div class="affinity-bars" style="margin-top:14px">
-      <div style="color:#d7bde2;font-size:0.85rem;margin-bottom:8px">角色好感度</div>
-      ${renderAffBar('Amy','amy','amy')}
-      ${renderAffBar('Lily','lily','lily')}
-      ${renderAffBar('小雪','snow','snow')}
-    </div>
-    <div style="margin-top:14px">
-      <div style="color:#d7bde2;font-size:0.85rem;margin-bottom:8px">已解锁结局</div>
-      <div class="endings-grid">
-        ${allEndings.map(e=>{
-          const names={amy:'艾米',lily:'莉莉',snow:'小雪',normal:'普通',true:'真实'};
-          const unlocked=G.endingsUnlocked.includes(e);
-          return `<div class="ending-tag ${unlocked?'unlocked':'locked'}">${unlocked?'☑':'☐'} ${names[e]||e}</div>`;
-        }).join('')}
+  mainPanel.innerHTML=`
+    <div class="stats-panel">
+      <div class="stats-row"><span class="stats-label">论坛ID</span><span class="stats-val">${G.id||'（未设定）'}</span></div>
+      <div class="stats-row"><span class="stats-label">玩家名</span><span class="stats-val">${playerName()}</span></div>
+      <div class="stats-row"><span class="stats-label">性别</span><span class="stats-val">${{male:'男',female:'女',other:'其他'}[G.gender]||G.gender}</span></div>
+      <div class="stats-row"><span class="stats-label">累计回复</span><span class="stats-val">${G.replies} 次</span></div>
+      <div class="stats-row"><span class="stats-label">被引用</span><span class="stats-val">${G.citations} 次</span></div>
+      <div class="stats-row"><span class="stats-label">当前章节</span><span class="stats-val">${CHAPTER_LABELS[G.chapter]||G.chapter}</span></div>
+      <div class="affinity-bars" style="margin-top:14px">
+        <div class="stats-section-hd">角色好感度</div>
+        ${renderAffBar('Amy','amy','amy')}
+        ${renderAffBar('Lily','lily','lily')}
+        ${renderAffBar('小雪','snow','snow')}
       </div>
-    </div>
-    <div style="margin-top:12px">
-      <div style="color:#d7bde2;font-size:0.85rem;margin-bottom:8px">番外进度（路线）</div>
+      <div style="margin-top:14px">
+        <div class="stats-section-hd">已解锁结局</div>
+        <div class="endings-grid">
+          ${allEndings.map(e=>{
+            const names={amy:'艾米',lily:'莉莉',snow:'小雪',normal:'普通',true:'真实'};
+            const unlocked=G.endingsUnlocked.includes(e);
+            return `<div class="ending-tag ${unlocked?'unlocked':'locked'}">${unlocked?'☑':'☐'} ${names[e]||e}</div>`;
+          }).join('')}
+        </div>
+      </div>
+      ${hasAllNineFDEndings_()&&G.kanataRouteSeen?'<div style="margin-top:10px"><div class="ending-tag unlocked">☑ 彼岸回響（特殊路线）</div></div>':''}
+    </div>`;
+
+  // ── 番外讯息 ──
+  const fdPanel=document.getElementById('stats-tab-fd');
+  const allFDs=['amy','lily','snow'];
+  const fdEndArr=(G.fdEndingsCleared||[]).slice().sort((a,b)=>{
+    const o={amy:0,lily:1,snow:2};
+    const ra=o[a.route]??9, rb=o[b.route]??9;
+    if(ra!==rb) return ra-rb;
+    return String(a.endingKey||'').localeCompare(String(b.endingKey||''));
+  });
+  const routeNames={amy:'艾米',lily:'莉莉',snow:'雪'};
+  // 按路线分组
+  const byRoute={amy:[],lily:[],snow:[]};
+  fdEndArr.forEach(x=>{ if(byRoute[x.route]) byRoute[x.route].push(x); });
+  fdPanel.innerHTML=`
+    <div class="stats-panel">
+      <div class="stats-section-hd">番外路线进度</div>
       <div class="endings-grid">
         ${allFDs.map(e=>{
-          const names={amy:'艾米番外',lily:'莉莉番外',snow:'小雪番外'};
           const done=G.fdProgress[e]==='done';
-          return `<div class="ending-tag ${done?'unlocked':'locked'}">${done?'☑':'☐'} ${names[e]||e}</div>`;
+          return `<div class="ending-tag ${done?'unlocked':'locked'}">${done?'☑':'☐'} ${routeNames[e]||e}番外</div>`;
         }).join('')}
       </div>
-    </div>
-    <div style="margin-top:12px">
-      <div style="color:#d7bde2;font-size:0.85rem;margin-bottom:8px">番外：已打通的结局档（A / B / C）</div>
-      <div class="endings-grid" id="fd-endings-cleared-grid">
-        ${(function(){
-          const arr=(G.fdEndingsCleared||[]).slice().sort((a,b)=>{
-            const o={amy:0,lily:1,snow:2};
-            const ra=o[a.route]??9, rb=o[b.route]??9;
-            if(ra!==rb) return ra-rb;
-            return String(a.endingKey||'').localeCompare(String(b.endingKey||''));
-          });
-          const routeNames={amy:'艾米',lily:'莉莉',snow:'雪'};
-          if(!arr.length) return '<div style="color:#666;font-size:0.85rem">（尚未记录通关档）</div>';
-          return arr.map(x=>{
-            const rn=routeNames[x.route]||x.route;
-            const tit=String(x.title||'').trim();
-            return `<div class="ending-tag unlocked" title="${String(x.at||'').replace(/"/g,'')}">☑ ${rn} · 结局${x.endingKey||''}${tit?'｜'+tit:''}</div>`;
-          }).join('');
-        })()}
+      <div style="margin-top:14px">
+        <div class="stats-section-hd">已打通结局档（展开查看详情）</div>
+        ${allFDs.map(r=>{
+          const items=byRoute[r]||[];
+          const total=items.length;
+          return `<details class="fd-detail" style="margin-top:8px">
+            <summary>${routeNames[r]}路线 · 已通关 ${total}/3 档${total===3?'（全通 ✓）':''}</summary>
+            <div class="endings-grid" style="margin-top:6px;padding-left:12px">
+              ${total===0
+                ? '<div style="color:#666;font-size:0.82rem">尚未打通任何结局档</div>'
+                : items.map(x=>{
+                    const tit=String(x.title||'').trim();
+                    const at=String(x.at||'').replace('T',' ').slice(0,16);
+                    return `<div class="ending-tag unlocked" title="${at}">☑ 结局${x.endingKey||''}${tit?'｜'+tit:''}</div>`;
+                  }).join('')}
+            </div>
+          </details>`;
+        }).join('')}
       </div>
-    </div>
-  `;
+    </div>`;
+
+  // ── 得到奖励 ──
+  const rwPanel=document.getElementById('stats-tab-rewards');
+  const rw=G.rewards||{};
+  const recentLog=(rw.rewardLog||[]).slice(-10).reverse();
+  rwPanel.innerHTML=`
+    <div class="stats-panel">
+      <div class="stats-section-hd">返乡勋章</div>
+      <div class="reward-item"><span class="reward-label">🏅 本期返乡勋章</span><span class="reward-val">${rw.returnMedal||0} 枚</span></div>
+      <div class="reward-item"><span class="reward-label">🎖 往期返乡勋章兑换机会</span><span class="reward-val">${rw.legacyMedalChances||0} 次</span></div>
+      <div class="stats-section-hd" style="margin-top:14px">随机道具累计</div>
+      <div class="reward-item"><span class="reward-label">节操</span><span class="reward-val">${rw.seiso||0} 点${(rw.seiso||0)>=5000?' <span style="color:#f0c040;font-size:0.78rem">（已满，后续换字母勋章）</span>':''}</span></div>
+      <div class="reward-item"><span class="reward-label">羽毛</span><span class="reward-val">${rw.feather||0} 根${(rw.feather||0)>=2000?' <span style="color:#f0c040;font-size:0.78rem">（已满，后续换字母勋章）</span>':''}</span></div>
+      <div class="reward-item"><span class="reward-label">30天字母勋章</span><span class="reward-val">${rw.letterBadge30d||0} 枚</span></div>
+      ${recentLog.length?`
+      <div class="stats-section-hd" style="margin-top:14px">最近奖励记录（最新10笔）</div>
+      ${recentLog.map(r=>{
+        const labels={seiso:'节操',feather:'羽毛',letterBadge30d:'30天字母勋章'};
+        const at=String(r.at||'').replace('T',' ').slice(0,16);
+        return `<div class="reward-item"><span class="reward-label">${at}</span><span class="reward-val">${labels[r.type]||r.type} ×${r.amount}</span></div>`;
+      }).join('')}`:''}
+    </div>`;
+
   document.getElementById('overlay-stats').classList.add('open');
 }
 
@@ -5418,7 +5841,7 @@ function loadFromGAS(userId, cb){
   };
   const script = document.createElement('script');
   script.src = GAS_URL+'?sheet=线性故事&id='+encodeURIComponent(userId)+'&callback='+cbName;
-  script.onerror = ()=>{ delete window[cbName]; if(userId) mergeLocalProfileIntoG_(userId); cb(null); };
+  script.onerror = ()=>{ delete window[cbName]; if(userId) mergeLocalProfileIntoG_(userId); setOfflineMode_(true); cb(null); };
   document.head.appendChild(script);
   setTimeout(()=>{ if(window[cbName]){ delete window[cbName]; if(userId) mergeLocalProfileIntoG_(userId); cb(null); } }, 6000);
 }
@@ -5480,6 +5903,86 @@ async function logForumFetchToGAS_(opts){
       })
     });
   } catch(e){ console.warn('GAS forum fetch log failed', e); }
+}
+
+// ══════════════════════════════════════════════
+//  OFFLINE MODE
+// ══════════════════════════════════════════════
+let _offlineMode = false;
+function setOfflineMode_(isOffline){
+  if(_offlineMode === isOffline) return;
+  _offlineMode = isOffline;
+  const el = document.getElementById('offline-warning');
+  const menuRow = document.getElementById('menu-offline-row');
+  if(el) el.style.display = isOffline ? 'block' : 'none';
+  if(menuRow) menuRow.style.display = isOffline ? 'block' : 'none';
+  if(isOffline){
+    showToast('⚠ 无法连线云端，正在离线游玩（数据暂存本机）');
+  }
+}
+async function checkCloudConnection_(){
+  try{
+    const ctrl = new AbortController();
+    const tid = setTimeout(()=>ctrl.abort(), 5000);
+    await fetch(GAS_URL+'?ping=1', {signal:ctrl.signal, mode:'no-cors'});
+    clearTimeout(tid);
+    setOfflineMode_(false);
+    return true;
+  }catch(e){
+    setOfflineMode_(true);
+    return false;
+  }
+}
+async function retryCloudConnection_(){
+  showToast('正在尝试连线云端...');
+  const ok = await checkCloudConnection_();
+  if(ok){
+    _offlineMode = false; // 确保状态已重置再提示
+    showToast('✅ 已成功连线云端！');
+    if(G.id) saveProfileNow_();
+  } else {
+    showToast('仍无法连线，继续离线游玩，可稍后再试');
+  }
+}
+function downloadGameData_(){
+  const now = new Date().toLocaleString('zh-TW');
+  const rows = [
+    ['类别','项目','数值'],
+    ['基本信息','论坛ID', G.id||''],
+    ['基本信息','玩家名称', G.name||''],
+    ['基本信息','性别', {male:'男',female:'女',other:'其他'}[G.gender]||G.gender||''],
+    ['游戏进度','累计回复数', G.replies||0],
+    ['游戏进度','累计被引用数', G.citations||0],
+    ['奖励','本期返乡勋章', (G.rewards&&G.rewards.returnMedal)||0],
+    ['奖励','往期返乡勋章兑换机会', (G.rewards&&G.rewards.legacyMedalChances)||0],
+    ['奖励','节操', (G.rewards&&G.rewards.seiso)||0],
+    ['奖励','羽毛', (G.rewards&&G.rewards.feather)||0],
+    ['奖励','30天字母勋章', (G.rewards&&G.rewards.letterBadge30d)||0],
+    ['本篇结局','已打通结局数', (G.endingsUnlocked&&G.endingsUnlocked.length)||0],
+    ['本篇结局','结局列表', (G.endingsUnlocked||[]).join('|')],
+    ['番外结局','已打通番外数', (G.fdEndingsCleared&&G.fdEndingsCleared.length)||0],
+  ];
+  (G.fdEndingsCleared||[]).forEach(fd=>{
+    const rn={amy:'艾米',lily:'莉莉',snow:'雪'}[fd.route]||fd.route;
+    rows.push(['番外结局', rn+'路线结局'+fd.endingKey, fd.title||'']);
+  });
+  const rlog = (G.rewards&&G.rewards.rewardLog)||[];
+  rlog.forEach((r,i)=>{
+    const lab={seiso:'节操',feather:'羽毛',letterBadge30d:'30天字母勋章',
+      choice_reward:'本篇选项奖励',fd_choice_reward:'番外选项奖励',
+      main_ending_reward:'本期返乡勋章',fd_ending_reward:'往期兑换机会'}[r.type||r.rewardType]||(r.type||r.rewardType||'');
+    rows.push(['奖励记录','#'+(i+1)+' '+lab,'数量：'+(r.amount||1)+'　时间：'+(r.at||'')]);
+  });
+  rows.push(['导出信息','导出时间', now]);
+  const csv = '\uFEFF' + rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url;
+  a.download='gal-story-数据_'+(G.id||'未知')+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('📥 游玩数据已下载（CSV格式，Excel可直接开启）');
 }
 
 // ══════════════════════════════════════════════
@@ -5683,5 +6186,7 @@ function doPost(e) {
 <!-- v2.7 2026-03-28 已读快转：开局勿绑 _skipMode；关选项/同步档案时清除残留；立绘 bottom 随对话框高度对齐 -->
 <!-- v2.8 2026-03-28 存盘前 merge profile 不再覆盖本局已读快转开关；主線/番外對白去「艾米说」並多句拆段；快转按段推进 -->
 <!-- v2.9 2026-03-28 番外结局存档 _runtimeMode=fd_ending+读档回结局屏；番外对白改整段不机械重复；结局标题去重 -->
+<!-- v3.0 2026-04-02 修复番外结局CG解锁；修复多周目结局计算（每次重置选择历史）；玩家面板3分区（本篇/番外/奖励）；番外结局可折叠展示；本期/往期返乡勋章；随机道具奖励（节操/羽毛/30天字母勋章）；游戏内奖励弹窗；GAS新增GAL奖励分页；彼岸回響特殊路线（集齐全9番外结局解锁） -->
+<!-- v3.1 2026-04-03 修复GAS奖励type字段被覆盖导致云端不记录的bug；修复不同UID间游戏数据继承问题（新游戏重置G）；自动读取中途改手动可暂停抓取并直接进游戏；番外旁白"X说。"改为动作描述；加入离线模式提示（菜单红色警告+下方浮动提示）；可下载游玩数据CSV（Excel可直接开启）；菜单加"下载游玩数据"按钮 -->
 </body>
 </html>
