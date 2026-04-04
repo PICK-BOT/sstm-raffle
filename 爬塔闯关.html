@@ -51,9 +51,8 @@
     .loading-box{min-width:300px;max-width:420px;background:#122844;border:1px solid #4e7fca;border-radius:12px;padding:14px;display:flex;gap:10px;align-items:center}
     .loading-box img{width:64px;height:64px;object-fit:contain;flex:0 0 auto}
     .loading-box .t{font-size:14px;line-height:1.6;color:#eaf2ff}
-  
-/* ===== FORUM FETCH ===== */
-.fff-modal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.85);align-items:center;justify-content:center}
+/* ===== 论坛自动读取（与 gal-story / 地下城 同逻辑）===== */
+.fff-modal{display:none;position:fixed;inset:0;z-index:10120;background:rgba(0,0,0,.85);align-items:center;justify-content:center}
 .fff-box{background:#1a1a2e;border:1px solid #555;border-radius:12px;padding:24px;width:90%;max-width:380px;text-align:center;font-family:inherit}
 .fff-box h3{color:#FFD93D;margin:0 0 16px;font-size:1.05rem}
 .fff-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
@@ -64,7 +63,16 @@
 .fff-btn-cancel{padding:8px 14px;background:rgba(255,255,255,.1);color:#ccc;border:1px solid rgba(255,255,255,.3);border-radius:6px;cursor:pointer;font-size:.85rem;font-family:inherit}
 .fff-spinner{width:34px;height:34px;border:3px solid rgba(255,255,255,.15);border-top-color:#4a9;border-radius:50%;animation:fffSpin .8s linear infinite}
 @keyframes fffSpin{to{transform:rotate(360deg)}}
-</style>
+
+/* ── OFFLINE MODE ── */
+#tower-offline-warning{display:none;position:fixed;bottom:14px;right:14px;background:rgba(180,40,40,0.92);border:1px solid #e55;color:#fdd;padding:8px 14px;border-radius:8px;font-size:0.8rem;cursor:pointer;z-index:200;transition:all .2s;line-height:1.4;text-align:center}
+#tower-offline-warning:hover{background:rgba(200,60,60,0.95);box-shadow:0 0 10px rgba(220,60,60,.4)}
+#tower-id-history-row{margin-top:10px;text-align:center;display:none}
+#tower-id-history-row .t-ih-label{font-size:0.72rem;color:#c9daf6;margin-bottom:6px}
+.t-ih-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.t-ih-chip{padding:4px 12px;border-radius:16px;font-size:0.78rem;cursor:pointer;background:rgba(74,153,153,0.2);border:1px solid #4a9;color:#c9daf6;font-family:inherit}
+.t-ih-chip:hover{background:rgba(74,153,153,0.45);color:#fff}
+  </style>
 </head>
 <body>
 <div class="app">
@@ -76,6 +84,10 @@
       <button class="primary" onclick="enterGame()">进入游戏</button>
     </div>
     <div style="font-size:13px;color:#c9daf6;margin-top:8px" id="loginNotice"></div>
+    <div id="tower-id-history-row">
+      <div class="t-ih-label">最近使用的 ID</div>
+      <div class="t-ih-chips" id="tower-id-history-chips"></div>
+    </div>
   </div>
 
   <div id="menuCard" class="card hidden">
@@ -97,11 +109,12 @@
       <label>初始被引用数 <input id="baseQuote" type="number" min="0" value="0" placeholder="输入被引用数"></label>
     </div>
     <div class="row">
-      <button onclick="fffOpenModal(false)" style="background:#3a7;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-family:inherit;font-size:.9rem">📡 论坛读取</button>
+      <button type="button" onclick="fffOpenModal(false)" style="background:#3a7;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-family:inherit;font-size:.9rem">📡 论坛读取</button>
       <button id="btnStartRun" class="primary" onclick="startRun()">开始爬塔</button>
       <button id="btnResumeRun" class="good" onclick="resumeRun()">继续爬塔</button>
       <button onclick="openRecord()">查看记录</button>
       <button onclick="switchToIdInput_()">更改ID（可能影响记录）</button>
+      <button onclick="downloadTowerData_()">📥 下载游玩数据</button>
     </div>
   </div>
 
@@ -128,8 +141,9 @@
         <div class="row">
           <button class="warn" onclick="retreat()">撤退结算</button>
           <button onclick="backMenu()">主菜单</button>
-          <button onclick="fffOpenModal(true)" style="background:#3a7;color:#fff;border:none;border-radius:4px;padding:5px 10px;cursor:pointer;font-family:inherit;font-size:.85rem">📡 论坛更新</button>
+          <button type="button" onclick="fffOpenModal(true)" style="background:#3a7;color:#fff;border:none;border-radius:4px;padding:5px 10px;cursor:pointer;font-family:inherit;font-size:.85rem">📡 论坛更新</button>
           <button onclick="changeIdMidGame_()">更改ID</button>
+          <button onclick="downloadTowerData_()">📥 存档</button>
         </div>
       </div>
 
@@ -228,7 +242,7 @@
 </div>
 
 <script>
-const VER="v1.5.2-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
+const VER="v1.5.1-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
 const SHEET="爬塔闯关";
 const USER_IMG_POOL=[
   "./assets/c__Users_Fish_Chen_AppData_Roaming_Cursor_User_workspaceStorage_e82a39d4f02dd167ea7d277ae174f65a_images_image-a0d6726b-fb23-4710-b309-567e9cf17bea.png",
@@ -571,6 +585,7 @@ async function ensureCloudConfirmed_(){
     return true;
   }catch(e){
     // 云端失败：允许继续，但会提示非严格回退
+    setTowerOfflineMode_(true);
     sys("云端确认失败：将使用本地缓存继续（非严格模式，可能发生重复领取）。");
     return true;
   }finally{
@@ -722,6 +737,7 @@ async function enterGame(){
   const aliasFrom = G.pendingAliasFrom || '';
   G.pendingAliasFrom = '';
   G.uid=uid; localStorage.setItem(KID,uid);
+  saveTowerIdHistory_(uid);
   show("loginCard",false); show("menuCard",true); document.getElementById("hello").textContent="玩家："+uid;
   // 严格模式：战利品/里程碑展示前先等待云端确认
   G.strict.confirmed=false;
@@ -777,6 +793,7 @@ function switchToIdInput_(){
   show("recordCard",false);
   show("gameCard",false);
   show("loginCard",true);
+  renderTowerIdHistory_();
 }
 
 async function changeIdMidGame_(){
@@ -1042,76 +1059,93 @@ function renderGame(){
   }
 }
 
+/** 与 dungeon_story 的 consumePts 相同：先被引用凑 5 点倍数，再回复，不足再拆 1 条被引用 */
+function towerConsumePts_(r, needPts){
+  let rem=Number(needPts||0);
+  if(rem<=0) return {usedR:0, usedQ:0};
+  r.stockQuote=Number(r.stockQuote||0);
+  r.stockReply=Number(r.stockReply||0);
+  let usedQ=0, usedR=0;
+  const useQ=Math.min(r.stockQuote, Math.floor(rem/5));
+  if(useQ>0){
+    r.stockQuote-=useQ;
+    usedQ+=useQ;
+    rem-=useQ*5;
+  }
+  if(rem>0){
+    if(r.stockReply>=rem){
+      r.stockReply-=rem;
+      usedR+=rem;
+      rem=0;
+    }else{
+      const missing=rem - r.stockReply;
+      usedR += r.stockReply;
+      r.stockReply=0;
+      if(r.stockQuote<=0) return {usedR, usedQ};
+      r.stockQuote-=1;
+      usedQ+=1;
+      const over=5 - missing;
+      r.stockReply += over;
+      rem=0;
+    }
+  }
+  return {usedR, usedQ};
+}
+
 function submitAction(){
   const r=G.run;if(!r)return;
   if(r.task) return;
   if(r.monster && r.monster.counter) return sys("怪物正在反击，请先完成闪躲或选择硬接伤害。");
   if(r.monster.hp<=0) return sys("该怪物已被击败。");
-  const addR=Math.max(0,parseInt(document.getElementById("actReply").value||"0",10));
-  const addQ=Math.max(0,parseInt(document.getElementById("actQuote").value||"0",10));
+  const addR=Math.max(0,parseInt(document.getElementById("actReply").value||"0",10)||0);
+  const addQ=Math.max(0,parseInt(document.getElementById("actQuote").value||"0",10)||0);
+  r.stockReply = (r.stockReply||0) + addR;
+  r.stockQuote = (r.stockQuote||0) + addQ;
   const need = r.monster.hp;
-  const maxQ = (r.stockQuote||0) + addQ, maxR = (r.stockReply||0) + addR;
-  if(maxQ+maxR<=0)return sys("请至少输入一种行动数量。");
-  let best = null;
-  for(let q=0;q<=maxQ;q++){
-    for(let rr=0;rr<=maxR;rr++){
-      const d = q*5+rr;
-      if(d < need) continue;
-      if(!best || d < best.d || (d===best.d && (q+rr)<(best.q+best.r))) best={q:q,r:rr,d:d};
-    }
+  const availablePts = (r.stockReply||0) + (r.stockQuote||0) * 5;
+  if(availablePts<=0){
+    document.getElementById("actReply").value="0";
+    document.getElementById("actQuote").value="0";
+    localStorage.setItem(KRUN,JSON.stringify(r));
+    try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
+    renderGame();
+    return sys("请至少输入一种行动数量。");
   }
-  if(best){
-    r.stockQuote = maxQ - best.q;
-    r.stockReply = maxR - best.r;
-    r.monster.hp=0;
+  const usePts = Math.min(availablePts, need);
+  const used = towerConsumePts_(r, usePts);
+  r.monster.hp = Math.max(0, r.monster.hp - usePts);
+  const deductMsg = "本次扣除待用：回复 "+used.usedR+"；被引用 "+used.usedQ+"。造成 "+usePts+" 点伤害。";
+  if(r.monster.hp<=0){
     r.kill+=1;
     r.reward+=r.monster.reward;
     r.lastLoot = pickLootKind_();
     r.lootBag[r.lastLoot]=(r.lootBag[r.lastLoot]||0)+1;
     const t = loadLootTotal(); t[r.lastLoot]=(t[r.lastLoot]||0)+1; saveLootTotal(t); renderLootTotal();
-    sys("战斗成功！获得："+r.lastLoot+"。请继续爬塔。");
+    sys("战斗成功！获得："+r.lastLoot+"。 "+deductMsg+" 请继续爬塔。");
     setTimeout(()=>nextFloor(), 500);
   }else{
-    const dAll = maxQ*5 + maxR;
-    r.stockQuote = 0;
-    r.stockReply = 0;
-    r.monster.hp = Math.max(0, r.monster.hp - dAll);
-    if(r.monster.hp===0){
-      r.kill+=1;
-      r.reward+=r.monster.reward;
-      r.lastLoot = pickLootKind_();
-      r.lootBag[r.lastLoot]=(r.lootBag[r.lastLoot]||0)+1;
-      const t = loadLootTotal(); t[r.lastLoot]=(t[r.lastLoot]||0)+1; saveLootTotal(t); renderLootTotal();
-      sys("战斗成功！获得："+r.lastLoot+"。请继续爬塔。");
-      setTimeout(()=>nextFloor(), 500);
+    const mode = rInt(0,2);
+    const dodgeAct=["左闪","右闪","防御"][rInt(0,2)];
+    if(mode===0){
+      const needD=rInt(2,5);
+      r.monster.counter={
+        type:"reply",
+        need:needD,
+        dodgeAct:dodgeAct,
+        txt:"怪物反击！需至少折算 "+needD+" 条回复（1 条被引用按 5 条回复折算，可混用），并在下方完成闪躲反击。"
+      };
+    }else if(mode===1){
+      const needD=rInt(1,2);
+      r.monster.counter={
+        type:"quote",
+        need:needD,
+        dodgeAct:dodgeAct,
+        txt:"怪物反击！需至少 "+needD+" 条被引用，并在下方完成闪躲反击（被引用可达成本条要求）。"
+      };
     }else{
-      // 怪物未死，触发反击（回复/被引用类也必须选对「怎样闪」；被引用类可用被引用数量达成）
-      const mode = rInt(0,2);
-      const dodgeAct=["左闪","右闪","防御"][rInt(0,2)];
-      if(mode===0){
-        const need=rInt(2,5);
-        r.monster.counter={
-          type:"reply",
-          need:need,
-          dodgeAct:dodgeAct,
-          // 不提示“该选哪种闪躲”，让玩家自行猜
-          txt:"怪物反击！需至少折算 "+need+" 条回复（1 条被引用按 5 条回复折算，可混用），并在下方完成闪躲反击。"
-        };
-      }else if(mode===1){
-        const need=rInt(1,2);
-        r.monster.counter={
-          type:"quote",
-          need:need,
-          dodgeAct:dodgeAct,
-          // 不提示“该选哪种闪躲”，让玩家自行猜
-          txt:"怪物反击！需至少 "+need+" 条被引用，并在下方完成闪躲反击（被引用可达成本条要求）。"
-        };
-      }else{
-        // 不提示“该选哪种行动”，让玩家自行猜
-        r.monster.counter={type:"action",need:dodgeAct,txt:"怪物反击！需要你在下方选择闪躲行动完成反击。"};
-      }
-      sys("怪物开始反击！请按说明选择闪躲方式并满足条件，或选择硬接伤害。");
+      r.monster.counter={type:"action",need:dodgeAct,txt:"怪物反击！需要你在下方选择闪躲行动完成反击。"};
     }
+    sys(deductMsg+" 怪物尚未击败，开始反击！请按说明选择闪躲方式并满足条件，或选择硬接伤害。");
   }
   document.getElementById("actReply").value="0";
   document.getElementById("actQuote").value="0";
@@ -1123,8 +1157,8 @@ function submitAction(){
 function tryDodge(){
   const r=G.run; if(!r||!r.monster||!r.monster.counter) return;
   const c=r.monster.counter;
-  const addR=Math.max(0,parseInt(document.getElementById("dgReply").value||"0",10));
-  const addQ=Math.max(0,parseInt(document.getElementById("dgQuote").value||"0",10));
+  const addR=Math.max(0,parseInt(document.getElementById("dgReply").value||"0",10)||0);
+  const addQ=Math.max(0,parseInt(document.getElementById("dgQuote").value||"0",10)||0);
   const act=(document.getElementById("dgAction").value||"").trim();
   const needAct = c.type==="action" ? c.need : c.dodgeAct;
   const mustPickDodge = (c.type==="action") || !!c.dodgeAct;
@@ -1142,26 +1176,23 @@ function tryDodge(){
       return;
     }
   }
+  r.stockReply = (r.stockReply||0) + addR;
+  r.stockQuote = (r.stockQuote||0) + addQ;
   let ok=false;
+  let dodgeUsed = {usedR:0, usedQ:0};
   if(c.type==="reply"){
     const needPts=c.need;
-    const maxR=(r.stockReply||0)+addR, maxQ=(r.stockQuote||0)+addQ;
-    let best=null;
-    for(let q=0;q<=maxQ;q++){
-      for(let rr=0;rr<=maxR;rr++){
-        const d=q*5+rr;
-        if(d<needPts) continue;
-        if(!best || d<best.d || (d===best.d && (q+rr)<(best.q+best.r))) best={q:q,r:rr,d:d};
-      }
-    }
-    if(best){
-      r.stockQuote=maxQ-best.q;
-      r.stockReply=maxR-best.r;
+    const availPts = (r.stockReply||0) + (r.stockQuote||0) * 5;
+    if(availPts >= needPts){
+      dodgeUsed = towerConsumePts_(r, needPts);
       ok=true;
     }
   }else if(c.type==="quote"){
-    const total=(r.stockQuote||0)+addQ;
-    if(total>=c.need){ r.stockQuote = total - c.need; ok=true; }
+    if((r.stockQuote||0) >= c.need){
+      r.stockQuote -= c.need;
+      dodgeUsed = {usedR:0, usedQ:c.need};
+      ok=true;
+    }
   }else{
     ok=true;
   }
@@ -1170,7 +1201,14 @@ function tryDodge(){
   document.getElementById("dgAction").value="";
   if(ok){
     r.monster.counter=null;
-    sys("闪躲成功！可继续攻击怪物。");
+    let msg = "闪躲成功！";
+    if(c.type==="reply"){
+      msg += "已从待用扣除：回复 "+dodgeUsed.usedR+"；被引用 "+dodgeUsed.usedQ+"。";
+    }else if(c.type==="quote" && dodgeUsed.usedQ>0){
+      msg += "已消耗被引用 "+dodgeUsed.usedQ+" 条。";
+    }
+    msg += "可继续攻击怪物。";
+    sys(msg);
     localStorage.setItem(KRUN,JSON.stringify(r));
     try{cloudMaybeSaveRunSnapshot_(false);}catch(e){}
     renderGame();
@@ -1485,6 +1523,7 @@ window.addEventListener("DOMContentLoaded",()=>{
   // 严格模式下：进入游戏后由云端确认成功再展示战利品/里程碑状态
   if(!STRICT_CLOUD_CONFIRM) renderLootTotal();
   const uid=localStorage.getItem(KID)||""; if(uid){document.getElementById("uid").value=uid; G.uid=uid; enterGame();}
+  renderTowerIdHistory_();
   const av=document.getElementById("sysAvatar");
   av.src=SYS_AVATAR;
   av.onerror=()=>{av.style.display="none";};
@@ -1510,21 +1549,83 @@ window.addEventListener("DOMContentLoaded",()=>{
   }, 20000);
 });
 
-// ===== FORUM AUTO-FETCH (tower v1.5.2) =====
+// ===== FORUM AUTO-FETCH（与 gal-story 同抓取逻辑；云端写入 GAS「论坛抓取记录_爬塔」） =====
 const FFF_PROXY='https://api.codetabs.com/v1/proxy?quest=';
 const FFF_IMP='fff_imp_tower';
 let _fffResult=null,_fffIsUpdate=false,_fffPendingR=0,_fffPendingQ=0;
 
+async function logForumFetchToGAS_(opts){
+  try{
+    const o=opts||{};
+    const u=gasUrl();
+    if(!u) return;
+    await fetch(u,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        sheet:'论坛抓取记录_爬塔',
+        type:'fetch_log',
+        id:String(G.uid||'').trim(),
+        forum_uid:String(o.forum_uid||G.uid||'').trim(),
+        mode:String(o.mode||''),
+        reply_count:Number(o.reply_count||0),
+        citation_count:Number(o.citation_count||0),
+        timestamp:String(o.timestamp||new Date().toISOString()),
+        startDate:String(o.startDate||''),
+        endDate:String(o.endDate||''),
+        game:'爬塔闯关'
+      })
+    });
+  }catch(e){ console.warn('GAS forum fetch log failed', e); }
+}
+
+const TOWER_ID_HISTORY_KEY_='towerStoryIdHistory_v1';
+const TOWER_ID_HISTORY_MAX_=5;
+function loadTowerIdHistory_(){try{return JSON.parse(localStorage.getItem(TOWER_ID_HISTORY_KEY_))||[]}catch(e){return[]}}
+function saveTowerIdHistory_(id){
+  if(!id)return;
+  let hist=loadTowerIdHistory_().filter(x=>String(x)!==String(id));
+  hist.unshift(String(id));
+  if(hist.length>TOWER_ID_HISTORY_MAX_)hist=hist.slice(0,TOWER_ID_HISTORY_MAX_);
+  try{localStorage.setItem(TOWER_ID_HISTORY_KEY_,JSON.stringify(hist))}catch(e){}
+  renderTowerIdHistory_();
+}
+function renderTowerIdHistory_(){
+  const hist=loadTowerIdHistory_();
+  const row=document.getElementById('tower-id-history-row');
+  const chips=document.getElementById('tower-id-history-chips');
+  if(!row||!chips)return;
+  if(!hist.length){row.style.display='none';return;}
+  row.style.display='block';
+  chips.innerHTML='';
+  hist.forEach(id=>{
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='t-ih-chip';
+    btn.textContent=id;
+    btn.onclick=()=>{const inp=document.getElementById('uid');if(inp)inp.value=id;};
+    chips.appendChild(btn);
+  });
+}
+function logTowerActivityToGAS_(uid,date,replies,citations){
+  const u=gasUrl();if(!u||!uid||!date)return;
+  fetch(u,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({sheet:'爬塔闯关返乡活跃度',type:'activity_log',uid:String(uid),date:String(date),
+      replies:parseInt(replies,10)||0,citations:parseInt(citations,10)||0})}).catch(e=>console.warn('GAS activity log failed',e));
+}
+
 function fffGetCurrentUid(){return (G&&G.uid)||'';}
 function fffSetStatus(m){const e=document.getElementById('fff-status');if(e)e.textContent=m;}
-function fffOpenLoading(){document.getElementById('fff-loading').style.display='flex';}
-function fffCloseLoading(){document.getElementById('fff-loading').style.display='none';}
+function fffOpenLoading(){const el=document.getElementById('fff-loading');if(el)el.style.display='flex';}
+function fffCloseLoading(){const el=document.getElementById('fff-loading');if(el)el.style.display='none';}
 function fffOpenResult(html,btnTxt){
-  document.getElementById('fff-result-text').innerHTML=html;
-  document.getElementById('fff-confirm-btn').textContent=btnTxt||'确认';
-  document.getElementById('fff-result').style.display='flex';
+  const rt=document.getElementById('fff-result-text'),cb=document.getElementById('fff-confirm-btn'),fr=document.getElementById('fff-result');
+  if(rt) rt.innerHTML=html;
+  if(cb) cb.textContent=btnTxt||'确认';
+  if(fr) fr.style.display='flex';
 }
-function fffCloseResult(){document.getElementById('fff-result').style.display='none';}
+function fffCloseResult(){const fr=document.getElementById('fff-result');if(fr)fr.style.display='none';}
 function fffCancelResult(){fffCloseResult();}
 function fffLoadCC(uid){try{return new Map(Object.entries(JSON.parse(localStorage.getItem('fff_cc_'+uid)||'{}')))}catch(e){return new Map();}}
 function fffSaveCC(uid,map){try{localStorage.setItem('fff_cc_'+uid,JSON.stringify(Object.fromEntries(map)));}catch(e){}}
@@ -1532,6 +1633,24 @@ function fffLoadPI(slug){try{return JSON.parse(localStorage.getItem('fff_pi_'+sl
 function fffSavePI(slug,idx){try{localStorage.setItem('fff_pi_'+slug,JSON.stringify(idx));}catch(e){}}
 function fffGetImp(uid){try{return JSON.parse(localStorage.getItem(FFF_IMP+'_'+uid)||'null');}catch(e){return null;}}
 function fffSaveImp(uid,key,r,c){try{localStorage.setItem(FFF_IMP+'_'+uid,JSON.stringify({key,r,c}));}catch(e){}}
+function fetchForumFetchRanges_(uid){
+  return new Promise(resolve=>{
+    const u=gasUrl();
+    if(!u||!uid) return resolve([]);
+    const cb='towerFetchRangeCb_'+Date.now();
+    const s=document.createElement('script');
+    const clean=()=>{try{delete window[cb]}catch(e){} if(s.parentNode)s.parentNode.removeChild(s);};
+    const timer=setTimeout(()=>{clean();resolve([]);},6000);
+    window[cb]=function(data){clearTimeout(timer);clean();resolve((data&&data.ok&&Array.isArray(data.rows))?data.rows:[]);};
+    s.src=u+(u.includes('?')?'&':'?')+'action=fetch_log_ranges&sheet='+encodeURIComponent('论坛抓取记录_爬塔')+'&id='+encodeURIComponent(uid)+'&callback='+cb+'&t='+Date.now();
+    document.head.appendChild(s);
+  });
+}
+function hasFetchOverlap_(startA,endA,startB,endB){
+  const a1=startA?new Date(startA).getTime():0, a2=endA?new Date(endA+'T23:59:59').getTime():Date.now();
+  const b1=startB?new Date(startB).getTime():0, b2=endB?new Date(endB+'T23:59:59').getTime():Date.now();
+  return a1<=b2 && b1<=a2;
+}
 
 async function fffProxyGet(url){
   const sk='fff_'+url,hit=sessionStorage.getItem(sk);
@@ -1569,6 +1688,8 @@ async function fffCheckQuote(cid,tid,uid,cache){
 async function fffScrape(uid,slug,startDate,endDate){
   const RE=/forum\/32[-\/]/;
   let replies=0;const citedIds=new Set();
+  const byDay={};
+  function addDay(dateStr,type){if(!byDay[dateStr])byDay[dateStr]={replies:0,citations:0};byDay[dateStr][type]++;}
   const sTs=startDate?new Date(startDate).getTime():0;
   const eTs=endDate?new Date(endDate+'T23:59:59Z').getTime():Date.now();
   let page=1,done=false;
@@ -1595,11 +1716,13 @@ async function fffScrape(uid,slug,startDate,endDate){
       foundInRange=true;
       const fa=item.querySelector('p.ipsType_light a[href]');
       if(!fa||!RE.test(fa.getAttribute('href')||''))continue;
+      const dateStr=new Date(ts).toISOString().slice(0,10);
       replies++;
+      addDay(dateStr,'replies');
       const bq=item.querySelector('.ipsQuote');if(!bq)continue;
       const c2=bq.getAttribute('data-ipsquote-contentcommentid');
       const t2=bq.getAttribute('data-ipsquote-contentid');
-      if(c2&&t2)toCheck.push({cid:c2,tid:t2});
+      if(c2&&t2)toCheck.push({cid:c2,tid:t2,dateStr});
     }
     if(toCheck.length){
       const BATCH=5;
@@ -1607,7 +1730,7 @@ async function fffScrape(uid,slug,startDate,endDate){
         const batch=toCheck.slice(i,i+BATCH);
         fffSetStatus('第'+page+'页验证引用 '+(i+1)+'–'+Math.min(i+BATCH,toCheck.length)+'/'+toCheck.length+'（被引用:'+citedIds.size+'）...');
         const results=await Promise.all(batch.map(x=>fffCheckQuote(x.cid,x.tid,uid,cache)));
-        batch.forEach((x,j)=>{if(results[j])citedIds.add(x.cid);});
+        batch.forEach((x,j)=>{if(results[j]){citedIds.add(x.cid);addDay(x.dateStr,'citations');}});
         if(i+BATCH<toCheck.length)await new Promise(r=>setTimeout(r,150));
       }
     }
@@ -1618,23 +1741,39 @@ async function fffScrape(uid,slug,startDate,endDate){
     await new Promise(r=>setTimeout(r,foundInRange?400:100));
   }
   fffSaveCC(uid,cache);
-  return{replies,citations:citedIds.size};
+  return{replies,citations:citedIds.size,byDay};
 }
 function fffOpenModal(isUpdate){
   _fffIsUpdate=isUpdate;
-  const uid=isUpdate?fffGetCurrentUid():'';
+  const modal=document.getElementById('fff-modal');
+  if(!modal)return;
+  const uid=isUpdate?String(fffGetCurrentUid()||''):'';
   const el=document.getElementById('fff-uid');
-  if(el){el.value=uid;el.disabled=isUpdate&&!!uid;}
-  document.getElementById('fff-modal-title').textContent=isUpdate?'📡 论坛更新（游戏中）':'📡 论坛自动读取';
-  document.getElementById('fff-modal').style.display='flex';
+  if(el){
+    el.value=uid;
+    el.disabled=false;
+    el.readOnly=false;
+  }
+  const tit=document.getElementById('fff-modal-title');
+  if(tit) tit.textContent=isUpdate?'📡 论坛更新（游戏中）':'📡 论坛自动读取';
+  modal.style.display='flex';
 }
-function fffCloseModal(){document.getElementById('fff-modal').style.display='none';}
+function fffCloseModal(){const m=document.getElementById('fff-modal');if(m)m.style.display='none';}
 async function fffDoFetch(){
   const uid=parseInt((document.getElementById('fff-uid').value||'').trim());
   if(!uid||isNaN(uid)){alert('请输入有效的论坛 UID（数字）');return;}
   const startDate=document.getElementById('fff-date-start').value;
   const endDate=document.getElementById('fff-date-end').value;
   const dateKey=(startDate||'')+'_'+(endDate||'');
+  const overlaps=await fetchForumFetchRanges_(uid);
+  const hit=overlaps.filter(row=>hasFetchOverlap_(startDate,endDate,row.startDate,row.endDate));
+  if(hit.length){
+    const msg='云端已存在与这次日期重叠的爬塔论坛抓取记录：\n'
+      +hit.slice(0,3).map(r=>(r.startDate||'未填')+' ~ '+(r.endDate||'未填')+'（'+r.replyCount+'/'+r.citationCount+'）').join('\n')
+      +'\n\n请改用正确日期范围再抓取。';
+    alert(msg);
+    return;
+  }
   fffCloseModal();fffOpenLoading();
   try{
     fffSetStatus('正在获取用户资料...');
@@ -1646,7 +1785,7 @@ async function fffDoFetch(){
     const isSame=!!(prev&&prev.key===dateKey);
     const netR=isSame?Math.max(0,raw.replies-prev.r):raw.replies;
     const netC=isSame?Math.max(0,raw.citations-prev.c):raw.citations;
-    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,isSame};
+    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,isSame,startDate,endDate,byDay:raw.byDay||{}};
     const html=isSame
       ?'同区间净增：<b style="color:#4eb">'+netR+'</b> 回复 / <b style="color:#4eb">'+netC+'</b> 被引用<br><small style="opacity:.6">（总计'+raw.replies+'/'+raw.citations+'，已记录'+prev.r+'/'+prev.c+'）</small>'
       :'读取结果：<b style="color:#4eb">'+netR+'</b> 回复 / <b style="color:#4eb">'+netC+'</b> 被引用';
@@ -1659,23 +1798,30 @@ async function fffDoFetch(){
 function fffConfirm(){
   fffCloseResult();
   if(!_fffResult)return;
-  const {uid,dateKey,rawR,rawC,netR,netC}=_fffResult;
+  const {uid,dateKey,rawR,rawC,netR,netC,startDate,endDate}=_fffResult;
   fffSaveImp(uid,dateKey,rawR,rawC);
+  logForumFetchToGAS_({
+    mode:_fffIsUpdate?'tower_fetch_confirm_update':'tower_fetch_confirm_menu',
+    forum_uid:String(uid),
+    reply_count:netR,
+    citation_count:netC,
+    startDate:String(startDate||''),
+    endDate:String(endDate||''),
+  });
+  const byDayT=_fffResult.byDay||{};
+  Object.entries(byDayT).forEach(([d,c])=>{logTowerActivityToGAS_(uid,d,c.replies,c.citations);});
   if(_fffIsUpdate&&G&&G.run&&!G.run.done){
-    // 游戏中：直接加入 run.stockReply/stockQuote
     G.run.stockReply=(G.run.stockReply||0)+netR;
     G.run.stockQuote=(G.run.stockQuote||0)+netC;
     renderGame();
     sys('论坛更新：+'+netR+' 回复 / +'+netC+' 被引用');
   }else{
-    // 开局前：直接设置 baseReply / baseQuote 输入框
     const br=document.getElementById('baseReply'),bq=document.getElementById('baseQuote');
-    if(br)br.value=(parseInt(br.value)||0)+netR;
-    if(bq)bq.value=(parseInt(bq.value)||0)+netC;
+    if(br) br.value=(parseInt(br.value)||0)+netR;
+    if(bq) bq.value=(parseInt(bq.value)||0)+netC;
     setMenuNotice('已填入：'+netR+' 回复 / '+netC+' 被引用');
   }
 }
-// 拦截 renderGame，首次调用时将暂存值写入 run
 (function(){
   const _orig=window.renderGame;
   window.renderGame=function(){
@@ -1688,6 +1834,60 @@ function fffConfirm(){
   };
 })();
 
+// ===== OFFLINE MODE =====
+var _towerOfflineMode = false;
+function setTowerOfflineMode_(isOffline) {
+  if (_towerOfflineMode === isOffline) return;
+  _towerOfflineMode = isOffline;
+  var el = document.getElementById('tower-offline-warning');
+  if (el) el.style.display = isOffline ? 'block' : 'none';
+}
+async function retryTowerCloudConnection_() {
+  var el = document.getElementById('tower-offline-warning');
+  if (el) el.textContent = '🔄 正在重新连线...';
+  try {
+    var ctrl = new AbortController();
+    var tid = setTimeout(function(){ ctrl.abort(); }, 5000);
+    await fetch(gasUrl() + '?ping=1', { signal: ctrl.signal, mode: 'no-cors' });
+    clearTimeout(tid);
+    setTowerOfflineMode_(false);
+    if (el) { el.innerHTML = '✅ 已连线'; setTimeout(function(){ el.style.display='none'; }, 2000); }
+  } catch(e) {
+    if (el) el.innerHTML = '🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span>';
+  }
+}
+function downloadTowerData_() {
+  var now2 = new Date().toLocaleString('zh-TW');
+  var id = String((G && G.uid) || '未知');
+  var loot = loadLootTotal();
+  var run = G && G.run;
+  var rows = [
+    ['类别','项目','数值'],
+    ['基本','论坛ID', id],
+    ['基本','下载时间', now2],
+    ['战利品','节操', loot['节操'] || 0],
+    ['战利品','羽毛', loot['羽毛'] || 0],
+    ['战利品','本期勋章30天', loot['本期勋章30天'] || 0],
+    ['战利品','字母勋章30天', loot['字母勋章30天'] || 0],
+    ['永久奖励','永久本期勋章', (loot['永久本期勋章'] >= 1) ? '已获得' : '未获得'],
+    ['永久奖励','永久往期兑换机会', loot['永久往期兑换机会'] || 0],
+  ];
+  if (run) {
+    rows.push(['当前局','层数', run.floor || 0]);
+    rows.push(['当前局','积分', run.reward || 0]);
+    rows.push(['当前局','生命', (run.hp || 0) + '/' + (run.maxHp || 0)]);
+    rows.push(['当前局','通关数', run.kills || 0]);
+  }
+  var csv = rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\r\n');
+  var blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'tower-'+id+'.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+
 </script>
 
 <!-- ===== FORUM FETCH OVERLAYS ===== -->
@@ -1698,25 +1898,27 @@ function fffConfirm(){
     <div class="fff-row"><label>开始日期</label><input id="fff-date-start" class="fff-inp" type="date" value="2026-03-01"></div>
     <div class="fff-row"><label>结束日期</label><input id="fff-date-end" class="fff-inp" type="date" value="2026-03-20"></div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:16px">
-      <button class="fff-btn-ok" onclick="fffDoFetch()">🔍 开始读取</button>
-      <button class="fff-btn-cancel" onclick="fffCloseModal()">取消</button>
+      <button type="button" class="fff-btn-ok" onclick="fffDoFetch()">🔍 开始读取</button>
+      <button type="button" class="fff-btn-cancel" onclick="fffCloseModal()">取消</button>
     </div>
   </div>
 </div>
-<div id="fff-loading" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.92);flex-direction:column;align-items:center;justify-content:center;gap:16px">
+<div id="fff-loading" style="display:none;position:fixed;inset:0;z-index:10130;background:rgba(0,0,0,.92);flex-direction:column;align-items:center;justify-content:center;gap:16px">
   <div class="fff-spinner"></div>
   <div id="fff-status" style="color:#ddd;font-size:.9rem;text-align:center;max-width:320px;line-height:1.8">正在连接论坛...</div>
   <div style="color:#555;font-size:.78rem">这可能需要数十秒，请耐心等候</div>
 </div>
-<div id="fff-result" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.92);flex-direction:column;align-items:center;justify-content:center">
+<div id="fff-result" style="display:none;position:fixed;inset:0;z-index:10130;background:rgba(0,0,0,.92);flex-direction:column;align-items:center;justify-content:center">
   <div class="fff-box">
     <h3>📊 读取完成</h3>
     <div id="fff-result-text" style="color:#ddd;font-size:1rem;line-height:2;margin-bottom:20px"></div>
     <div style="display:flex;gap:10px;justify-content:center">
-      <button id="fff-confirm-btn" class="fff-btn-ok" onclick="fffConfirm()">确认</button>
-      <button class="fff-btn-cancel" onclick="fffCancelResult()">取消</button>
+      <button type="button" id="fff-confirm-btn" class="fff-btn-ok" onclick="fffConfirm()">确认</button>
+      <button type="button" class="fff-btn-cancel" onclick="fffCancelResult()">取消</button>
     </div>
   </div>
 </div>
+<!-- 2026-04-04 离线模式浮动警告+重新连线；主画面与游玩画面加「下载游玩数据」按钮 -->
+<div id="tower-offline-warning" onclick="retryTowerCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 </body>
 </html>

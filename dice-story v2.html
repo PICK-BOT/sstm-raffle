@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -821,6 +821,81 @@ input[type="text"]:focus, input[type="number"]:focus {
 @keyframes fffSpinDs { to { transform: rotate(360deg); } }
 #fff-loading { flex-direction: column; }
 #fff-result { flex-direction: column; }
+
+/* ── OFFLINE MODE ── */
+#dice-offline-warning{display:none;position:fixed;bottom:14px;right:14px;background:rgba(180,40,40,0.92);border:1px solid #e55;color:#fdd;padding:8px 14px;border-radius:8px;font-size:0.8rem;cursor:pointer;z-index:110;transition:all .2s;line-height:1.4;text-align:center}
+#dice-offline-warning:hover{background:rgba(200,60,60,0.95);box-shadow:0 0 10px rgba(220,60,60,.4)}
+
+/* ── ID HISTORY ── */
+#idHistoryRow{display:none;margin-top:14px;width:100%;max-width:340px;text-align:center}
+#idHistoryRow .ih-label{font-size:0.72rem;color:rgba(255,255,255,0.35);margin-bottom:6px}
+.ih-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.ih-chip{padding:5px 14px;border-radius:20px;font-size:0.8rem;cursor:pointer;
+  background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);
+  color:rgba(201,168,76,0.85);transition:all .15s}
+.ih-chip:hover{background:rgba(201,168,76,0.22);border-color:rgba(201,168,76,0.6);color:var(--gold)}
+
+/* ── MILESTONE POPUP ── */
+#milestoneOverlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(5,2,16,0.88);align-items:center;justify-content:center}
+#milestoneOverlay.show{display:flex}
+.milestone-box{
+  background:linear-gradient(160deg,#1a0e30,#0d1a2e);
+  border:1px solid rgba(201,168,76,0.6);border-radius:18px;
+  padding:32px 28px;max-width:340px;width:90%;text-align:center;
+  box-shadow:0 0 40px rgba(201,168,76,0.25);position:relative;
+}
+.milestone-spark{font-size:2.2rem;margin-bottom:8px;animation:sparkPop .5s ease}
+@keyframes sparkPop{0%{transform:scale(0.5);opacity:0}70%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+.milestone-icon{font-size:3rem;margin-bottom:10px}
+.milestone-title{color:var(--gold);font-size:1.1rem;font-weight:800;margin-bottom:8px;letter-spacing:.04em}
+.milestone-body{color:var(--white-dim);font-size:0.88rem;line-height:1.7;margin-bottom:20px}
+.milestone-confirm{
+  padding:10px 32px;background:linear-gradient(135deg,var(--gold),#8a6a20);
+  color:#1a1200;border:none;border-radius:12px;cursor:pointer;
+  font-weight:800;font-size:0.92rem;font-family:inherit;letter-spacing:.04em
+}
+
+/* ── REWARD SUMMARY (collapsible) ── */
+#rewardSummaryDetails{width:100%;margin-bottom:12px}
+#rewardSummaryDetails summary{
+  list-style:none;cursor:pointer;
+  padding:8px 16px;border-radius:10px;font-size:0.82rem;font-weight:700;
+  background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);
+  color:var(--gold);text-align:center;user-select:none;letter-spacing:.04em
+}
+#rewardSummaryDetails summary::-webkit-details-marker{display:none}
+#rewardSummaryDetails summary::before{content:'▶ ';font-size:0.7rem;transition:transform .2s}
+#rewardSummaryDetails[open] summary::before{content:'▼ '}
+.reward-summary-body{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;
+  padding:12px 8px 4px;width:100%
+}
+.rsb-item{padding:7px 10px;border-radius:8px;font-size:0.8rem;text-align:center;border:1px solid}
+.rsb-active{background:rgba(201,168,76,0.12);border-color:rgba(201,168,76,0.4);color:var(--gold)}
+.rsb-blue{background:rgba(100,160,255,0.08);border-color:rgba(100,160,255,0.3);color:#a0c4ff}
+.rsb-dim{background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.38)}
+.rsb-val{font-size:1.05rem;font-weight:800;display:block;margin-top:2px}
+
+/* ── MIX DICE PANEL in screen1b ── */
+#s1bMixDetails{width:100%;margin-bottom:12px}
+#s1bMixDetails>summary{
+  list-style:none;cursor:pointer;
+  background:rgba(255,160,40,0.08);
+  border:1px solid rgba(255,180,70,0.35);
+  border-radius:10px;padding:10px 14px;
+  font-size:0.85rem;color:#ffb347;
+  display:flex;align-items:center;justify-content:space-between;
+  user-select:none;
+}
+#s1bMixDetails>summary::after{content:'▶';font-size:0.7rem;transition:transform .2s;}
+#s1bMixDetails[open]>summary::after{transform:rotate(90deg);}
+#s1bMixDetails[open]>summary{border-radius:10px 10px 0 0;}
+#s1bMixPanel{
+  width:100%;border:1px solid rgba(255,180,70,0.35);border-top:none;
+  border-radius:0 0 10px 10px;padding:14px 12px;
+  background:rgba(255,160,40,0.05);
+}
+.mix-panel-title{font-size:0.82rem;color:#ffb347;text-align:center;margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -838,6 +913,10 @@ input[type="text"]:focus, input[type="number"]:focus {
       <label for="inputId">请输入你的论坛 ID</label>
       <input type="text" id="inputId" placeholder="例如：三叶_1234" maxlength="50">
       <button class="btn btn-primary" onclick="goScreen2()">确认 →</button>
+    </div>
+    <div id="idHistoryRow">
+      <div class="ih-label">最近使用的 ID</div>
+      <div class="ih-chips" id="idHistoryChips"></div>
     </div>
     <p class="dim" style="font-size:0.78rem;margin-top:16px;text-align:center;line-height:1.8;">
       投下命运的骰子<br>翻开属于你的故事
@@ -865,6 +944,62 @@ input[type="text"]:focus, input[type="number"]:focus {
       </div>
     </div>
 
+    <!-- 奖励累计（可折叠） -->
+    <details id="rewardSummaryDetails">
+      <summary>🎁 奖励累计</summary>
+      <div class="reward-summary-body" id="rewardSummaryBody">
+        <div class="rsb-item rsb-dim" id="rsbPermMedal">🏅 永久本期勋章<span class="rsb-val">未获得</span></div>
+        <div class="rsb-item rsb-dim" id="rsbLegacy">🎖 往期兑换机会<span class="rsb-val">0 次</span></div>
+        <div class="rsb-item rsb-dim" id="rsbSeiso">⚔️ 节操累计<span class="rsb-val">0</span></div>
+        <div class="rsb-item rsb-dim" id="rsbFeather">🪶 羽毛累计<span class="rsb-val">0</span></div>
+        <div class="rsb-item rsb-dim" id="rsbLetter" style="grid-column:span 2;">🎖️ 字母勋章累计<span class="rsb-val">0 天</span></div>
+      </div>
+    </details>
+
+    <!-- 混合骰子分配（有待分配时折叠显示）-->
+    <details id="s1bMixDetails" style="display:none;">
+      <summary>⚄ 混合骰子待分配　<b id="s1bMixCount">0</b> 个</summary>
+      <div id="s1bMixPanel">
+        <p class="mix-panel-title" style="margin-bottom:8px;">选择每个混合骰子的方向</p>
+
+        <!-- 批量数量输入 -->
+        <div class="batch-input-row">
+          <input type="number" id="s1bBatchPosN" min="1" placeholder="数量">
+          <button class="btn-batch btn-batch-pos" style="flex:1;" onclick="batchAssignNS1b_('pos')">个 → +4 正向</button>
+          <input type="number" id="s1bBatchNegN" min="1" placeholder="数量">
+          <button class="btn-batch btn-batch-neg" style="flex:1;" onclick="batchAssignNS1b_('neg')">个 → −4 负向</button>
+        </div>
+        <!-- 快捷全选 + 清除 -->
+        <div class="batch-row">
+          <button class="btn-batch btn-batch-pos" onclick="batchAssignS1b_('pos')">全部 +4</button>
+          <button class="btn-batch btn-batch-neg" onclick="batchAssignS1b_('neg')">全部 −4</button>
+          <button class="btn-batch btn-batch-clear" onclick="batchClearS1b_()">全部清除</button>
+        </div>
+
+        <div id="s1bMixRows" style="width:100%;"></div>
+
+        <div class="unassigned-note" id="s1bUnassignedNote"></div>
+
+        <div class="summary-box" style="margin-top:10px;">
+          <div class="calc-row">
+            <span class="s-label">⚀ 正向骰子（+4）</span>
+            <span class="s-val gold" id="s1bSumPos">0 个</span>
+          </div>
+          <div class="calc-row">
+            <span class="s-label">− 负向骰子（−4）</span>
+            <span class="s-val" style="color:#ff8899;" id="s1bSumNeg">0 个</span>
+          </div>
+          <div class="calc-row" id="s1bSumUnassignedRow">
+            <span class="s-label" style="color:#ffb347;">◌ 未分配</span>
+            <span class="s-val" style="color:#ffb347;" id="s1bSumUnassigned">0 个</span>
+          </div>
+        </div>
+
+        <button class="btn btn-ghost" style="width:100%;font-size:0.85rem;margin-top:10px;"
+          onclick="assignMixedDiceS1b_()">确认分配 ✓</button>
+      </div>
+    </details>
+
     <!-- 操作按钮 -->
     <div class="btn-row-2">
       <button class="btn btn-primary" style="flex:2;" id="btnResume" onclick="resumeGame()">继续投骰 →</button>
@@ -872,15 +1007,14 @@ input[type="text"]:focus, input[type="number"]:focus {
     </div>
     <button type="button" class="btn btn-ghost" style="width:100%;margin-top:10px;font-size:0.85rem;"
       onclick="fffOpenModal(true)">📡 论坛更新（按区间净增骰子）</button>
+    <button type="button" class="btn btn-ghost" style="width:100%;margin-top:8px;font-size:0.85rem;"
+      onclick="downloadDiceData_()">📥 下载游玩数据</button>
 
     <!-- 故事完成度格子 -->
     <p style="font-size:0.78rem;color:var(--white-dim);margin-bottom:8px;width:100%;text-align:center;">
       故事完成度 &nbsp;·&nbsp; <span style="color:var(--purple-light);font-size:0.72rem;">悬停格可查看所有曾选过的选项 | ✦全选=4种选项均已选</span>
     </p>
     <div class="progress-grid" id="s1bGrid"></div>
-
-    <button class="btn btn-ghost" style="width:100%;font-size:0.8rem;color:#ff8899;border-color:rgba(192,57,79,0.3);"
-      onclick="startFresh()">清除此帐号所有记录，重新开始</button>
   </div>
 
   <!-- ===================== SCREEN 2: 数值输入 ===================== -->
@@ -1045,8 +1179,10 @@ input[type="text"]:focus, input[type="number"]:focus {
   <!-- ===================== SCREEN 5: 投骰界面 ===================== -->
   <div id="screen5" class="screen">
     <h2>投掷命运之骰</h2>
-    <button type="button" class="btn btn-ghost" style="width:100%;max-width:320px;margin-bottom:12px;font-size:0.85rem;"
+    <button type="button" class="btn btn-ghost" style="width:100%;max-width:320px;margin-bottom:8px;font-size:0.85rem;"
       onclick="fffOpenModal(true)">📡 论坛更新（游戏中）</button>
+    <button type="button" class="btn btn-ghost" style="width:100%;max-width:320px;margin-bottom:12px;font-size:0.85rem;"
+      onclick="downloadDiceData_()">📥 下载游玩数据</button>
     <p class="roll-header">你拥有的正骰子</p>
     <p class="roll-big"><span id="s5TotalDice">0</span> 个 d4</p>
 
@@ -1147,6 +1283,17 @@ input[type="text"]:focus, input[type="number"]:focus {
       <button class="btn btn-primary" onclick="claimReward()" style="flex:2;max-width:200px;">领取奖励 ✓</button>
       <button class="btn btn-ghost" onclick="claimAndViewProgress()" style="flex:1;max-width:140px;font-size:0.85rem;">查看记录 →</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== MILESTONE POPUP ===== -->
+<div id="milestoneOverlay">
+  <div class="milestone-box">
+    <div class="milestone-spark" id="msSpark">✨</div>
+    <div class="milestone-icon" id="msIcon">🏅</div>
+    <div class="milestone-title" id="msTitle">里程碑达成！</div>
+    <div class="milestone-body" id="msBody"></div>
+    <button class="milestone-confirm" onclick="closeMilestone_()">确认领取 ✓</button>
   </div>
 </div>
 
@@ -1384,6 +1531,41 @@ function setCachedProgress(id, prog) {
   saveAllProgress(all);
 }
 
+/** 写入 GAS「骰子故事进度」第 6 列奖励 JSON 的快照 */
+function buildRewardsSyncPayload_(prog) {
+  if (!prog || typeof prog !== 'object') return {};
+  return {
+    seiso_total: Number(prog.seiso_total) || 0,
+    feather_total: Number(prog.feather_total) || 0,
+    letter_total: Number(prog.letter_total) || 0,
+    legacy_chances: Number(prog.legacy_chances) || 0,
+    perm_medal: !!prog.perm_medal,
+    milestones: prog.milestones && typeof prog.milestones === 'object' ? prog.milestones : {}
+  };
+}
+
+function mergeMilestoneMaps_(a, b) {
+  a = a || {}; b = b || {};
+  return {
+    legacy1: !!(a.legacy1 || b.legacy1),
+    legacy2: !!(a.legacy2 || b.legacy2),
+    legacy3: !!(a.legacy3 || b.legacy3),
+    legacy4: !!(a.legacy4 || b.legacy4)
+  };
+}
+
+/** 将云端 rewards 合并进进度对象（与本地取较大值，避免换机丢累计） */
+function mergeCloudRewardsIntoProg_(prog, cloudRewards) {
+  if (!prog || !cloudRewards || typeof cloudRewards !== 'object') return;
+  const c = cloudRewards;
+  prog.seiso_total = Math.max(Number(prog.seiso_total) || 0, Number(c.seiso_total) || 0);
+  prog.feather_total = Math.max(Number(prog.feather_total) || 0, Number(c.feather_total) || 0);
+  prog.letter_total = Math.max(Number(prog.letter_total) || 0, Number(c.letter_total) || 0);
+  prog.legacy_chances = Math.max(Number(prog.legacy_chances) || 0, Number(c.legacy_chances) || 0);
+  if (c.perm_medal) prog.perm_medal = true;
+  prog.milestones = mergeMilestoneMaps_(prog.milestones, c.milestones);
+}
+
 // ===== 规范化 stories_done（兼容旧格式 → 新格式） =====
 // 旧格式: {idx: {story_num, story_title, choice, choice_desc}}
 // 新格式: {idx: {story_num, story_title, choices: [{idx, choice, choice_desc}, ...]}}
@@ -1478,16 +1660,20 @@ async function fetchProgressFromGAS(id) {
   if (!res.ok) return null;
   const data = await res.json();
   if (data.status !== 'ok') return null;
-  return {
+  const prog = {
     pos_dice_left   : parseInt(data.pos_dice_left) || 0,
     pending_neg_dice: parseInt(data.pending_neg_dice) || 0,
     stories_done    : data.stories_done || {}
   };
+  mergeCloudRewardsIntoProg_(prog, data.rewards);
+  return prog;
 }
 
-// ===== 推送剩余骰子数 + 故事进度到 GAS =====
+// ===== 推送剩余骰子数 + 故事进度 + 奖励累计快照到 GAS =====
 function pushDiceToGAS(posLeft, pendingNeg, storiesDone) {
   if (!GAS_URL || !state.id) return;
+  const cached = loadAllProgress()[state.id] || {};
+  const rewards = buildRewardsSyncPayload_(cached);
   fetch(GAS_URL, {
     method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
@@ -1496,7 +1682,8 @@ function pushDiceToGAS(posLeft, pendingNeg, storiesDone) {
       type: 'save_progress', id: state.id,
       pos_dice_left: posLeft,
       pending_neg_dice: pendingNeg || 0,
-      stories_done: storiesDone || {}
+      stories_done: storiesDone || {},
+      rewards: rewards
     })
   }).catch(() => {});
 }
@@ -1593,6 +1780,29 @@ function fffGetImp(uid) {
 function fffSaveImp(uid, key, r, c) {
   try { localStorage.setItem(FFF_IMP + '_' + uid, JSON.stringify({ key, r, c })); } catch (e) {}
 }
+function fetchForumFetchRanges_(uid) {
+  return new Promise(resolve => {
+    if (!GAS_URL || !uid) return resolve([]);
+    const cb = '_diceFetchRangeCb' + Date.now();
+    const s = document.createElement('script');
+    const clean = () => { try { delete window[cb]; } catch (e) {} if (s.parentNode) s.parentNode.removeChild(s); };
+    const timer = setTimeout(() => { clean(); resolve([]); }, 6000);
+    window[cb] = function(data) {
+      clearTimeout(timer);
+      clean();
+      resolve((data && data.ok && Array.isArray(data.rows)) ? data.rows : []);
+    };
+    s.src = GAS_URL + '?action=fetch_log_ranges&sheet=' + encodeURIComponent('论坛抓取记录_骰子故事') + '&id=' + encodeURIComponent(uid) + '&callback=' + cb;
+    document.head.appendChild(s);
+  });
+}
+function hasFetchOverlap_(startA, endA, startB, endB) {
+  const a1 = startA ? new Date(startA).getTime() : 0;
+  const a2 = endA ? new Date(endA + 'T23:59:59').getTime() : Date.now();
+  const b1 = startB ? new Date(startB).getTime() : 0;
+  const b2 = endB ? new Date(endB + 'T23:59:59').getTime() : Date.now();
+  return a1 <= b2 && b1 <= a2;
+}
 
 async function fffProxyGet(url) {
   const sk = 'fff_' + url;
@@ -1639,6 +1849,11 @@ async function fffScrape(uid, slug, startDate, endDate) {
   const RE = /forum\/32[-\/]/;
   let replies = 0;
   const citedIds = new Set();
+  const byDay = {};   // YYYY-MM-DD → { replies, citations }
+  function addDay(dateStr, type) {
+    if (!byDay[dateStr]) byDay[dateStr] = { replies: 0, citations: 0 };
+    byDay[dateStr][type]++;
+  }
   const sTs = startDate ? new Date(startDate).getTime() : 0;
   const eTs = endDate ? new Date(endDate + 'T23:59:59Z').getTime() : Date.now();
   let page = 1;
@@ -1672,12 +1887,14 @@ async function fffScrape(uid, slug, startDate, endDate) {
       foundInRange = true;
       const fa = item.querySelector('p.ipsType_light a[href]');
       if (!fa || !RE.test(fa.getAttribute('href') || '')) continue;
+      const dateStr = new Date(ts).toISOString().slice(0, 10); // YYYY-MM-DD
       replies++;
+      addDay(dateStr, 'replies');
       const bq = item.querySelector('.ipsQuote');
       if (!bq) continue;
       const c2 = bq.getAttribute('data-ipsquote-contentcommentid');
       const t2 = bq.getAttribute('data-ipsquote-contentid');
-      if (c2 && t2) toCheck.push({ cid: c2, tid: t2 });
+      if (c2 && t2) toCheck.push({ cid: c2, tid: t2, dateStr });
     }
     if (toCheck.length) {
       const BATCH = 5;
@@ -1685,7 +1902,7 @@ async function fffScrape(uid, slug, startDate, endDate) {
         const batch = toCheck.slice(i, i + BATCH);
         fffSetStatus('第' + page + '页验证引用 ' + (i + 1) + '–' + Math.min(i + BATCH, toCheck.length) + '/' + toCheck.length + '（被引用:' + citedIds.size + '）...');
         const results = await Promise.all(batch.map(x => fffCheckQuote(x.cid, x.tid, uid, cache)));
-        batch.forEach((x, j) => { if (results[j]) citedIds.add(x.cid); });
+        batch.forEach((x, j) => { if (results[j]) { citedIds.add(x.cid); addDay(x.dateStr, 'citations'); } });
         if (i + BATCH < toCheck.length) await new Promise(r => setTimeout(r, 150));
       }
     }
@@ -1696,7 +1913,7 @@ async function fffScrape(uid, slug, startDate, endDate) {
     await new Promise(r => setTimeout(r, foundInRange ? 400 : 100));
   }
   fffSaveCC(uid, cache);
-  return { replies, citations: citedIds.size };
+  return { replies, citations: citedIds.size, byDay };
 }
 
 function fffOpenModal(isUpdate) {
@@ -1726,6 +1943,15 @@ async function fffDoFetch() {
   const startDate = document.getElementById('fff-date-start').value;
   const endDate = document.getElementById('fff-date-end').value;
   const dateKey = (startDate || '') + '_' + (endDate || '');
+  const overlaps = await fetchForumFetchRanges_(uid);
+  const hit = overlaps.filter(row => hasFetchOverlap_(startDate, endDate, row.startDate, row.endDate));
+  if (hit.length) {
+    const msg = '云端已存在与这次日期重叠的骰子故事论坛抓取记录：\n'
+      + hit.slice(0, 3).map(r => (r.startDate || '未填') + ' ~ ' + (r.endDate || '未填') + '（' + r.replyCount + '/' + r.citationCount + '）').join('\n')
+      + '\n\n请改用正确日期范围再抓取。';
+    alert(msg);
+    return;
+  }
   fffCloseModal();
   fffOpenLoading();
   try {
@@ -1738,7 +1964,7 @@ async function fffDoFetch() {
     const isSame = !!(prev && prev.key === dateKey);
     const netR = isSame ? Math.max(0, raw.replies - prev.r) : raw.replies;
     const netC = isSame ? Math.max(0, raw.citations - prev.c) : raw.citations;
-    _fffResult = { uid, dateKey, rawR: raw.replies, rawC: raw.citations, netR, netC, isSame, startDate, endDate };
+    _fffResult = { uid, dateKey, rawR: raw.replies, rawC: raw.citations, netR, netC, isSame, startDate, endDate, byDay: raw.byDay || {} };
     const html = isSame
       ? '同区间净增：<b style="color:var(--gold-light)">' + netR + '</b> 回复 / <b style="color:var(--gold-light)">' + netC + '</b> 被引用<br><small style="opacity:.65">（总计' + raw.replies + '/' + raw.citations + '，已记录' + prev.r + '/' + prev.c + '）</small>'
       : '读取结果：<b style="color:var(--gold-light)">' + netR + '</b> 回复 / <b style="color:var(--gold-light)">' + netC + '</b> 被引用';
@@ -1811,6 +2037,11 @@ function fffConfirm() {
   const { uid, dateKey, rawR, rawC, netR, netC, startDate, endDate } = _fffResult;
   fffSaveImp(uid, dateKey, rawR, rawC);
   try { localStorage.setItem('diceStoryForumUid_v2', String(uid)); } catch (e) {}
+  // 写入返乡活跃度（逐日记录；相同则 GAS 跳过，更多/更少则更新）
+  const byDay = _fffResult.byDay || {};
+  Object.entries(byDay).forEach(([date, counts]) => {
+    logActivityToGAS_(uid, date, counts.replies, counts.citations);
+  });
   logForumFetchToGAS_({
     mode: _fffIsUpdate ? 'dicestory_v2_fetch_confirm_update' : 'dicestory_v2_fetch_confirm_menu',
     forum_uid: String(uid),
@@ -1874,6 +2105,7 @@ function saveProgressToStorage(storyDone) {
 async function goScreen2() {
   const id = document.getElementById('inputId').value.trim();
   if (!id) { alert('请输入你的论坛 ID'); return; }
+  saveIdHistory_(id);    // 存入历史
   state.id = id;
   document.getElementById('welcomeMsg').textContent = '欢迎，' + id;
   updateCalc();
@@ -1894,12 +2126,15 @@ async function goScreen2() {
       if (local && local.pending_neg_dice && !prog.pending_neg_dice) {
         prog.pending_neg_dice = local.pending_neg_dice;
       }
+      // 奖励累计：云端已与试算表「骰子故事奖励」聚合；再与本地取较大值
+      if (local) mergeCloudRewardsIntoProg_(prog, local);
       setCachedProgress(id, prog);
     }
   } catch(e) {
     // GAS 失败 → 使用本地缓存
     prog = getCachedProgress(id);
     if (prog) showOfflineBadge();
+    setDiceOfflineMode_(true);
     await new Promise(r => setTimeout(r, 900)); // 让用户看到提示
   }
 
@@ -1936,6 +2171,33 @@ function showProgressScreen(prog) {
   document.getElementById('s1bDiceLeft').textContent  = diceLeft;
   document.getElementById('s1bDoneCount').textContent = visitedCount;
   document.getElementById('s1bPercent').textContent   = Math.round(fullyDone / 20 * 100) + '%';
+
+  // 更新奖励累计面板
+  const permMedal    = !!prog.perm_medal;
+  const legacyChances= prog.legacy_chances  || 0;
+  const seisoTotal   = prog.seiso_total     || 0;
+  const featherTotal = prog.feather_total   || 0;
+  const letterTotal  = prog.letter_total    || 0;
+  function rsbSet(id, val, cls) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'rsb-item ' + cls;
+    const v = el.querySelector('.rsb-val');
+    if (v) v.textContent = val;
+  }
+  rsbSet('rsbPermMedal', permMedal ? '✅ 已获得' : '未获得', permMedal ? 'rsb-active' : 'rsb-dim');
+  rsbSet('rsbLegacy',    legacyChances + ' 次', legacyChances > 0 ? 'rsb-blue' : 'rsb-dim');
+  rsbSet('rsbSeiso',     seisoTotal + ' 节操',  seisoTotal  > 0 ? 'rsb-active' : 'rsb-dim');
+  rsbSet('rsbFeather',   featherTotal + ' 羽毛', featherTotal > 0 ? 'rsb-active' : 'rsb-dim');
+  rsbSet('rsbLetter',    letterTotal + ' 天',   letterTotal  > 0 ? 'rsb-active' : 'rsb-dim');
+
+  // 混合骰子分配面板
+  const pendingMix = prog.pending_neg_dice || 0;
+  const mixDetails = document.getElementById('s1bMixDetails');
+  if (mixDetails) {
+    mixDetails.style.display = pendingMix > 0 ? 'block' : 'none';
+    if (pendingMix > 0) renderS1bMixPanel_(pendingMix);
+  }
   let subtitleText = diceLeft > 0 ? `还有 ${diceLeft} 个骰子未使用` : '骰子已用完，可重新输入或查看记录';
   if (pendingDice > 0) subtitleText += `　· 另有 ${pendingDice} 个混合骰子待分配`;
   document.getElementById('s1bSubtitle').textContent = subtitleText;
@@ -2025,17 +2287,6 @@ function resumeWithDice() {
 }
 
 function resumeGame() { resumeWithDice(); }
-
-// ===== 清除此帐号记录（仅清 localStorage 缓存，GAS 记录保留） =====
-function startFresh() {
-  if (!confirm('确定要清除本机缓存并重新输入吗？\n（试算表上的游戏记录仍会保留）')) return;
-  const all = loadAllProgress();
-  delete all[state.id];
-  saveAllProgress(all);
-  // 把 GAS 进度表的剩余骰子归零
-  pushDiceToGAS(0, 0);
-  showScreen('screen2');
-}
 
 // ===== LIVE CALC =====
 function updateCalc() {
@@ -2248,6 +2499,7 @@ function s5UpdateNeg() {
 let _skipRoll = false;           // 跳过旗标：点「跳过动画」时设为 true
 let _skipResolve = null;         // 当前正在等待的 Promise resolve，跳过时立即触发
 let _rewardTimer = null;         // showReward 的定时器 ID，导航离开时必须取消
+let _currentReward = null;       // 当前弹出的奖励对象，领取时写入 GAS
 
 function skipRollAnim() {
   _skipRoll = true;
@@ -2401,6 +2653,8 @@ function goProgressFromGame() {
 
 function claimAndViewProgress() {
   document.getElementById('rewardOverlay').classList.add('hidden');
+  // 记录奖励 + 更新总量
+  if (_currentReward) { updateRewardTotal_(_currentReward); logDiceRewardToGAS_(_currentReward); _currentReward = null; }
   state.pos_dice -= state.rolled;
   state.rolled = 0;
   state.diceResults = [];
@@ -2409,6 +2663,7 @@ function claimAndViewProgress() {
   state.final_result = 0;
   state.chosen = null;
   saveProgressToStorage();
+  if (_milestoneQueue.length > 0) { showNextMilestone_(); return; }
   const cached = getCachedProgress(state.id);
   if (cached) showProgressScreen(cached);
   else showScreen('screen1b');
@@ -2498,6 +2753,9 @@ function selectChoice(idx, text, btn) {
     desc      : desc
   });
 
+  // 检查里程碑（结果入队，在领奖后弹出）
+  checkMilestones_();
+
   // 选择后立即禁用「再来一次」，防止在 1500ms 内误触导致状态被 restart() 清空
   const restartBtn = document.querySelector('.btn-restart');
   if (restartBtn) restartBtn.disabled = true;
@@ -2517,7 +2775,9 @@ function showReward() {
   const restartBtn = document.querySelector('.btn-restart');
   if (restartBtn) restartBtn.disabled = false;
 
-  const r = REWARDS[Math.floor(Math.random() * REWARDS.length)];
+  const pool = getRewardPool_();
+  const r = pool[Math.floor(Math.random() * pool.length)];
+  _currentReward = r;
   const remaining = state.pos_dice - state.rolled;
   document.getElementById('rewardIcon').textContent = r.icon;
   document.getElementById('rewardName').textContent = r.name;
@@ -2536,6 +2796,8 @@ function showReward() {
 
 function claimReward() {
   document.getElementById('rewardOverlay').classList.add('hidden');
+  // 记录奖励 + 更新总量
+  if (_currentReward) { updateRewardTotal_(_currentReward); logDiceRewardToGAS_(_currentReward); _currentReward = null; }
   // 扣除本次已使用的骰子
   state.pos_dice -= state.rolled;
   state.rolled = 0;
@@ -2549,12 +2811,13 @@ function claimReward() {
   saveProgressToStorage();
 
   if (state.pos_dice < 1) {
-    // 骰子用完，重新开始
+    if (_milestoneQueue.length > 0) { showNextMilestone_(); return; }
     alert('所有骰子已用完，感谢参与！');
     restart();
     return;
   }
-  // 返回投骰画面
+  // 先弹里程碑，再返回投骰画面
+  if (_milestoneQueue.length > 0) { showNextMilestone_(); return; }
   goScreen5();
 }
 
@@ -2700,8 +2963,439 @@ function restart() {
   document.getElementById('inputReplies').value = '';
   document.getElementById('inputCitations').value = '';
   showScreen('screen1');
+  renderIdHistory_();
 }
+
+// ===== DYNAMIC REWARD POOL =====
+function getRewardPool_() {
+  const prog = getCachedProgress(state.id) || {};
+  const permMedal   = !!prog.perm_medal;
+  const seisoTotal  = prog.seiso_total  || 0;
+  const featherTotal= prog.feather_total|| 0;
+  const seisoFull   = seisoTotal  >= 5000;
+  const featherFull = featherTotal >= 2000;
+
+  const pool = [];
+  const addN = (n, item) => { for (let i = 0; i < n; i++) pool.push(item); };
+
+  const SEISO   = { icon: '⚔️',  name: '30 节操',    desc: '命运眷顾了你，获得 30 节操积分！' };
+  const FEATHER = { icon: '🪶',  name: '10 羽毛',    desc: '故事送来了礼物，获得 10 羽毛！' };
+  const MEDAL   = { icon: '🏅',  name: '30天本期勋章', desc: '荣耀属于你，获得 30 天本期勋章！' };
+  const LETTER  = { icon: '🎖️', name: '30天字母勋章', desc: '传说级奖励，获得 30 天字母勋章！' };
+
+  if (!seisoFull)   addN(50, SEISO);
+  if (!featherFull) addN(45, FEATHER);
+
+  if (!permMedal) {
+    // 未得永久本期勋章：本期勋章参与抽奖（与字母勋章等量，剩余各半）
+    const bonus = (seisoFull ? 50 : 0) + (featherFull ? 45 : 0);
+    addN(5 + Math.floor(bonus / 2), MEDAL);
+    addN(5 + Math.ceil(bonus / 2),  LETTER);
+  } else {
+    // 已得永久本期勋章：本期勋章移除，字母勋章最少（5%），剩余补满
+    const bonus = (seisoFull ? 50 : 0) + (featherFull ? 45 : 0);
+    addN(5 + bonus, LETTER);
+  }
+
+  if (pool.length === 0) pool.push(LETTER);
+  return pool;
+}
+
+// ===== REWARD TOTAL TRACKING =====
+function updateRewardTotal_(reward) {
+  if (!state.id || !reward) return;
+  const all = loadAllProgress();
+  if (!all[state.id]) return;
+  const name = reward.name || '';
+  if (name.includes('节操'))  all[state.id].seiso_total   = (all[state.id].seiso_total   || 0) + 30;
+  if (name.includes('羽毛'))  all[state.id].feather_total  = (all[state.id].feather_total  || 0) + 10;
+  if (name.includes('字母勋章')) all[state.id].letter_total = (all[state.id].letter_total || 0) + 30;
+  saveAllProgress(all);
+}
+
+// ===== MILESTONE CHECK & POPUP =====
+let _milestoneQueue = [];
+
+function checkMilestones_() {
+  if (!state.id) return;
+  const all = loadAllProgress();
+  const prog = all[state.id];
+  if (!prog) return;
+
+  const done = normalizeStoriesDone(prog.stories_done || {});
+  const ms   = prog.milestones || {};
+  const visitedCount = Object.keys(done).length;
+
+  function storiesWithMinChoices(n) {
+    return Object.values(done).filter(entry => {
+      const s = new Set((entry.choices || []).filter(c => c.idx !== null).map(c => c.idx));
+      return s.size >= n;
+    }).length;
+  }
+
+  const pending = [];
+
+  // ── 10 个故事各选一次 → 永久本期勋章 ──
+  if (!prog.perm_medal && visitedCount >= 10) {
+    prog.perm_medal = true;
+    pending.push({
+      icon: '🏅',
+      title: '永久本期勋章',
+      body: '你已探索 10 个以上的故事！\n\n恭喜获得【永久本期勋章】！\n\n今后的随机奖励中，30天本期勋章将不再出现，改为节操、羽毛与字母勋章。',
+      type: 'perm_medal'
+    });
+  }
+
+  // ── 20 个故事各选 ≥1 次 → 往期兑换机会 ──
+  if (!ms.legacy1 && storiesWithMinChoices(1) >= 20) {
+    ms.legacy1 = true;
+    prog.legacy_chances = (prog.legacy_chances || 0) + 1;
+    pending.push({
+      icon: '🎖️',
+      title: '往期勋章兑换机会 ×1',
+      body: '20 个故事各选过一次！\n\n获得【往期勋章兑换机会】×1\n（累计：' + prog.legacy_chances + ' 次）',
+      type: 'legacy'
+    });
+  }
+
+  // ── 20 个故事各选 ≥2 种不同选项 ──
+  if (!ms.legacy2 && storiesWithMinChoices(2) >= 20) {
+    ms.legacy2 = true;
+    prog.legacy_chances = (prog.legacy_chances || 0) + 1;
+    pending.push({
+      icon: '🎖️',
+      title: '往期勋章兑换机会 ×1',
+      body: '20 个故事各选过两种不同选项！\n\n再获得【往期勋章兑换机会】×1\n（累计：' + prog.legacy_chances + ' 次）',
+      type: 'legacy'
+    });
+  }
+
+  // ── 20 个故事各选 ≥3 种不同选项 ──
+  if (!ms.legacy3 && storiesWithMinChoices(3) >= 20) {
+    ms.legacy3 = true;
+    prog.legacy_chances = (prog.legacy_chances || 0) + 1;
+    pending.push({
+      icon: '🎖️',
+      title: '往期勋章兑换机会 ×1',
+      body: '20 个故事各选过三种不同选项！\n\n再获得【往期勋章兑换机会】×1\n（累计：' + prog.legacy_chances + ' 次）',
+      type: 'legacy'
+    });
+  }
+
+  // ── 20 个故事全选（4 种不同选项）──
+  if (!ms.legacy4 && storiesWithMinChoices(4) >= 20) {
+    ms.legacy4 = true;
+    prog.legacy_chances = (prog.legacy_chances || 0) + 1;
+    pending.push({
+      icon: '🎖️',
+      title: '往期勋章兑换机会 ×1',
+      body: '全部 20 个故事四种选项均已选！\n\n再获得【往期勋章兑换机会】×1\n（累计：' + prog.legacy_chances + ' 次）',
+      type: 'legacy'
+    });
+  }
+
+  if (pending.length > 0) {
+    prog.milestones = ms;
+    all[state.id] = prog;
+    saveAllProgress(all);
+    // 同步到 GAS（里程碑奖励）
+    pending.forEach(m => logDiceRewardToGAS_({ icon: m.icon, name: m.title }));
+    _milestoneQueue.push(...pending);
+  }
+}
+
+function showNextMilestone_() {
+  if (_milestoneQueue.length === 0) return;
+  const m = _milestoneQueue.shift();
+  document.getElementById('msIcon').textContent  = m.icon;
+  document.getElementById('msTitle').textContent = m.title;
+  document.getElementById('msBody').textContent  = m.body;
+  // re-trigger spark animation
+  const spark = document.getElementById('msSpark');
+  spark.style.animation = 'none';
+  spark.offsetHeight;
+  spark.style.animation = '';
+  document.getElementById('milestoneOverlay').classList.add('show');
+}
+
+function closeMilestone_() {
+  document.getElementById('milestoneOverlay').classList.remove('show');
+  if (_milestoneQueue.length > 0) {
+    // 还有更多里程碑，继续弹
+    setTimeout(showNextMilestone_, 300);
+    return;
+  }
+  // 所有里程碑处理完：根据当前场景决定下一步
+  if (state.pos_dice < 1) {
+    alert('所有骰子已用完，感谢参与！');
+    restart();
+  } else {
+    // 检查是否骰子用完后进来的（来自 claimAndViewProgress）
+    const cached = getCachedProgress(state.id);
+    if (document.getElementById('screen1b').classList.contains('active') || !state.pos_dice) {
+      if (cached) showProgressScreen(cached);
+      else showScreen('screen1b');
+    } else {
+      goScreen5();
+    }
+  }
+}
+
+// ===== SCREEN 1b 混合骰子分配 =====
+let _s1bMixAssigns = [];
+
+function renderS1bMixPanel_(total) {
+  _s1bMixAssigns = new Array(total).fill(null);
+  const countEl = document.getElementById('s1bMixCount');
+  if (countEl) countEl.textContent = total;
+  const rows = document.getElementById('s1bMixRows');
+  if (!rows) return;
+  rows.innerHTML = '';
+  for (let i = 0; i < total; i++) {
+    const row = document.createElement('div');
+    row.className = 'mix-die-row';
+    row.innerHTML = `
+      <span class="mix-die-label">混合骰子 #${i+1}</span>
+      <div class="mix-die-btns">
+        <button class="die-toggle pos" id="s1btp${i}" onclick="assignS1bDie_(${i},'pos')">+4 正向</button>
+        <button class="die-toggle neg" id="s1btn${i}" onclick="assignS1bDie_(${i},'neg')">−4 负向</button>
+      </div>
+    `;
+    rows.appendChild(row);
+  }
+  updateS1bSummary_();
+}
+
+function assignS1bDie_(idx, type) {
+  if (_s1bMixAssigns[idx] === type) {
+    _s1bMixAssigns[idx] = null;
+  } else {
+    _s1bMixAssigns[idx] = type;
+  }
+  const tp = document.getElementById('s1btp' + idx);
+  const tn = document.getElementById('s1btn' + idx);
+  if (tp) tp.classList.toggle('selected', _s1bMixAssigns[idx] === 'pos');
+  if (tn) tn.classList.toggle('selected', _s1bMixAssigns[idx] === 'neg');
+  updateS1bSummary_();
+}
+
+function batchAssignS1b_(type) {
+  for (let i = 0; i < _s1bMixAssigns.length; i++) assignS1bDie_check_(i, type);
+  updateS1bSummary_();
+}
+
+function batchAssignNS1b_(type) {
+  const inputId = type === 'pos' ? 's1bBatchPosN' : 's1bBatchNegN';
+  const n = parseInt((document.getElementById(inputId) || {}).value, 10) || 0;
+  let assigned = 0;
+  for (let i = 0; i < _s1bMixAssigns.length && assigned < n; i++) {
+    if (_s1bMixAssigns[i] === null) { assignS1bDie_check_(i, type); assigned++; }
+  }
+  updateS1bSummary_();
+}
+
+function batchClearS1b_() {
+  for (let i = 0; i < _s1bMixAssigns.length; i++) {
+    _s1bMixAssigns[i] = null;
+    const tp = document.getElementById('s1btp' + i);
+    const tn = document.getElementById('s1btn' + i);
+    if (tp) tp.classList.remove('selected');
+    if (tn) tn.classList.remove('selected');
+  }
+  updateS1bSummary_();
+}
+
+function assignS1bDie_check_(idx, type) {
+  _s1bMixAssigns[idx] = type;
+  const tp = document.getElementById('s1btp' + idx);
+  const tn = document.getElementById('s1btn' + idx);
+  if (tp) tp.classList.toggle('selected', type === 'pos');
+  if (tn) tn.classList.toggle('selected', type === 'neg');
+}
+
+function updateS1bSummary_() {
+  const pos   = _s1bMixAssigns.filter(x => x === 'pos').length;
+  const neg   = _s1bMixAssigns.filter(x => x === 'neg').length;
+  const unassigned = _s1bMixAssigns.filter(x => x === null).length;
+  const elPos = document.getElementById('s1bSumPos');
+  const elNeg = document.getElementById('s1bSumNeg');
+  const elUn  = document.getElementById('s1bSumUnassigned');
+  const elUnRow = document.getElementById('s1bSumUnassignedRow');
+  const elNote  = document.getElementById('s1bUnassignedNote');
+  if (elPos) elPos.textContent = pos + ' 个';
+  if (elNeg) elNeg.textContent = neg + ' 个';
+  if (elUn)  elUn.textContent  = unassigned + ' 个';
+  if (elUnRow) elUnRow.style.display = unassigned > 0 ? '' : 'none';
+  if (elNote) elNote.textContent = unassigned > 0 ? `还有 ${unassigned} 个未分配（确认后保留为混合骰）` : '';
+}
+
+function assignMixedDiceS1b_() {
+  if (!state.id) return;
+  const pos = _s1bMixAssigns.filter(x => x === 'pos').length;
+  const neg = _s1bMixAssigns.filter(x => x === 'neg').length;
+  const unassigned = _s1bMixAssigns.filter(x => x === null).length;
+
+  const all = loadAllProgress();
+  if (!all[state.id]) return;
+  all[state.id].pos_dice_left    = (all[state.id].pos_dice_left || 0) + pos;
+  all[state.id].pending_neg_dice = neg + unassigned; // 负向+未分配均保留为混合骰
+  saveAllProgress(all);
+  pushDiceToGAS(all[state.id].pos_dice_left, all[state.id].pending_neg_dice, all[state.id].stories_done || {});
+  showProgressScreen(all[state.id]);
+}
+
+// ===== ID HISTORY =====
+const ID_HISTORY_KEY = 'diceStoryIdHistory_v2';
+const ID_HISTORY_MAX = 5;
+
+function loadIdHistory_() {
+  try { return JSON.parse(localStorage.getItem(ID_HISTORY_KEY)) || []; } catch(e) { return []; }
+}
+function saveIdHistory_(id) {
+  if (!id) return;
+  let hist = loadIdHistory_().filter(x => x !== id);
+  hist.unshift(id);
+  if (hist.length > ID_HISTORY_MAX) hist = hist.slice(0, ID_HISTORY_MAX);
+  try { localStorage.setItem(ID_HISTORY_KEY, JSON.stringify(hist)); } catch(e) {}
+  renderIdHistory_();
+}
+function renderIdHistory_() {
+  const hist = loadIdHistory_();
+  const row = document.getElementById('idHistoryRow');
+  const chips = document.getElementById('idHistoryChips');
+  if (!row || !chips) return;
+  if (hist.length === 0) { row.style.display = 'none'; return; }
+  row.style.display = 'block';
+  chips.innerHTML = '';
+  hist.forEach(id => {
+    const btn = document.createElement('button');
+    btn.className = 'ih-chip';
+    btn.textContent = id;
+    btn.onclick = () => {
+      document.getElementById('inputId').value = id;
+      goScreen2();
+    };
+    chips.appendChild(btn);
+  });
+}
+
+// ===== 返乡活跃度写入 GAS =====
+function logActivityToGAS_(uid, date, replies, citations) {
+  if (!GAS_URL || !uid || !date) return;
+  fetch(GAS_URL, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sheet: '骰子故事返乡活跃度记录',
+      type: 'activity_log',
+      uid: String(uid),
+      date: String(date),
+      replies: parseInt(replies, 10) || 0,
+      citations: parseInt(citations, 10) || 0
+    })
+  }).catch(e => console.warn('GAS activity log failed', e));
+}
+
+// ===== OFFLINE MODE =====
+let _diceOfflineMode = false;
+function setDiceOfflineMode_(isOffline) {
+  if (_diceOfflineMode === isOffline) return;
+  _diceOfflineMode = isOffline;
+  const el = document.getElementById('dice-offline-warning');
+  if (el) el.style.display = isOffline ? 'block' : 'none';
+  if (isOffline) {
+    // 简单 toast（若页面有 toast 函数则用，否则 console）
+    console.warn('[dice-story] 离线模式：GAS 无响应，使用本地缓存');
+  }
+}
+async function checkDiceCloudConnection_() {
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 5000);
+    await fetch(GAS_URL + '?ping=1', { signal: ctrl.signal, mode: 'no-cors' });
+    clearTimeout(tid);
+    setDiceOfflineMode_(false);
+    return true;
+  } catch(e) {
+    setDiceOfflineMode_(true);
+    return false;
+  }
+}
+async function retryDiceCloudConnection_() {
+  const el = document.getElementById('dice-offline-warning');
+  if (el) el.textContent = '🔄 正在重新连线...';
+  const ok = await checkDiceCloudConnection_();
+  if (el) {
+    if (ok) {
+      el.innerHTML = '✅ 已连线';
+      setTimeout(() => { el.style.display = 'none'; }, 2000);
+    } else {
+      el.innerHTML = '🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span>';
+    }
+  }
+}
+
+// ===== 下载游玩数据 =====
+function downloadDiceData_() {
+  const cached = getCachedProgress(state.id || '');
+  const id = state.id || '未知';
+  const now = new Date().toLocaleString('zh-TW');
+  const rows = [
+    ['类别', '项目', '数值'],
+    ['基本', '论坛ID', id],
+    ['基本', '下载时间', now],
+    ['骰子', '剩余正骰', cached ? (cached.pos_dice_left || 0) : state.pos_dice],
+    ['骰子', '待分配混合骰', cached ? (cached.pending_neg_dice || 0) : 0],
+  ];
+  const done = normalizeStoriesDone((cached && cached.stories_done) || {});
+  Object.keys(done).sort((a, b) => Number(a) - Number(b)).forEach(k => {
+    const story = STORIES[Number(k) - 1];
+    const title = story ? story.title : ('故事#' + k);
+    const choices = done[k];
+    const choiceStr = Array.isArray(choices) ? choices.join('/') : String(choices);
+    rows.push(['故事进度', title, choiceStr]);
+  });
+  const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'dice-story-' + id + '.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ===== 骰子奖励写入 GAS =====
+function logDiceRewardToGAS_(reward) {
+  if (!GAS_URL || !reward) return;
+  fetch(GAS_URL, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sheet: '骰子故事奖励',
+      type: 'reward',
+      id: String(state.id || '').trim(),
+      name: String(state.id || ''),
+      rewardName: String(reward.name || ''),
+      rewardIcon: String(reward.icon || ''),
+      timestamp: new Date().toISOString()
+    })
+  }).catch(e => console.warn('GAS dice reward log failed', e));
+}
+
+// ===== 页面初始化 =====
+(function init_() {
+  renderIdHistory_();
+})();
 </script>
 <!-- v1.3 2026-03-28 论坛抓取写入 GAS「论坛抓取记录_骰子故事」独立分页 -->
+<!-- v1.4 2026-04-04 离线模式浮动警告+下载游玩数据；骰子奖励写入 GAS「骰子故事奖励」分页（中文奖励名称） -->
+<!-- v1.5 2026-04-04 里程碑系统：10故事→永久本期勋章；20故事×1/2/3/4种选项→往期勋章兑换机会；动态奖励池（节操/羽毛/字母勋章权重+上限）；screen1b显示永久奖励徽章 -->
+<!-- v1.6 2026-04-04 论坛抓取后写入 GAS「返乡活跃度」（UID+日期唯一，数量变则更新，相同则跳过）；screen1显示曾输入的ID历史，可点击直接进入 -->
+<!-- v1.7 2026-04-04 screen1b：奖励累计折叠面板（节操/羽毛/字母勋章/永久勋章/往期机会）；混合骰子直接在进度页分配；返乡活跃度改为逐日详细记录（每个日期独立一行，而非总数） -->
+<!-- v1.8 2026-04-04 screen1b 混合骰子分配改为折叠面板+逐粒按钮（正向/负向）+批量控制，样式与 screen3 一致 -->
+<!-- v1.9 2026-04-04 移除「清除此帐号所有记录」；进游戏读取 GAS 时合并云端奖励累计+同步上传 rewards JSON（需部署新版 GAS 聚合「骰子故事奖励」） -->
+<div id="dice-offline-warning" onclick="retryDiceCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 </body>
 </html>
+

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -98,10 +98,10 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
 #center{grid-row:2/10;grid-column:2/10;background:rgba(15,12,41,.92);
   border-radius:4px;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:5px;padding:6px}
-#center-char{width:70px;height:78px;
-  background-image:url('images/char.png');
-  background-size:600% 400%;background-position:0% 0%;image-rendering:pixelated;
-  transition:background-position .18s}
+#center-char{width:86px;height:86px;
+  background-image:url('https://s.sstmlt.com/img/2026/04/04/system_reward7218bf3acdba76b3.png');
+  background-size:contain;background-position:center;background-repeat:no-repeat;
+  transition:background-image .18s ease, transform .18s ease}
 #center-msg{font-size:8px;text-align:center;color:rgba(255,255,255,.85);
   max-width:280px;line-height:1.4}
 #center-inv{display:flex;flex-wrap:wrap;justify-content:center;gap:3px;margin-top:3px}
@@ -148,6 +148,9 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
 .ov-icon{font-size:2.2rem;margin-bottom:6px}
 .ov-type{font-size:.72rem;opacity:.75;letter-spacing:.1em;margin-bottom:3px}
 .ov-dice{font-size:.8rem;color:#FFD93D;margin-bottom:8px}
+.ov-art{width:120px;height:120px;margin:0 auto 8px;background-repeat:no-repeat;
+  background-position:center;background-size:contain;
+  filter:drop-shadow(0 4px 12px rgba(0,0,0,.35));display:none}
 .ov-name{font-size:1.3rem;font-weight:800;margin:4px 0}
 .ov-desc{font-size:.85rem;opacity:.9;margin-bottom:14px;line-height:1.55;white-space:pre-wrap}
 .ov-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
@@ -168,10 +171,14 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
 #bag-btn{position:fixed;bottom:18px;right:18px;z-index:300;
   width:46px;height:46px;background:linear-gradient(135deg,#f7971e,#ffd200);
   color:#1a1a1a;border:none;border-radius:50%;cursor:pointer;font-size:1.25rem;
-  box-shadow:0 4px 14px rgba(247,151,30,.45);display:none;align-items:center;justify-content:center}
+  box-shadow:0 4px 14px rgba(247,151,30,.45);display:flex;align-items:center;justify-content:center}
 #bag-badge{position:absolute;top:-4px;right:-4px;background:#e53935;color:#fff;
   border-radius:50%;width:18px;height:18px;font-size:10px;
   display:flex;align-items:center;justify-content:center;font-weight:700}
+#reward-btn{position:fixed;bottom:74px;right:18px;z-index:300;
+  padding:10px 14px;background:linear-gradient(135deg,#ffe082,#ffb300);color:#4e342e;
+  border:none;border-radius:999px;cursor:pointer;font-size:.82rem;font-weight:700;
+  box-shadow:0 6px 18px rgba(255,179,0,.35)}
 #bag-panel{position:fixed;bottom:74px;right:18px;z-index:400;
   background:rgba(20,20,35,.97);border:1px solid rgba(255,255,255,.15);
   border-radius:16px;padding:16px;min-width:230px;max-width:290px;display:none;
@@ -180,12 +187,22 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
 .bag-item{display:flex;align-items:center;justify-content:space-between;
   padding:7px 10px;background:rgba(255,255,255,.07);border-radius:8px;margin-bottom:6px}
 .bag-item-name{font-size:.84rem;color:#fff}
+.bag-item-desc{display:block;font-size:.72rem;color:rgba(255,255,255,.58);margin-top:2px}
 .bag-item-use{padding:4px 12px;background:rgba(144,202,249,.18);
   border:1px solid rgba(144,202,249,.5);border-radius:10px;
   color:#90CAF9;cursor:pointer;font-size:.78rem}
 .bag-item-use:hover{background:rgba(144,202,249,.35)}
 .bag-item-use:disabled{opacity:.3;cursor:not-allowed}
 #bag-empty{color:rgba(255,255,255,.45);font-size:.82rem;text-align:center;padding:8px 0}
+#reward-panel{position:fixed;bottom:118px;right:18px;z-index:400;
+  background:rgba(20,20,35,.97);border:1px solid rgba(255,224,130,.25);
+  border-radius:16px;padding:16px;min-width:250px;max-width:320px;max-height:60vh;overflow:auto;display:none;
+  box-shadow:0 8px 28px rgba(0,0,0,.6);font-family:'Microsoft YaHei',Arial,sans-serif}
+#reward-panel h4{color:#FFD93D;margin-bottom:10px;font-size:.95rem}
+.reward-stat{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.08);font-size:.82rem;color:#fff}
+.reward-log-title{color:rgba(255,255,255,.55);font-size:.74rem;margin:12px 0 6px}
+.reward-log-item{padding:7px 0;border-top:1px solid rgba(255,255,255,.06);font-size:.76rem;color:rgba(255,255,255,.88)}
+.reward-log-item small{display:block;margin-top:3px;color:rgba(255,255,255,.48)}
 
 /* ===== FORUM FETCH ===== */
 .fff-modal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.85);align-items:center;justify-content:center}
@@ -199,6 +216,15 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
 .fff-btn-sub{padding:7px 18px;background:rgba(255,255,255,.1);color:#ccc;border:1px solid rgba(255,255,255,.3);border-radius:50px;cursor:pointer;font-size:.85rem}
 .fff-spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.15);border-top-color:#FFD93D;border-radius:50%;animation:fffSpin .8s linear infinite}
 @keyframes fffSpin{to{transform:rotate(360deg)}}
+
+/* ── OFFLINE MODE ── */
+#bg-offline-warning{display:none;position:fixed;bottom:14px;right:14px;background:rgba(180,40,40,0.92);border:1px solid #e55;color:#fdd;padding:8px 14px;border-radius:8px;font-size:0.8rem;cursor:pointer;z-index:110;transition:all .2s;line-height:1.4;text-align:center}
+#bg-offline-warning:hover{background:rgba(200,60,60,0.95);box-shadow:0 0 10px rgba(220,60,60,.4)}
+#bg-id-history-row{margin-top:12px;text-align:center;display:none}
+#bg-id-history-row .bg-ih-label{font-size:0.72rem;color:rgba(255,255,255,.55);margin-bottom:6px}
+.bg-ih-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.bg-ih-chip{padding:5px 14px;border-radius:20px;font-size:0.8rem;cursor:pointer;background:rgba(255,217,61,0.12);border:1px solid rgba(255,217,61,0.45);color:#ffe082;font-family:inherit}
+.bg-ih-chip:hover{background:rgba(255,217,61,0.28);color:#fff}
 </style>
 </head>
 <body>
@@ -211,6 +237,10 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
     <input id="inp-id" class="inp" type="text" placeholder="论坛 ID" maxlength="50"
       onkeydown="if(event.key==='Enter')s1Confirm()">
     <button class="btn-gold" id="btn-s1confirm" onclick="s1Confirm()">确认 →</button>
+    <div id="bg-id-history-row">
+      <div class="bg-ih-label">最近使用的 ID</div>
+      <div class="bg-ih-chips" id="bg-id-history-chips"></div>
+    </div>
     <div id="id-err" class="err-msg"></div>
     <div id="balance-result" style="display:none">
       <div id="balance-info"></div>
@@ -243,6 +273,7 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
     </div>
     <button class="btn-sub" style="margin-bottom:10px;width:100%" onclick="fffOpenModal(false)">📡 论坛自动读取</button>
     <button class="btn-gold" id="start-btn" onclick="s2Start()" disabled>开始游戏 →</button>
+    <button class="btn-sub" style="margin-top:10px;width:100%;font-size:.82rem" onclick="downloadBGData_()">📥 下载游玩数据</button>
   </div>
 </div>
 
@@ -280,17 +311,25 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
     </div>
     <button id="roll-btn" onclick="doRoll()">🎲 投骰</button>
     <button class="dbtn" onclick="fffOpenModal(true)" style="font-size:.72rem;padding:4px 10px">📡 更新</button>
+    <button class="dbtn" onclick="downloadBGData_()" style="font-size:.72rem;padding:4px 10px">📥 存档</button>
   </div>
   <div id="status-bar"></div>
 </div>
 
 <!-- ===== BACKPACK ===== -->
-<button id="bag-btn" onclick="toggleBag()" title="背包">
+  <button id="bag-btn" onclick="toggleBag()" title="背包">
   🎒<span id="bag-badge" style="display:none">0</span>
 </button>
+<button id="reward-btn" onclick="toggleRewardPanel()">🎁 奖励累计</button>
 <div id="bag-panel">
   <h4>🎒 背包</h4>
   <div id="bag-list"></div>
+</div>
+<div id="reward-panel">
+  <h4>🎁 奖励累计</h4>
+  <div id="reward-summary"></div>
+  <div class="reward-log-title">最近获得</div>
+  <div id="reward-log-list"></div>
 </div>
 
 <!-- ===== OVERLAY ===== -->
@@ -299,6 +338,7 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
     <div class="ov-icon" id="ov-icon">🎲</div>
     <div class="ov-type" id="ov-type"></div>
     <div class="ov-dice" id="ov-dice"></div>
+    <div class="ov-art" id="ov-art"></div>
     <div class="ov-name" id="ov-name"></div>
     <div class="ov-desc" id="ov-desc"></div>
     <div class="ov-btns" id="ov-btns"></div>
@@ -345,7 +385,7 @@ var BOARD = [
   {id:20, name:"节操+10", type:"奖励", desc:"获得10节操"},
   {id:21, name:"退后4格", type:"惩罚", desc:"退后4格", steps:-4},
   {id:22, name:"命 运",   type:"命运", desc:"抽取一张命运卡"},
-  {id:23, name:"羽毛+5",  type:"奖励", desc:"获得5羽毛"},
+  {id:23, name:"字母勋章", type:"奖励", desc:"获得1个30天字母勋章"},
   {id:24, name:"跳→30",   type:"跳转", desc:"跳到格子30", jump_to:30},
   {id:25, name:"机 会",   type:"机会", desc:"抽取一张机会卡"},
   {id:26, name:"冻 结",   type:"冻结", desc:"冻结1回合，可消耗骰子解冻", freeze:1},
@@ -359,6 +399,7 @@ var BOARD = [
   {id:34, name:"跳→5",    type:"跳转", desc:"跳到格子5", jump_to:5},
   {id:35, name:"节操+50", type:"奖励", desc:"获得50节操"}
 ];
+var BASE_BOARD = JSON.parse(JSON.stringify(BOARD));
 
 // ================================================================
 // CHANCE_CARDS — 游戏配置器可编辑
@@ -390,9 +431,38 @@ var FATE_CARDS = [
   {name:"命运厚礼",   desc:"随机获得 d6 × 1",                             type:"reward_dice",   value:{t:6,c:1}},
   {name:"命运之罚",   desc:"随机退后 1～3 格",                            type:"retreat_rnd",   value:3}
 ];
+var ITEM_META = {
+  amulet: { name:'平安符', desc:'遭遇惩罚格或冻结格时可抵消一次效果。' },
+  unfreeze: { name:'解冻道具', desc:'被冻结时可直接减少 1 回冻结。' }
+};
 
 // ================================================================
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsiAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec';
+const SYSTEM_ART_URLS = {
+  reward: 'https://s.sstmlt.com/img/2026/04/04/system_reward7218bf3acdba76b3.png',
+  penalty: 'https://s.sstmlt.com/img/2026/04/04/system_penaltyda6d6f49bd9f38f0.png',
+  freeze: 'https://s.sstmlt.com/img/2026/04/04/system_freezeb8cf3ef1ca6f823c.png',
+  chance: 'https://s.sstmlt.com/img/2026/04/04/system_chance3895f134c8bff0bb.png',
+  fate: 'https://s.sstmlt.com/img/2026/04/04/system_fatefefa0304f70a80bc.png',
+  teleport: 'https://s.sstmlt.com/img/2026/04/04/system_teleport3175c3f4a4e1f9f6.png'
+};
+const CENTER_CHAR_ART_BY_STATE = {
+  idle:'reward',
+  calm:'reward',
+  happy:'reward',
+  cheer:'reward',
+  victory:'reward',
+  worried:'penalty',
+  frozen:'freeze',
+  jump:'teleport',
+  walk1:'teleport',
+  walk2:'teleport',
+  spin:'chance',
+  think:'fate',
+  shy:'chance',
+  point:'chance',
+  land:'reward'
+};
 
 /** 论坛抓取写入 GAS：用 GET + Image Beacon（与同页 saveBalance 一致）。对 script.google.com 发 JSON POST 常被 CORS 预检拦下，doPost 实际收不到。 */
 function logForumFetchToGAS_(opts){
@@ -420,6 +490,223 @@ function logForumFetchToGAS_(opts){
   }catch(e){ console.warn('GAS forum fetch log failed', e); }
 }
 
+/** 返乡活跃度：用 GET + Image Beacon，避免 script.google.com 的 CORS/预检导致 doPost 收不到 */
+function logBoardActivityToGAS_(uid, date, replies, citations){
+  if(!GAS_URL || !uid || !date) return;
+  try{
+    var pairs={
+      sheet:'大富翁返乡活跃度',
+      type:'activity_log',
+      uid:String(uid),
+      date:String(date),
+      replies:String(parseInt(replies, 10) || 0),
+      citations:String(parseInt(citations, 10) || 0)
+    };
+    var qs=Object.keys(pairs).map(function(k){
+      return encodeURIComponent(k)+'='+encodeURIComponent(pairs[k]);
+    }).join('&');
+    (new Image()).src=GAS_URL+'?'+qs;
+  }catch(e){ console.warn('GAS activity log failed', e); }
+}
+function logMonopolyRewardToGAS_(entry){
+  try{
+    if(!GAS_URL || !entry || !G.userId) return;
+    var pairs={
+      sheet:'大富翁奖励清单',
+      type:'reward_log',
+      user_id:String(G.userId),
+      reward_kind:String(entry.kind||''),
+      reward_label:String(entry.label||''),
+      amount:String(entry.amount||0),
+      total_value:String(entry.totalValue||0),
+      note:String(entry.note||''),
+      extra:String(JSON.stringify(entry.extra||{}))
+    };
+    var qs=Object.keys(pairs).map(function(k){
+      return encodeURIComponent(k)+'='+encodeURIComponent(pairs[k]);
+    }).join('&');
+    (new Image()).src=GAS_URL+'?'+qs;
+  }catch(e){ console.warn('GAS reward log failed', e); }
+}
+function fetchMonopolyRanges_(uid, cb){
+  if(!GAS_URL || !uid){ cb([]); return; }
+  var fn='_fetchRangeCb'+Date.now();
+  var timer=setTimeout(function(){ delete window[fn]; cb([]); }, 6000);
+  window[fn]=function(data){
+    clearTimeout(timer); delete window[fn];
+    var s=document.getElementById('_fetchRangeScript');
+    if(s) s.parentNode.removeChild(s);
+    cb((data && data.ok && Array.isArray(data.rows)) ? data.rows : []);
+  };
+  var s=document.createElement('script');
+  s.id='_fetchRangeScript';
+  s.src=GAS_URL+'?action=monopoly_fetch_ranges&id='+encodeURIComponent(uid)+'&callback='+fn;
+  document.head.appendChild(s);
+}
+function hasOverlap_(startA,endA,startB,endB){
+  var a1 = startA ? new Date(startA).getTime() : 0;
+  var a2 = endA ? new Date(endA+'T23:59:59').getTime() : Date.now();
+  var b1 = startB ? new Date(startB).getTime() : 0;
+  var b2 = endB ? new Date(endB+'T23:59:59').getTime() : Date.now();
+  return a1 <= b2 && b1 <= a2;
+}
+function pushForumLog_(entry){
+  G.forumLog.push(entry);
+  if(G.forumLog.length>80) G.forumLog=G.forumLog.slice(-80);
+  saveGameState_();
+}
+function recordForumFetch_(opts){
+  var entry={
+    time:new Date().toLocaleString('zh-TW'),
+    mode:String(opts.mode||''),
+    uid:String(opts.uid||G.userId||''),
+    startDate:String(opts.startDate||''),
+    endDate:String(opts.endDate||''),
+    replies:parseInt(opts.replies,10)||0,
+    citations:parseInt(opts.citations,10)||0,
+    source:String(opts.source||'manual')
+  };
+  pushForumLog_(entry);
+  logForumFetchToGAS_({
+    mode:entry.mode,
+    forum_uid:entry.uid,
+    reply_count:entry.replies,
+    citation_count:entry.citations,
+    startDate:entry.startDate,
+    endDate:entry.endDate
+  });
+}
+function addBackpackItems_(type, count){
+  count = Math.max(0, parseInt(count,10)||0);
+  if(!count) return 0;
+  var meta=ITEM_META[type]||{name:type,desc:''};
+  for(var i=0;i<count;i++) G.backpack.push({type:type,name:meta.name,desc:meta.desc});
+  if(type==='amulet') G.rewards.amulet += count;
+  if(type==='unfreeze') G.rewards.unfreeze += count;
+  updateBackpackBtn();
+  renderBagPanel();
+  renderRewardPanel();
+  syncBackpack();
+  saveGameState_();
+  return count;
+}
+function grantReward_(kind, amount, label, note, extra){
+  amount = parseInt(amount,10) || 0;
+  if(!amount) return;
+  if(kind.indexOf('d')===0){
+    G.dice[parseInt(kind.slice(1),10)] = (G.dice[parseInt(kind.slice(1),10)]||0) + amount;
+  }
+  G.rewards[kind] = (G.rewards[kind]||0) + amount;
+  var entry={
+    time:new Date().toLocaleString('zh-TW'),
+    kind:kind,
+    amount:amount,
+    label:label || ((rewardKeys_()[kind]||kind)+' +'+amount),
+    note:note||'',
+    totalValue:G.rewards[kind]||0,
+    extra:extra||{}
+  };
+  G.rewardLog.push(entry);
+  if(G.rewardLog.length>200) G.rewardLog=G.rewardLog.slice(-200);
+  updateDynamicBoard_();
+  buildBoard(); hlCell(G.pos); charMove(G.pos,true);
+  updateBar(); updateDiceUI(); renderRewardPanel();
+  saveGameState_();
+  logMonopolyRewardToGAS_(entry);
+}
+function grantRandomTaskReward_(){
+  var pool=[
+    {kind:'seiso', amount:30, label:'命运考验通过：节操 +30'},
+    {kind:'feather', amount:10, label:'命运考验通过：羽毛 +10'},
+    {kind:'letter30', amount:1, label:'命运考验通过：30天字母勋章 +1'}
+  ];
+  var hit=pool[Math.floor(Math.random()*pool.length)];
+  grantReward_(hit.kind, hit.amount, hit.label, '命运考验奖励');
+  alert('命运考验完成，额外获得：'+hit.label.replace('命运考验通过：',''));
+}
+function grantMilestoneRewards_(){
+  while(G.laps >= 5 && G.rewards.permanentBadge < 1){
+    grantReward_('permanentBadge', 1, '完成 5 圈：永久本期勋章', '圈数奖励', {laps:G.laps});
+  }
+  [10,15,20,25,30,35,40,45,50].forEach(function(th){
+    var need = G.laps >= th;
+    var owned = G.rewardLog.filter(function(x){ return x.extra && x.extra.milestone===th; }).length;
+    if(need && owned<1){
+      grantReward_('legacyChance', 1, '完成 '+th+' 圈：往期返乡勋章兑换机会 +1', '圈数奖励', {laps:G.laps, milestone:th});
+    }
+  });
+}
+function registerLapProgress_(path){
+  if(!Array.isArray(path) || !path.length) return;
+  var lapsAdded = path.filter(function(p){ return p===0; }).length;
+  if(!lapsAdded) return;
+  var before = G.laps;
+  G.laps += lapsAdded;
+  var reshuffled = false;
+  for(var th=5; th<=G.laps; th+=5){
+    if(before < th){
+      shuffleBaseBoard_();
+      reshuffled = true;
+    }
+  }
+  if(before < 5 && G.laps >= 5 && !G.lapModeNotified){
+    G.lapModeNotified = true;
+    alert('你已完成 5 圈，从第 6 圈开始，额外生成的惩罚 / 机会 / 命运效果会翻倍；棋盘惩罚格仍照格子上原本数字执行，并会出现 d8 / d10 / d12 奖励格。');
+  }
+  grantMilestoneRewards_();
+  updateDynamicBoard_();
+  if(reshuffled){
+    buildBoard();
+    hlCell(G.pos);
+    charMove(G.pos,true);
+    alert('累计圈数达到 5 的倍数，棋盘格子已经重新打乱。');
+  }
+  saveGameState_();
+}
+
+var BOARD_ID_HISTORY_KEY_ = 'boardGameIdHistory_v1';
+var BOARD_ID_HISTORY_MAX_ = 5;
+var BOARD_FORUM_UID_KEY_ = 'boardGameForumUid_v1';
+function loadBoardIdHistory_(){
+  try { return JSON.parse(localStorage.getItem(BOARD_ID_HISTORY_KEY_)) || []; } catch(e) { return []; }
+}
+function saveBoardIdHistory_(id){
+  if(!id) return;
+  var hist = loadBoardIdHistory_().filter(function(x){ return String(x) !== String(id); });
+  hist.unshift(String(id));
+  if(hist.length > BOARD_ID_HISTORY_MAX_) hist = hist.slice(0, BOARD_ID_HISTORY_MAX_);
+  try { localStorage.setItem(BOARD_ID_HISTORY_KEY_, JSON.stringify(hist)); } catch(e) {}
+  renderBoardIdHistory_();
+}
+function renderBoardIdHistory_(){
+  var hist = loadBoardIdHistory_();
+  var row = document.getElementById('bg-id-history-row');
+  var chips = document.getElementById('bg-id-history-chips');
+  if(!row || !chips) return;
+  if(!hist.length){ row.style.display = 'none'; return; }
+  row.style.display = 'block';
+  chips.innerHTML = '';
+  hist.forEach(function(id){
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bg-ih-chip';
+    btn.textContent = id;
+    btn.onclick = function(){
+      var inp = document.getElementById('inp-id');
+      if(inp) inp.value = id;
+    };
+    chips.appendChild(btn);
+  });
+}
+function loadBoardForumUid_(){
+  try { return String(localStorage.getItem(BOARD_FORUM_UID_KEY_) || '').trim(); } catch(e) { return ''; }
+}
+function saveBoardForumUid_(uid){
+  uid = String(uid || '').trim();
+  if(!uid) return;
+  try { localStorage.setItem(BOARD_FORUM_UID_KEY_, uid); } catch(e) {}
+}
+
 // ================================================================
 // SPRITE  (6 列 × 4 行，每格 256×256)
 // ================================================================
@@ -434,7 +721,14 @@ function spPos(key){
 }
 function setSp(id,key){
   var el=document.getElementById(id);
-  if(el) el.style.backgroundPosition=spPos(key);
+  if(!el) return;
+  if(id==='center-char'){
+    var artKey=CENTER_CHAR_ART_BY_STATE[key] || 'reward';
+    el.style.backgroundImage='url("'+(SYSTEM_ART_URLS[artKey]||SYSTEM_ART_URLS.reward)+'")';
+    el.style.transform=(key==='spin'?'scale(1.04)':key==='jump'?'translateY(-2px) scale(1.03)':'none');
+    return;
+  }
+  el.style.backgroundPosition=spPos(key);
 }
 
 // ================================================================
@@ -449,9 +743,160 @@ var G = {
   shield:false,
   pending:false,
   nextRollCb:null,
-  backpack:[]
+  backpack:[],
+  laps:0,
+  lapModeNotified:false,
+  manualLogged:false,
+  autoUse:{ amulet:false, unfreeze:false, unfreezeDice:false },
+  pendingInputSource:'manual_direct',
+  playLog:[],
+  forumLog:[],
+  rewardLog:[],
+  rewards:{
+    seiso:0,
+    feather:0,
+    letter30:0,
+    permanentBadge:0,
+    legacyChance:0,
+    d4:0,
+    d6:0,
+    d8:0,
+    d10:0,
+    d12:0,
+    amulet:0,
+    unfreeze:0
+  }
 };
 var _taskUnlockAt = 0;
+function rewardKeys_(){
+  return { seiso:'节操', feather:'羽毛', letter30:'30天字母勋章', permanentBadge:'永久本期勋章',
+    legacyChance:'往期返乡勋章兑换机会', d4:'d4', d6:'d6', d8:'d8', d10:'d10', d12:'d12', amulet:'平安符', unfreeze:'解冻道具' };
+}
+function makeDefaultRewards_(){
+  return { seiso:0, feather:0, letter30:0, permanentBadge:0, legacyChance:0, d4:0, d6:0, d8:0, d10:0, d12:0, amulet:0, unfreeze:0 };
+}
+function normalizeGameState_(){
+  G.backpack = Array.isArray(G.backpack) ? G.backpack : [];
+  G.playLog = Array.isArray(G.playLog) ? G.playLog : [];
+  G.forumLog = Array.isArray(G.forumLog) ? G.forumLog : [];
+  G.rewardLog = Array.isArray(G.rewardLog) ? G.rewardLog : [];
+  G.rewards = Object.assign(makeDefaultRewards_(), G.rewards || {});
+  G.autoUse = Object.assign({ amulet:false, unfreeze:false }, G.autoUse || {});
+}
+function gameStateKey_(uid){ return uid ? 'bgame_state_'+uid : ''; }
+function syncMonopolyMeta_(){
+  if(!GAS_URL || !G.userId) return;
+  new Image().src = GAS_URL+'?sheet=大富翁状态'
+    +'&id='+encodeURIComponent(G.userId)
+    +'&laps='+(parseInt(G.laps,10)||0)
+    +'&lap_mode='+(G.lapModeNotified ? 1 : 0);
+}
+function saveGameState_(){
+  if(!G.userId) return;
+  normalizeGameState_();
+  try{
+    localStorage.setItem(gameStateKey_(G.userId), JSON.stringify({
+      pos:G.pos, frozen:G.frozen, doubleNext:G.doubleNext, backpack:G.backpack,
+      laps:G.laps, lapModeNotified:G.lapModeNotified, autoUse:G.autoUse, playLog:G.playLog,
+      forumLog:G.forumLog, rewardLog:G.rewardLog, rewards:G.rewards
+    }));
+  }catch(e){}
+  syncMonopolyMeta_();
+}
+function loadGameState_(uid){
+  if(!uid) return null;
+  try{
+    var raw = localStorage.getItem(gameStateKey_(uid));
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function clearGameState_(uid){
+  if(!uid) return;
+  try{ localStorage.removeItem(gameStateKey_(uid)); }catch(e){}
+}
+function resetGameState_(uid){
+  clearGameState_(uid||G.userId);
+  G.pos=0; G.frozen=0; G.doubleNext=false; G.shield=false; G.pending=false; G.nextRollCb=null;
+  G.backpack=[]; G.laps=0; G.lapModeNotified=false; G.manualLogged=false; G.pendingInputSource='manual_direct';
+  G.autoUse={ amulet:false, unfreeze:false, unfreezeDice:false };
+  G.playLog=[]; G.forumLog=[]; G.rewardLog=[]; G.rewards=makeDefaultRewards_();
+}
+function applyLoadedState_(state){
+  if(!state) return;
+  G.pos = parseInt(state.pos,10)||0;
+  G.frozen = parseInt(state.frozen,10)||0;
+  G.doubleNext = !!state.doubleNext;
+  G.backpack = Array.isArray(state.backpack) ? state.backpack : [];
+  G.laps = parseInt(state.laps,10)||0;
+  G.lapModeNotified = !!state.lapModeNotified;
+  G.autoUse = Object.assign({ amulet:false, unfreeze:false, unfreezeDice:false }, state.autoUse || {});
+  G.playLog = Array.isArray(state.playLog) ? state.playLog : [];
+  G.forumLog = Array.isArray(state.forumLog) ? state.forumLog : [];
+  G.rewardLog = Array.isArray(state.rewardLog) ? state.rewardLog : [];
+  G.rewards = Object.assign(makeDefaultRewards_(), state.rewards || {});
+  normalizeGameState_();
+}
+function itemCount_(type){ return G.backpack.filter(function(i){ return i.type===type; }).length; }
+function effectMultiplier_(){ return G.laps >= 5 ? 2 : 1; }
+function boardPenaltyMultiplier_(){ return 1; }
+function currentBoardCell_(id){ return BOARD[id] || BASE_BOARD[id]; }
+function shuffleBaseBoard_(){
+  var fixed = JSON.parse(JSON.stringify(BASE_BOARD[0]));
+  var arr = BASE_BOARD.slice(1).map(function(c){ return JSON.parse(JSON.stringify(c)); });
+  for(var i=arr.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1));
+    var tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp;
+  }
+  arr.forEach(function(cell, idx){ cell.id = idx + 1; });
+  BASE_BOARD = [fixed].concat(arr);
+}
+function updateDynamicBoard_(){
+  BOARD = JSON.parse(JSON.stringify(BASE_BOARD));
+  BOARD[24] = {id:24, name:'平安符', type:'道具', desc:'获得 1 个平安符；第 6 圈起改为 2 个'};
+  if(G.laps >= 5){
+    BOARD[7]  = {id:7,  name:'d8+1',  type:'骰子奖励', desc:'获得 1 颗 d8'};
+    BOARD[20] = {id:20, name:'d10+1', type:'骰子奖励', desc:'获得 1 颗 d10'};
+    BOARD[27] = {id:27, name:'d12+1', type:'骰子奖励', desc:'获得 1 颗 d12'};
+  }
+  BOARD.forEach(function(cell, idx){
+    if(/节操\+/.test(cell.name) && G.rewards.seiso > 5000){
+      BOARD[idx] = {id:cell.id, name:'命 运', type:'命运', desc:'节操累计超过 5000，节操格改为命运格'};
+    } else if(/羽毛\+/.test(cell.name) && G.rewards.feather > 2000){
+      BOARD[idx] = {id:cell.id, name:'机 会', type:'机会', desc:'羽毛累计超过 2000，羽毛格改为机会格'};
+    }
+  });
+}
+function renderRewardPanel(){
+  var wrap=document.getElementById('reward-summary');
+  var log=document.getElementById('reward-log-list');
+  if(!wrap || !log) return;
+  normalizeGameState_();
+  var labels=rewardKeys_();
+  wrap.innerHTML=[
+    ['累计圈数', G.laps],
+    ['节操', G.rewards.seiso],
+    ['羽毛', G.rewards.feather],
+    ['30天字母勋章', G.rewards.letter30],
+    ['永久本期勋章', G.rewards.permanentBadge],
+    ['往期返乡勋章兑换机会', G.rewards.legacyChance],
+    ['平安符', itemCount_('amulet')],
+    ['解冻道具', itemCount_('unfreeze')]
+  ].map(function(r){ return '<div class="reward-stat"><span>'+r[0]+'</span><strong>'+r[1]+'</strong></div>'; }).join('');
+  log.innerHTML = G.rewardLog.length ? G.rewardLog.slice(-12).reverse().map(function(it){
+    return '<div class="reward-log-item">'+it.label+'<small>'+it.time+' · '+(labels[it.kind]||it.kind)+' '+(it.amount>=0?'+':'')+it.amount+'</small></div>';
+  }).join('') : '<div id="bag-empty">还没有奖励记录</div>';
+}
+function toggleRewardPanel(){
+  var panel=document.getElementById('reward-panel');
+  var bag=document.getElementById('bag-panel');
+  if(!panel) return;
+  var visible=panel.style.display==='block';
+  if(visible){ panel.style.display='none'; return; }
+  if(bag) bag.style.display='none';
+  renderRewardPanel();
+  panel.style.display='block';
+}
+window.toggleRewardPanel=toggleRewardPanel;
 
 // ================================================================
 // OVERLAY ACTION REGISTRY
@@ -467,6 +912,7 @@ window.runA = runA;
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  if(id === 'screen-id') renderBoardIdHistory_();
 }
 
 // ================================================================
@@ -487,6 +933,35 @@ function fetchBalance(id, cb){
   s.src=GAS_URL+'?sheet=大富翁余额&id='+encodeURIComponent(id)+'&callback='+fn;
   document.head.appendChild(s);
 }
+function fetchMonopolyCloudProfile(id, cb){
+  if(!GAS_URL || !id){ cb(null); return; }
+  var fn='_profileCb'+Date.now();
+  var timer=setTimeout(function(){ delete window[fn]; cb(null); }, 6000);
+  window[fn]=function(data){
+    clearTimeout(timer); delete window[fn];
+    var s=document.getElementById('_profileScript');
+    if(s) s.parentNode.removeChild(s);
+    cb(data);
+  };
+  var s=document.createElement('script');
+  s.id='_profileScript';
+  s.src=GAS_URL+'?action=monopoly_profile&id='+encodeURIComponent(id)+'&callback='+fn;
+  document.head.appendChild(s);
+}
+function applyCloudProfile_(data){
+  if(!data || !data.ok) return;
+  if(Array.isArray(data.backpack)) G.backpack = data.backpack;
+  if(data.rewards) G.rewards = Object.assign(makeDefaultRewards_(), data.rewards || {});
+  if(Array.isArray(data.rewardLog)) G.rewardLog = data.rewardLog;
+  if(data.laps != null) G.laps = Math.max(parseInt(G.laps,10)||0, parseInt(data.laps,10)||0);
+  if(data.lapModeNotified != null) G.lapModeNotified = !!data.lapModeNotified;
+  normalizeGameState_();
+  updateDynamicBoard_();
+  updateBackpackBtn();
+  renderBagPanel();
+  renderRewardPanel();
+  saveGameState_();
+}
 
 function saveBalance(){
   if(!GAS_URL||!G.userId) return;
@@ -505,6 +980,7 @@ function s1Confirm(){
   var v=document.getElementById('inp-id').value.trim();
   if(!v){document.getElementById('id-err').textContent='请输入论坛 ID';return;}
   G.userId=v;
+  saveBoardIdHistory_(v);
   document.getElementById('id-err').textContent='';
   document.getElementById('balance-result').style.display='none';
   CONFIG.exchanges.forEach(ex=>{
@@ -516,22 +992,24 @@ function s1Confirm(){
   var btn=document.getElementById('btn-s1confirm');
   btn.disabled=true; btn.textContent='查询余额…';
   fetchBalance(v,function(data){
-    btn.disabled=false; btn.textContent='确认 →';
-    var total=(data&&data.found)?(data.d4+data.d6+data.d8+data.d10+data.d12):0;
-    if(data&&data.ok&&data.found&&total>0){
-      // 有余额：显示选项
-      window._balanceDice={4:data.d4,6:data.d6,8:data.d8,10:data.d10,12:data.d12};
-      var chips=[4,6,8,10,12].filter(t=>data['d'+t]>0)
-        .map(t=>'<span class="dbadge">d'+t+' ×'+data['d'+t]+'</span>').join('');
-      document.getElementById('balance-info').innerHTML=
-        '<p style="color:#FFD93D;margin:0 0 6px;font-size:.9rem">🎲 发现上次剩余骰子：</p>'+chips;
-      document.getElementById('balance-result').style.display='block';
-    } else {
-      // 无余额：正常流程
-      window._balanceDice=null;
-      calcDice();
-      showScreen('screen-dice');
-    }
+    fetchMonopolyCloudProfile(v, function(profile){
+      btn.disabled=false; btn.textContent='确认 →';
+      if(!data || !profile) setBGOfflineMode_(true);
+      window._cloudProfile = profile || null;
+      var total=(data&&data.found)?(data.d4+data.d6+data.d8+data.d10+data.d12):0;
+      if(data&&data.ok&&data.found&&total>0){
+        window._balanceDice={4:data.d4,6:data.d6,8:data.d8,10:data.d10,12:data.d12};
+        var chips=[4,6,8,10,12].filter(t=>data['d'+t]>0)
+          .map(t=>'<span class="dbadge">d'+t+' ×'+data['d'+t]+'</span>').join('');
+        document.getElementById('balance-info').innerHTML=
+          '<p style="color:#FFD93D;margin:0 0 6px;font-size:.9rem">🎲 发现上次剩余骰子：</p>'+chips;
+        document.getElementById('balance-result').style.display='block';
+      } else {
+        window._balanceDice=null;
+        calcDice();
+        showScreen('screen-dice');
+      }
+    });
   });
 }
 window.s1Confirm=s1Confirm;
@@ -542,11 +1020,15 @@ function useBalance(){
   window._balanceDice=null;
   G.dice={4:r[4]||0,6:r[6]||0,8:r[8]||0,10:r[10]||0,12:r[12]||0};
   G.sel=[4,6,8,10,12].find(t=>G.dice[t]>0)||4;
-  G.pos=loadPos(G.userId); // 恢复上次位置
-  buildBoard(); updateDiceUI(); updateBar();
+  applyLoadedState_(loadGameState_(G.userId));
+  applyCloudProfile_(window._cloudProfile);
+  G.pos=loadPos(G.userId);
+  updateDynamicBoard_();
+  buildBoard(); updateDiceUI(); updateBar(); updateBackpackBtn(); renderBagPanel(); renderRewardPanel();
   charMove(G.pos,true); hlCell(G.pos);
   setSp('p-avatar','idle'); setSp('center-char','idle');
   saveBalance();
+  saveGameState_();
   showScreen('screen-main');
 }
 window.useBalance=useBalance;
@@ -562,6 +1044,7 @@ window.goAddDice=goAddDice;
 // 重新开始（忽略余额）
 function goFresh(){
   clearPos(G.userId);
+   clearGameState_(G.userId);
   window._balanceDice=null;
   window._mergeBalance=false;
   calcDice();
@@ -606,11 +1089,33 @@ function s2Start(){
   window._balanceDice=null;
   G.dice={4:r[4]||0,6:r[6]||0,8:r[8]||0,10:r[10]||0,12:r[12]||0};
   G.sel=[4,6,8,10,12].find(t=>G.dice[t]>0)||4;
-  if(isMerge){ G.pos=loadPos(G.userId); } else { G.pos=0; clearPos(G.userId); }
-  buildBoard(); updateDiceUI(); updateBar();
+  if(isMerge){
+    applyLoadedState_(loadGameState_(G.userId));
+    applyCloudProfile_(window._cloudProfile);
+    G.pos=loadPos(G.userId);
+  } else {
+    resetGameState_(G.userId);
+    applyCloudProfile_(window._cloudProfile);
+    G.pos=0;
+    clearPos(G.userId);
+  }
+  updateDynamicBoard_();
+  buildBoard(); updateDiceUI(); updateBar(); updateBackpackBtn(); renderBagPanel(); renderRewardPanel();
   charMove(G.pos,true); hlCell(G.pos);
   setSp('p-avatar','idle'); setSp('center-char','idle');
+  if(!isMerge && G.pendingInputSource==='manual_direct'){
+    recordForumFetch_({
+      mode:'board_manual_start',
+      uid:G.userId,
+      replies:parseInt(document.getElementById('inp-replies').value,10)||0,
+      citations:parseInt(document.getElementById('inp-citations').value,10)||0,
+      startDate:'',
+      endDate:'',
+      source:'manual_direct'
+    });
+  }
   saveBalance();
+  saveGameState_();
   showScreen('screen-main');
 }
 window.s2Start=s2Start;
@@ -630,6 +1135,7 @@ function cellPx(id){
 }
 
 function buildBoard(){
+  updateDynamicBoard_();
   var el=document.getElementById('board');
   el.innerHTML='';
   BOARD.forEach(c=>{
@@ -770,27 +1276,27 @@ function doRoll(){
 
   G.pending=true; updateDiceUI();
 
-  // 预先计算所有次的结果
-  var rolls=[];
-  for(var i=0;i<rollN;i++){
-    var sides=G.sel;
-    G.dice[G.sel]--;
-    var raw=Math.floor(Math.random()*sides)+1;
-    var result=G.doubleNext?raw*2:raw;
-    if(G.doubleNext) G.doubleNext=false;
-    rolls.push({sides,raw,result});
-  }
-
-  // 依序播放每次投掷动画
-  function playRoll(idx){
-    if(idx>=rolls.length){
+  function playRoll(idx, total){
+    if(idx>=total){
       G.pending=false; updateDiceUI();
       return;
     }
-    var r=rolls[idx];
+    if(![4,6,8,10,12].some(function(t){ return G.dice[t]>0; })){
+      G.pending=false; updateDiceUI();
+      setMsg('剩余骰子不足，批量投骰提前结束。');
+      return;
+    }
+    if(G.dice[G.sel]<=0){ G.sel=[4,6,8,10,12].find(function(t){ return G.dice[t]>0; })||4; }
+    var sides=G.sel;
+    G.dice[sides]--;
+    var raw=Math.floor(Math.random()*sides)+1;
+    var result=G.doubleNext?raw*2:raw;
+    if(G.doubleNext) G.doubleNext=false;
+    var r={sides:sides, raw:raw, result:result};
+    updateDiceUI();
     setSp('char-sprite','spin'); setSp('p-avatar','spin'); setSp('center-char','spin');
     setMsg(G.userId+' 投出 d'+r.sides+' → '+r.raw+(r.result!==r.raw?' (×2='+r.result+')':'')
-      +(rollN>1?' ['+(idx+1)+'/'+rollN+']':''));
+      +(total>1?' ['+(idx+1)+'/'+total+']':''));
     document.getElementById('center-msg').textContent='🎲 '+r.result+' 点！';
 
     var from=G.pos;
@@ -800,57 +1306,184 @@ function doRoll(){
     setTimeout(()=>{
       animWalk(path,()=>{
         G.pos=path[path.length-1];
+        registerLapProgress_(path);
         hlCell(G.pos); updateBar(); updateDiceUI();
         sendRec(r.sides,r.raw,r.result,from,G.pos,BOARD[G.pos]);
         // 若还有后续投掷，endTurn 会自动触发下一次
-        G.nextRollCb=(idx+1<rolls.length)?()=>playRoll(idx+1):null;
+        G.nextRollCb=(idx+1<total)?function(){ playRoll(idx+1,total); }:null;
         applyCell(BOARD[G.pos],r.sides,r.raw,r.result);
       });
     },300);
   }
-  playRoll(0);
+  playRoll(0, rollN);
 }
 window.doRoll=doRoll;
 
 // ================================================================
 // CELL EFFECTS
 // ================================================================
+function isAutoBatchMode_(){
+  var rc=document.getElementById('roll-count');
+  return !!(rc && parseInt(rc.value,10) > 1);
+}
+function maybeAutoRun_(key, shouldAuto){
+  if(!shouldAuto) return;
+  setTimeout(function(){ runA(key); }, 220);
+}
+function appendAutoUseOption_(type, text){
+  var desc=document.getElementById('ov-desc');
+  if(!desc) return;
+  var row=document.createElement('label');
+  row.style.display='flex';
+  row.style.alignItems='center';
+  row.style.gap='8px';
+  row.style.marginTop='10px';
+  row.style.fontSize='.76rem';
+  row.style.color='rgba(255,255,255,.78)';
+  var box=document.createElement('input');
+  box.type='checkbox';
+  box.checked=!!G.autoUse[type];
+  box.onchange=function(){ G.autoUse[type]=box.checked; saveGameState_(); };
+  row.appendChild(box);
+  row.appendChild(document.createTextNode(text));
+  desc.appendChild(row);
+}
+function parseCellReward_(cell){
+  if(cell.type==='道具') return {kind:'amulet', amount:effectMultiplier_(), label:'获得平安符 ×'+effectMultiplier_(), item:true};
+  if(cell.type==='骰子奖励'){
+    var m=(cell.name||'').match(/d(\d+)\+(\d+)/i);
+    if(m) return {kind:'d'+m[1], amount:parseInt(m[2],10)||1, label:'获得 d'+m[1]+' ×'+(parseInt(m[2],10)||1)};
+  }
+  var name=String(cell.name||'');
+  var num=parseInt((name.match(/\+(\d+)/)||[])[1],10)||0;
+  if(name.indexOf('节操+')>-1) return {kind:'seiso', amount:num, label:'获得节操 +'+num};
+  if(name.indexOf('羽毛+')>-1) return {kind:'feather', amount:num, label:'获得羽毛 +'+num};
+  if(name.indexOf('字母勋章')>-1) return {kind:'letter30', amount:1, label:'获得 30 天字母勋章 ×1'};
+  return null;
+}
+function consumeItemDirect_(type){
+  var idx=G.backpack.findIndex(function(i){ return i.type===type; });
+  if(idx===-1) return false;
+  G.backpack.splice(idx,1);
+  updateBackpackBtn();
+  renderBagPanel();
+  syncBackpack();
+  saveGameState_();
+  return true;
+}
+function autoUseUnfreezeItems_(){
+  var used=0;
+  while(G.frozen>0 && itemCount_('unfreeze')>0){
+    if(!consumeItemDirect_('unfreeze')) break;
+    G.frozen=Math.max(0, G.frozen-1);
+    used++;
+  }
+  if(used){
+    updateBar();
+    updateDiceUI();
+    if(G.frozen===0){ setSp('char-sprite','idle'); setSp('p-avatar','idle'); setSp('center-char','idle'); }
+    saveGameState_();
+  }
+  return used;
+}
+function countDiceNeededToUnfreeze_(){
+  return Math.max(0, parseInt(G.frozen,10)||0) * CONFIG.unfreeze_per_turn;
+}
+function consumeDiceForUnfreeze_(type, turns){
+  var needTurns=Math.max(1, parseInt(turns,10)||1);
+  var need=needTurns * CONFIG.unfreeze_per_turn;
+  if((G.dice[type]||0) < need) return 0;
+  G.dice[type]-=need;
+  G.frozen=Math.max(0, G.frozen-needTurns);
+  updateBar();
+  updateDiceUI();
+  if(G.frozen===0){ setSp('char-sprite','idle'); setSp('p-avatar','idle'); setSp('center-char','idle'); }
+  saveGameState_();
+  return needTurns;
+}
+function autoUseUnfreezeDice_(){
+  var needTurns=Math.max(0, parseInt(G.frozen,10)||0);
+  if(!needTurns) return 0;
+  var order=[G.sel,4,6,8,10,12].filter(function(v,i,a){ return a.indexOf(v)===i; });
+  for(var i=0;i<order.length;i++){
+    var t=order[i];
+    if((G.dice[t]||0) >= needTurns*CONFIG.unfreeze_per_turn){
+      return consumeDiceForUnfreeze_(t, needTurns);
+    }
+  }
+  return 0;
+}
 function applyCell(cell,dice,raw,result){
   var diceStr='d'+dice+' 投出 '+raw+(result!==raw?' (×2='+result+')':'')
     +'  格'+((G.pos-result+BOARD.length)%BOARD.length)+'→格'+G.pos;
-
-  if(G.shield&&(cell.type==='惩罚'||cell.type==='冻结')){
-    G.shield=false;
-    regA('ok',()=>{ closeOv(); endTurn(); });
-    showOv({cls:'',icon:'🛡',type:'平安符生效',dice:diceStr,
-      name:'已被平安符保护',desc:'本次「'+cell.name+'」效果已抵消',
-      btns:[{lbl:'确认',k:'ok'}]});
+  var autoRun = isAutoBatchMode_();
+  var canAmulet = itemCount_('amulet')>0 && (cell.type==='惩罚'||cell.type==='冻结');
+  if(canAmulet && autoRun && G.autoUse.amulet && consumeItemDirect_('amulet')){
+    setMsg('已自动使用平安符，抵消「'+cell.name+'」效果');
+    endTurn();
     return;
   }
 
   if(cell.type==='奖励'){
+    var reward=parseCellReward_(cell);
+    if(reward) grantReward_(reward.kind, reward.amount, reward.label, '奖励格', {cell:cell.id});
     setSp('char-sprite','happy'); setSp('p-avatar','happy'); setSp('center-char','cheer');
     regA('ok',()=>{ closeOv(); endTurn(); });
     showOv({cls:'reward',icon:'🎉',type:'奖励格',dice:diceStr,
       name:cell.name,desc:cell.desc,btns:[{lbl:'太好了！',k:'ok',gold:true}]});
+    maybeAutoRun_('ok', autoRun);
+
+  } else if(cell.type==='道具' || cell.type==='骰子奖励'){
+    var reward2=parseCellReward_(cell);
+    if(reward2){
+      if(reward2.item) addBackpackItems_('amulet', reward2.amount);
+      else grantReward_(reward2.kind, reward2.amount, reward2.label, '特殊格奖励', {cell:cell.id});
+    }
+    setSp('char-sprite','happy'); setSp('p-avatar','happy'); setSp('center-char','cheer');
+    regA('ok',()=>{ closeOv(); endTurn(); });
+    showOv({cls:'reward',icon:cell.type==='道具'?'🧿':'🎲',type:'特殊奖励格',dice:diceStr,
+      name:cell.name,desc:cell.desc+(reward2&&reward2.item?'\n\n已存入背包。':''),btns:[{lbl:'收下',k:'ok',gold:true}]});
+    maybeAutoRun_('ok', autoRun && !reward2.item);
 
   } else if(cell.type==='惩罚'){
     setSp('char-sprite','worried'); setSp('p-avatar','worried'); setSp('center-char','worried');
-    var steps=cell.steps||0;
+    var steps=(cell.steps||0)*boardPenaltyMultiplier_();
     regA('ok',()=>{ closeOv(); moveSteps(steps); });
+    regA('amulet',()=>{ closeOv(); if(consumeItemDirect_('amulet')){ setMsg('使用平安符，已抵消本次惩罚'); endTurn(); } });
     showOv({cls:'',icon:'💫',type:'惩罚格',dice:diceStr,
       name:cell.name,desc:cell.desc+'\n\n将会'+( steps<0?'退后':'前进')+Math.abs(steps)+'格',
-      btns:[{lbl:'接受惩罚',k:'ok'}]});
+      btns:canAmulet?[{lbl:'使用平安符',k:'amulet',gold:true},{lbl:'接受惩罚',k:'ok'}]:[{lbl:'接受惩罚',k:'ok'}]});
+    if(canAmulet) appendAutoUseOption_('amulet','之后遇到平安符可用的情况时自动使用');
+    maybeAutoRun_('ok', autoRun && !canAmulet);
 
   } else if(cell.type==='冻结'){
     setSp('char-sprite','frozen'); setSp('p-avatar','frozen'); setSp('center-char','frozen');
-    G.frozen=cell.freeze||1;
+    G.frozen=(cell.freeze||1)*boardPenaltyMultiplier_();
     updateBar();
+    if(autoRun && G.autoUse.unfreeze && itemCount_('unfreeze')>0){
+      var usedNow=autoUseUnfreezeItems_();
+      if(G.frozen===0){
+        setMsg('已自动使用解冻道具 ×'+usedNow);
+        endTurn();
+        return;
+      }
+    }
+    if(autoRun && G.autoUse.unfreezeDice){
+      var usedDiceTurns=autoUseUnfreezeDice_();
+      if(usedDiceTurns>0 && G.frozen===0){
+        setMsg('已自动消耗骰子解冻 '+usedDiceTurns+' 回');
+        endTurn();
+        return;
+      }
+    }
+    regA('amulet',()=>{ closeOv(); if(consumeItemDirect_('amulet')){ G.frozen=0; updateBar(); setMsg('使用平安符，已抵消冻结'); endTurn(); } });
     regA('ok',()=>{ closeOv(); endTurn(); });
     showOv({cls:'freeze',icon:'❄️',type:'冻结格',dice:diceStr,
       name:cell.name,
       desc:cell.desc+'\n\n下次行动时可消耗骰子解冻，或跳过回合。',
-      btns:[{lbl:'知道了',k:'ok'}]});
+      btns:canAmulet?[{lbl:'使用平安符',k:'amulet',gold:true},{lbl:'知道了',k:'ok'}]:[{lbl:'知道了',k:'ok'}]});
+    if(canAmulet) appendAutoUseOption_('amulet','之后遇到平安符可用的情况时自动使用');
+    maybeAutoRun_('ok', autoRun && !canAmulet);
 
   } else if(cell.type==='跳转'){
     setSp('char-sprite','jump'); setSp('p-avatar','jump'); setSp('center-char','jump');
@@ -858,22 +1491,24 @@ function applyCell(cell,dice,raw,result){
     regA('ok',()=>{ closeOv(); jumpTo(dest); });
     showOv({cls:'',icon:'🌀',type:'跳转格',dice:diceStr,
       name:cell.name,desc:cell.desc,btns:[{lbl:'传送！',k:'ok',gold:true}]});
+    maybeAutoRun_('ok', autoRun);
 
   } else if(cell.type==='机会'){
     setSp('char-sprite','shy'); setSp('p-avatar','shy'); setSp('center-char','think');
     var card=CHANCE_CARDS[Math.floor(Math.random()*CHANCE_CARDS.length)];
-    showChanceCard(card,diceStr);
+    showChanceCard(card,diceStr,autoRun);
 
   } else if(cell.type==='命运'){
     setSp('char-sprite','think'); setSp('p-avatar','think'); setSp('center-char','think');
     var fc=FATE_CARDS[Math.floor(Math.random()*FATE_CARDS.length)];
-    showFateCard(fc,diceStr);
+    showFateCard(fc,diceStr,autoRun);
 
   } else {
     setSp('char-sprite','calm'); setSp('p-avatar','calm');
     regA('ok',()=>{ closeOv(); endTurn(); });
     showOv({cls:'',icon:'💨',type:'空格',dice:diceStr,
       name:cell.name,desc:cell.desc,btns:[{lbl:'继续',k:'ok'}]});
+    maybeAutoRun_('ok', autoRun);
   }
 }
 
@@ -885,27 +1520,81 @@ function moveSteps(steps){
   var n=Math.abs(steps), dir=steps>0?1:-1;
   var path=[], cur=G.pos;
   for(var i=0;i<n;i++){ cur=(cur+dir+BOARD.length)%BOARD.length; path.push(cur); }
-  animWalk(path,()=>{ G.pos=cur; hlCell(G.pos); updateBar(); endTurn(); });
+  animWalk(path,()=>{ G.pos=cur; if(dir>0) registerLapProgress_(path); hlCell(G.pos); updateBar(); endTurn(); });
 }
 
+function registerTeleportLapProgress_(from, dest){
+  var lapsAdded=0;
+  if(dest===0){
+    if(from>=28) lapsAdded=1;
+  }else if(from>dest){
+    lapsAdded=1;
+  }
+  if(!lapsAdded) return 0;
+  var before=G.laps;
+  G.laps += lapsAdded;
+  var reshuffled = false;
+  for(var th=5; th<=G.laps; th+=5){
+    if(before < th){
+      shuffleBaseBoard_();
+      reshuffled = true;
+    }
+  }
+  if(before < 5 && G.laps >= 5 && !G.lapModeNotified){
+    G.lapModeNotified = true;
+    alert('你已完成 5 圈，从第 6 圈开始，额外生成的惩罚 / 机会 / 命运效果会翻倍；棋盘惩罚格仍照格子上原本数字执行，并会出现 d8 / d10 / d12 奖励格。');
+  }
+  grantMilestoneRewards_();
+  if(reshuffled){
+    buildBoard();
+    hlCell(G.pos);
+    charMove(G.pos,true);
+    alert('累计圈数达到 5 的倍数，棋盘格子已经重新打乱。');
+  }
+  saveGameState_();
+  return lapsAdded;
+}
 function jumpTo(dest){
+  var from=G.pos;
+  var lapsAdded=registerTeleportLapProgress_(from, dest);
   charMove(dest,false);
   setTimeout(()=>{ G.pos=dest; hlCell(dest); updateBar();
     setSp('char-sprite','land'); endTurn();
-    document.getElementById('center-msg').textContent='传送到格 '+dest;
+    if(dest===0){
+      document.getElementById('center-msg').textContent=lapsAdded?'被传送回起点（圈数 +1）':'被传送回起点（不计圈）';
+      setMsg(lapsAdded?'这次传送已计入 1 圈。':'已跳回起点，这次传送不计入圈数。');
+    }else{
+      document.getElementById('center-msg').textContent='传送到格 '+dest+(lapsAdded?'（路过起点，圈数 +1）':'');
+      if(lapsAdded) setMsg('传送途中路过起点，累计圈数 +1。');
+    }
   },350);
 }
 
 function nextRewardCell(){
   for(var k=1;k<BOARD.length;k++){
     var idx=(G.pos+k)%BOARD.length;
-    if(BOARD[idx].type==='奖励') return idx;
+    if(['奖励','道具','骰子奖励'].indexOf(BOARD[idx].type)>-1) return idx;
   }
   return G.pos;
 }
 
 function endTurn(){
   if(typeof G.nextRollCb==='function'){
+    if(G.frozen>0){
+      if(G.autoUse.unfreeze && itemCount_('unfreeze')>0){
+        autoUseUnfreezeItems_();
+      }
+      if(G.frozen>0 && G.autoUse.unfreezeDice){
+        autoUseUnfreezeDice_();
+      }
+      if(G.frozen>0){
+        G.pending=false;
+        G.nextRollCb=null;
+        updateDiceUI();
+        setMsg('批量投骰已暂停：角色处于冻结状态，未使用的骰子仍保留。');
+        return;
+      }
+    }
     var cb=G.nextRollCb;
     G.nextRollCb=null;
     cb(); // 继续下一次投掷
@@ -918,77 +1607,116 @@ function endTurn(){
 // ================================================================
 // CHANCE CARD
 // ================================================================
-function showChanceCard(card,diceStr){
+function formatCardDesc_(card){
+  var mult=effectMultiplier_();
+  if(mult<=1) return card.desc;
+  if(card.type==='advance' || card.type==='retreat') return card.desc.replace(/\d+/, String((parseInt(card.value,10)||0)*mult));
+  if(card.type==='reward') return '记录节操+'+((parseInt(String(card.value).match(/\d+/),10)||0)*mult)+'（下次领取）';
+  if(card.type==='unfreeze') return card.desc.replace('立即', '获得 '+mult+' 个');
+  if(card.type==='nothing') return '获得 '+mult+' 个平安符';
+  if(card.type==='reward_dice') return '随机获得 d'+card.value.t+' ×'+(card.value.c*mult);
+  if(card.type==='freeze') return '冻结 '+(card.value*mult)+' 回合（可消耗骰子提前解冻）';
+  if(card.type==='task_reply') return '需在主题完成'+(card.value*mult)+'次有效回复后方可继续游戏';
+  if(card.type==='task_citation') return '需被他人引用'+(card.value*mult)+'次后方可继续游戏';
+  if(card.type==='retreat_rnd') return '随机退后 1～'+(card.value*mult)+' 格';
+  return card.desc;
+}
+function showChanceCard(card,diceStr,autoRun){
   var k='chance';
+  var mult=effectMultiplier_();
   regA(k,()=>{ closeOv(); applyChance(card); });
-  var lbl=card.type==='advance'?'前进 '+card.value+' 格'
-    :card.type==='retreat'?'退后 '+card.value+' 格'
+  var lbl=card.type==='advance'?'前进 '+(card.value*mult)+' 格'
+    :card.type==='retreat'?'退后 '+(card.value*mult)+' 格'
     :card.type==='goto'?'跳到格 '+card.value
     :card.type==='random'?'随机传送！'
-    :card.type==='extra_roll'?'获得额外投骰'
+    :card.type==='extra_roll'?'直接获得 d4 ×'+mult
     :card.type==='unfreeze'?'存入背包'
     :card.type==='next_reward'?'前进到奖励格'
     :'确认';
   showOv({cls:'chance',icon:'🃏',type:'🃏 机会卡',dice:diceStr,
-    name:card.name,desc:card.desc,btns:[{lbl:lbl,k:k,gold:true}]});
+    name:card.name,desc:formatCardDesc_(card),btns:[{lbl:lbl,k:k,gold:true}]});
+  maybeAutoRun_(k, autoRun);
 }
 
 function applyChance(card){
-  var t=card.type, v=card.value;
+  var t=card.type, v=card.value, mult=effectMultiplier_();
   if(t==='advance'){
-    var p=[]; for(var i=1;i<=v;i++) p.push((G.pos+i)%BOARD.length);
-    animWalk(p,()=>{ G.pos=p[p.length-1]; hlCell(G.pos); updateBar(); endTurn(); });
+    var p=[]; for(var i=1;i<=v*mult;i++) p.push((G.pos+i)%BOARD.length);
+    animWalk(p,()=>{ G.pos=p[p.length-1]; registerLapProgress_(p); hlCell(G.pos); updateBar(); endTurn(); });
   } else if(t==='retreat'){
-    var p2=[]; for(var j=1;j<=v;j++) p2.push((G.pos-j+BOARD.length)%BOARD.length);
+    var p2=[]; for(var j=1;j<=v*mult;j++) p2.push((G.pos-j+BOARD.length)%BOARD.length);
     animWalk(p2,()=>{ G.pos=p2[p2.length-1]; hlCell(G.pos); updateBar(); endTurn(); });
   } else if(t==='goto'){ jumpTo(v);
   } else if(t==='random'){ jumpTo(Math.floor(Math.random()*BOARD.length));
-  } else if(t==='extra_roll'){ G.pending=false; updateDiceUI(); setMsg('获得额外投骰机会！');
-  } else if(t==='unfreeze'){ G.backpack.push({type:'unfreeze',name:'解冻道具'}); updateBackpackBtn(); syncBackpack(); endTurn(); setMsg('获得解冻道具，已存入背包！');
+  } else if(t==='extra_roll'){ grantReward_('d4', mult, '机会卡：获得 d4 ×'+mult, '机会卡'); endTurn(); setMsg('获得额外 d4 ×'+mult+'！');
+  } else if(t==='reward'){ grantReward_('seiso', (parseInt(String(v).match(/\d+/),10)||0)*mult, '机会卡：节操奖励', '机会卡'); endTurn(); setMsg('获得额外节操奖励！');
+  } else if(t==='unfreeze'){ addBackpackItems_('unfreeze', mult); endTurn(); setMsg('获得解冻道具，已存入背包！');
   } else if(t==='next_reward'){ jumpTo(nextRewardCell());
-  } else if(t==='nothing'){ endTurn(); setMsg('平安符生效，本次无效');
+  } else if(t==='nothing'){ addBackpackItems_('amulet', mult); endTurn(); setMsg('获得平安符，已存入背包！');
   } else { endTurn(); }
 }
 
 // ================================================================
 // FATE CARD
 // ================================================================
-function showFateCard(card,diceStr){
+function totalDiceCount_(){
+  return [4,6,8,10,12].reduce(function(sum,t){ return sum + (G.dice[t]||0); }, 0);
+}
+function consumeAnyDice_(count){
+  var need=count;
+  [4,6,8,10,12].forEach(function(t){
+    if(need<=0) return;
+    var take=Math.min(G.dice[t]||0, need);
+    G.dice[t]-=take;
+    need-=take;
+  });
+  updateDiceUI();
+  saveBalance();
+  return need===0;
+}
+function showFateCard(card,diceStr,autoRun){
   var isTask=(card.type==='task_reply'||card.type==='task_citation');
+  var mult=effectMultiplier_();
   if(isTask){
     _taskUnlockAt=Date.now()+10000;
     regA('done',()=>{
       if(Date.now()<_taskUnlockAt){ setMsg('任务完成了吗？请确认后再按'); return; }
-      closeOv(); endTurn(); setMsg('任务完成！继续游戏');
+      closeOv(); grantRandomTaskReward_(); endTurn(); setMsg('任务完成！继续游戏');
     });
-    regA('later',()=>{ closeOv(); G.frozen=99; updateBar();
-      endTurn(); setMsg('任务待完成，完成后点「投骰」→「任务已完成」'); });
+    regA('cancel_task',()=>{
+      if(totalDiceCount_()<2){ setMsg('骰子不足 2 颗，无法取消考验'); return; }
+      consumeAnyDice_(2);
+      closeOv(); endTurn(); setMsg('已扣除 2 颗骰子，取消这次命运考验');
+    });
     showOv({cls:'fate',icon:'🎴',type:'🎴 命运卡',dice:diceStr,
-      name:card.name,desc:card.desc,
-      btns:[{lbl:'✅ 任务已完成，继续',k:'done',gold:true},{lbl:'稍后再来',k:'later'}]});
+      name:card.name,desc:formatCardDesc_(card),
+      btns:[{lbl:'✅ 通过考验',k:'done',gold:true},{lbl:'扣除 2 颗骰子取消',k:'cancel_task'}]});
     // 禁用「完成」按钮 10 秒
     var doneBtn=document.querySelector('#ov-btns .ov-btn.gold');
     if(doneBtn){ doneBtn.disabled=true; setTimeout(()=>{ doneBtn.disabled=false; },10000); }
   } else {
     regA('fate',()=>{ closeOv(); applyFate(card); });
     showOv({cls:'fate',icon:'🎴',type:'🎴 命运卡',dice:diceStr,
-      name:card.name,desc:card.desc,btns:[{lbl:'接受命运',k:'fate',gold:true}]});
+      name:card.name,desc:formatCardDesc_(card),btns:[{lbl:'接受命运',k:'fate',gold:true}]});
+    maybeAutoRun_('fate', autoRun);
   }
 }
 
 function applyFate(card){
-  var t=card.type, v=card.value;
-  if(t==='freeze'){ G.frozen=v; updateBar(); setSp('char-sprite','frozen'); endTurn(); setMsg('冻结 '+v+' 回合');
+  var t=card.type, v=card.value, mult=effectMultiplier_();
+  if(t==='freeze'){ G.frozen=v*mult; updateBar(); setSp('char-sprite','frozen'); endTurn(); setMsg('冻结 '+(v*mult)+' 回合');
   } else if(t==='next_reward'){ jumpTo(nextRewardCell());
   } else if(t==='goto_double'){ G.doubleNext=true; jumpTo(0);
   } else if(t==='double_next'){ G.doubleNext=true; endTurn(); setMsg('下次投骰点数翻倍！');
   } else if(t==='extra_chance'){
     var cc=CHANCE_CARDS[Math.floor(Math.random()*CHANCE_CARDS.length)];
-    showChanceCard(cc,'');
+    showChanceCard(cc,'',isAutoBatchMode_());
   } else if(t==='reward_dice'){
-    G.dice[v.t]=(G.dice[v.t]||0)+v.c; updateDiceUI(); endTurn(); setMsg('获得 d'+v.t+' ×'+v.c+'！');
+    var diceType = G.laps >= 5 ? [6,8,10,12][Math.floor(Math.random()*4)] : v.t;
+    grantReward_('d'+diceType, (v.c||1)*mult, '命运卡：获得 d'+diceType+' ×'+((v.c||1)*mult), '命运卡');
+    endTurn(); setMsg('获得 d'+diceType+' ×'+((v.c||1)*mult)+'！');
   } else if(t==='retreat_rnd'){
-    var steps=Math.floor(Math.random()*v)+1;
+    var steps=Math.floor(Math.random()*(v*mult))+1;
     var p=[]; for(var m=1;m<=steps;m++) p.push((G.pos-m+BOARD.length)%BOARD.length);
     animWalk(p,()=>{ G.pos=p[p.length-1]; hlCell(G.pos); updateBar(); endTurn(); });
   } else if(t==='goto'){ jumpTo(v);
@@ -1004,13 +1732,15 @@ function showFreezeOv(){
   document.getElementById('ov-icon').textContent='❄️';
   document.getElementById('ov-type').textContent='冻结中';
   document.getElementById('ov-dice').textContent='';
+  document.getElementById('ov-art').style.display='block';
+  document.getElementById('ov-art').style.backgroundImage='url("'+SYSTEM_ART_URLS.freeze+'")';
   document.getElementById('ov-name').textContent=isTask?'任务待完成':'冻结 '+G.frozen+' 回合';
 
   var descEl=document.getElementById('ov-desc');
   if(isTask){
     descEl.textContent='请先在论坛完成命运卡要求的任务，完成后点下方按钮继续。';
   } else {
-    descEl.textContent='可消耗骰子提前解冻，或跳过本回合。';
+    descEl.textContent='可消耗骰子或解冻道具提前解冻，也可跳过本回合。';
     // Append unfreeze buttons
     var wrap=document.createElement('div');
     wrap.className='freeze-opts'; wrap.style.marginTop='8px';
@@ -1030,9 +1760,18 @@ function showFreezeOv(){
         b.textContent='消耗 d'+t+' ×'+CONFIG.unfreeze_per_turn+' 解冻1回';
         b.onclick=()=>unfreezeWith(t);
         wrap.appendChild(b);
+        if(G.dice[t] >= countDiceNeededToUnfreeze_()){
+          var allBtn=document.createElement('button');
+          allBtn.className='fbtn';
+          allBtn.textContent='消耗 d'+t+' ×'+countDiceNeededToUnfreeze_()+' 全部解冻';
+          allBtn.onclick=()=>unfreezeAllWith(t);
+          wrap.appendChild(allBtn);
+        }
       }
     });
     if(wrap.children.length) descEl.appendChild(wrap);
+    if(bagCount>0) appendAutoUseOption_('unfreeze','之后批量投骰遇到冻结时自动使用解冻道具');
+    appendAutoUseOption_('unfreezeDice','之后批量投骰遇到冻结时自动消耗骰子解冻');
   }
 
   var btnsEl=document.getElementById('ov-btns');
@@ -1060,15 +1799,25 @@ function showFreezeOv(){
 }
 
 function unfreezeWith(t){
-  if(G.dice[t]<CONFIG.unfreeze_per_turn) return;
-  G.dice[t]-=CONFIG.unfreeze_per_turn;
-  G.frozen=Math.max(0,G.frozen-1);
+  var usedTurns=consumeDiceForUnfreeze_(t, 1);
+  if(!usedTurns) return;
   closeOv(); updateBar(); updateDiceUI();
   if(G.frozen===0){ setSp('char-sprite','idle'); setSp('p-avatar','idle'); setSp('center-char','idle'); }
   G.pending=false;
   setMsg('消耗 d'+t+' ×'+CONFIG.unfreeze_per_turn+' 解冻1回，剩余 '+G.frozen+' 回');
 }
 window.unfreezeWith=unfreezeWith;
+function unfreezeAllWith(t){
+  var turns=Math.max(0, parseInt(G.frozen,10)||0);
+  if(!turns) return;
+  var usedTurns=consumeDiceForUnfreeze_(t, turns);
+  if(!usedTurns) return;
+  closeOv(); updateBar(); updateDiceUI();
+  if(G.frozen===0){ setSp('char-sprite','idle'); setSp('p-avatar','idle'); setSp('center-char','idle'); }
+  G.pending=false;
+  setMsg('一次消耗 d'+t+' ×'+(usedTurns*CONFIG.unfreeze_per_turn)+'，已完全解冻。');
+}
+window.unfreezeAllWith=unfreezeAllWith;
 
 // ================================================================
 // OVERLAY
@@ -1078,6 +1827,19 @@ function showOv(opts){
   document.getElementById('ov-icon').textContent=opts.icon||'🎲';
   document.getElementById('ov-type').textContent=opts.type||'';
   document.getElementById('ov-dice').textContent=opts.dice||'';
+  var art=document.getElementById('ov-art');
+  if(art){
+    var artKey=opts.art
+      || (opts.cls==='reward'?'reward'
+      : opts.cls==='freeze'?'freeze'
+      : opts.cls==='chance'?'chance'
+      : opts.cls==='fate'?'fate'
+      : /惩罚/.test(opts.type||'')?'penalty'
+      : /跳转/.test(opts.type||'')?'teleport'
+      : 'reward');
+    art.style.display='block';
+    art.style.backgroundImage='url("'+(SYSTEM_ART_URLS[artKey]||SYSTEM_ART_URLS.reward)+'")';
+  }
   document.getElementById('ov-name').textContent=opts.name||'';
   document.getElementById('ov-desc').textContent=opts.desc||'';
   document.getElementById('ov-btns').innerHTML=(opts.btns||[]).map(b=>
@@ -1096,10 +1858,23 @@ window.closeOv=closeOv;
 // GAS RECORD
 // ================================================================
 function sendRec(dice,raw,result,from,fin,cell){
-  if(!GAS_URL) return;
   var n=new Date();
   var ds=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
   var ts=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+  G.playLog.push({
+    time:ds+' '+ts,
+    dice:'d'+dice,
+    raw:raw,
+    result:result,
+    from:from,
+    to:fin,
+    cellName:cell.name,
+    cellType:cell.type,
+    cellDesc:cell.desc
+  });
+  if(G.playLog.length>300) G.playLog=G.playLog.slice(-300);
+  saveGameState_();
+  if(!GAS_URL) return;
   new Image().src=GAS_URL+'?sheet=大富翁'
     +'&date='+encodeURIComponent(ds)+'&time='+encodeURIComponent(ts)
     +'&user_id='+encodeURIComponent(G.userId)
@@ -1135,15 +1910,17 @@ function updateBackpackBtn(){
   var badge=document.getElementById('bag-badge');
   if(!btn) return;
   var n=G.backpack.length;
-  btn.style.display=n>0?'flex':'none';
+  btn.style.display='flex';
   if(badge){ badge.textContent=n; badge.style.display=n>0?'flex':'none'; }
 }
 
 function toggleBag(){
   var panel=document.getElementById('bag-panel');
+  var reward=document.getElementById('reward-panel');
   if(!panel) return;
   var visible=panel.style.display==='block';
   if(visible){ panel.style.display='none'; return; }
+  if(reward) reward.style.display='none';
   renderBagPanel();
   panel.style.display='block';
 }
@@ -1161,16 +1938,17 @@ function renderBagPanel(){
   G.backpack.forEach(i=>{ counts[i.type]=(counts[i.type]||0)+1; });
   list.innerHTML='';
   Object.keys(counts).forEach(type=>{
-    var item=G.backpack.find(i=>i.type===type);
+    var item=G.backpack.find(i=>i.type===type) || ITEM_META[type] || {name:type,desc:''};
     var row=document.createElement('div');
     row.className='bag-item';
+    row.title=item.desc||'';
     var nameEl=document.createElement('span');
     nameEl.className='bag-item-name';
-    nameEl.textContent=(item.name||type)+' ×'+counts[type];
+    nameEl.innerHTML=(item.name||type)+' ×'+counts[type]+'<span class="bag-item-desc">'+(item.desc||'')+'</span>';
     var useBtn=document.createElement('button');
     useBtn.className='bag-item-use';
     useBtn.textContent='使用';
-    useBtn.disabled=(type==='unfreeze'&&G.frozen===0);
+    useBtn.disabled=(type==='unfreeze'&&G.frozen===0)||(type==='amulet');
     useBtn.onclick=()=>{ useBackpackItem(type); renderBagPanel(); };
     row.appendChild(nameEl);
     row.appendChild(useBtn);
@@ -1189,6 +1967,8 @@ function useBackpackItem(type){
     if(G.frozen===0){ setSp('char-sprite','idle'); setSp('p-avatar','idle'); setSp('center-char','idle'); }
     G.pending=false; updateDiceUI();
     setMsg('使用解冻道具，剩余冻结 '+G.frozen+' 回');
+  } else if(type==='amulet'){
+    setMsg('平安符会在遭遇惩罚格或冻结格时出现使用按钮。');
   }
   var panel=document.getElementById('bag-panel');
   if(panel&&panel.style.display==='block') renderBagPanel();
@@ -1226,6 +2006,47 @@ function fffOpenResult(html,btnTxt){
 }
 function fffCloseResult(){document.getElementById('fff-result').style.display='none';}
 function fffCancelResult(){fffCloseResult();}
+function applyFffResult_(){
+  if(!_fffResult)return;
+  const {uid,dateKey,rawR,rawC,netR,netC,startDate,endDate,source}=_fffResult;
+  fffSaveImp(uid,dateKey,rawR,rawC);
+  recordForumFetch_({
+    mode:source==='manual'
+      ?(_fffIsUpdate?'board_manual_update':'board_manual_menu')
+      :(_fffIsUpdate?'board_fetch_confirm_update':'board_fetch_confirm_menu'),
+    uid:String(uid),
+    replies:netR,
+    citations:netC,
+    startDate:String(startDate||''),
+    endDate:String(endDate||''),
+    source:source||'fetch'
+  });
+  var byDayB = _fffResult.byDay || {};
+  Object.keys(byDayB).forEach(function(d){
+    var c = byDayB[d];
+    logBoardActivityToGAS_(uid, d, c.replies, c.citations);
+  });
+  if(_fffIsUpdate){
+    const res={4:0,6:0,8:0,10:0,12:0};
+    CONFIG.exchanges.forEach(ex=>{
+      const amt=ex.source==='replies'?netR:netC;
+      if(amt<=0||ex.amount<=0)return;
+      const n=Math.floor(amt/ex.amount)*ex.dice_count;
+      if(ex.sign==='+')res[ex.dice_type]=(res[ex.dice_type]||0)+n;
+      else res[ex.dice_type]=Math.max(0,(res[ex.dice_type]||0)-n);
+    });
+    [4,6,8,10,12].forEach(t=>{G.dice[t]=(G.dice[t]||0)+(res[t]||0);});
+    updateDiceUI();
+    G.pendingInputSource=(source==='manual'?'manual_modal':'fetch');
+    setMsg('论坛更新：+'+netR+' 回复 / +'+netC+' 被引用');
+    saveGameState_();
+  }else{
+    document.getElementById('inp-replies').value=netR;
+    document.getElementById('inp-citations').value=netC;
+    G.pendingInputSource=(source==='manual'?'manual_modal':'fetch');
+    calcDice();
+  }
+}
 function fffLoadCC(uid){try{return new Map(Object.entries(JSON.parse(localStorage.getItem('fff_cc_'+uid)||'{}')))}catch(e){return new Map();}}
 function fffSaveCC(uid,map){try{localStorage.setItem('fff_cc_'+uid,JSON.stringify(Object.fromEntries(map)));}catch(e){}}
 function fffLoadPI(slug){try{return JSON.parse(localStorage.getItem('fff_pi_'+slug)||'{}')}catch(e){return {};}}
@@ -1269,6 +2090,8 @@ async function fffCheckQuote(cid,tid,uid,cache){
 async function fffScrape(uid,slug,startDate,endDate){
   const RE=/forum\/32[-\/]/;
   let replies=0;const citedIds=new Set();
+  const byDay={};
+  function addDay(dateStr,type){if(!byDay[dateStr])byDay[dateStr]={replies:0,citations:0};byDay[dateStr][type]++;}
   const sTs=startDate?new Date(startDate).getTime():0;
   const eTs=endDate?new Date(endDate+'T23:59:59Z').getTime():Date.now();
   let page=1,done=false;
@@ -1295,11 +2118,13 @@ async function fffScrape(uid,slug,startDate,endDate){
       foundInRange=true;
       const fa=item.querySelector('p.ipsType_light a[href]');
       if(!fa||!RE.test(fa.getAttribute('href')||''))continue;
+      const dateStr=new Date(ts).toISOString().slice(0,10);
       replies++;
+      addDay(dateStr,'replies');
       const bq=item.querySelector('.ipsQuote');if(!bq)continue;
       const c2=bq.getAttribute('data-ipsquote-contentcommentid');
       const t2=bq.getAttribute('data-ipsquote-contentid');
-      if(c2&&t2)toCheck.push({cid:c2,tid:t2});
+      if(c2&&t2)toCheck.push({cid:c2,tid:t2,dateStr});
     }
     if(toCheck.length){
       const BATCH=5;
@@ -1307,7 +2132,7 @@ async function fffScrape(uid,slug,startDate,endDate){
         const batch=toCheck.slice(i,i+BATCH);
         fffSetStatus('第'+page+'页验证引用 '+(i+1)+'–'+Math.min(i+BATCH,toCheck.length)+'/'+toCheck.length+'（被引用:'+citedIds.size+'）...');
         const results=await Promise.all(batch.map(x=>fffCheckQuote(x.cid,x.tid,uid,cache)));
-        batch.forEach((x,j)=>{if(results[j])citedIds.add(x.cid);});
+        batch.forEach((x,j)=>{if(results[j]){citedIds.add(x.cid);addDay(x.dateStr,'citations');}});
         if(i+BATCH<toCheck.length)await new Promise(r=>setTimeout(r,150));
       }
     }
@@ -1318,28 +2143,48 @@ async function fffScrape(uid,slug,startDate,endDate){
     await new Promise(r=>setTimeout(r,foundInRange?400:100));
   }
   fffSaveCC(uid,cache);
-  return{replies,citations:citedIds.size};
+  return{replies,citations:citedIds.size,byDay};
 }
 function fffOpenModal(isUpdate){
   _fffIsUpdate=isUpdate;
-  const uid=isUpdate?String(fffGetCurrentUid()||''):'';
+  const lastUid = String(loadBoardForumUid_() || fffGetCurrentUid() || '').trim();
+  const uid=isUpdate?lastUid:lastUid;
   const el=document.getElementById('fff-uid');
   if(el){
     el.value=uid;
     el.disabled=false;
     el.readOnly=false;
   }
+  var mr=document.getElementById('fff-manual-replies');
+  var mc=document.getElementById('fff-manual-citations');
+  if(mr) mr.value='0';
+  if(mc) mc.value='0';
   document.getElementById('fff-modal-title').textContent=isUpdate?'📡 论坛更新（游戏中）':'📡 论坛自动读取';
   document.getElementById('fff-modal').style.display='flex';
 }
 function fffCloseModal(){document.getElementById('fff-modal').style.display='none';}
+function blockOverlapFetch_(hits){
+  fffCloseLoading();
+  var msg='云端的「论坛抓取记录_大富翁」已存在与这次日期重叠的记录，不能重复导入骰子：\n'
+    +hits.slice(0,3).map(function(r){ return (r.startDate||'未填')+' ~ '+(r.endDate||'未填')+'（'+r.replyCount+'/'+r.citationCount+'）'; }).join('\n')
+    +'\n\n请改用正确的日期范围后再读取。';
+  alert(msg);
+  fffOpenModal(_fffIsUpdate);
+}
 async function fffDoFetch(){
   const uid=parseInt((document.getElementById('fff-uid').value||'').trim());
   if(!uid||isNaN(uid)){alert('请输入有效的论坛 UID（数字）');return;}
+  saveBoardForumUid_(uid);
+  fffCloseModal();fffOpenLoading();fffSetStatus('正在检查日期是否重复...');
   const startDate=document.getElementById('fff-date-start').value;
   const endDate=document.getElementById('fff-date-end').value;
   const dateKey=(startDate||'')+'_'+(endDate||'');
-  fffCloseModal();fffOpenLoading();
+  const overlaps=await new Promise(resolve=>fetchMonopolyRanges_(uid, resolve));
+  var hit=overlaps.filter(function(row){ return hasOverlap_(startDate,endDate,row.startDate,row.endDate); });
+  if(hit.length){
+    blockOverlapFetch_(hit);
+    return;
+  }
   try{
     fffSetStatus('正在获取用户资料...');
     const slug=await fffGetUsername(uid);
@@ -1350,52 +2195,139 @@ async function fffDoFetch(){
     const isSame=!!(prev&&prev.key===dateKey);
     const netR=isSame?Math.max(0,raw.replies-prev.r):raw.replies;
     const netC=isSame?Math.max(0,raw.citations-prev.c):raw.citations;
-    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,isSame,startDate,endDate};
-    const html=isSame
-      ?'同区间净增：<b style="color:#FFD93D">'+netR+'</b> 回复 / <b style="color:#FFD93D">'+netC+'</b> 被引用<br><small style="opacity:.6">（总计'+raw.replies+'/'+raw.citations+'，已记录'+prev.r+'/'+prev.c+'）</small>'
-      :'读取结果：<b style="color:#FFD93D">'+netR+'</b> 回复 / <b style="color:#FFD93D">'+netC+'</b> 被引用';
-    fffOpenResult(html,_fffIsUpdate?'确认添加':'确认导入');
+    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,isSame,startDate,endDate,byDay:raw.byDay||{},source:'fetch'};
+    applyFffResult_();
+    alert(isSame
+      ?'已自动导入同区间净增：'+netR+' 回复 / '+netC+' 被引用'
+      :'已自动导入：'+netR+' 回复 / '+netC+' 被引用');
   }catch(err){
     fffCloseLoading();fffOpenModal(_fffIsUpdate);
     alert('读取失败：'+err.message);
   }
 }
+function fffDoManual(){
+  var uid=parseInt((document.getElementById('fff-uid').value||'').trim());
+  if(!uid||isNaN(uid)){ alert('请输入有效的论坛 UID（数字）'); return; }
+  saveBoardForumUid_(uid);
+  var replies=parseInt(document.getElementById('fff-manual-replies').value,10)||0;
+  var citations=parseInt(document.getElementById('fff-manual-citations').value,10)||0;
+  var startDate=document.getElementById('fff-date-start').value;
+  var endDate=document.getElementById('fff-date-end').value;
+  fffCloseModal();
+  fffOpenLoading();
+  fffSetStatus('正在检查日期是否重复...');
+  fetchMonopolyRanges_(uid, function(overlaps){
+    var hit=(overlaps||[]).filter(function(row){ return hasOverlap_(startDate,endDate,row.startDate,row.endDate); });
+    if(hit.length){
+      blockOverlapFetch_(hit);
+      return;
+    }
+    fffCloseLoading();
+    _fffResult={uid:uid,dateKey:(startDate||'')+'_'+(endDate||''),rawR:replies,rawC:citations,netR:replies,netC:citations,isSame:false,startDate:startDate,endDate:endDate,byDay:{},source:'manual'};
+    fffOpenResult('手动输入：<b style="color:#FFD93D">'+replies+'</b> 回复 / <b style="color:#FFD93D">'+citations+'</b> 被引用','确认导入');
+  });
+}
 function fffConfirm(){
   fffCloseResult();
-  if(!_fffResult)return;
-  const {uid,dateKey,rawR,rawC,netR,netC,startDate,endDate}=_fffResult;
-  fffSaveImp(uid,dateKey,rawR,rawC);
-  logForumFetchToGAS_({
-    mode:_fffIsUpdate?'board_fetch_confirm_update':'board_fetch_confirm_menu',
-    forum_uid:String(uid),
-    reply_count:netR,
-    citation_count:netC,
-    startDate:String(startDate||''),
-    endDate:String(endDate||''),
-  });
-  if(_fffIsUpdate){
-    // 游戏中：将 delta 转换为骰子并加入当前池
-    const res={4:0,6:0,8:0,10:0,12:0};
-    CONFIG.exchanges.forEach(ex=>{
-      const amt=ex.source==='replies'?netR:netC;
-      if(amt<=0||ex.amount<=0)return;
-      const n=Math.floor(amt/ex.amount)*ex.dice_count;
-      if(ex.sign==='+')res[ex.dice_type]=(res[ex.dice_type]||0)+n;
-      else res[ex.dice_type]=Math.max(0,(res[ex.dice_type]||0)-n);
-    });
-    [4,6,8,10,12].forEach(t=>{G.dice[t]=(G.dice[t]||0)+(res[t]||0);});
-    updateDiceUI();
-    setMsg('论坛更新：+'+netR+' 回复 / +'+netC+' 被引用');
-  }else{
-    // 开局前：填入输入框
-    document.getElementById('inp-replies').value=netR;
-    document.getElementById('inp-citations').value=netC;
-    calcDice();
+  applyFffResult_();
+}
+
+// ===== OFFLINE MODE =====
+var _bgOfflineMode = false;
+function setBGOfflineMode_(isOffline) {
+  if (_bgOfflineMode === isOffline) return;
+  _bgOfflineMode = isOffline;
+  var el = document.getElementById('bg-offline-warning');
+  if (el) el.style.display = isOffline ? 'block' : 'none';
+}
+async function retryBGCloudConnection_() {
+  var el = document.getElementById('bg-offline-warning');
+  if (el) el.textContent = '🔄 正在重新连线...';
+  try {
+    var ctrl = new AbortController();
+    var tid = setTimeout(function(){ ctrl.abort(); }, 5000);
+    await fetch(GAS_URL + '?ping=1', { signal: ctrl.signal, mode: 'no-cors' });
+    clearTimeout(tid);
+    setBGOfflineMode_(false);
+    if (el) { el.innerHTML = '✅ 已连线'; setTimeout(function(){ el.style.display='none'; }, 2000); }
+  } catch(e) {
+    if (el) el.innerHTML = '🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span>';
   }
 }
+function downloadBGData_() {
+  var now = new Date().toLocaleString('zh-TW');
+  var rows = [];
+  function pushSection(title, headers, dataRows){
+    rows.push([title]);
+    if(headers && headers.length) rows.push(headers);
+    (dataRows||[]).forEach(function(r){ rows.push(r); });
+    rows.push([]);
+  }
+  pushSection('基本资料', ['项目','数值'], [
+    ['论坛ID', G.userId||''],
+    ['导出时间', now],
+    ['当前位置', G.pos||0],
+    ['累计圈数', G.laps||0],
+    ['冻结回合', G.frozen||0],
+    ['d4', G.dice[4]||0],
+    ['d6', G.dice[6]||0],
+    ['d8', G.dice[8]||0],
+    ['d10', G.dice[10]||0],
+    ['d12', G.dice[12]||0]
+  ]);
+  pushSection('奖励累计', ['奖励','数量'], [
+    ['节操', G.rewards.seiso||0],
+    ['羽毛', G.rewards.feather||0],
+    ['30天字母勋章', G.rewards.letter30||0],
+    ['永久本期勋章', G.rewards.permanentBadge||0],
+    ['往期返乡勋章兑换机会', G.rewards.legacyChance||0],
+    ['平安符累计取得', G.rewards.amulet||0],
+    ['解冻道具累计取得', G.rewards.unfreeze||0]
+  ]);
+  pushSection('背包', ['道具','数量','说明'], [
+    ['平安符', itemCount_('amulet'), ITEM_META.amulet.desc],
+    ['解冻道具', itemCount_('unfreeze'), ITEM_META.unfreeze.desc]
+  ]);
+  pushSection('奖励记录', ['时间','奖励名称','类型','数量','累计值','备注'], (G.rewardLog||[]).map(function(it){
+    return [it.time||'', it.label||'', it.kind||'', it.amount||0, it.totalValue||0, it.note||''];
+  }));
+  pushSection('论坛抓取记录', ['时间','模式','来源','开始日期','结束日期','回复数','被引用数'], (G.forumLog||[]).map(function(it){
+    return [it.time||'', it.mode||'', it.source||'', it.startDate||'', it.endDate||'', it.replies||0, it.citations||0];
+  }));
+  pushSection('游玩记录', ['时间','骰子','原始点数','实际点数','出发格','到达格','格名','格子类型','说明'], (G.playLog||[]).map(function(it){
+    return [it.time||'', it.dice||'', it.raw||0, it.result||0, it.from||0, it.to||0, it.cellName||'', it.cellType||'', it.cellDesc||''];
+  }));
+  var csv = rows.map(function(r){
+    return r.map(function(c){ return '"'+String(c==null?'':c).replace(/"/g,'""')+'"'; }).join(',');
+  }).join('\r\n');
+  var blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'board-game-'+(G.userId||'player')+'.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+
+window.addEventListener('DOMContentLoaded', function(){
+  renderBoardIdHistory_();
+  ['inp-replies','inp-citations'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.addEventListener('input', function(){ G.pendingInputSource='manual_direct'; });
+  });
+  updateBackpackBtn();
+  renderRewardPanel();
+});
 
 </script>
 <!-- v1.5 2026-03-23 新增论坛自动读取（含游戏中更新） 移动小人改用图片、任务10秒等待、背包系统、localStorage记忆位置、移除task_image命运卡 -->
+<!-- v1.6 2026-04-04 离线模式浮动警告+重新连线；主画面与游玩画面加「下载游玩数据」按钮 -->
+<!-- v1.7 2026-04-04 论坛自动读取改成独立记忆 UID 且点击立即进读取状态；累计圈数改为云端状态同步回读 -->
+<!-- v1.8 2026-04-04 日期重叠抓取改成直接卡住；传送补计圈规则；冻结追加一次性解冻与批量自动耗骰解冻；系统提示加入不同角色图 -->
+<!-- v1.9 2026-04-04 新增独立系统提醒 PNG（奖励/惩罚/冻结/机会/命运/传送），改为读取 images 下对应图档 -->
+<!-- v1.10 2026-04-04 第六圈后棋盘惩罚格改回按格上原数字执行；系统提示图改用 IMG.xlsx 里的图床链接 -->
+<!-- v1.11 2026-04-04 中央角色 center-char 改为依状态切换 IMG.xlsx 对应图床图片 -->
+<div id="bg-offline-warning" onclick="retryBGCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 
 <!-- ===== FORUM FETCH OVERLAYS ===== -->
 <div id="fff-modal" class="fff-modal">
@@ -1404,8 +2336,12 @@ function fffConfirm(){
     <div class="fff-row"><label>UID</label><input id="fff-uid" class="fff-inp" type="number" placeholder="论坛数字 UID" inputmode="numeric"></div>
     <div class="fff-row"><label>开始日期</label><input id="fff-date-start" class="fff-inp" type="date" value="2026-03-01"></div>
     <div class="fff-row"><label>结束日期</label><input id="fff-date-end" class="fff-inp" type="date" value="2026-03-20"></div>
+    <div style="margin:12px 0 8px;color:rgba(255,255,255,.55);font-size:.76rem">或直接手动输入本次要追加的数量</div>
+    <div class="fff-row"><label>手动回复</label><input id="fff-manual-replies" class="fff-inp" type="number" min="0" value="0" inputmode="numeric"></div>
+    <div class="fff-row"><label>手动引用</label><input id="fff-manual-citations" class="fff-inp" type="number" min="0" value="0" inputmode="numeric"></div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:16px">
       <button class="fff-btn" onclick="fffDoFetch()">🔍 开始读取</button>
+      <button class="fff-btn" onclick="fffDoManual()">⌨ 手动输入</button>
       <button class="fff-btn-sub" onclick="fffCloseModal()">取消</button>
     </div>
   </div>
@@ -1427,3 +2363,4 @@ function fffConfirm(){
 </div>
 </body>
 </html>
+

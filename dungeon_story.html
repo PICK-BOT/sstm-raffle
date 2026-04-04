@@ -108,6 +108,15 @@
 .fff-btn-cancel{padding:8px 14px;background:rgba(255,255,255,.1);color:#ccc;border:1px solid rgba(255,255,255,.3);border-radius:6px;cursor:pointer;font-size:.85rem;font-family:inherit}
 .fff-spinner{width:34px;height:34px;border:3px solid rgba(255,255,255,.15);border-top-color:#4a9;border-radius:50%;animation:fffSpin .8s linear infinite}
 @keyframes fffSpin{to{transform:rotate(360deg)}}
+
+/* ── OFFLINE MODE ── */
+#dg-offline-warning{display:none;position:fixed;bottom:14px;right:14px;background:rgba(180,40,40,0.92);border:1px solid #e55;color:#fdd;padding:8px 14px;border-radius:8px;font-size:0.8rem;cursor:pointer;z-index:200;transition:all .2s;line-height:1.4;text-align:center}
+#dg-offline-warning:hover{background:rgba(200,60,60,0.95);box-shadow:0 0 10px rgba(220,60,60,.4)}
+#dg-id-history-row{margin-top:10px;text-align:center;display:none}
+#dg-id-history-row .dg-ih-label{font-size:0.72rem;color:#c9daf6;margin-bottom:6px}
+.dg-ih-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.dg-ih-chip{padding:4px 12px;border-radius:16px;font-size:0.78rem;cursor:pointer;background:rgba(74,153,153,0.2);border:1px solid #4a9;color:#c9daf6;font-family:inherit}
+.dg-ih-chip:hover{background:rgba(74,153,153,0.45);color:#fff}
 </style>
 </head>
 <body>
@@ -120,6 +129,10 @@
       <button class="primary" onclick="enterGame()">进入地下城</button>
     </div>
     <div id="loginNotice" style="font-size:13px;color:#c9daf6"></div>
+    <div id="dg-id-history-row">
+      <div class="dg-ih-label">最近使用的 ID</div>
+      <div class="dg-ih-chips" id="dg-id-history-chips"></div>
+    </div>
   </div>
 
   <div id="menuCard" class="card hidden">
@@ -133,6 +146,7 @@
       <button onclick="manualSaveToCloud()">保存进度(云端)</button>
       <button onclick="openRecords()">查看记录</button>
       <button onclick="changeIdFromMenu()">更改ID（同步替换云端）</button>
+      <button onclick="downloadDGData_()">📥 下载游玩数据</button>
     </div>
   </div>
 
@@ -166,6 +180,7 @@
 
        <div id="offlineWarn" style="font-size:13px;color:#ffd66e;margin-top:6px;min-height:18px"></div>
        <div id="saveModeBar" style="font-size:12px;color:#b7bee8;margin-top:6px;min-height:18px;white-space:pre-wrap"></div>
+       <div style="margin-top:4px"><button onclick="downloadDGData_()" style="font-size:12px;padding:3px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#cde;cursor:pointer;font-family:inherit">📥 下载游玩数据</button></div>
           <!-- 事件面板（在系统提醒下方） -->
         <div id="belowInteract" style="display:flex;flex-direction:column;gap:10px;min-width:600px">
           <div id="eventActs" class="acts hidden">
@@ -1652,7 +1667,8 @@ async function apiPostJson_(payload){
 async function enterGame(){
   const uid=(document.getElementById("uid").value||"").trim();
   if(!uid){ document.getElementById("loginNotice").textContent="请先输入论坛ID。"; return; }
-  G.uid=uid; document.getElementById("hello").textContent="玩家："+uid;
+  G.uid=uid; saveDungeonIdHistory_(uid);
+  document.getElementById("hello").textContent="玩家："+uid;
   show("loginCard",false); show("menuCard",true); show("recordCard",false); show("gameCard",false);
   setNotice("");
   await cloudConfirmAndLoad();
@@ -1706,6 +1722,7 @@ async function cloudConfirmAndLoad(){
           );
           if(ok){
             G.uid=cand;
+            saveDungeonIdHistory_(cand);
             const uidEl=document.getElementById("uid");
             if(uidEl) uidEl.value=cand;
             const helloEl=document.getElementById("hello");
@@ -1725,6 +1742,7 @@ async function cloudConfirmAndLoad(){
     setNotice("读取完毕：暂无存档。请点「开始新冒险」。");
   }catch(e){
     G.state=null;
+    setDGOfflineMode_(true);
     setNotice("云端抓取失败：无法进入游戏，请稍后重试。");
     sys("云端抓取失败，已阻止进入游戏。请检查 GAS 或网络。",SYS_AVATARS[2]);
   }finally{
@@ -4287,7 +4305,8 @@ async function changeIdFromMenu(){
   setBusy(true,"正在替换云端ID，请静候…");
   try{
     await apiJsonp("rename_uid",{old_id:oldId,new_id:newId,_ts:String(Date.now())});
-    G.uid=newId; document.getElementById("uid").value=newId; document.getElementById("hello").textContent="玩家："+newId;
+    G.uid=newId; saveDungeonIdHistory_(newId);
+    document.getElementById("uid").value=newId; document.getElementById("hello").textContent="玩家："+newId;
     setNotice("ID 已替换为 "+newId+"，云端记录已同步归并。");
     await cloudConfirmAndLoad();
   }catch(e){ setNotice("ID 替换失败，请稍后重试。"); }
@@ -4410,6 +4429,7 @@ window.addEventListener("DOMContentLoaded",()=>{
   if(!gasUrl()){
     document.getElementById("loginNotice").textContent="请以 ?record=你的GAS_URL 打开，否则无法云端游玩。";
   }
+  renderDungeonIdHistory_();
 
   // 键盘移动：方向键/WSAD
   window.addEventListener("keydown",(e)=>{
@@ -4456,6 +4476,41 @@ async function logForumFetchToGAS_(opts){
   }catch(e){ console.warn('GAS forum fetch log failed', e); }
 }
 
+const DG_ID_HISTORY_KEY_='dungeonStoryIdHistory_v1';
+const DG_ID_HISTORY_MAX_=5;
+function loadDungeonIdHistory_(){try{return JSON.parse(localStorage.getItem(DG_ID_HISTORY_KEY_))||[]}catch(e){return[]}}
+function saveDungeonIdHistory_(id){
+  if(!id)return;
+  let hist=loadDungeonIdHistory_().filter(x=>String(x)!==String(id));
+  hist.unshift(String(id));
+  if(hist.length>DG_ID_HISTORY_MAX_)hist=hist.slice(0,DG_ID_HISTORY_MAX_);
+  try{localStorage.setItem(DG_ID_HISTORY_KEY_,JSON.stringify(hist))}catch(e){}
+  renderDungeonIdHistory_();
+}
+function renderDungeonIdHistory_(){
+  const hist=loadDungeonIdHistory_();
+  const row=document.getElementById('dg-id-history-row');
+  const chips=document.getElementById('dg-id-history-chips');
+  if(!row||!chips)return;
+  if(!hist.length){row.style.display='none';return;}
+  row.style.display='block';
+  chips.innerHTML='';
+  hist.forEach(id=>{
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='dg-ih-chip';
+    btn.textContent=id;
+    btn.onclick=()=>{const inp=document.getElementById('uid');if(inp)inp.value=id;};
+    chips.appendChild(btn);
+  });
+}
+function logDungeonActivityToGAS_(uid,date,replies,citations){
+  const u=gasUrl();if(!u||!uid||!date)return;
+  fetch(u,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({sheet:'地下城返乡活跃度',type:'activity_log',uid:String(uid),date:String(date),
+      replies:parseInt(replies,10)||0,citations:parseInt(citations,10)||0})}).catch(e=>console.warn('GAS activity log failed',e));
+}
+
 function fffGetCurrentUid(){return (G&&G.uid)||'';}
 function fffSetStatus(m){const e=document.getElementById('fff-status');if(e)e.textContent=m;}
 function fffOpenLoading(){document.getElementById('fff-loading').style.display='flex';}
@@ -4473,6 +4528,24 @@ function fffLoadPI(slug){try{return JSON.parse(localStorage.getItem('fff_pi_'+sl
 function fffSavePI(slug,idx){try{localStorage.setItem('fff_pi_'+slug,JSON.stringify(idx));}catch(e){}}
 function fffGetImp(uid){try{return JSON.parse(localStorage.getItem(FFF_IMP+'_'+uid)||'null');}catch(e){return null;}}
 function fffSaveImp(uid,key,r,c){try{localStorage.setItem(FFF_IMP+'_'+uid,JSON.stringify({key,r,c}));}catch(e){}}
+function fetchForumFetchRanges_(uid){
+  return new Promise(resolve=>{
+    const u=gasUrl();
+    if(!u||!uid) return resolve([]);
+    const cb='dungeonFetchRangeCb_'+Date.now();
+    const s=document.createElement('script');
+    const clean=()=>{try{delete window[cb]}catch(e){} if(s.parentNode)s.parentNode.removeChild(s);};
+    const timer=setTimeout(()=>{clean();resolve([]);},6000);
+    window[cb]=function(data){clearTimeout(timer);clean();resolve((data&&data.ok&&Array.isArray(data.rows))?data.rows:[]);};
+    s.src=u+(u.includes('?')?'&':'?')+'action=fetch_log_ranges&sheet='+encodeURIComponent('论坛抓取记录_地下城')+'&id='+encodeURIComponent(uid)+'&callback='+cb+'&t='+Date.now();
+    document.head.appendChild(s);
+  });
+}
+function hasFetchOverlap_(startA,endA,startB,endB){
+  const a1=startA?new Date(startA).getTime():0, a2=endA?new Date(endA+'T23:59:59').getTime():Date.now();
+  const b1=startB?new Date(startB).getTime():0, b2=endB?new Date(endB+'T23:59:59').getTime():Date.now();
+  return a1<=b2 && b1<=a2;
+}
 
 async function fffProxyGet(url){
   const sk='fff_'+url,hit=sessionStorage.getItem(sk);
@@ -4510,6 +4583,8 @@ async function fffCheckQuote(cid,tid,uid,cache){
 async function fffScrape(uid,slug,startDate,endDate){
   const RE=/forum\/32[-\/]/;
   let replies=0;const citedIds=new Set();
+  const byDay={};
+  function addDay(dateStr,type){if(!byDay[dateStr])byDay[dateStr]={replies:0,citations:0};byDay[dateStr][type]++;}
   const sTs=startDate?new Date(startDate).getTime():0;
   const eTs=endDate?new Date(endDate+'T23:59:59Z').getTime():Date.now();
   let page=1,done=false;
@@ -4536,11 +4611,13 @@ async function fffScrape(uid,slug,startDate,endDate){
       foundInRange=true;
       const fa=item.querySelector('p.ipsType_light a[href]');
       if(!fa||!RE.test(fa.getAttribute('href')||''))continue;
+      const dateStr=new Date(ts).toISOString().slice(0,10);
       replies++;
+      addDay(dateStr,'replies');
       const bq=item.querySelector('.ipsQuote');if(!bq)continue;
       const c2=bq.getAttribute('data-ipsquote-contentcommentid');
       const t2=bq.getAttribute('data-ipsquote-contentid');
-      if(c2&&t2)toCheck.push({cid:c2,tid:t2});
+      if(c2&&t2)toCheck.push({cid:c2,tid:t2,dateStr});
     }
     if(toCheck.length){
       const BATCH=5;
@@ -4548,7 +4625,7 @@ async function fffScrape(uid,slug,startDate,endDate){
         const batch=toCheck.slice(i,i+BATCH);
         fffSetStatus('第'+page+'页验证引用 '+(i+1)+'–'+Math.min(i+BATCH,toCheck.length)+'/'+toCheck.length+'（被引用:'+citedIds.size+'）...');
         const results=await Promise.all(batch.map(x=>fffCheckQuote(x.cid,x.tid,uid,cache)));
-        batch.forEach((x,j)=>{if(results[j])citedIds.add(x.cid);});
+        batch.forEach((x,j)=>{if(results[j]){citedIds.add(x.cid);addDay(x.dateStr,'citations');}});
         if(i+BATCH<toCheck.length)await new Promise(r=>setTimeout(r,150));
       }
     }
@@ -4559,7 +4636,7 @@ async function fffScrape(uid,slug,startDate,endDate){
     await new Promise(r=>setTimeout(r,foundInRange?400:100));
   }
   fffSaveCC(uid,cache);
-  return{replies,citations:citedIds.size};
+  return{replies,citations:citedIds.size,byDay};
 }
 function fffOpenModal(isUpdate){
   _fffIsUpdate=isUpdate;
@@ -4583,6 +4660,15 @@ async function fffDoFetch(){
   const startDate=document.getElementById('fff-date-start').value;
   const endDate=document.getElementById('fff-date-end').value;
   const dateKey=(startDate||'')+'_'+(endDate||'');
+  const overlaps=await fetchForumFetchRanges_(uid);
+  const hit=overlaps.filter(row=>hasFetchOverlap_(startDate,endDate,row.startDate,row.endDate));
+  if(hit.length){
+    const msg='云端已存在与这次日期重叠的地下城论坛抓取记录：\n'
+      +hit.slice(0,3).map(r=>(r.startDate||'未填')+' ~ '+(r.endDate||'未填')+'（'+r.replyCount+'/'+r.citationCount+'）').join('\n')
+      +'\n\n请改用正确日期范围再抓取。';
+    alert(msg);
+    return;
+  }
   fffCloseModal();fffOpenLoading();
   try{
     fffSetStatus('正在获取用户资料...');
@@ -4594,7 +4680,7 @@ async function fffDoFetch(){
     const isSame=!!(prev&&prev.key===dateKey);
     const netR=isSame?Math.max(0,raw.replies-prev.r):raw.replies;
     const netC=isSame?Math.max(0,raw.citations-prev.c):raw.citations;
-    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,isSame,startDate,endDate};
+    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,isSame,startDate,endDate,byDay:raw.byDay||{}};
     const html=isSame
       ?'同区间净增：<b style="color:#4eb">'+netR+'</b> 回复 / <b style="color:#4eb">'+netC+'</b> 被引用<br><small style="opacity:.6">（总计'+raw.replies+'/'+raw.citations+'，已记录'+prev.r+'/'+prev.c+'）</small>'
       :'读取结果：<b style="color:#4eb">'+netR+'</b> 回复 / <b style="color:#4eb">'+netC+'</b> 被引用';
@@ -4617,6 +4703,8 @@ function fffConfirm(){
     startDate:String(startDate||''),
     endDate:String(endDate||''),
   });
+  const byDayD=_fffResult.byDay||{};
+  Object.entries(byDayD).forEach(([d,c])=>{logDungeonActivityToGAS_(uid,d,c.replies,c.citations);});
   if(_fffIsUpdate&&G&&G.state){
     // 游戏中：直接加入 stockReply/stockQuote
     G.state.stockReply=(G.state.stockReply||0)+netR;
@@ -4642,6 +4730,56 @@ function fffConfirm(){
     return _orig.apply(this,arguments);
   };
 })();
+
+// ===== OFFLINE MODE =====
+var _dgOfflineMode = false;
+function setDGOfflineMode_(isOffline) {
+  if (_dgOfflineMode === isOffline) return;
+  _dgOfflineMode = isOffline;
+  var el = document.getElementById('dg-offline-warning');
+  if (el) el.style.display = isOffline ? 'block' : 'none';
+}
+async function retryDGCloudConnection_() {
+  var el = document.getElementById('dg-offline-warning');
+  if (el) el.textContent = '🔄 正在重新连线...';
+  try {
+    var ctrl = new AbortController();
+    var tid = setTimeout(function(){ ctrl.abort(); }, 5000);
+    await fetch(gasUrl() + '?ping=1', { signal: ctrl.signal, mode: 'no-cors' });
+    clearTimeout(tid);
+    setDGOfflineMode_(false);
+    if (el) { el.innerHTML = '✅ 已连线'; setTimeout(function(){ el.style.display='none'; }, 2000); }
+  } catch(e) {
+    if (el) el.innerHTML = '🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span>';
+  }
+}
+function downloadDGData_() {
+  var now = new Date().toLocaleString('zh-TW');
+  var id = String(G.uid || '未知');
+  var state = G.state;
+  var rows = [
+    ['类别','项目','数值'],
+    ['基本','论坛ID', id],
+    ['基本','下载时间', now],
+  ];
+  if (state) {
+    rows.push(['角色','楼层', state.floor || 0]);
+    rows.push(['角色','生命', (state.hp || 0) + '/' + (state.maxHp || 0)]);
+    rows.push(['角色','积分', state.reward || 0]);
+    rows.push(['角色','待用回复', state.replies || 0]);
+    rows.push(['角色','待用被引用', state.citations || 0]);
+  } else {
+    rows.push(['提示','无游戏进度','（尚未开始冒险或未能读取）']);
+  }
+  var csv = rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\r\n');
+  var blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'dungeon-'+id+'.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
 
 </script>
 
@@ -4673,6 +4811,7 @@ function fffConfirm(){
     </div>
   </div>
 </div>
+<!-- v1.4.15 2026-04-04 离线模式浮动警告+重新连线；主画面与游玩画面加「下载游玩数据」按钮 -->
+<div id="dg-offline-warning" onclick="retryDGCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 </body>
 </html>
-

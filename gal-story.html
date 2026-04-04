@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -89,6 +89,11 @@ body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;
 .gender-btn{flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid #6c3483;border-radius:4px;color:#b39ddb;cursor:pointer;font-family:inherit;font-size:0.9rem;transition:all .2s;text-align:center}
 .gender-btn.selected,.gender-btn:hover{background:rgba(155,89,182,0.3);border-color:#9b59b6;color:#fff}
 .form-hint{font-size:0.8rem;color:#888;margin-top:6px}
+#gal-id-history-row{margin-top:14px;width:100%;text-align:center}
+#gal-id-history-row .gal-ih-label{font-size:0.72rem;color:#888;margin-bottom:6px}
+.gal-ih-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.gal-ih-chip{padding:5px 14px;border-radius:20px;font-size:0.8rem;cursor:pointer;background:rgba(155,89,182,0.12);border:1px solid #6c3483;color:#d7bde2;transition:all .15s;font-family:inherit}
+.gal-ih-chip:hover{background:rgba(155,89,182,0.35);color:#fff}
 .form-actions{display:flex;gap:12px;margin-top:24px}
 .form-actions .btn{flex:1}
 
@@ -370,6 +375,10 @@ details[open].fd-detail summary::before{transform:rotate(90deg)}
     <div style="margin-top:10px;text-align:center">
       <button style="background:none;border:none;color:#555;font-size:0.8rem;cursor:pointer;font-family:inherit;text-decoration:underline" onclick="toggleManualInput()">或手动输入数量</button>
     </div>
+    <div id="gal-id-history-row" style="display:none">
+      <div class="gal-ih-label">最近使用的 UID</div>
+      <div class="gal-ih-chips" id="gal-id-history-chips"></div>
+    </div>
     <div id="manual-input-section" style="display:none;margin-top:12px">
       <div class="form-group">
         <label>累计回复数</label>
@@ -637,6 +646,40 @@ details[open].fd-detail summary::before{transform:rotate(90deg)}
 //  CONFIG
 // ══════════════════════════════════════════════
 const GAS_URL = 'https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec';
+
+const GAL_ID_HISTORY_KEY_ = 'galStoryIdHistory_v1';
+const GAL_ID_HISTORY_MAX_ = 5;
+function loadGalIdHistory_(){
+  try { return JSON.parse(localStorage.getItem(GAL_ID_HISTORY_KEY_)) || []; } catch { return []; }
+}
+function saveGalIdHistory_(id){
+  if (!id) return;
+  let hist = loadGalIdHistory_().filter(x => String(x) !== String(id));
+  hist.unshift(String(id));
+  if (hist.length > GAL_ID_HISTORY_MAX_) hist = hist.slice(0, GAL_ID_HISTORY_MAX_);
+  try { localStorage.setItem(GAL_ID_HISTORY_KEY_, JSON.stringify(hist)); } catch {}
+  renderGalIdHistory_();
+}
+function renderGalIdHistory_(){
+  const hist = loadGalIdHistory_();
+  const row = document.getElementById('gal-id-history-row');
+  const chips = document.getElementById('gal-id-history-chips');
+  if (!row || !chips) return;
+  if (!hist.length) { row.style.display = 'none'; return; }
+  row.style.display = 'block';
+  chips.innerHTML = '';
+  hist.forEach(id => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'gal-ih-chip';
+    btn.textContent = id;
+    btn.onclick = () => {
+      const inp = document.getElementById('input-id');
+      if (inp) inp.value = id;
+    };
+    chips.appendChild(btn);
+  });
+}
 
 // ══════════════════════════════════════════════
 //  GAME STATE
@@ -1504,6 +1547,7 @@ function showScreen(name, mode) {
     const statsBtn = document.getElementById('btn-title-stats');
     if(statsBtn) statsBtn.style.display = G.id ? '' : 'none';
   }
+  if(name==='id') renderGalIdHistory_();
 }
 
 function openSaveloadFromTitle(){
@@ -1580,6 +1624,7 @@ function goToIdScreen(){
   G.name = nameVal || '旅人';
   G.gender = selectedGender;
   showScreen('id');
+  renderGalIdHistory_();
 }
 
 function showProfileLoading_(msg){
@@ -1604,6 +1649,7 @@ function confirmIdAndStart(){
     return;
   }
   G.id = uid;
+  saveGalIdHistory_(uid);
   G.replies = parseInt(document.getElementById('input-replies').value)||0;
   G.citations = parseInt(document.getElementById('input-citations').value)||0;
   // 先套用本地账号档（避免联网失败时图鉴/结局记录消失）
@@ -4946,6 +4992,10 @@ function confirmFetchResult() {
         startDate: String(meta.startDate||''),
         endDate: String(meta.endDate||''),
       });
+      const byDayU = _fetchResult.byDay || {};
+      Object.entries(byDayU).forEach(([date, counts]) => {
+        logGalActivityToGAS_(uid, date, counts.replies, counts.citations);
+      });
       refreshChoiceScreenAfterStats_();
       scheduleProfileSave_();
       showToast(`已更新：+${_fetchResult.replies} 回复 / +${_fetchResult.citations} 被引用`);
@@ -4960,6 +5010,14 @@ function confirmFetchResult() {
     G.citations = _fetchResult.citations;
     G.lastFetchTime = _fetchResult.lastTime;
     G.id = document.getElementById('input-id').value.trim();
+    const uid0 = String(G.id||'').trim();
+    if (uid0) {
+      saveGalIdHistory_(uid0);
+      const byDay0 = _fetchResult.byDay || {};
+      Object.entries(byDay0).forEach(([date, counts]) => {
+        logGalActivityToGAS_(uid0, date, counts.replies, counts.citations);
+      });
+    }
     enterGameAfterFetch_();
   }
   _fetchMeta = null;
@@ -5013,6 +5071,12 @@ async function startFetchForumData() {
   }
   const startDate = document.getElementById('fetch-start').value;
   const endDate   = document.getElementById('fetch-end').value;
+  const overlaps = await fetchForumFetchRanges_(uid, '论坛抓取记录');
+  const hit = overlaps.filter(row => hasFetchOverlap_(startDate, endDate, row.startDate, row.endDate));
+  if(hit.length){
+    showToast('云端已有重叠抓取区间，请改用正确日期范围后再读取');
+    return;
+  }
   _fetchIsUpdate = false;
   _fetchAborted = false;
   _fetchMeta = {uid,startDate,endDate,mode:'start_auto'};
@@ -5031,6 +5095,7 @@ async function startFetchForumData() {
     G.citations = result.citations;
     G.lastFetchTime = result.lastTime;
     G.id = uid;
+    saveGalIdHistory_(uid);
     logForumFetchToGAS_({
       mode:'start_auto',
       forum_uid: String(uid),
@@ -5039,6 +5104,10 @@ async function startFetchForumData() {
       timestamp: new Date().toISOString(),
       startDate: String(startDate||''),
       endDate: String(endDate||''),
+    });
+    const byDayS = result.byDay || {};
+    Object.entries(byDayS).forEach(([date, counts]) => {
+      logGalActivityToGAS_(uid, date, counts.replies, counts.citations);
     });
     closeFetchOverlay();
     enterGameAfterFetch_();
@@ -5056,6 +5125,12 @@ async function startUpdateFetch() {
   if (!uid) { openUpdateStats(); return; }
   const startDate = String(opts.startDate || (G.lastFetchTime ? G.lastFetchTime.slice(0, 10) : ''));
   const endDate   = String(opts.endDate || new Date().toISOString().slice(0, 10));
+  const overlaps = await fetchForumFetchRanges_(uid, '论坛抓取记录');
+  const hit = overlaps.filter(row => hasFetchOverlap_(startDate, endDate, row.startDate, row.endDate));
+  if(hit.length){
+    showToast('云端已有重叠抓取区间，请改用正确日期范围后再读取');
+    return;
+  }
   closeMenu();
   _fetchIsUpdate = true;
   _fetchAborted = false;
@@ -5132,6 +5207,11 @@ async function scrapeForumPosts(uid, usernameSlug, startDate, endDate) {
   const TARGET_FORUM_RE = /forum\/32[-\/]/;
   let replies   = 0;
   const citedIds = new Set(); // 去重：同一源帖被攸薩 quote 多次只算一次被引用
+  const byDay = {};
+  function addDay(dateStr, type) {
+    if (!byDay[dateStr]) byDay[dateStr] = { replies: 0, citations: 0 };
+    byDay[dateStr][type]++;
+  }
   const startTs = startDate ? new Date(startDate).getTime() : 0;
   const endTs   = endDate   ? new Date(endDate + 'T23:59:59Z').getTime() : Date.now();
   const lastTime = new Date(endTs).toISOString();
@@ -5187,15 +5267,17 @@ async function scrapeForumPosts(uid, usernameSlug, startDate, endDate) {
       const forumAnchor = item.querySelector('p.ipsType_light a[href]');
       if (!forumAnchor || !TARGET_FORUM_RE.test(forumAnchor.getAttribute('href') || '')) continue;
 
+      const dateStr = new Date(postTs).toISOString().slice(0, 10);
       // 所有符合条件的帖子都计入回复数
       replies++;
+      addDay(dateStr, 'replies');
 
       // 收集需要验证引用的条目
       const blockquote = item.querySelector('.ipsQuote');
       if (!blockquote) continue;
       const commentId = blockquote.getAttribute('data-ipsquote-contentcommentid');
       const contentId = blockquote.getAttribute('data-ipsquote-contentid');
-      if (commentId && contentId) toCheck.push({ commentId, contentId });
+      if (commentId && contentId) toCheck.push({ commentId, contentId, dateStr });
     }
 
     // 第二步：批次并行验证引用（每批 4 个，减少等待时间）
@@ -5209,7 +5291,12 @@ async function scrapeForumPosts(uid, usernameSlug, startDate, endDate) {
             checkSourceQuotesUser(commentId, contentId, uid, commentCache)
           )
         );
-        batch.forEach(({ commentId }, idx) => { if (results[idx]) citedIds.add(commentId); });
+        batch.forEach(({ commentId, dateStr }, idx) => {
+          if (results[idx]) {
+            citedIds.add(commentId);
+            addDay(dateStr, 'citations');
+          }
+        });
         if (i + BATCH < toCheck.length) await new Promise(r => setTimeout(r, 150));
       }
     }
@@ -5223,7 +5310,7 @@ async function scrapeForumPosts(uid, usernameSlug, startDate, endDate) {
   }
 
   saveCiteCache(uid, commentCache);
-  return { replies, citations: citedIds.size, lastTime };
+  return { replies, citations: citedIds.size, lastTime, byDay };
 }
 function renderMenuSaveSlots(){
   const container = document.getElementById('menu-save-list');
@@ -5329,11 +5416,16 @@ function formatItemMsg_(item){
 // ══════════════════════════════════════════════
 async function logRewardToGAS_(data){
   try{
+    const ITEM_TYPE_ZH={seiso:'节操',feather:'羽毛',letterBadge30d:'30天字母勋章'};
+    const payload={...data};
+    if(payload.item && payload.item.type){
+      payload.item={...payload.item, type: ITEM_TYPE_ZH[payload.item.type]||payload.item.type};
+    }
     await fetch(GAS_URL,{
       method:'POST',mode:'no-cors',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        ...data,
+        ...payload,
         sheet:'GAL奖励',
         type:'reward',          // 必须放在 ...data 之后，避免被覆盖
         id:String(G.id||'').trim(),
@@ -5904,6 +5996,46 @@ async function logForumFetchToGAS_(opts){
     });
   } catch(e){ console.warn('GAS forum fetch log failed', e); }
 }
+function fetchForumFetchRanges_(uid, sheetName){
+  return new Promise(resolve=>{
+    if(!GAS_URL || !uid) return resolve([]);
+    const cb='_galFetchRangeCb'+Date.now();
+    const s=document.createElement('script');
+    const clean=()=>{try{delete window[cb]}catch(e){} if(s.parentNode)s.parentNode.removeChild(s);};
+    const timer=setTimeout(()=>{clean();resolve([]);},6000);
+    window[cb]=function(data){
+      clearTimeout(timer);
+      clean();
+      resolve((data&&data.ok&&Array.isArray(data.rows))?data.rows:[]);
+    };
+    s.src=GAS_URL+'?action=fetch_log_ranges&sheet='+encodeURIComponent(sheetName||'论坛抓取记录')+'&id='+encodeURIComponent(uid)+'&callback='+cb;
+    document.head.appendChild(s);
+  });
+}
+function hasFetchOverlap_(startA,endA,startB,endB){
+  const a1=startA?new Date(startA).getTime():0;
+  const a2=endA?new Date(endA+'T23:59:59').getTime():Date.now();
+  const b1=startB?new Date(startB).getTime():0;
+  const b2=endB?new Date(endB+'T23:59:59').getTime():Date.now();
+  return a1<=b2 && b1<=a2;
+}
+
+function logGalActivityToGAS_(uid, date, replies, citations){
+  if (!GAS_URL || !uid || !date) return;
+  fetch(GAS_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sheet: 'GAL返乡活跃度记录',
+      type: 'activity_log',
+      uid: String(uid),
+      date: String(date),
+      replies: parseInt(replies, 10) || 0,
+      citations: parseInt(citations, 10) || 0
+    })
+  }).catch(e => console.warn('GAS activity log failed', e));
+}
 
 // ══════════════════════════════════════════════
 //  OFFLINE MODE
@@ -6188,5 +6320,7 @@ function doPost(e) {
 <!-- v2.9 2026-03-28 番外结局存档 _runtimeMode=fd_ending+读档回结局屏；番外对白改整段不机械重复；结局标题去重 -->
 <!-- v3.0 2026-04-02 修复番外结局CG解锁；修复多周目结局计算（每次重置选择历史）；玩家面板3分区（本篇/番外/奖励）；番外结局可折叠展示；本期/往期返乡勋章；随机道具奖励（节操/羽毛/30天字母勋章）；游戏内奖励弹窗；GAS新增GAL奖励分页；彼岸回響特殊路线（集齐全9番外结局解锁） -->
 <!-- v3.1 2026-04-03 修复GAS奖励type字段被覆盖导致云端不记录的bug；修复不同UID间游戏数据继承问题（新游戏重置G）；自动读取中途改手动可暂停抓取并直接进游戏；番外旁白"X说。"改为动作描述；加入离线模式提示（菜单红色警告+下方浮动提示）；可下载游玩数据CSV（Excel可直接开启）；菜单加"下载游玩数据"按钮 -->
+<!-- v3.2 2026-04-04 GAL奖励云端记录道具类型改为中文（节操/羽毛/30天字母勋章） -->
 </body>
 </html>
+
