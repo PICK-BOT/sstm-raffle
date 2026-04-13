@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="冰雪末日城镇经营界面原型：熔炉、幸存者、法典、科技、采集、野外与联盟等模组；参考公开资料中《寒霜启示录》Whiteout Survival 类 SLG 系统结构，非官方美术。" />
+  <meta name="theme-color" content="#0c1829" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <link rel="dns-prefetch" href="https://images.unsplash.com" />
+  <title>寒霜边境 · 冰雪生存 SLG 界面原型（Frost Frontier）</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body class="theme-wos">
+  <!-- 背景氛围层：免费图库雪景 + CSS 飘雪（不使用官方游戏素材） -->
+  <div class="wos-atmosphere" aria-hidden="true">
+    <div class="wos-atmosphere__photo"></div>
+    <div class="wos-atmosphere__vignette"></div>
+    <div class="wos-atmosphere__flakes" aria-hidden="true"></div>
+  </div>
+  <header class="slg-top-hud" aria-label="顶部状态">
+    <div class="slg-top-row">
+      <div class="slg-player-block">
+        <div class="slg-avatar" id="slg-avatar" title="指挥官"></div>
+        <div class="slg-power-line">
+          <span class="slg-ico slg-ico-fist" aria-hidden="true"></span>
+          <span id="slg-power-val">0</span>
+        </div>
+      </div>
+      <div class="slg-temp-pill" title="环境温度（由士气／寒冷推算的展示值）">
+        <span id="slg-temp-val">-12.0℃</span>
+      </div>
+      <div class="slg-top-right">
+        <span class="slg-vip-pill slg-vip-hidden" aria-hidden="true" hidden>VIP<span id="slg-vip-lv">0</span></span>
+        <button type="button" class="slg-icon-btn" id="slg-btn-activities" title="活动图鉴（寒霜启示录类玩法索引）">🎪</button>
+        <button type="button" class="slg-icon-btn" id="slg-btn-settings" title="存档管理 / 设置">⚙</button>
+        <button type="button" class="slg-icon-btn" id="slg-btn-top-shop" title="商店">🛒</button>
+      </div>
+    </div>
+    <div class="slg-res-strip" id="slg-res-strip">
+      <div class="slg-res-chip slg-res-food"><span class="slg-mini-ico" aria-hidden="true">🍖</span><span id="slg-food-timer">--:--</span></div>
+      <div class="slg-res-chip"><span class="slg-mini-ico" aria-hidden="true">👤</span><span id="slg-pop-cap">0/0</span></div>
+      <div class="slg-res-chip"><span class="slg-mini-ico" aria-hidden="true">🪵</span><strong id="slg-r-wood">0</strong></div>
+      <div class="slg-res-chip"><span class="slg-mini-ico" aria-hidden="true">⚙</span><strong id="slg-r-steel">0</strong></div>
+      <div class="slg-res-chip slg-res-fireCrystal" id="slg-fire-wrap" hidden title="火晶：中央熔炉 Lv10 后解锁，用于建筑升星">
+        <span class="slg-mini-ico" aria-hidden="true">🔥</span><strong id="slg-r-fire">0</strong>
+      </div>
+      <div class="slg-res-chip"><span class="slg-mini-ico" aria-hidden="true">💎</span><strong id="slg-r-gems">0</strong><button type="button" class="slg-plus" id="slg-gems-plus" title="占位">+</button></div>
+    </div>
+    <div id="hud-meta" class="visually-hidden" aria-live="polite"></div>
+    <div id="hud-resources" class="visually-hidden" aria-live="polite"></div>
+  </header>
+  <div id="forum-sync-float" class="forum-sync-float" hidden></div>
+
+  <main class="mobile-main slg-main">
+    <aside class="slg-action-rail" id="slg-action-rail" aria-label="待办与快捷跳转">
+      <button type="button" class="slg-action-rail-fab" id="slg-action-rail-btn" aria-expanded="false" aria-controls="slg-action-rail-panel" title="待办">
+        <span class="slg-action-rail-ico" aria-hidden="true">!</span>
+        <span class="slg-action-rail-badge" id="slg-action-rail-badge" hidden>0</span>
+      </button>
+      <div class="slg-action-rail-panel" id="slg-action-rail-panel" hidden>
+        <div class="slg-action-rail-head">
+          <span class="slg-action-rail-title">待办</span>
+          <button type="button" class="slg-action-rail-min" id="slg-action-rail-min" title="收起">收起</button>
+        </div>
+        <div id="slg-action-rail-list" class="slg-action-rail-list"></div>
+      </div>
+    </aside>
+    <div class="slg-quest-track" id="slg-quest-track" hidden></div>
+    <nav id="city-sub-nav" class="sub-tab-bar" hidden>
+      <button type="button" class="sub-tab active" data-city-sub="hub">总览</button>
+      <button type="button" class="sub-tab" data-city-sub="wild">野外</button>
+      <button type="button" class="sub-tab" data-city-sub="map">城镇</button>
+      <button type="button" class="sub-tab" data-city-sub="build">建筑</button>
+      <button type="button" class="sub-tab" data-city-sub="tech">科技</button>
+      <button type="button" class="sub-tab" data-city-sub="law">法典</button>
+      <button type="button" class="sub-tab" data-city-sub="gather">采集</button>
+    </nav>
+    <nav id="battle-sub-nav" class="sub-tab-bar" hidden>
+      <button type="button" class="sub-tab active" data-battle-sub="march">出征</button>
+      <button type="button" class="sub-tab" data-battle-sub="squad">编队</button>
+      <button type="button" class="sub-tab" data-battle-sub="combat">关卡</button>
+    </nav>
+    <section class="panel page-section wos-panel" data-page="city" data-sub="hub">
+      <header class="wos-section-head">
+        <h2>城镇总览</h2>
+        <p class="wos-section-sub muted">对应手游「城镇／熔炉」中枢：温度、人口与日常循环</p>
+      </header>
+      <div class="survival-grid">
+        <div class="furnace-core-card">
+          <div class="furnace-title">中央熔炉</div>
+          <div id="furnace-heat-ring" class="furnace-ring"><strong id="v-furnace-heat">100%</strong></div>
+          <div class="muted">以供热稳定度表示营地状态</div>
+        </div>
+        <div class="status-cards">
+          <div class="status-card"><span>日数</span><strong id="v-day">1</strong></div>
+          <div class="status-card"><span>人口</span><strong id="v-pop">12</strong></div>
+          <div class="status-card"><span>士气</span><strong id="v-morale">100</strong></div>
+          <div class="status-card"><span>寒冷值</span><strong id="v-cold">0</strong></div>
+        </div>
+      </div>
+      <div class="resources">
+        <div class="res-item">木材: <strong id="r-wood">0</strong></div>
+        <div class="res-item">钢材: <strong id="r-steel">0</strong></div>
+        <div class="res-item">粮食: <strong id="r-food">0</strong></div>
+        <div class="res-item">燃料: <strong id="r-fuel">0</strong></div>
+      </div>
+      <div class="row resource-seal-row">
+        <button type="button" id="btn-resource-seal-all" class="slg-btn-blue">资源满万装箱（铸资源券）</button>
+        <span class="muted" style="font-size:12px">单项 ≥10000 可铸 1 张券；券可兑回资源或 1:1 换加速券</span>
+      </div>
+      <div class="row">
+        <button id="btn-next-day">推进 1 天</button>
+      </div>
+      <div class="row">
+        <div>加速道具（60秒）: <strong id="v-speedup">0</strong></div>
+        <button id="btn-use-speedup">使用 1 个加速施工</button>
+      </div>
+      <p class="muted">每一天会消耗粮食与燃料。燃料不足会增加寒冷值，寒冷值过高会降低士气。</p>
+      <h3 class="slg-mission-heading">任务</h3>
+      <div id="hub-missions"></div>
+      <h3 class="slg-mission-heading">事件日志</h3>
+      <pre id="event-log" class="log"></pre>
+    </section>
+
+    <section class="panel page-section wos-panel" data-page="city" data-sub="wild">
+      <header class="wos-section-head">
+        <h2>野外探索</h2>
+        <p class="wos-section-sub muted">冰原据点／物资争夺（简化为单机据点战）</p>
+      </header>
+      <p class="muted">点击据点挑战野怪；胜利可获资源（每游戏日内每据点限领一次，不推进主线关卡）。请先在「探险 → 编队」配置英雄。</p>
+      <div id="wild-map-root" class="wild-map-root" aria-label="野外地图"></div>
+    </section>
+
+    <section class="panel page-section wos-panel" data-page="city" data-sub="map">
+      <header class="wos-section-head">
+        <h2>城镇地图</h2>
+        <p class="wos-section-sub muted">建筑布局与被动产出（放置收益）</p>
+      </header>
+      <p class="muted">建筑每 10 分钟产出资源，最多累积 72 小时；满储时请点「收取」。</p>
+      <div id="town-pass-hud" class="town-pass-hud" aria-live="polite"></div>
+      <div id="city-map" class="city-map"></div>
+    </section>
+
+    <section class="panel page-section wos-panel" data-page="city" data-sub="build">
+      <header class="wos-section-head">
+        <h2>建筑升级</h2>
+        <p class="wos-section-sub muted">伐木／冶炼／农场／熔炉／兵营等（与手游城建逻辑对应）</p>
+      </header>
+      <div id="build-slot-info" class="muted"></div>
+      <div id="buildings"></div>
+      <h3>施工队列</h3>
+      <div id="build-queue"></div>
+    </section>
+
+    <section class="panel page-section wos-panel" data-page="city" data-sub="tech">
+      <h2 class="slg-screen-title">科技研究</h2>
+      <p class="muted slg-screen-sub">发展 / 经济 / 战斗 分页（对标手游科技界面结构）</p>
+      <div id="tech-tree"></div>
+    </section>
+
+    <section class="panel page-section wos-panel" data-page="city" data-sub="law">
+      <header class="wos-section-head">
+        <h2>法典 · 政令</h2>
+        <p class="wos-section-sub muted">对应手游「颁布法典」：消耗政策点换取全局加成</p>
+      </header>
+      <div id="law-board"></div>
+    </section>
+
+    <section class="panel page-section wos-panel" data-page="city" data-sub="gather">
+      <header class="wos-section-head">
+        <h2>地图采集</h2>
+        <p class="wos-section-sub muted">派遣英雄采集木材／钢材／粮食／燃料（伫列可钻石扩充）</p>
+      </header>
+      <div id="gather-queue-info" class="muted"></div>
+      <div id="gather-nodes"></div>
+    </section>
+
+    <section class="panel page-section slg-march-page wos-panel" data-page="battle" data-sub="march">
+      <h2 class="slg-screen-title">出征</h2>
+      <p class="muted slg-screen-sub">配置兵力影响战斗模拟中的有效战力；下方为胜率提示（简化公式）。</p>
+      <div id="march-panel" class="march-panel"></div>
+    </section>
+
+    <section class="panel page-section wos-panel" data-page="battle" data-sub="squad">
+      <header class="wos-section-head wos-section-head--with-action">
+        <div>
+          <h2>英雄与编队</h2>
+          <p class="wos-section-sub muted">技能与站位影响战斗／采集效率（本原型为宝可梦主题）</p>
+        </div>
+        <button type="button" class="slg-btn-blue" id="btn-open-hero-dex">图鉴</button>
+      </header>
+      <div id="heroes"></div>
+      <div class="squad">
+        <h3>出战编队 <span id="squad-cap-title" class="muted squad-cap-title"></span></h3>
+        <div id="squad"></div>
+      </div>
+    </section>
+
+    <section id="battle-panel" class="panel page-section wos-panel" data-page="battle" data-sub="combat">
+      <header class="wos-section-head">
+        <h2>战斗 · 关卡</h2>
+        <p class="wos-section-sub muted">主线推进与战力对压（含 Boss 阶段演出）</p>
+      </header>
+      <div class="battle-apk-hud">
+        <div class="battle-main-meta">目前关卡: <strong id="v-stage">1</strong></div>
+        <div class="power-bars">
+          <div class="power-row enemy">
+            <span>敌方战力</span>
+            <div class="power-track"><i id="bar-enemy-power" style="width:50%"></i></div>
+            <strong id="v-enemy-power">0</strong>
+          </div>
+          <div class="power-row ally">
+            <span>我方战力</span>
+            <div class="power-track"><i id="bar-my-power" style="width:50%"></i></div>
+            <strong id="v-my-power">0</strong>
+          </div>
+        </div>
+      </div>
+      <div id="boss-hud" class="boss-hud hidden">
+        <div class="boss-head"><strong id="boss-name">BOSS</strong><span id="boss-phase">P1</span></div>
+        <div class="boss-hp"><i id="boss-hp-fill" style="width:100%"></i></div>
+      </div>
+      <div class="row">
+        <button id="btn-battle">开始战斗</button>
+        <button id="btn-auto">自动 5 场</button>
+        <button id="btn-cast-ult">释放就绪大招</button>
+      </div>
+      <div id="battle-result-reason" class="muted"></div>
+      <div id="battle-stage-map" class="battle-stage-map"></div>
+      <div id="battle-block-reason" class="battle-block-reason hidden">
+        <span id="battle-block-text"></span>
+        <button id="btn-goto-story" class="goto-story-btn hidden">前往剧情</button>
+      </div>
+      <div class="skill-meter-panel">
+        <div class="skill-meter-title">技能计量框</div>
+        <div id="skill-bars"></div>
+      </div>
+      <div class="muted">战场演出（伤害飘字）</div>
+      <div id="battle-scene" class="battle-scene"></div>
+      <div class="muted">大招特效层</div>
+      <div id="ult-fx" class="ult-fx-layer">大招动画位</div>
+      <div class="muted">战场环境特效层</div>
+      <div id="battle-fx" class="battle-fx-layer">可在素材映射设定 battleFx.layer</div>
+      <pre id="battle-log" class="log"></pre>
+    </section>
+
+    <section class="panel page-section wos-panel" data-page="story">
+      <h2 class="slg-screen-title">剧情</h2>
+      <p class="muted slg-screen-sub">开场与章节动画；与任务分离。</p>
+      <h3>剧情演出</h3>
+      <div class="row">
+        <button id="btn-play-intro">播放开场动画</button>
+      </div>
+      <p class="muted">首次进入会自动播放。你也可以随时重播。</p>
+    </section>
+
+    <section class="panel page-section wos-panel" data-page="story">
+      <h2>剧情章节</h2>
+      <div class="row">
+        <button id="btn-prev-chapter">上一章</button>
+        <button id="btn-next-chapter">下一章</button>
+        <button id="btn-play-chapter">播放本章动画</button>
+      </div>
+      <div id="story-title"></div>
+      <div id="story-ending-mark" class="muted"></div>
+      <pre id="story-text" class="log"></pre>
+      <pre id="story-branch-log" class="log"></pre>
+    </section>
+
+    <section class="panel page-section wos-panel" data-page="bag">
+      <h2 class="slg-screen-title">背包</h2>
+      <p class="muted slg-screen-sub">道具与消耗品；可按类型与属性筛选技能书、进化石等。</p>
+      <div id="bag-filter-bar" class="bag-filter-bar"></div>
+      <div id="inventory" class="inventory-root"></div>
+    </section>
+
+    <section class="panel page-section slg-panel slg-shop-panel wos-panel" data-page="shop">
+      <div class="slg-screen-head">
+        <h2 class="slg-screen-title">商店</h2>
+        <p class="slg-screen-sub muted">占位界面：宝石与礼包可接后端；素材请用设定汇入合法 URL。</p>
+      </div>
+      <div id="shop-forum-root"></div>
+      <div class="slg-shop-grid">
+        <div class="slg-shop-card" id="shop-daily-card">
+          <div class="slg-shop-card-title">每日特惠</div>
+          <div class="muted" id="shop-daily-desc">每日限领 1 次：木材、钢材、粮食、燃料与加速×1</div>
+          <button type="button" class="slg-btn-yellow" id="btn-shop-daily">领取</button>
+        </div>
+        <div class="slg-shop-card" id="shop-resource-card">
+          <div class="slg-shop-card-title">资源补给</div>
+          <div class="muted" id="shop-resource-desc">依今日次数计价（每满 3 次加价，每日重置）</div>
+          <div class="slg-shop-batch">
+            <label class="muted">批量兑换次数 <input type="number" id="shop-resource-batch" min="1" max="999" value="1" class="slg-num-input" /></label>
+          </div>
+          <button type="button" class="slg-btn-blue" id="btn-shop-resource">兑换资源包</button>
+        </div>
+        <div class="slg-shop-card" id="shop-speed-card">
+          <div class="slg-shop-card-title">加速券</div>
+          <div class="muted">可用于建筑倒数、采集倒数等（每张缩短 60 秒）</div>
+          <div class="slg-shop-batch">
+            <label class="muted">购买数量 <input type="number" id="shop-speed-batch" min="1" max="999" value="1" class="slg-num-input" /></label>
+            <span class="muted" id="shop-speed-cost-hint"></span>
+          </div>
+          <button type="button" class="slg-btn-yellow" id="btn-shop-buy-speed">钻石购买加速券</button>
+        </div>
+        <div class="slg-shop-card" id="shop-recruit-card">
+          <div class="slg-shop-card-title">征募寻访</div>
+          <div class="muted" id="shop-recruit-desc">消耗钻石随机获得初阶英雄（仅初始形态，进化靠养成）</div>
+          <div class="slg-shop-recruit-row">
+            <button type="button" class="slg-btn-blue" id="btn-shop-recruit">征募寻访</button>
+            <button type="button" class="slg-btn-yellow" id="btn-shop-recruit-ten">征募十连 10+1</button>
+          </div>
+        </div>
+      </div>
+      <div class="slg-dev-tools">
+        <span class="muted">开发</span>
+        <button type="button" id="btn-open-settings" class="slg-btn-blue">素材与玩法设定</button>
+        <button type="button" id="btn-save">手动存档</button>
+        <button type="button" id="btn-reset" class="danger">重开新档</button>
+      </div>
+    </section>
+
+    <section class="panel page-section slg-panel wos-panel" data-page="alliance">
+      <div class="slg-screen-head">
+        <h2 class="slg-screen-title">联盟</h2>
+        <p class="slg-screen-sub muted">占位：可接联盟科技、互助、集结等模组。</p>
+      </div>
+      <div id="alliance-root"></div>
+    </section>
+
+    <section class="panel page-section wos-panel" data-page="settings">
+      <h2>素材包管理（可插拔）</h2>
+      <div class="row">
+        <button id="btn-export-assets">导出素材映射 JSON</button>
+        <button id="btn-import-assets">导入素材映射 JSON</button>
+        <button id="btn-reset-assets" class="danger">重置素材映射</button>
+      </div>
+      <p class="muted">
+        说明：素材映射只记录 URL，不绑定版权内容。你可替换为自有或授权素材链接。
+      </p>
+      <pre id="asset-log" class="log"></pre>
+      <h3>存档管理</h3>
+      <div class="row">
+        <button id="btn-save-export">下载存档文件</button>
+        <button id="btn-save-import">读取存档文件</button>
+        <button id="btn-restore-heroes-backup">从自动备份恢复英雄数据</button>
+      </div>
+      <div class="row">
+        <button id="btn-cloud-upload-save" class="slg-btn-blue">上传云端</button>
+        <button id="btn-cloud-load-save" class="slg-btn-yellow">云端恢复</button>
+        <button id="btn-cloud-ping">云端连线测试（ping）</button>
+      </div>
+      <div id="cloud-last-meta" class="muted">最近云端存档：尚无</div>
+      <input id="save-import-file" type="file" accept=".json,application/json" hidden />
+      <pre id="save-log" class="log"></pre>
+      <h3>玩法配置（数据驱动）</h3>
+      <div class="row">
+        <button id="btn-import-gameplay-key">汇入玩法 KEY</button>
+        <span id="gameplay-key-status" class="muted">未授权</span>
+      </div>
+      <input id="gameplay-key-file" type="file" accept=".txt,.key,.json,text/plain,application/json" hidden />
+      <div class="row">
+        <button id="btn-export-gameplay">导出玩法配置 JSON</button>
+        <button id="btn-import-gameplay">导入玩法配置 JSON</button>
+        <button id="btn-reset-gameplay" class="danger">重置玩法配置</button>
+      </div>
+      <p class="muted">可配置英雄、技能、关卡曲线；导入后自动应用。</p>
+      <pre id="gameplay-log" class="log"></pre>
+    </section>
+
+  </main>
+
+  <footer class="wos-footer">
+    <div class="wos-footer__inner">
+      <p class="wos-footer__note">本项目为爱好者界面与机制原型，美术为免费图库与原创 CSS，<strong>非官方</strong>、不附属于任何商业游戏或代理商。</p>
+    </div>
+  </footer>
+
+  <nav class="bottom-nav slg-bottom-nav" aria-label="主选单">
+    <button type="button" class="nav-tab" data-tab="battle" data-battle-sub="march">
+      <span class="tab-ico" aria-hidden="true">⚔</span><span>探险</span><i class="tab-dot" id="dot-battle"></i>
+    </button>
+    <button type="button" class="nav-tab" data-tab="battle" data-battle-sub="squad">
+      <span class="tab-ico" aria-hidden="true">🧙</span><span>英雄</span><i class="tab-dot" id="dot-heroes"></i>
+    </button>
+    <button type="button" class="nav-tab" data-tab="story">
+      <span class="tab-ico" aria-hidden="true">📖</span><span>剧情</span>
+    </button>
+    <button type="button" class="nav-tab" data-tab="bag">
+      <span class="tab-ico" aria-hidden="true">🎒</span><span>背包</span>
+    </button>
+    <button type="button" class="nav-tab" data-tab="shop">
+      <span class="tab-ico" aria-hidden="true">🏪</span><span>商店</span>
+    </button>
+    <button type="button" class="nav-tab" data-tab="alliance">
+      <span class="tab-ico" aria-hidden="true">🛡</span><span>联盟</span>
+    </button>
+    <button type="button" class="nav-tab nav-tab-wild" data-tab="city" data-city-sub="wild">
+      <span class="tab-ico" aria-hidden="true">🗺</span><span>野外</span>
+    </button>
+    <button type="button" class="nav-tab nav-tab-town active" data-tab="city" data-city-sub="hub">
+      <span class="tab-ico" aria-hidden="true">🏰</span><span>城镇</span><i class="tab-dot" id="dot-city"></i>
+    </button>
+  </nav>
+
+  <div id="cutscene" class="cutscene hidden">
+    <div class="cutscene-mask"></div>
+    <div class="cutscene-box">
+      <div id="cutscene-title" class="cutscene-title"></div>
+      <div class="cutscene-stage">
+        <div class="cutscene-bg" id="cutscene-bg"></div>
+        <div class="cutscene-char cutscene-char-secondary" id="cutscene-char-2"></div>
+        <div class="cutscene-char" id="cutscene-char"></div>
+      </div>
+      <div id="cutscene-nameplate" class="cutscene-nameplate">旁白</div>
+      <div id="cutscene-text" class="cutscene-text"></div>
+      <div id="cutscene-branch-options" class="cutscene-branch-options"></div>
+      <div class="row">
+        <button id="btn-cutscene-next">下一句</button>
+        <button id="btn-cutscene-skip">跳过</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="building-modal" class="modal hidden">
+    <div class="modal-mask"></div>
+    <div class="modal-box">
+      <h3 id="bm-title"></h3>
+      <div id="bm-body"></div>
+      <div class="row">
+        <button id="bm-upgrade">升级</button>
+        <button id="bm-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="gather-claim-modal" class="modal hidden">
+    <div class="modal-mask"></div>
+    <div class="modal-box">
+      <h3>采集返回领取</h3>
+      <div id="gcm-body"></div>
+      <div class="row">
+        <button id="gcm-claim-one">领取当前</button>
+        <button id="gcm-claim-all">全部领取</button>
+        <button id="gcm-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="wild-battle-modal" class="modal hidden">
+    <div class="modal-mask"></div>
+    <div class="modal-box modal-box-wide">
+      <h3 id="wild-battle-title">野外对战</h3>
+      <div id="wild-battle-scene" class="battle-scene wild-battle-scene"></div>
+      <pre id="wild-battle-log" class="log wild-battle-log"></pre>
+      <div class="row">
+        <button type="button" id="wild-battle-skip" class="slg-btn-yellow">跳过（立即结算）</button>
+        <button type="button" id="wild-battle-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stage-report-modal" class="modal hidden">
+    <div class="modal-mask"></div>
+    <div class="modal-box modal-box-wide">
+      <h3 id="stage-report-title">关卡历史战报</h3>
+      <div id="stage-report-body" class="stage-report-body"></div>
+      <div class="row">
+        <button type="button" class="slg-btn-yellow" id="stage-report-copy">复制数值</button>
+        <button type="button" id="stage-report-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="hero-detail-modal" class="modal hidden">
+    <div class="modal-mask"></div>
+    <div class="modal-box modal-box-wide">
+      <h3 id="hero-detail-title">宝可梦</h3>
+      <div id="hero-detail-body" class="hero-detail-body"></div>
+      <div class="row">
+        <button type="button" id="hero-detail-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="forum-batch-modal" class="modal hidden">
+    <div class="modal-mask"></div>
+    <div class="modal-box">
+      <h3 id="forum-batch-title">批量兑换</h3>
+      <div id="forum-batch-body" class="forum-batch-body"></div>
+      <div class="row">
+        <button type="button" class="slg-btn-yellow" id="forum-batch-confirm">确认兑换</button>
+        <button type="button" id="forum-batch-cancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="forum-debug-modal" class="modal hidden">
+    <div class="modal-mask"></div>
+    <div class="modal-box modal-box-wide">
+      <h3 id="forum-debug-title">论坛调试明细</h3>
+      <div id="forum-debug-body" class="stage-report-body"></div>
+      <div class="row">
+        <button type="button" id="forum-debug-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="activities-hub-modal" class="modal hidden">
+    <div class="modal-mask"></div>
+    <div class="modal-box modal-box-wide activities-hub-box">
+      <h3>活动中心 · 可玩签到／代币兑换／积分里程碑</h3>
+      <div id="activities-hub-body" class="activities-hub-body"></div>
+      <div class="row">
+        <button type="button" id="activities-hub-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="hero-dex-modal" class="modal hidden">
+    <div class="modal-mask"></div>
+    <div class="modal-box modal-box-wide">
+      <h3>图鉴</h3>
+      <div id="hero-dex-summary" class="muted hero-dex-summary"></div>
+      <div id="hero-dex-list" class="hero-dex-list"></div>
+      <div class="row">
+        <button type="button" id="hero-dex-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cloud-saving-modal" class="modal hidden">
+    <div class="modal-mask"></div>
+    <div class="modal-box">
+      <h3>云端存档</h3>
+      <div id="cloud-saving-text" class="muted">正在存档，请稍候…</div>
+    </div>
+  </div>
+
+  <script src="./sstm-forum-scrape.js"></script>
+  <script src="./pokedex-data.js"></script>
+  <script src="./pokedex-evolve.js"></script>
+  <script src="./skill-books-data.js"></script>
+  <script src="./game.js"></script>
+</body>
+</html>
+

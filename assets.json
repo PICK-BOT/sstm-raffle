@@ -1,0 +1,55 @@
+{
+  "ui": {
+    "background": "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1800&q=80",
+    "cityMap": "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1700&q=80",
+    "panelOverlay": "linear-gradient(180deg, rgba(251,191,36,.12), rgba(34,211,238,.05))",
+    "panelBase": "rgba(8, 14, 30, 0.92)",
+    "panelBorder": "#64748b",
+    "accent": "#38bdf8",
+    "gold": "#fbbf24",
+    "edgeGlow": "rgba(251,191,36,.24)",
+    "softGlow": "rgba(34,211,238,.18)",
+    "navBg": "rgba(4, 9, 24, 0.96)",
+    "bossOverlay": "radial-gradient(circle, rgba(185,28,28,.46), rgba(2,6,23,.82))",
+    "bossText": "#fecaca"
+  },
+  "resources": {
+    "wood": "https://api.iconify.design/mdi:pine-tree.svg?color=%23b7791f",
+    "steel": "https://api.iconify.design/mdi:anvil.svg?color=%2394a3b8",
+    "food": "https://api.iconify.design/mdi:food-apple.svg?color=%23f59e0b",
+    "fuel": "https://api.iconify.design/mdi:fire.svg?color=%23ef4444"
+  },
+  "buildings": {
+    "lumber": "https://api.iconify.design/game-icons:lumberjack-face.svg?color=%23f59e0b",
+    "mine": "https://api.iconify.design/game-icons:miner.svg?color=%23cbd5e1",
+    "farm": "https://api.iconify.design/game-icons:wheat.svg?color=%2322c55e",
+    "heater": "https://api.iconify.design/game-icons:furnace.svg?color=%23fb7185",
+    "camp": "https://api.iconify.design/game-icons:barracks-tent.svg?color=%2360a5fa"
+  },
+  "battleFx": {
+    "layer": "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1500&q=80",
+    "enemy": "https://api.iconify.design/game-icons:beast-eye.svg?color=%23ef4444",
+    "ult": "https://images.unsplash.com/photo-1517999349371-c43520457b23?auto=format&fit=crop&w=1500&q=80"
+  },
+  "heroes": {
+    "h1": { "avatar": "https://api.dicebear.com/9.x/adventurer/svg?seed=Molly-V4&backgroundColor=1d4ed8,020617" },
+    "h2": { "avatar": "https://api.dicebear.com/9.x/adventurer/svg?seed=Sergey-V4&backgroundColor=64748b,020617" },
+    "h3": { "avatar": "https://api.dicebear.com/9.x/adventurer/svg?seed=Gina-V4&backgroundColor=059669,020617" },
+    "h4": { "avatar": "https://api.dicebear.com/9.x/adventurer/svg?seed=Bahiti-V4&backgroundColor=be185d,020617" },
+    "h5": { "avatar": "https://api.dicebear.com/9.x/adventurer/svg?seed=Patrick-V4&backgroundColor=b45309,020617" }
+  },
+  "cutscene": {
+    "bgs": [
+      "https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&w=1400&q=80",
+      "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1400&q=80",
+      "https://images.unsplash.com/photo-1521295121783-8a321d551ad2?auto=format&fit=crop&w=1400&q=80",
+      "https://images.unsplash.com/photo-1517638851339-a711cfcf3279?auto=format&fit=crop&w=1400&q=80"
+    ],
+    "chars": {
+      "narrator": "https://api.iconify.design/game-icons:archive-register.svg?color=%23cbd5e1",
+      "commander": "https://api.dicebear.com/9.x/adventurer/svg?seed=Commander-V4&backgroundColor=334155,0f172a",
+      "scout": "https://api.dicebear.com/9.x/adventurer/svg?seed=Scout-V4&backgroundColor=1d4ed8,0f172a"
+    }
+  }
+}
+
