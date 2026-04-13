@@ -897,6 +897,12 @@ button.danger { border-color: #dc2626; color: #fecaca; }
   align-items: center;
   gap: 8px;
 }
+.building-ready-dot {
+  margin-left: 6px;
+  color: #fbbf24;
+  font-weight: 900;
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.4));
+}
 .law-codex-board {
   margin: 10px 0 12px;
   padding: 10px;
@@ -1654,6 +1660,14 @@ button.danger { border-color: #dc2626; color: #fecaca; }
   font-size: 11px;
   font-weight: 700;
   line-height: 1.1;
+}
+.map-ready-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 12px;
+  color: #fbbf24;
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.45));
 }
 .map-lv {
   font-size: 10px;

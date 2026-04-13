@@ -1495,6 +1495,7 @@ let prevResourceSnapshot_ = null;
 let forumBatchMode_ = null;
 let wildBattleCtx_ = { spotIdx: 0, gemRetry: false };
 let gatherTickerStarted_ = false;
+let autoSaveReminderTimer_ = null;
 
 function createDefaultState_() {
   return {
@@ -2151,7 +2152,10 @@ function init() {
       if (!state.introSeen) playIntroCutscene();
       const needLogin = !(Number(state?.profile?.uid || 0) > 0) || !String(state?.profile?.id || "").trim();
       if (needLogin) byId("screen-login")?.classList.remove("hidden");
-      else byId("screen-login")?.classList.add("hidden");
+      else {
+        byId("screen-login")?.classList.add("hidden");
+        startAutoSaveReminder_();
+      }
     });
 }
 
@@ -2233,6 +2237,8 @@ function bind() {
   byId("btn-cloud-upload-save")?.addEventListener("click", uploadCloudSave_);
   byId("btn-cloud-load-save")?.addEventListener("click", loadCloudSave_);
   byId("btn-cloud-ping")?.addEventListener("click", pingCloudSave_);
+  byId("btn-switch-account")?.addEventListener("click", () => openLoginOverlayForSwitch_());
+  byId("btn-logout-account")?.addEventListener("click", () => logoutAccount_());
   updateCloudMetaUi_();
   byId("btn-login-enter")?.addEventListener("click", submitLogin_);
   byId("login-id")?.addEventListener("keydown", (ev) => {
@@ -3914,11 +3920,7 @@ function renderCity() {
   const rg = byId("slg-r-gems");
   if (rw) rw.textContent = fmtCompact_(state.resources.wood);
   if (rs) rs.textContent = fmtCompact_(state.resources.steel);
-  if (rf) {
-    const stored = Number(state.resources.fireCrystal || 0);
-    const pending = Number(state.townPass?.fireCrystal || 0);
-    rf.textContent = fmtCompact_(stored + pending);
-  }
+  if (rf) rf.textContent = fmtCompact_(state.resources.fireCrystal || 0);
   if (rfw) {
     rfw.hidden = !fireCrystalUnlocked_();
   }
@@ -3970,15 +3972,16 @@ function renderBuildings() {
     const queued = state.buildQueue.some((q) => q.id === b.id);
     const st = buildingStar_(b.id);
     const needFc = nextBuildingStarFireCost_(b.id);
+    const canUp = !queued && canUpgradeBuilding_(b.id);
     const starLine = fcUn
       ? `<div class="muted">建筑星等：${"★".repeat(st)}${"☆".repeat(Math.max(0, MAX_BUILDING_STARS - st))}（${st}/${MAX_BUILDING_STARS}）${
           needFc != null ? ` · 下次升星消耗 <strong>${needFc}</strong> 火晶` : " · 已达星等上限"
         }</div>`
       : `<div class="muted">建筑星等：中央熔炉 Lv.${FIRE_CRYSTAL_UNLOCK_HEATER_LV} 后可用<strong>火晶</strong>升星，解锁高阶科技与技能书掉落。</div>`;
     const div = document.createElement("div");
-    div.className = "card";
+    div.className = `card ${canUp ? "is-ready" : ""}`;
     div.innerHTML = `
-      <div class="building-head">${iconHtml("building", b.id, "icon20")} <strong>${b.name}</strong> Lv${lv}</div>
+      <div class="building-head">${iconHtml("building", b.id, "icon20")} <strong>${b.name}</strong> Lv${lv}${canUp ? '<span class="building-ready-dot" title="可升级">🔔</span>' : ""}</div>
       ${starLine}
       <div class="muted">升级花费: ${fmtRes(cost)}</div>
       <div class="muted">前置: ${getBuildPrereqText_(b.id)}</div>
@@ -4333,8 +4336,10 @@ function renderCityMap() {
     node.style.left = `${px}%`;
     node.style.top = `${py}%`;
     node.classList.toggle("upgrade-ready", canUpgradeBuilding_(b.id));
+    const mapReady = canUpgradeBuilding_(b.id);
     node.innerHTML = `
       <div class="map-icon-badge">${iconHtml("building", b.id, "icon20")}</div>
+      ${mapReady ? '<span class="map-ready-dot" title="可升级">🔔</span>' : ""}
       <div class="map-label">${b.name}</div>
       <div class="map-lv">Lv${lv}</div>
     `;
@@ -4772,8 +4777,6 @@ function pkmSpriteUrl_(slug) {
 const COMMANDER_TRAINER_KEYS_ = ["veteran", "hiker", "scientist", "ranger", "blackbelt"];
 
 function getCommanderPortraitUrl_() {
-  const fromAssets = assets?.cutscene?.chars?.commander;
-  if (fromAssets && /^https?:\/\//i.test(String(fromAssets))) return String(fromAssets);
   const idx = Math.max(0, (state.day || 1) - 1) % COMMANDER_TRAINER_KEYS_.length;
   const key = COMMANDER_TRAINER_KEYS_[idx];
   return `https://play.pokemonshowdown.com/sprites/trainers/${key}.png`;
@@ -7263,7 +7266,38 @@ function enforceUidBinding_() {
   if (uid > 0) state.forumShop.uid = uid;
 }
 
-function submitLogin_() {
+function startAutoSaveReminder_() {
+  if (autoSaveReminderTimer_) clearInterval(autoSaveReminderTimer_);
+  autoSaveReminderTimer_ = setInterval(() => {
+    const go = confirm("已游玩 30 分钟，建议立即云端存档。\n是否前往存档管理？");
+    if (!go) return;
+    switchTab_("settings");
+    setTimeout(() => byId("btn-cloud-upload-save")?.scrollIntoView?.({ behavior: "smooth", block: "center" }), 60);
+  }, 30 * 60 * 1000);
+}
+
+function openLoginOverlayForSwitch_() {
+  const curId = String(state?.profile?.id || "").trim();
+  const curUid = Number(state?.profile?.uid || 0);
+  if (curUid > 0 && !confirm(`当前帐号：${curId || "-"} (${curUid})\n切换帐号将尝试自动导入新 UID 的云端数据，是否继续？`)) return;
+  byId("screen-login")?.classList.remove("hidden");
+  syncLoginUi_();
+}
+
+function logoutAccount_() {
+  if (!confirm("确定登出当前帐号？")) return;
+  state.profile = { id: "", uid: 0 };
+  if (state.forumShop) state.forumShop.uid = 0;
+  if (autoSaveReminderTimer_) {
+    clearInterval(autoSaveReminderTimer_);
+    autoSaveReminderTimer_ = null;
+  }
+  save();
+  byId("screen-login")?.classList.remove("hidden");
+  syncLoginUi_();
+}
+
+async function submitLogin_() {
   const id = String(byId("login-id")?.value || "").trim();
   const uid = Number(byId("login-uid")?.value || 0);
   if (!id) return alert("请输入论坛 ID");
@@ -7272,9 +7306,35 @@ function submitLogin_() {
   enforceUidBinding_();
   pushLoginHistory_(id, uid);
   save();
+  setCloudSavingUi_(true, "正在读取该 UID 的云端记录…");
+  try {
+    const ret = await cloudRequestRead_("load_full", { uid: cloudUid_() });
+    const row = ret?.data || null;
+    if (row?.save_json) {
+      const parsedSave = JSON.parse(String(row.save_json || "{}"));
+      if (isUsableSave_(parsedSave)) {
+        const parsedAssets = JSON.parse(String(row.assets_json || "{}"));
+        const parsedGameplay = JSON.parse(String(row.gameplay_json || "{}"));
+        const parsedStory = JSON.parse(String(row.story_json || "{}"));
+        localStorage.setItem(SAVE_KEY, JSON.stringify(parsedSave));
+        localStorage.setItem(ASSET_KEY, JSON.stringify(parsedAssets));
+        localStorage.setItem(GAMEPLAY_KEY, JSON.stringify(parsedGameplay));
+        localStorage.setItem(STORY_KEY, JSON.stringify(parsedStory));
+        writeCloudMeta_(cloudUid_(), Number(row.ts || Date.now()));
+        logSave_("登入成功，已自动导入对应 UID 云端记录。");
+        location.reload();
+        return;
+      }
+    }
+  } catch (_) {
+    // 云端没有记录或暂时不可达时，继续本地游玩
+  } finally {
+    setCloudSavingUi_(false);
+  }
   byId("screen-login")?.classList.add("hidden");
   renderLoginHistory_();
   renderAll();
+  startAutoSaveReminder_();
 }
 
 function updateCloudMetaUi_() {
@@ -7606,20 +7666,17 @@ function applyAssetTheme() {
 
 function iconHtml(type, id, cls) {
   let url = "";
+  const txt = type === "resource" ? id[0].toUpperCase() : id.slice(0, 2).toUpperCase();
+  const fallbackUrl = `data:image/svg+xml;utf8,${encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><rect width='100%' height='100%' fill='#0b1220'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' fill='#94a3b8' font-size='14'>${txt}</text></svg>`
+  )}`;
   if (type === "resource") url = assets?.resources?.[id] || "";
   if (type === "building") url = assets?.buildings?.[id] || "";
-  if (!url) {
-    const txt = type === "resource" ? id[0].toUpperCase() : id.slice(0, 2).toUpperCase();
-    url = `data:image/svg+xml;utf8,${encodeURIComponent(
-      `<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><rect width='100%' height='100%' fill='#0b1220'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' fill='#94a3b8' font-size='14'>${txt}</text></svg>`
-    )}`;
-  }
-  return `<img class="${cls}" src="${url}" alt="${type}-${id}" />`;
+  if (!url) url = fallbackUrl;
+  return `<img class="${cls}" src="${url}" alt="${type}-${id}" onerror="this.onerror=null;this.src='${fallbackUrl}'" />`;
 }
 
 function getEnemySprite() {
-  const custom = assets?.battleFx?.enemy;
-  if (custom && /^https?:\/\//i.test(String(custom))) return custom;
   return pkmSpriteUrl_(stageEnemySlug_(state.stage || 1));
 }
 
