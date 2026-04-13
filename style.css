@@ -2166,6 +2166,9 @@ button.danger { border-color: #dc2626; color: #fecaca; }
   inset: 0;
   z-index: 20040;
 }
+#cloud-saving-modal {
+  z-index: 22080; /* 高于登入层，避免登入时被遮住 */
+}
 .modal-mask {
   position: absolute;
   inset: 0;

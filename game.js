@@ -4783,12 +4783,14 @@ function claimTownPass_() {
   renderAll();
 }
 
-/** 对战用宝可梦动态图（Gen5 动画 GIF）。 */
+/** 宝可梦图源统一锁定：Gen5 动画 GIF（我方/敌方/野怪都走这里） */
+const POKEMON_GEN5ANI_BASE_ = "https://play.pokemonshowdown.com/sprites/gen5ani";
+
 function pkmSpriteUrl_(slug) {
   const s = String(slug || "rattata")
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, "");
-  return `https://img.pokemondb.net/sprites/home/normal/${s}.png`;
+  return `${POKEMON_GEN5ANI_BASE_}/${s}.gif`;
 }
 
 const COMMANDER_TRAINER_KEYS_ = ["veteran", "hiker", "scientist", "ranger", "blackbelt"];
@@ -7323,13 +7325,17 @@ async function submitLogin_() {
   enforceUidBinding_();
   pushLoginHistory_(id, uid);
   save();
-  setCloudSavingUi_(true, "正在读取该 UID 的云端记录…", "云端读档中");
+  setCloudSavingUi_(true, "正在登入并读取该 UID 的云端记录…", "系统登入中");
   try {
     const ret = await cloudRequestRead_("load_full", { uid: cloudUid_() });
     const row = ret?.data || null;
     if (row?.save_json) {
       const parsedSave = JSON.parse(String(row.save_json || "{}"));
       if (isUsableSave_(parsedSave)) {
+        // 兼容旧云端档：强制注入当前登入身份，避免重载后被判定未登入。
+        parsedSave.profile = { id, uid };
+        if (!parsedSave.forumShop || typeof parsedSave.forumShop !== "object") parsedSave.forumShop = {};
+        parsedSave.forumShop.uid = uid;
         const parsedAssets = JSON.parse(String(row.assets_json || "{}"));
         const parsedGameplay = JSON.parse(String(row.gameplay_json || "{}"));
         const parsedStory = JSON.parse(String(row.story_json || "{}"));
