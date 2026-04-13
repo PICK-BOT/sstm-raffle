@@ -50,6 +50,22 @@
     <div id="hud-resources" class="visually-hidden" aria-live="polite"></div>
   </header>
   <div id="forum-sync-float" class="forum-sync-float" hidden></div>
+  <div id="screen-login" class="screen-login-overlay hidden">
+    <div class="screen-login-card">
+      <h3>登入游戏</h3>
+      <p class="muted">输入论坛 ID 与 UID（后续论坛同步/云端会绑定此 UID）</p>
+      <div class="row">
+        <input id="login-id" class="inp" type="text" placeholder="论坛 ID（显示名）" />
+      </div>
+      <div class="row">
+        <input id="login-uid" class="inp" type="number" min="1" step="1" placeholder="论坛数字 UID" />
+      </div>
+      <div id="login-history" class="login-history muted"></div>
+      <div class="row">
+        <button id="btn-login-enter" class="slg-btn-yellow">进入游戏</button>
+      </div>
+    </div>
+  </div>
 
   <main class="mobile-main slg-main">
     <aside class="slg-action-rail" id="slg-action-rail" aria-label="待办与快捷跳转">

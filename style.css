@@ -25,6 +25,37 @@ body {
   position: relative;
   min-height: 100dvh;
 }
+.inp {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.75);
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.screen-login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 21000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+}
+.screen-login-overlay.hidden { display: none; }
+.screen-login-card {
+  width: min(94vw, 460px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 20px;
+}
+.login-history { margin-top: 4px; min-height: 20px; }
+.login-history button {
+  margin: 2px 6px 0 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
 body::before {
   content: "";
   position: fixed;

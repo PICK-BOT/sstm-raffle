@@ -7,6 +7,7 @@ const GAMEPLAY_KEY = "frost_frontier_gameplay_v1";
 const CLOUD_GAS_URL = "https://script.google.com/macros/s/AKfycbwTvyIn6UZE16aCflvNLIyiFRPYm7CdgnXQzuhHbrQ00RWCvWEU-ZmRo25OwYw94efBPQ/exec";
 const CLOUD_META_KEY = "frost_frontier_cloud_last_meta_v1";
 const CLOUD_ACTIVITY_FP_KEY = "frost_frontier_cloud_activity_fp_v1";
+const LOGIN_HISTORY_KEY = "frost_frontier_login_history_v1";
 
 /** 论坛同步进行中（切页不中断抓取，仅影响商店 DOM 重绘时的状态提示） */
 let forumSyncInProgress_ = false;
@@ -1524,6 +1525,7 @@ function createDefaultState_() {
     policyPoints: 0,
     laws: {},
     logs: { battle: [], event: [] },
+    profile: { id: "", uid: 0 },
     march: { shield: 0, spear: 0, bow: 0 },
     inventory: [],
     alliance: { name: "霜前哨站", level: 1, exp: 0, honorXp: 0, solo: true, perks: { gather: 0, build: 0, battle: 0 } },
@@ -1892,6 +1894,9 @@ function normalizeState_() {
     if (!Number.isFinite(state.march[k])) state.march[k] = 0;
   });
   if (!Array.isArray(state.inventory)) state.inventory = [];
+  if (!state.profile || typeof state.profile !== "object") state.profile = { id: "", uid: 0 };
+  if (typeof state.profile.id !== "string") state.profile.id = "";
+  if (!Number.isFinite(state.profile.uid)) state.profile.uid = 0;
   if (!state.alliance || typeof state.alliance !== "object") {
     state.alliance = { name: "霜前哨站", level: 1, exp: 0, honorXp: 0, solo: true, perks: { gather: 0, build: 0, battle: 0 } };
   }
@@ -1932,6 +1937,7 @@ function normalizeState_() {
   if (!Number.isFinite(fsNorm.liveCites)) fsNorm.liveCites = 0;
   if (!fsNorm.liveByFp || typeof fsNorm.liveByFp !== "object") fsNorm.liveByFp = {};
   if (!Number.isFinite(fsNorm.uid)) fsNorm.uid = 0;
+  if (state.profile.uid > 0 && (!Number.isFinite(fsNorm.uid) || fsNorm.uid <= 0)) fsNorm.uid = state.profile.uid;
   if (typeof fsNorm.startDate !== "string") fsNorm.startDate = "";
   if (typeof fsNorm.endDate !== "string") fsNorm.endDate = "";
   if (!Number.isFinite(fsNorm.lastSyncAt)) fsNorm.lastSyncAt = 0;
@@ -2143,6 +2149,9 @@ function init() {
         /* ignore */
       }
       if (!state.introSeen) playIntroCutscene();
+      const needLogin = !(Number(state?.profile?.uid || 0) > 0) || !String(state?.profile?.id || "").trim();
+      if (needLogin) byId("screen-login")?.classList.remove("hidden");
+      else byId("screen-login")?.classList.add("hidden");
     });
 }
 
@@ -2225,6 +2234,15 @@ function bind() {
   byId("btn-cloud-load-save")?.addEventListener("click", loadCloudSave_);
   byId("btn-cloud-ping")?.addEventListener("click", pingCloudSave_);
   updateCloudMetaUi_();
+  byId("btn-login-enter")?.addEventListener("click", submitLogin_);
+  byId("login-id")?.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") byId("login-uid")?.focus();
+  });
+  byId("login-uid")?.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") submitLogin_();
+  });
+  renderLoginHistory_();
+  syncLoginUi_();
   byId("btn-import-gameplay-key")?.addEventListener("click", () => byId("gameplay-key-file")?.click());
   byId("gameplay-key-file")?.addEventListener("change", importGameplayKeyFile_);
   byId("btn-export-gameplay")?.addEventListener("click", () => {
@@ -3909,6 +3927,8 @@ function renderCity() {
   if (av) {
     const url = getCommanderPortraitUrl_();
     av.innerHTML = `<img src="${url}" alt="指挥官" title="训练家类型风格头像（可于素材包覆写 cutscene.chars.commander）" />`;
+    const pid = String(state?.profile?.id || "").trim();
+    if (pid) av.title = `指挥官：${pid}（UID ${Number(state?.profile?.uid || 0) || "-"})`;
   }
   const qk = byId("slg-quest-track");
   if (qk) {
@@ -6125,6 +6145,8 @@ function renderShopForum_() {
       : fs.lastSyncAt
         ? `<span class="muted">上次同步：${new Date(fs.lastSyncAt).toLocaleString()}</span>`
         : `<span class="muted">尚未从论坛同步</span>`;
+  enforceUidBinding_();
+  const lockedUid = Number(state?.profile?.uid || 0) > 0;
   const uidVal = fs.uid ? String(fs.uid) : "";
 
   w.innerHTML = `
@@ -6134,7 +6156,7 @@ function renderShopForum_() {
       <p class="muted">未勾选「快速同步」时，引用会<strong>逐条打开帖子核对</strong>，<strong>不做次数上限</strong>（仅受总超时与列表页数上限影响，逾时可再按同步续跑）。勾选快速同步则跳过引用验证、只累加回复。</p>
       <p class="muted">同一 UID＋起迄日期若<strong>本日已同步过</strong>，再按会提示确认，避免误刷；增量仍会合并新回复／新引用。</p>
       <div class="forum-form row">
-        <label class="forum-label">UID <input type="number" id="forum-uid" min="1" step="1" value="${uidVal}" placeholder="数字 UID" /></label>
+        <label class="forum-label">UID <input type="number" id="forum-uid" min="1" step="1" value="${uidVal}" placeholder="数字 UID" ${lockedUid ? "readonly" : ""} /></label>
         <label class="forum-label">起 <input type="date" id="forum-start" value="${fs.startDate}" /></label>
         <label class="forum-label">迄 <input type="date" id="forum-end" value="${fs.endDate}" /></label>
       </div>
@@ -6163,6 +6185,7 @@ function renderShopForum_() {
   `;
 
   byId("forum-uid")?.addEventListener("change", () => {
+    if (lockedUid) return;
     const n = parseInt(String(byId("forum-uid").value), 10);
     state.forumShop.uid = Number.isFinite(n) && n > 0 ? n : 0;
     save();
@@ -6188,7 +6211,8 @@ function renderShopForum_() {
 
   byId("btn-forum-sync")?.addEventListener("click", async () => {
     const api = window.SstmForumScrape;
-    const uid = state.forumShop.uid || parseInt(String(byId("forum-uid")?.value), 10);
+    enforceUidBinding_();
+    const uid = Number(state?.profile?.uid || state.forumShop.uid || parseInt(String(byId("forum-uid")?.value), 10));
     if (!uid || uid < 1) {
       alert("请填写有效的论坛 UID");
       return;
@@ -7188,9 +7212,69 @@ function logSave_(msg) {
 }
 
 function cloudUid_() {
-  const uid = Number(state?.forumShop?.uid || 0);
+  const uid = Number(state?.profile?.uid || state?.forumShop?.uid || 0);
   if (uid > 0) return `sstm_${uid}`;
   return "frost_default";
+}
+
+function loginHistory_() {
+  try { return JSON.parse(localStorage.getItem(LOGIN_HISTORY_KEY) || "[]"); } catch { return []; }
+}
+
+function pushLoginHistory_(id, uid) {
+  if (!id || !uid) return;
+  const next = [{ id: String(id), uid: Number(uid) }, ...loginHistory_().filter((x) => String(x.id) !== String(id))].slice(0, 6);
+  try { localStorage.setItem(LOGIN_HISTORY_KEY, JSON.stringify(next)); } catch (_) {}
+}
+
+function renderLoginHistory_() {
+  const el = byId("login-history");
+  if (!el) return;
+  const hist = loginHistory_();
+  if (!hist.length) {
+    el.textContent = "";
+    return;
+  }
+  el.innerHTML = `最近使用：${hist
+    .map((x, i) => `<button type="button" data-login-h="${i}">${escapeHtml_(x.id)} (${x.uid})</button>`)
+    .join("")}`;
+  el.querySelectorAll("[data-login-h]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.getAttribute("data-login-h") || -1);
+      const x = hist[i];
+      if (!x) return;
+      const idEl = byId("login-id");
+      const uidEl = byId("login-uid");
+      if (idEl) idEl.value = x.id;
+      if (uidEl) uidEl.value = String(x.uid);
+    });
+  });
+}
+
+function syncLoginUi_() {
+  const idEl = byId("login-id");
+  const uidEl = byId("login-uid");
+  if (idEl) idEl.value = String(state?.profile?.id || "");
+  if (uidEl) uidEl.value = String(state?.profile?.uid || "");
+}
+
+function enforceUidBinding_() {
+  const uid = Number(state?.profile?.uid || 0);
+  if (uid > 0) state.forumShop.uid = uid;
+}
+
+function submitLogin_() {
+  const id = String(byId("login-id")?.value || "").trim();
+  const uid = Number(byId("login-uid")?.value || 0);
+  if (!id) return alert("请输入论坛 ID");
+  if (!Number.isFinite(uid) || uid < 1) return alert("请输入有效的数字 UID");
+  state.profile = { id, uid };
+  enforceUidBinding_();
+  pushLoginHistory_(id, uid);
+  save();
+  byId("screen-login")?.classList.add("hidden");
+  renderLoginHistory_();
+  renderAll();
 }
 
 function updateCloudMetaUi_() {
