@@ -1,1 +1,12 @@
-{"heroes":[],"skills":{},"stages":[]}
+{
+  "heroes": [
+    { "id": "pk_bulbasaur", "name": "妙蛙种子", "role": "草", "atk": 42, "hp": 118, "slug": "bulbasaur", "activeSkillId": "a_vine_whip", "passiveSkillId": "p_overgrow", "gatherSkillId": "g_photosynth", "battleExtraSkillId": "a_seed_bomb", "evolveToId": "pk_ivysaur", "evolveAtLevel": 16 },
+    { "id": "pk_charmander", "name": "小火龙", "role": "火", "atk": 44, "hp": 112, "slug": "charmander", "activeSkillId": "a_ember", "passiveSkillId": "p_blaze", "gatherSkillId": "g_warm_forge", "battleExtraSkillId": "a_fire_spin", "evolveToId": "pk_charmeleon", "evolveAtLevel": 16 },
+    { "id": "pk_squirtle", "name": "杰尼龟", "role": "水", "atk": 41, "hp": 120, "slug": "squirtle", "activeSkillId": "a_water_gun", "passiveSkillId": "p_torrent", "gatherSkillId": "g_aqua_mine", "battleExtraSkillId": "a_bubble_beam", "evolveToId": "pk_wartortle", "evolveAtLevel": 16 },
+    { "id": "pk_pikachu", "name": "皮卡丘", "role": "电", "atk": 48, "hp": 108, "slug": "pikachu", "activeSkillId": "a_thunder_shock", "passiveSkillId": "p_static", "gatherSkillId": "g_static_field", "battleExtraSkillId": "a_volt_tackle", "evolveToId": "pk_raichu", "evolveAtLevel": 22 },
+    { "id": "pk_jigglypuff", "name": "胖丁", "role": "妖精", "atk": 36, "hp": 168, "slug": "jigglypuff", "activeSkillId": "a_disarming_voice", "passiveSkillId": "p_cute_charm", "gatherSkillId": "g_sing_rest", "battleExtraSkillId": "a_hyper_voice", "evolveToId": "pk_wigglytuff", "evolveAtLevel": 18 },
+    { "id": "pk_machop", "name": "腕力", "role": "格斗", "atk": 52, "hp": 132, "slug": "machop", "activeSkillId": "a_karate_chop", "passiveSkillId": "p_guts", "gatherSkillId": "g_muscle_mine", "battleExtraSkillId": "a_seismic_toss", "evolveToId": "pk_machoke", "evolveAtLevel": 28 }
+  ],
+  "skills": {},
+  "stages": []
+}

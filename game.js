@@ -2122,6 +2122,16 @@ function applyGameplayToState_(forceRebuild = false) {
 }
 
 function init() {
+  // 启动自愈：避免旧坏档导致整页功能空白
+  try {
+    if (!Array.isArray(state.heroes) || !state.heroes.length) {
+      applyGameplayToState_(true);
+      normalizeState_();
+      save();
+    }
+  } catch (_) {
+    // ignore and continue
+  }
   try {
     bind();
   } catch (e) {
@@ -2184,7 +2194,7 @@ async function bootstrapAsync() {
     storyPack = normalizeStoryPack(remoteStory);
     saveStoryPack(storyPack);
   }
-  if (remoteGameplay && Array.isArray(remoteGameplay.heroes)) {
+  if (remoteGameplay && Array.isArray(remoteGameplay.heroes) && remoteGameplay.heroes.length) {
     gameplay = normalizeGameplay(remoteGameplay);
     if (!Array.isArray(gameplay.heroDexExtras) || !gameplay.heroDexExtras.length) {
       gameplay.heroDexExtras = structuredClone(DEFAULT_GAMEPLAY.heroDexExtras || []);
@@ -2193,6 +2203,8 @@ async function bootstrapAsync() {
     saveGameplay(gameplay);
     // 远端配置更新时仅做“数据对齐”，不强制重建玩家英雄存档。
     applyGameplayToState_(false);
+  } else if (remoteGameplay && Array.isArray(remoteGameplay.heroes) && !remoteGameplay.heroes.length) {
+    logEvent("系统", "检测到 gameplay.json 为空，已自动回退内建默认玩法配置。");
   }
 }
 
@@ -3844,27 +3856,32 @@ function renderActionHub_() {
 }
 
 function renderAll() {
-  renderCity();
-  renderBuildings();
-  renderTechTree();
-  renderLaws();
-  renderBuildQueue();
-  renderCityMap();
-  renderGatherNodes();
-  renderHeroes();
-  renderMarchExpedition_();
-  renderBattle();
-  renderMissions();
-  renderBag_();
-  renderAlliancePage_();
-  renderShopForum_();
-  renderShopOffers_();
-  renderWildMap_();
-  renderLogs();
-  ensureStoryIndex();
-  renderStory();
-  renderActionHub_();
-  updateNavBadges_();
+  const safe = (name, fn) => {
+    try { fn(); } catch (e) {
+      console.error(`[Frost] render failed: ${name}`, e);
+    }
+  };
+  safe("renderCity", () => renderCity());
+  safe("renderBuildings", () => renderBuildings());
+  safe("renderTechTree", () => renderTechTree());
+  safe("renderLaws", () => renderLaws());
+  safe("renderBuildQueue", () => renderBuildQueue());
+  safe("renderCityMap", () => renderCityMap());
+  safe("renderGatherNodes", () => renderGatherNodes());
+  safe("renderHeroes", () => renderHeroes());
+  safe("renderMarchExpedition_", () => renderMarchExpedition_());
+  safe("renderBattle", () => renderBattle());
+  safe("renderMissions", () => renderMissions());
+  safe("renderBag_", () => renderBag_());
+  safe("renderAlliancePage_", () => renderAlliancePage_());
+  safe("renderShopForum_", () => renderShopForum_());
+  safe("renderShopOffers_", () => renderShopOffers_());
+  safe("renderWildMap_", () => renderWildMap_());
+  safe("renderLogs", () => renderLogs());
+  safe("ensureStoryIndex", () => ensureStoryIndex());
+  safe("renderStory", () => renderStory());
+  safe("renderActionHub_", () => renderActionHub_());
+  safe("updateNavBadges_", () => updateNavBadges_());
 }
 
 function ensureStoryIndex() {
@@ -4771,7 +4788,7 @@ function pkmSpriteUrl_(slug) {
   const s = String(slug || "rattata")
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, "");
-  return `https://play.pokemonshowdown.com/sprites/gen5ani/${s}.gif`;
+  return `https://img.pokemondb.net/sprites/home/normal/${s}.png`;
 }
 
 const COMMANDER_TRAINER_KEYS_ = ["veteran", "hiker", "scientist", "ranger", "blackbelt"];
@@ -7306,7 +7323,7 @@ async function submitLogin_() {
   enforceUidBinding_();
   pushLoginHistory_(id, uid);
   save();
-  setCloudSavingUi_(true, "正在读取该 UID 的云端记录…");
+  setCloudSavingUi_(true, "正在读取该 UID 的云端记录…", "云端读档中");
   try {
     const ret = await cloudRequestRead_("load_full", { uid: cloudUid_() });
     const row = ret?.data || null;
@@ -7329,7 +7346,7 @@ async function submitLogin_() {
   } catch (_) {
     // 云端没有记录或暂时不可达时，继续本地游玩
   } finally {
-    setCloudSavingUi_(false);
+    setCloudSavingUi_(false, "", "云端存档");
   }
   byId("screen-login")?.classList.add("hidden");
   renderLoginHistory_();
@@ -7410,10 +7427,12 @@ async function pushForumDailyActivityLogs_(uid, startDate, endDate, repliesByDay
   }
 }
 
-function setCloudSavingUi_(show, text) {
+function setCloudSavingUi_(show, text, title) {
   const modal = byId("cloud-saving-modal");
   const txt = byId("cloud-saving-text");
+  const tt = byId("cloud-saving-title");
   if (txt && text) txt.textContent = text;
+  if (tt && title) tt.textContent = title;
   if (modal) modal.classList.toggle("hidden", !show);
   ["btn-cloud-upload-save", "btn-cloud-load-save", "btn-cloud-ping"].forEach((id) => {
     const b = byId(id);
@@ -7495,7 +7514,7 @@ function collectFullSavePayload_() {
 }
 
 async function uploadCloudSave_() {
-  setCloudSavingUi_(true, "正在存档，请稍候…");
+  setCloudSavingUi_(true, "正在存档，请稍候…", "云端存档中");
   try {
     const payload = collectFullSavePayload_();
     await cloudWriteNoCors_("save_full", payload);
@@ -7526,19 +7545,19 @@ async function uploadCloudSave_() {
     logSave_(`云端上传失败：${e?.message || e}`);
     alert(`云端上传失败：${e?.message || e}`);
   } finally {
-    setCloudSavingUi_(false);
+    setCloudSavingUi_(false, "", "云端存档");
   }
 }
 
 async function loadCloudSave_() {
-  setCloudSavingUi_(true, "正在读档，请稍候…");
+  setCloudSavingUi_(true, "正在读档，请稍候…", "云端读档中");
   try {
     const ret = await cloudRequestRead_("load_full", { uid: cloudUid_() });
     const row = ret?.data || null;
     if (!row) {
       logSave_("云端恢复失败：找不到该 UID 的存档。");
       alert("云端没有找到可恢复存档。");
-      setCloudSavingUi_(false);
+      setCloudSavingUi_(false, "", "云端存档");
       return;
     }
     const parsedSave = JSON.parse(String(row.save_json || "{}"));
@@ -7556,7 +7575,7 @@ async function loadCloudSave_() {
   } catch (e) {
     logSave_(`云端恢复失败：${e?.message || e}`);
     alert(`云端恢复失败：${e?.message || e}`);
-    setCloudSavingUi_(false);
+    setCloudSavingUi_(false, "", "云端存档");
   }
 }
 
@@ -7672,6 +7691,8 @@ function iconHtml(type, id, cls) {
   )}`;
   if (type === "resource") url = assets?.resources?.[id] || "";
   if (type === "building") url = assets?.buildings?.[id] || "";
+  // iconify 在部分 GitHub Pages 环境会失效，直接走内建占位避免整块空白。
+  if (/api\.iconify\.design/i.test(String(url || ""))) url = "";
   if (!url) url = fallbackUrl;
   return `<img class="${cls}" src="${url}" alt="${type}-${id}" onerror="this.onerror=null;this.src='${fallbackUrl}'" />`;
 }
@@ -8154,7 +8175,19 @@ function loadGameplay() {
   try {
     const raw = localStorage.getItem(GAMEPLAY_KEY);
     if (!raw) return normalizeGameplay(DEFAULT_GAMEPLAY);
-    return normalizeGameplay(JSON.parse(raw));
+    const parsed = JSON.parse(raw);
+    const normalized = normalizeGameplay(parsed);
+    const isEmptyCfg =
+      !Array.isArray(parsed?.heroes) ||
+      parsed.heroes.length === 0 ||
+      !Array.isArray(normalized?.heroes) ||
+      normalized.heroes.length === 0;
+    if (isEmptyCfg) {
+      const fallback = normalizeGameplay(DEFAULT_GAMEPLAY);
+      localStorage.setItem(GAMEPLAY_KEY, JSON.stringify(fallback));
+      return fallback;
+    }
+    return normalized;
   } catch {
     return normalizeGameplay(DEFAULT_GAMEPLAY);
   }
