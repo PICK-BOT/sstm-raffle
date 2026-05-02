@@ -1,0 +1,2345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>糖果小镇 · Candy Town</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#1a0533;--accent:#f472b6;--gold:#fbbf24;--shadow:0 4px 20px rgba(0,0,0,.5)}
+body{background:var(--bg);font-family:'Nunito',sans-serif;color:#fff;min-height:100vh;overflow:hidden;display:flex;flex-direction:column;align-items:center}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10}
+.screen.hidden{display:none}
+
+/* ── MENU ── */
+#menu{background:radial-gradient(ellipse at 50% 0%,#5b0f8a 0%,#1a0533 70%)}
+.menu-glow{position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:300px;height:300px;background:radial-gradient(circle,rgba(244,114,182,.35) 0%,transparent 70%);pointer-events:none}
+.menu-title{font-size:2.5rem;font-weight:900;background:linear-gradient(135deg,#fde68a,#f472b6,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:4px}
+.menu-sub{font-size:.9rem;color:rgba(255,255,255,.5);margin-bottom:24px;text-align:center}
+.menu-candies{display:flex;gap:9px;margin-bottom:22px}
+.demo-candy{width:50px;height:58px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.7rem;box-shadow:0 6px 0 rgba(0,0,0,.4);animation:float 2s ease-in-out infinite}
+.demo-candy:nth-child(2){animation-delay:.3s}.demo-candy:nth-child(3){animation-delay:.6s}.demo-candy:nth-child(4){animation-delay:.9s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.btn-play{padding:14px 52px;font-size:1.1rem;font-weight:800;font-family:'Nunito',sans-serif;background:linear-gradient(135deg,#f472b6,#a855f7);border:none;border-radius:50px;color:#fff;cursor:pointer;box-shadow:0 6px 0 #7c2d8a;transition:transform .1s,box-shadow .1s}
+.btn-play:active{transform:translateY(3px);box-shadow:0 3px 0 #7c2d8a}
+.btn-play:disabled{opacity:.45;cursor:not-allowed}
+.menu-levels{display:flex;flex-direction:column;gap:8px;margin-top:14px;align-items:center;max-height:180px;overflow-y:auto;width:min(360px,94vw)}
+.level-row{display:flex;gap:8px}
+.level-btn{width:52px;height:52px;border-radius:13px;font-size:.88rem;font-weight:800;font-family:'Nunito',sans-serif;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;transition:all .15s}
+.level-btn:hover,.level-btn.active{background:rgba(244,114,182,.25);border-color:#f472b6;color:#fde68a}
+.level-btn.locked{opacity:.4;cursor:not-allowed}
+#menu-top-bar{width:100%;max-width:460px;display:flex;align-items:center;justify-content:space-between;padding:10px 14px 0}
+.menu-btn-row{display:flex;gap:6px;flex-wrap:wrap}
+.menu-btn-sm{padding:5px 10px;border-radius:18px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;font-size:.72rem;font-weight:700;font-family:'Nunito',sans-serif}
+
+/* ── GAME ── */
+#game{background:radial-gradient(ellipse at 50% 30%,#2d0a5e 0%,#1a0533 60%);flex-direction:column;padding:0;overflow:hidden}
+body.skin-forest #game{background:radial-gradient(ellipse at 50% 30%,#0a3a1a 0%,#061810 60%)}
+body.skin-ocean  #game{background:radial-gradient(ellipse at 50% 30%,#0a1a4a 0%,#040d28 60%)}
+body.skin-sunset #game{background:radial-gradient(ellipse at 50% 30%,#4a1a0a 0%,#280a04 60%)}
+
+/* TOPBAR */
+#topbar{width:100%;display:flex;align-items:center;justify-content:space-between;padding:9px 13px 5px;background:rgba(0,0,0,.2);border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
+#btn-back{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);color:#fff;font-size:1rem;cursor:pointer;flex-shrink:0}
+#level-label{font-size:.88rem;font-weight:800;color:#f472b6;text-align:center;flex:1}
+.top-right{display:flex;gap:7px;align-items:center;flex-shrink:0}
+#coin-badge{background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.4);border-radius:12px;padding:3px 9px;font-size:.78rem;font-weight:800;color:#fbbf24}
+#move-badge{background:rgba(244,114,182,.15);border:1px solid rgba(244,114,182,.3);border-radius:12px;padding:3px 9px;font-size:.78rem;font-weight:800;color:#f472b6}
+
+/* GOAL BAR */
+#goal-bar{width:100%;background:rgba(0,0,0,.15);padding:4px 10px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;font-size:.72rem;flex-shrink:0}
+#goal-text{color:rgba(255,255,255,.7);flex:1}
+#goal-progress{color:#fde68a;font-weight:800}
+#progress-wrap{width:calc(100% - 20px);height:5px;background:rgba(255,255,255,.1);border-radius:3px;margin:0 10px 4px;flex-shrink:0}
+#progress-bar{height:100%;background:linear-gradient(90deg,#f472b6,#fde68a);border-radius:3px;transition:width .4s}
+
+/* BOARD */
+#board-wrap{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:4px;position:relative}
+#board{position:relative;background:rgba(0,0,0,.2);border-radius:12px;border:1.5px solid rgba(255,255,255,.07)}
+
+/* 格子底层（障碍/果冻视觉） */
+.bg-cell{position:absolute;border-radius:9px;pointer-events:none}
+.bg-cell.jelly1{background:rgba(244,114,182,.18);box-shadow:inset 0 0 0 2px rgba(244,114,182,.4)}
+.bg-cell.jelly2{background:rgba(244,114,182,.36);box-shadow:inset 0 0 0 2px rgba(244,114,182,.7)}
+.bg-cell.ice{background:rgba(147,197,253,.2);box-shadow:inset 0 0 0 2px rgba(147,197,253,.5)}
+.bg-cell.blocked{background:rgba(0,0,0,.4)}
+/* 糖果 — 关键：不用 onclick，用 data-id */
+.candy{position:absolute;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;box-shadow:0 4px 0 rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.3);border:1.5px solid rgba(255,255,255,.15);z-index:5;touch-action:manipulation;overflow:visible}
+.candy:hover{filter:brightness(1.12)}
+/* selected 由后面定义覆盖，这里保留 keyframes */
+@keyframes selPulse{from{outline-color:#fde68a;outline-width:3px}to{outline-color:rgba(253,230,138,.7);outline-width:5px}}
+.candy.hint-glow{animation:hglow .5s ease-in-out infinite alternate}
+@keyframes hglow{from{outline:2px solid transparent;outline-offset:0}to{outline:3px solid #fde68a;outline-offset:2px}}
+
+/* 特殊糖果内部标记 */
+.candy .special-mark{position:absolute;inset:0;pointer-events:none;border-radius:8px;overflow:hidden;background:none}
+.candy.sp-strH .special-mark{background:repeating-linear-gradient(0deg,transparent 0px,transparent 3px,rgba(255,255,255,.5) 3px,rgba(255,255,255,.5) 5px)}
+.candy.sp-strV .special-mark{background:repeating-linear-gradient(90deg,transparent 0px,transparent 3px,rgba(255,255,255,.5) 3px,rgba(255,255,255,.5) 5px)}
+.candy.sp-wrap .special-mark{background:none}
+.candy.sp-wrap::after{content:'🎀';position:absolute;font-size:.55rem;top:1px;right:2px;pointer-events:none;line-height:1}
+.candy.sp-bomb .special-mark{background:none}
+.candy.sp-fish .special-mark{background:none}
+/* 果冻覆盖层：::before 伪元素，pointer-events:none 不阻挡点击 */
+.candy.jelly1::before{content:'';position:absolute;inset:0;border-radius:9px;background:rgba(236,72,153,.45);box-shadow:inset 0 0 0 3px rgba(244,114,182,.9);pointer-events:none;z-index:1}
+.candy.jelly2::before{content:'';position:absolute;inset:0;border-radius:9px;background:rgba(236,72,153,.65);box-shadow:inset 0 0 0 3px #f472b6,0 0 8px rgba(244,114,182,.5);pointer-events:none;z-index:1}
+/* 冰块覆盖层 */
+.candy.ice::before{content:'❄';position:absolute;inset:0;border-radius:9px;background:rgba(147,197,253,.6);box-shadow:inset 0 0 0 3px rgba(147,197,253,.9);pointer-events:none;z-index:1;display:flex;align-items:center;justify-content:center;font-size:1.1em;color:rgba(255,255,255,.95)}
+/* selected 状态：outline 而非 box-shadow，确保选中效果在覆盖层之上且不被遮挡 */
+.candy.selected{outline:3px solid #fde68a !important;outline-offset:1px;z-index:9 !important;animation:selPulse .4s ease-in-out infinite alternate}
+
+/* 暗格样式 */
+.candy.dark-unrevealed{background:linear-gradient(135deg,#1a1040,#0d0826)!important;color:rgba(147,197,253,.5)!important;border-color:rgba(147,197,253,.3)!important}
+/* 消除动画 */
+.candy.popping{animation:candyPop .22s ease-out forwards;pointer-events:none}
+@keyframes candyPop{0%{transform:scale(1)}60%{transform:scale(1.3)}100%{transform:scale(0);opacity:0}}
+
+/* 道具栏 */
+#booster-bar{width:100%;display:flex;gap:7px;justify-content:center;padding:5px 10px;flex-shrink:0;border-top:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.15)}
+.booster-btn{flex:1;max-width:78px;padding:5px 3px;border-radius:12px;border:1.5px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;font-family:'Nunito',sans-serif;font-size:.67rem;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;transition:all .12s}
+.booster-btn:active{transform:scale(.94)}
+.booster-btn:disabled{opacity:.32;cursor:not-allowed}
+.booster-btn.active-mode{border-color:#fde68a;background:rgba(253,230,138,.15)}
+.bi{font-size:.88rem}
+
+/* overlays */
+.overlay{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px}
+.overlay.show{display:flex!important}
+.ov-card{background:linear-gradient(160deg,#2d0a5e,#1a0533);border:1px solid rgba(244,114,182,.25);border-radius:22px;padding:24px 22px;max-width:340px;width:100%;text-align:center;max-height:90vh;overflow-y:auto}
+.ov-icon{font-size:2.8rem;margin-bottom:7px}
+.ov-title{font-size:1.3rem;font-weight:900;margin-bottom:7px}
+.ov-body{font-size:.86rem;color:rgba(255,255,255,.65);margin-bottom:16px;line-height:1.6}
+.stars-row{display:flex;justify-content:center;gap:8px;margin-bottom:12px;font-size:1.5rem}
+.star{opacity:.2;transition:opacity .25s,transform .3s}.star.lit{opacity:1;transform:scale(1.2)}
+.ov-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.ov-btn{padding:10px 20px;border-radius:50px;font-size:.88rem;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;border:none;transition:transform .1s}
+.ov-btn:active{transform:scale(.95)}
+.ov-btn.primary{background:linear-gradient(135deg,#f472b6,#a855f7);color:#fff;box-shadow:0 4px 0 #7c2d8a}
+.ov-btn.secondary{background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.2)}
+
+/* 商店 */
+.shop-item{display:flex;align-items:center;gap:9px;padding:9px 11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:7px}
+.shop-item-info{flex:1}.shop-item-name{font-size:.85rem;font-weight:800;margin-bottom:2px}
+.shop-item-desc{font-size:.7rem;color:rgba(255,255,255,.5)}.shop-item-cost{font-size:.7rem;color:#fbbf24;margin-top:2px}
+.shop-btn{padding:6px 13px;border:none;border-radius:16px;background:linear-gradient(135deg,#f472b6,#a855f7);color:#fff;font-size:.76rem;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif}
+.shop-btn:disabled{opacity:.35;cursor:not-allowed}
+/* 皮肤 */
+.skin-option{display:flex;align-items:center;gap:11px;background:rgba(255,255,255,.06);cursor:pointer;border:2px solid rgba(255,255,255,.1);border-radius:13px;padding:11px;transition:all .15s;margin-bottom:8px}
+.skin-option:hover{background:rgba(244,114,182,.12);border-color:#f472b6}
+.skin-btn.active{background:rgba(244,114,182,.2)!important;border-color:#f472b6!important}
+.skin-check{font-size:1rem;color:#f472b6;opacity:0;min-width:18px;text-align:center}
+.skin-btn.active .skin-check{opacity:1}
+/* 登录 */
+.login-card{background:rgba(0,0,0,.3);border:1px solid rgba(244,114,182,.2);border-radius:18px;padding:22px 18px;max-width:360px;width:94%;margin-top:12px}
+.inp-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.inp-row label{min-width:48px;font-size:.82rem;color:rgba(255,255,255,.65)}
+.inp{flex:1;padding:9px 12px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.18);border-radius:10px;color:#fff;font-size:.88rem;outline:none;font-family:'Nunito',sans-serif}
+.inp:focus{border-color:#f472b6}
+.err-msg{color:#f87171;font-size:.78rem;min-height:16px;margin-bottom:6px}
+.ih-label{font-size:.7rem;color:rgba(255,255,255,.4);margin-top:8px;margin-bottom:4px}
+.ih-chips{display:flex;flex-wrap:wrap;gap:5px}
+.ih-chip-wrap{display:inline-flex;align-items:center;gap:2px;background:rgba(244,114,182,.1);border:1px solid rgba(244,114,182,.3);border-radius:18px;padding:2px 2px 2px 8px}
+.ih-chip{border:none;padding:2px 5px;border-radius:12px;font-size:.74rem;cursor:pointer;background:transparent;color:#f472b6;font-family:inherit}
+.ih-chip:hover{background:rgba(244,114,182,.15)}
+.ih-x{width:16px;height:16px;padding:0;border:none;border-radius:50%;cursor:pointer;background:rgba(255,80,80,.3);color:#fff;font-size:.65rem;font-weight:700}
+/* FX */
+.particle{position:fixed;pointer-events:none;z-index:200;border-radius:50%;animation:partFall linear forwards}
+@keyframes partFall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(100px) rotate(520deg);opacity:0}}
+/* 条纹爆炸闪光 */
+.stripe-flash{position:absolute;pointer-events:none;z-index:20;background:linear-gradient(90deg,transparent,rgba(253,230,138,.7),transparent);animation:stripeFlash .35s ease-out forwards}
+@keyframes stripeFlash{0%{opacity:1}100%{opacity:0;transform:scaleX(1.1)}}
+.stripe-flash.vert{background:linear-gradient(0deg,transparent,rgba(253,230,138,.7),transparent);animation:stripeFlashV .35s ease-out forwards}
+@keyframes stripeFlashV{0%{opacity:1}100%{opacity:0;transform:scaleY(1.1)}}
+.score-pop{position:fixed;z-index:300;pointer-events:none;font-size:.95rem;font-weight:900;color:#fde68a;text-shadow:0 2px 8px rgba(0,0,0,.5);animation:scoreRise .7s ease-out forwards}
+@keyframes scoreRise{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-50px)}}
+.combo-banner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:300;pointer-events:none;font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#fde68a,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:comboBanner .8s ease-out forwards;white-space:nowrap}
+@keyframes comboBanner{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}40%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
+/* loading */
+#loading-mask{display:none;position:fixed;inset:0;z-index:999;background:rgba(26,5,51,.88);flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.loading-spinner{width:36px;height:36px;border:3px solid rgba(244,114,182,.25);border-top-color:#f472b6;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading-text{color:rgba(255,255,255,.65);font-size:.86rem}
+#tm-offline-bar{display:none;position:fixed;bottom:10px;right:10px;z-index:999;background:rgba(180,40,40,.9);border:1px solid #e55;color:#fdd;padding:7px 12px;border-radius:10px;font-size:.76rem;cursor:pointer;text-align:center;line-height:1.5}
+</style>
+</head>
+<body>
+<!-- LOGIN -->
+<div id="screen-login" class="screen" style="display:flex">
+  <div class="menu-glow"></div>
+  <div class="menu-title" style="margin-top:10px">🍬 糖果小镇</div>
+  <div class="menu-sub">Candy Town · 三消冒险</div>
+  <div class="menu-candies">
+    <div class="demo-candy" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">🍎</div>
+    <div class="demo-candy" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)">🫐</div>
+    <div class="demo-candy" style="background:linear-gradient(135deg,#22c55e,#15803d)">🍀</div>
+    <div class="demo-candy" style="background:linear-gradient(135deg,#f97316,#c2410c)">🍊</div>
+  </div>
+  <div class="login-card">
+    <div class="inp-row"><label>论坛ID</label><input class="inp" id="inp-id" placeholder="你的论坛 ID" autocomplete="off"></div>
+    <div class="inp-row"><label>UID</label><input class="inp" id="inp-uid" placeholder="数字 UID" type="number" autocomplete="off"></div>
+    <div id="login-err" class="err-msg"></div>
+    <button class="btn-play" id="btn-login" style="margin-top:8px;width:100%" onclick="doLogin()">▶ 进入游戏</button>
+    <div id="id-history-row"><div class="ih-label">最近使用</div><div class="ih-chips" id="id-history-chips"></div></div>
+    <button class="btn-play" style="margin-top:8px;width:100%;background:rgba(255,255,255,.08);box-shadow:none;font-size:.83rem;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.18)" onclick="doOfflineMode()">离线模式</button>
+  </div>
+</div>
+
+<!-- MENU -->
+<div id="menu" class="screen" style="display:none">
+  <div class="menu-glow"></div>
+  <div id="menu-top-bar">
+    <div><div style="font-size:.86rem;font-weight:800;color:#f472b6" id="menu-id-label">-</div><div style="font-size:.7rem;color:rgba(255,255,255,.42)" id="menu-stats-label">-</div></div>
+    <div class="menu-btn-row">
+      <button class="menu-btn-sm" onclick="openShop()">🛒 商店</button>
+      <button class="menu-btn-sm" onclick="openSkinPanel()">🎨 皮肤</button>
+      <button class="menu-btn-sm" onclick="downloadGameData()">📥</button>
+      <button class="menu-btn-sm" onclick="doLogout()">🚪</button>
+      <button class="menu-btn-sm" onclick="openCandyGuide()">📖 图鉴</button>
+    </div>
+  </div>
+  <div class="menu-title" style="margin-top:8px">🍬 糖果小镇</div>
+  <div class="menu-sub">交换糖果·三消消除·解锁关卡</div>
+  <button class="btn-play" onclick="startLatestLevel()">▶ 继续游戏</button>
+  <div class="menu-levels" id="level-select"></div>
+</div>
+
+<!-- SHOP -->
+<div id="shop-overlay" class="overlay" style="z-index:90">
+  <div class="ov-card" style="max-width:380px;max-height:86vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
+      <div class="ov-title" style="margin:0">🛒 道具商店</div>
+      <button onclick="closeShop()" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:1rem">×</button>
+    </div>
+    <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:9px 13px;margin-bottom:12px;font-size:.82rem;line-height:1.9">
+      <div>📝 今日回复数：<b id="sh-replies">-</b> 条</div>
+      <div>💬 被引用数：<b id="sh-citations">-</b> 条</div>
+      <div>🎫 重复挑战卷：<b id="sh-tickets">-</b> 张</div>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 11px;margin-bottom:9px">
+      <div style="font-size:.75rem;color:rgba(255,255,255,.6);margin-bottom:6px">论坛抓取区间</div>
+      <div class="inp-row" style="margin-bottom:5px"><label style="min-width:52px">开始</label><input class="inp" id="forum-start-date" type="date"></div>
+      <div class="inp-row" style="margin-bottom:0"><label style="min-width:52px">结束</label><input class="inp" id="forum-end-date" type="date"></div>
+    </div>
+    <div id="shop-items-list"></div>
+    <button class="ov-btn secondary" style="width:100%;margin-top:10px" onclick="refreshForumData()">🔄 抓取论坛数据</button>
+    <button class="ov-btn secondary" style="width:100%;margin-top:7px;border-color:rgba(251,191,36,.4);color:#fbbf24" onclick="refreshForumDataFast()">⚡ 快速抓取</button>
+  </div>
+</div>
+
+<!-- SKIN -->
+<div id="skin-overlay" class="overlay" style="z-index:90">
+  <div class="ov-card" style="max-width:320px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
+      <div class="ov-title" style="margin:0">🎨 主题皮肤</div>
+      <button onclick="closeSkinPanel()" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:1rem">×</button>
+    </div>
+    <div class="skin-option skin-btn" data-skin="default" onclick="applySkin('default')"><div style="font-size:1.3rem">🍬</div><div style="flex:1"><div style="font-weight:800">糖果王国</div><div style="font-size:.7rem;color:rgba(255,255,255,.45)">默认</div></div><div class="skin-check">✓</div></div>
+    <div class="skin-option skin-btn" data-skin="forest" onclick="applySkin('forest')"><div style="font-size:1.3rem">🌲</div><div style="flex:1"><div style="font-weight:800">魔法森林 <span style="font-size:.67rem;color:#fbbf24">（通关15关）</span></div></div><div class="skin-check">✓</div></div>
+    <div class="skin-option skin-btn" data-skin="ocean" onclick="applySkin('ocean')"><div style="font-size:1.3rem">🌊</div><div style="flex:1"><div style="font-weight:800">海底世界 <span style="font-size:.67rem;color:#fbbf24">（通关30关）</span></div></div><div class="skin-check">✓</div></div>
+    <div class="skin-option skin-btn" data-skin="sunset" onclick="applySkin('sunset')"><div style="font-size:1.3rem">🌅</div><div style="flex:1"><div style="font-weight:800">落日糖果 <span style="font-size:.67rem;color:#fbbf24">（通关60关）</span></div></div><div class="skin-check">✓</div></div>
+  </div>
+</div>
+
+<div id="tm-offline-bar" onclick="retryCloud()">🔴 离线游玩中<br><span style="font-size:.68rem;opacity:.8">点击重新连线</span></div>
+
+<!-- 糖果图鉴弹窗 -->
+<div id="guide-overlay" class="overlay" style="z-index:90">
+  <div class="ov-card" style="max-width:400px;max-height:88vh;overflow-y:auto;text-align:left">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="ov-title" style="margin:0;color:#fde68a">📖 特殊糖果图鉴</div>
+      <button onclick="closeGuide()" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:1rem">×</button>
+    </div>
+    <div style="font-size:.78rem;color:rgba(255,255,255,.5);margin-bottom:12px">消除3个同色糖果可消除格子，4/5个以上会产生特殊糖果！</div>
+    <!-- 条纹横 -->
+    <div style="background:rgba(255,255,255,.06);border-radius:12px;padding:11px 13px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
+        <div style="width:42px;height:42px;border-radius:9px;background:linear-gradient(135deg,#ef4444,#b91c1c);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;position:relative;overflow:hidden">🍎<div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0px,transparent 3px,rgba(255,255,255,.5) 3px,rgba(255,255,255,.5) 5px)"></div></div>
+        <div><div style="font-weight:800;color:#fde68a;font-size:.88rem">横条纹糖果</div><div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-top:2px">如何获得：同色糖果横向4连消除</div></div>
+      </div>
+      <div style="font-size:.75rem;color:rgba(255,255,255,.78);line-height:1.6">✨ 消除效果：消除所在整行的所有糖果！</div>
+    </div>
+    <!-- 条纹竖 -->
+    <div style="background:rgba(255,255,255,.06);border-radius:12px;padding:11px 13px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
+        <div style="width:42px;height:42px;border-radius:9px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;position:relative;overflow:hidden">🫐<div style="position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0px,transparent 3px,rgba(255,255,255,.5) 3px,rgba(255,255,255,.5) 5px)"></div></div>
+        <div><div style="font-weight:800;color:#fde68a;font-size:.88rem">竖条纹糖果</div><div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-top:2px">如何获得：同色糖果纵向4连消除</div></div>
+      </div>
+      <div style="font-size:.75rem;color:rgba(255,255,255,.78);line-height:1.6">✨ 消除效果：消除所在整列的所有糖果！</div>
+    </div>
+    <!-- 包装糖 -->
+    <div style="background:rgba(255,255,255,.06);border-radius:12px;padding:11px 13px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
+        <div style="width:42px;height:42px;border-radius:9px;background:linear-gradient(135deg,#a855f7,#6d28d9);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🎀</div>
+        <div><div style="font-weight:800;color:#fde68a;font-size:.88rem">包装糖果</div><div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-top:2px">如何获得：L形或T形消除（5个）</div></div>
+      </div>
+      <div style="font-size:.75rem;color:rgba(255,255,255,.78);line-height:1.6">✨ 消除效果：以自身为中心3×3范围内所有糖果！触发两次爆炸！</div>
+    </div>
+    <!-- 彩色炸弹 -->
+    <div style="background:rgba(255,255,255,.06);border-radius:12px;padding:11px 13px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
+        <div style="width:42px;height:42px;border-radius:9px;background:conic-gradient(#ef4444,#3b82f6,#22c55e,#f97316,#a855f7,#eab308,#ef4444);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🌈</div>
+        <div><div style="font-weight:800;color:#fde68a;font-size:.88rem">彩色炸弹</div><div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-top:2px">如何获得：同色5连（直线）消除</div></div>
+      </div>
+      <div style="font-size:.75rem;color:rgba(255,255,255,.78);line-height:1.6">✨ 消除效果：与相邻糖果交换后，消除棋盘上所有与目标同色的糖果！</div>
+    </div>
+    <!-- 鱼鱼 -->
+    <div style="background:rgba(255,255,255,.06);border-radius:12px;padding:11px 13px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
+        <div style="width:42px;height:42px;border-radius:9px;background:linear-gradient(135deg,#06b6d4,#0369a1);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🐟</div>
+        <div><div style="font-weight:800;color:#fde68a;font-size:.88rem">鱼鱼糖果</div><div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-top:2px">如何获得：鱼形/特殊形状消除</div></div>
+      </div>
+      <div style="font-size:.75rem;color:rgba(255,255,255,.78);line-height:1.6">✨ 消除效果：鱼鱼游向随机目标格并消除！</div>
+    </div>
+    <!-- 组合 -->
+    <div style="font-size:.82rem;font-weight:800;color:#f472b6;margin-bottom:8px">⚡ 特殊糖果组合效果</div>
+    <div style="font-size:.74rem;color:rgba(255,255,255,.72);line-height:1.9;background:rgba(255,255,255,.04);border-radius:10px;padding:10px 12px">
+      条纹 × 条纹 → 十字消除（整行 + 整列）<br>
+      包装 × 条纹 → 5×1 + 行/列超级清扫<br>
+      包装 × 包装 → 5×5 范围爆炸<br>
+      彩弹 × 普通 → 消除所有同色糖果<br>
+      彩弹 × 条纹 → 所有同色变条纹并触发<br>
+      彩弹 × 彩弹 → 清除整个棋盘！
+    </div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen" style="display:none;justify-content:flex-start">
+  <div id="topbar">
+    <button id="btn-back" onclick="backToMenu()">←</button>
+    <div id="level-label">第 1 关</div>
+    <div class="top-right">
+      <div id="coin-badge">🪙 <span id="game-coins">0</span></div>
+      <div id="move-badge">步 <span id="move-val">20</span></div>
+    </div>
+  </div>
+  <div id="goal-bar"><div id="goal-text">目标：得分 1000</div><div id="goal-progress">0/1000</div></div>
+  <div id="progress-wrap"><div id="progress-bar" style="width:0%"></div></div>
+  <div id="board-wrap"><div id="board"></div></div>
+  <div id="booster-bar">
+    <button class="booster-btn" id="btn-hammer" onclick="toggleHammer()"><span class="bi">🔨</span><span id="ico-hammer">×0</span>锤子</button>
+    <button class="booster-btn" id="btn-lollipop" onclick="toggleLollipop()"><span class="bi">🍭</span><span id="ico-lollipop">×0</span>棒棒糖</button>
+    <button class="booster-btn" id="btn-fish" onclick="toggleFishBooster()"><span class="bi">🐟</span><span id="ico-fish">×0</span>鱼鱼</button>
+    <button class="shop-btn" onclick="openShop()" style="flex:none;padding:6px 12px">🛒</button>
+  </div>
+</div>
+
+<!-- WIN -->
+<div id="ov-win" class="overlay"><div class="ov-card">
+  <div class="ov-icon">🎉</div>
+  <div class="ov-title" style="color:#fde68a">关卡通关！</div>
+  <div class="stars-row" id="win-stars"><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span></div>
+  <div class="ov-body" id="win-body">恭喜！</div>
+  <div class="ov-btns">
+    <button class="ov-btn secondary" onclick="backToMenu()">🏠 回首页</button>
+    <button class="ov-btn primary" id="btn-next-level" onclick="nextLevel()">下一关 →</button>
+  </div>
+</div></div>
+
+<!-- LOSE -->
+<div id="ov-lose" class="overlay"><div class="ov-card">
+  <div class="ov-icon">😔</div>
+  <div class="ov-title" style="color:#f87171">步数用完！</div>
+  <div class="ov-body" id="lose-body">再挑战一次？</div>
+  <div class="ov-btns">
+    <button class="ov-btn secondary" onclick="backToMenu()">🏠 回首页</button>
+    <button class="ov-btn primary" onclick="restartLevel()">🔄 再来一次</button>
+  </div>
+</div></div>
+
+<div id="loading-mask"><div class="loading-spinner"></div><div id="loading-text">读取中...</div></div>
+<script>
+// ══════════════════════════════════════════
+// 糖果小镇 v2 · 完整修复版
+// 修复：1.点击失效 2.GAS URL 3.论坛抓取 4.特殊糖果真正出现 5.卡位 6.10种关卡类型
+// ══════════════════════════════════════════
+
+// ── 糖果颜色 ──
+const CANDY_COLORS=[
+  {id:0,emoji:'🍎',grad:['#ef4444','#b91c1c']},
+  {id:1,emoji:'🫐',grad:['#3b82f6','#1d4ed8']},
+  {id:2,emoji:'🍀',grad:['#22c55e','#15803d']},
+  {id:3,emoji:'🍊',grad:['#f97316','#c2410c']},
+  {id:4,emoji:'🍇',grad:['#a855f7','#6d28d9']},
+  {id:5,emoji:'🌻',grad:['#eab308','#a16207']},
+];
+
+// ── 特殊糖果类型 ──
+const SP={NONE:0,STRH:1,STRV:2,WRAP:3,BOMB:4,FISH:5};
+
+// ── 10种关卡类型 ──
+const LEVEL_TYPES={
+  SCORE:    'score',     // 达到目标分数
+  JELLY:    'jelly',     // 消除所有果冻格
+  COLLECT:  'collect',   // 收集指定颜色糖果数量
+  ORDER:    'order',     // 收集指定特殊糖果（条纹/包装/彩弹）
+  INGRED:   'ingred',    // 将食材（🍰🍫）移到底部出口
+  MIXED:    'mixed',     // 混合目标：果冻+得分
+  TIMED:    'timed',     // 限时内得分（用移动数模拟）
+  ICE:      'ice',       // 打破冰块（需要在冰块旁消除）
+  DARK:     'dark',      // 暗关：部分格子不可见
+  RAINBOW:  'rainbow',   // 彩虹关：需要产生彩色炸弹
+};
+
+// ── 关卡配置生成器（重写：难度递增+关卡多样化）──
+function genLevelCfg(id){
+  // 难度分段：1-10初级, 11-20中级, 21-30高级, 31-40专家
+  const tier=Math.floor((id-1)/10);
+  const pos=(id-1)%10;
+  // 棋盘尺寸随难度增加
+  const cols=Math.min(9, 5+tier);
+  const rows=Math.min(9, 6+tier);
+  // 步数：后期减少（更难）
+  const baseMoves=[30,28,26,22];
+  const moves=Math.max(10, baseMoves[Math.min(tier,3)] - Math.floor(pos/2));
+  // 颜色数：后期增加（更难匹配）
+  const colors=Math.min(6, 3+tier+Math.floor(pos/4));
+
+  // 10种关卡类型，后期同类型更难
+  const typeList=[
+    LEVEL_TYPES.SCORE,   // 1,11,21,31
+    LEVEL_TYPES.JELLY,   // 2,12,22,32
+    LEVEL_TYPES.COLLECT, // 3,13,23,33
+    LEVEL_TYPES.ICE,     // 4,14,24,34  ← 冰块关移到第4位更早出现
+    LEVEL_TYPES.INGRED,  // 5,15,25,35
+    LEVEL_TYPES.MIXED,   // 6,16,26,36
+    LEVEL_TYPES.RAINBOW, // 7,17,27,37
+    LEVEL_TYPES.ORDER,   // 8,18,28,38
+    LEVEL_TYPES.DARK,    // 9,19,29,39
+    LEVEL_TYPES.SCORE,   // 10,20,30,40 ← 末关得分关（高分目标）
+  ];
+  const typeNames=[
+    '得分关','果冻关','收集关','冰块关','食材关',
+    '混合关','彩虹关','订单关','暗格关','冲分关'
+  ];
+  const type=typeList[pos];
+
+  // 各类型目标参数（难度随tier提升）
+  const totCells=cols*rows;
+  const scoreTarget=Math.round((1200+tier*800)*Math.max(1,pos/3+1));
+  const jellyCount=Math.min(Math.round(totCells*0.3)+tier*3, Math.round(totCells*0.55));
+  const collectColor=pos%colors; // 固定颜色避免随机
+  const collectCount=10+tier*5+pos;
+  const orderTarget={type:'strH',count:3+tier*2};
+  const ingredCount=Math.min(2+tier, 5);
+  // 冰块：数量充足，确保可见（至少6个）
+  const iceCount=Math.max(6, Math.min(Math.round(totCells*0.25)+tier*3, Math.round(totCells*0.45)));
+  const bombTarget=2+tier*2;
+
+  return {
+    id,
+    name:typeNames[pos]+(tier>0?' Lv'+(tier+1):''),
+    type,cols,rows,moves,colors,
+    scoreTarget,jellyCount,collectColor,collectCount,
+    orderTarget,ingredCount,iceCount,bombTarget,
+    darkMode:type===LEVEL_TYPES.DARK,
+    tier,pos,
+  };
+}
+const MAX_LEVELS=40;
+const LEVELS=Array.from({length:MAX_LEVELS},(_,i)=>genLevelCfg(i+1));
+
+// ══ CONFIG 常量 ══
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwtg97eIbxTMTAf2vx0hzOaJbD9DCwKJeCUibt20dsmMpXTgNzwsRRoo5U-UHgx8xM8eg/exec";
+const SHEET = "糖果小镇";
+const FORUM_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+const NOVICE_FORUM_RE = /forum\/32[-\/]/;
+const FORUM_FETCH_MS = 14000;
+const KEY_HISTORY = "ct_id_history";
+const KEY_STATE   = "ct_state";
+const KEY_ID      = "ct_login_id";
+const KEY_UID     = "ct_login_uid";
+
+function gasBeacon(params){
+  try{
+    const qs=Object.keys(params).map(k=>encodeURIComponent(k)+"="+encodeURIComponent(params[k])).join("&");
+    new Image().src=GAS_URL+"?"+qs;
+  }catch(e){}
+}
+function gasJsonp(params,timeout=10000){
+  return new Promise((resolve,reject)=>{
+    const cb="ct_cb_"+Date.now()+"_"+Math.floor(Math.random()*9999);
+    const tid=setTimeout(()=>{ try{delete window[cb];}catch(e){} reject(new Error("timeout")); },timeout);
+    window[cb]=(data)=>{ clearTimeout(tid); try{delete window[cb];}catch(e){} data&&data.ok?resolve(data):reject(new Error(data&&data.error||"err")); };
+    const qs=Object.keys(params).map(k=>encodeURIComponent(k)+"="+encodeURIComponent(params[k])).join("&");
+    const s=document.createElement("script");
+    s.src=GAS_URL+"?"+qs+"&callback="+cb+"&_t="+Date.now();
+    s.onerror=()=>{ clearTimeout(tid); try{delete window[cb];}catch(e){} reject(new Error("load_fail")); };
+    document.head.appendChild(s);
+  });
+}
+function cloudSave(){
+  if(!G.id||_offline) return;
+  gasBeacon({sheet:SHEET,action:"save",id:G.id,uid:String(G.uid),
+    state_json:JSON.stringify(G),date:todayISO(),
+    coins:String(G.coins||0)});
+}
+async function cloudLoad(id){
+  try{ const d=await gasJsonp({sheet:SHEET,action:"load",id}); return d.data||null; }catch(e){ return null; }
+}
+
+function openSkinPanel(){
+  updateSkinUI();
+  var el=document.getElementById('skin-overlay');
+  if(el){ el.classList.add('show'); el.style.display='flex'; }
+}
+function closeSkinPanel(){
+  var el=document.getElementById('skin-overlay');
+  if(el){ el.classList.remove('show'); el.style.display='none'; }
+}
+function openShop(){
+  var el=document.getElementById('shop-overlay');
+  if(el){ el.classList.remove('hidden'); el.style.display='flex'; }
+}
+function setOffline(v){
+  _offline=v;
+  var bar=document.getElementById('tm-offline-bar');
+  if(bar) bar.style.display=v?'block':'none';
+}
+async function retryCloud(){
+  var bar=document.getElementById('tm-offline-bar');
+  if(bar) bar.textContent='🔄 正在重新连线...';
+  try{
+    await gasJsonp({sheet:SHEET,action:"ping"},5000);
+    setOffline(false);
+    if(bar){ bar.textContent='✅ 已连线'; setTimeout(function(){ bar.style.display='none'; },2000); }
+    if(G.id){
+      var cd=await cloudLoad(G.id);
+      if(cd&&cd.state_json){
+        try{
+          var cs=JSON.parse(cd.state_json);
+          if((cs.coins||0)>(G.coins||0)) G.coins=cs.coins;
+          if((cs.tickets||0)>(G.tickets||0)) G.tickets=cs.tickets;
+          Object.keys(cs.boosters||{}).forEach(function(k){ if((cs.boosters[k]||0)>(G.boosters[k]||0)) G.boosters[k]=cs.boosters[k]; });
+          saveState(); updateMenuUI();
+        }catch(e){}
+      }
+    }
+  }catch(e){
+    if(bar) bar.innerHTML='🔴 离线游玩中<br><span style="font-size:.7rem;opacity:.8">点击重新连线</span>';
+  }
+}
+function downloadGameData(){
+  var rows=[
+    ['项目','数值'],
+    ['论坛ID',G.id],['UID',G.uid],
+    ['金币',G.coins||0],
+    ['今日回复数',G.replies||0],['被引用数',G.citations||0],
+    ['重复挑战卷',G.tickets||0],
+    ['撤回道具',G.boosters.undo||0],
+    ['重排道具',G.boosters.shuffle||0],
+    ['提示道具',G.boosters.hint||0],
+    ['已解锁关卡',(G.unlocked||[]).join(' ')],
+    ['已通关关卡',(G.cleared||[]).join(' ')],
+    ['皮肤',G.skin||'default'],
+    ['下载时间',new Date().toLocaleString('zh-TW')],
+  ];
+  var csv=rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\r\n');
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download='candy-town-'+G.id+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+}
+
+// ══════════════════════════════════════════
+// UTIL
+// ══════════════════════════════════════════
+function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function showLoading(msg){ document.getElementById("loading-text").textContent=msg||"读取中..."; document.getElementById("loading-mask").style.display="flex"; }
+function hideLoading(){ document.getElementById("loading-mask").style.display="none"; }
+function showScreen(id){
+  ["screen-login","menu","game"].forEach(s=>{
+    const el=document.getElementById(s);
+    if(!el) return;
+    if(s===id){
+      el.classList.remove("hidden");
+      el.style.display="flex";
+    } else {
+      el.classList.add("hidden");
+      el.style.display="none";
+    }
+  });
+}
+
+// ══════════════════════════════════════════
+// LOGIN / LOGOUT
+// ══════════════════════════════════════════
+async function doLogin(){
+  const loginBtn=document.getElementById("btn-login");
+  const id=document.getElementById("inp-id").value.trim();
+  const uid=parseInt(document.getElementById("inp-uid").value.trim(),10);
+  const err=document.getElementById("login-err");
+  if(!id){ err.textContent="请输入论坛 ID"; return; }
+  if(!uid||uid<1){ err.textContent="请输入有效 UID（数字）"; return; }
+  err.textContent="";
+  _offline=false;
+  setOffline(false);
+  G.id=id; G.uid=uid;
+  try{
+    localStorage.setItem(KEY_ID,id);
+    localStorage.setItem(KEY_UID,String(uid));
+  }catch(e){}
+  if(loginBtn){ loginBtn.disabled=true; loginBtn.textContent="系统：正在登录中..."; }
+  showLoading("系统：正在登录中...");
+  try{
+    loadState(); // 先读本地
+    G.id=id; G.uid=uid;
+    showLoading("系统：正在登录中（读取云端）...");
+    const cloud=await cloudLoad(id);
+    if(cloud&&cloud.state_json){
+      try{
+        const cs=JSON.parse(cloud.state_json);
+        // 云端优先合并
+        Object.assign(G,cs);
+        G.id=id; G.uid=uid;
+      }catch(e){}
+    }
+  }catch(e){ _offline=true; setOffline(true); }
+  saveState();
+  saveIdHistory();
+  gasBeacon({sheet:SHEET,action:"login_log",id:G.id,uid:String(G.uid),date:todayISO(),info:"candy_town_v2.0"});
+  hideLoading();
+  if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent="▶ 登入游戏"; }
+  enterMenu();
+}
+
+function doOfflineMode(){
+  _offline=true;
+  G.id="访客"; G.uid=0;
+  G.replies=0; G.citations=0; G.unlocked=[1]; G.cleared=[]; G.tickets=0;
+  G.coins=G.coins||0; // 保留已有金币
+  G.skin=G.skin||'default';
+  G.boosters={hammer:3,lollipop:2,fish:2};
+  setOffline(true);
+  enterMenu();
+}
+
+function doLogout(){
+  if(!confirm("确认登出？")) return;
+  G={id:'',uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,tickets:0,unlocked:[1],cleared:[],boosters:{hammer:0,lollipop:0,fish:0},coins:0,skin:'default',fetchRangeHistory:{}};
+  try{
+    localStorage.removeItem(KEY_ID);
+    localStorage.removeItem(KEY_UID);
+  }catch(e){}
+  _offline=false; _forumFetched=false;
+  showScreen("screen-login");
+  renderIdHistory();
+  const hist=loadIdHistory();
+  if(hist.length){
+    document.getElementById('inp-id').value=hist[0].id||'';
+    document.getElementById('inp-uid').value=hist[0].uid||'';
+  }
+}
+
+function enterMenu(){
+  buildMenu();
+  updateMenuUI();
+  if(G.skin) curSkin=G.skin;
+  updateSkinUI();
+  showScreen("menu");
+  // 登入后自动抓取论坛数据（如果没抓过）
+  if(!_offline && !_forumFetched && G.uid>0){
+    fetchForumData(false);
+  }
+}
+
+function updateMenuUI(){
+  const idEl=document.getElementById("menu-id-label");
+  if(idEl)idEl.textContent="🍬 "+G.id+" · 🪙 "+(G.coins||0)+" 金币";
+  const slEl=document.getElementById("menu-stats-label");
+  if(slEl)slEl.textContent="📝 "+(G.replies||0)+" · 💬 "+(G.citations||0)+" · 🎫 "+(G.tickets||0)+" · 🔨"+(G.boosters.hammer||0)+" 🍭"+(G.boosters.lollipop||0)+" 🐟"+(G.boosters.fish||0);
+  if(G.skin && G.skin!==curSkin){ curSkin=G.skin; updateSkinUI(); }
+}
+
+// ══════════════════════════════════════════
+// FORUM SCRAPE（完整复制自 checkin_game.html）
+// ══════════════════════════════════════════
+async function fffProxyGet(url, noCache){
+  if(!noCache){
+    const sk="ctfff_"+url;
+    const hit=sessionStorage.getItem(sk);
+    if(hit) return hit;
+  }
+  const bustUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
+  const ctrl=new AbortController();
+  const tid=setTimeout(()=>ctrl.abort(),FORUM_FETCH_MS);
+  let resp;
+  try{
+    resp=await fetch(FORUM_PROXY+encodeURIComponent(bustUrl),{signal:ctrl.signal});
+  }finally{
+    clearTimeout(tid);
+  }
+  if(!resp.ok) throw new Error("网络错误 "+resp.status);
+  const text=await resp.text();
+  if(!noCache&&url.includes("controller=profile")){
+    try{sessionStorage.setItem("ctfff_"+url,text);}catch(e){}
+  }
+  return text;
+}
+async function fffGetSlug(uid){
+  const html=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+uid);
+  const doc=new DOMParser().parseFromString(html,"text/html");
+  for(const a of doc.querySelectorAll("a[href]")){
+    const href=a.getAttribute("href")||"";
+    const m=href.match(/\/profile\/([^/?#"]+)/);
+    if(m&&m[1].startsWith(uid+"-")) return m[1];
+  }
+  throw new Error("无法获取 slug");
+}
+function incKey_(uid,startDate,sfx){ return "ctInc_"+uid+"_"+startDate+(sfx||""); }
+function fetchRangeKey_(uid,startDate,endDate){ return String(uid||'')+'|'+String(startDate||'')+'|'+String(endDate||''); }
+function pageIdxKey_(slug){ return "ct_pageidx_"+slug; }
+function loadPageIdx_(slug){ try{return JSON.parse(localStorage.getItem(pageIdxKey_(slug))||"{}");}catch(e){return{};} }
+function savePageIdx_(slug,idx){ try{localStorage.setItem(pageIdxKey_(slug),JSON.stringify(idx));}catch(e){} }
+function loadInc_(uid,sd,sfx){ try{return JSON.parse(localStorage.getItem(incKey_(uid,sd,sfx))||"null");}catch(e){return null;} }
+function saveInc_(uid,sd,sfx,data){ try{localStorage.setItem(incKey_(uid,sd,sfx),JSON.stringify(data));}catch(e){} }
+async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
+  const opts=scrapeOpts||{};
+  const onProgress=typeof opts.onProgress==="function"?opts.onProgress:function(){};
+  const maxPages=Number(opts.maxPages)>0?Number(opts.maxPages):60;
+  let citeBudget;
+  if(opts.maxCitationChecks===0) citeBudget=0;
+  else if(opts.maxCitationChecks==null) citeBudget=Number.POSITIVE_INFINITY;
+  else citeBudget=Number.isFinite(Number(opts.maxCitationChecks))?Number(opts.maxCitationChecks):16;
+  const sTs=startDate?new Date(startDate).getTime():0;
+  const eTs=endDate?new Date(endDate+"T23:59:59Z").getTime():Date.now();
+  const prev=loadInc_(uid,startDate,keySuffix);
+  const lastTs=prev?(prev.lastTs||0):0;
+  let replies=prev?(prev.replies||0):0;
+  let emojiReacts=prev?(prev.emojiReacts||0):0;
+  const citedIds=new Set(prev?(prev.citations||[]):[]);
+  const ccKey="ctcc_"+uid;
+  let cache; try{cache=new Map(Object.entries(JSON.parse(localStorage.getItem(ccKey)||"{}")));}catch(e){cache=new Map();}
+  const pageIdx=loadPageIdx_(slug);
+  const pkeys=Object.keys(pageIdx).map(x=>parseInt(x,10)).filter(n=>Number.isFinite(n)&&n>0).sort((a,b)=>a-b);
+  let page=1,done=false,newLastTs=lastTs;
+  if(endDate && pkeys.length){
+    for(const p of pkeys){
+      const ts=new Date(pageIdx[p]).getTime();
+      if(!Number.isFinite(ts)||ts<=0) continue;
+      const pd=new Date(ts).toISOString().slice(0,10);
+      if(pd>endDate) page=p; else break;
+    }
+    if(page>1) onProgress("已根据缓存跳到第 "+page+" 页附近");
+  }
+  let pageCount=0;
+  const pageDayMap={};
+  while(!done){
+    if(page>maxPages){ onProgress("达到本轮页数上限 "+maxPages+" 页"); break; }
+    pageCount=page;
+    onProgress("正在抓取论坛数据...第 "+page+" 页");
+    const url=page===1
+      ?"https://sstm.moe/profile/"+slug+"/content/?type=forums_topic_post&change_section=1"
+      :"https://sstm.moe/profile/"+slug+"/content/page/"+page+"/?type=forums_topic_post";
+    const html=await fffProxyGet(url,true);
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const items=doc.querySelectorAll("ol.cProfileContent > li");
+    if(!items.length) break;
+    try{
+      const ft=doc.querySelector("ol.cProfileContent > li time[datetime]");
+      const dt=ft?ft.getAttribute("datetime"):"";
+      if(dt){ pageIdx[page]=dt; savePageIdx_(slug,pageIdx); }
+    }catch(e){}
+    let foundNew=false; const toCheck=[];
+    for(const item of items){
+      const te=item.querySelector("time[datetime]"); if(!te) continue;
+      const ts=new Date(te.getAttribute("datetime")).getTime();
+      if(ts>eTs) continue;
+      if(ts<sTs){done=true;break;}
+      if(lastTs>0&&ts<=lastTs){done=true;break;}
+      const day=(new Date(ts)).toISOString().slice(0,10);
+      if(!pageDayMap[page]) pageDayMap[page]=[];
+      if(!pageDayMap[page].includes(day)) pageDayMap[page].push(day);
+      foundNew=true;
+      if(ts>newLastTs) newLastTs=ts;
+      const fa=item.querySelector("p.ipsType_light a[href]");
+      if(!fa||!NOVICE_FORUM_RE.test(fa.getAttribute("href")||"")) continue;
+      replies++;
+      item.querySelectorAll(".ipsReact_reactCount").forEach(el=>{
+        const title=el.getAttribute("_title")||el.title||"";
+        if(title.includes("顶(+1)")){const n=parseInt(el.textContent.trim(),10);if(!isNaN(n))emojiReacts+=n;}
+      });
+      const bq=item.querySelector(".ipsQuote");
+      if(!bq) continue;
+      const c2=bq.getAttribute("data-ipsquote-contentcommentid");
+      const t2=bq.getAttribute("data-ipsquote-contentid");
+      if(c2&&t2) toCheck.push({cid:c2,tid:t2});
+    }
+    if(toCheck.length && citeBudget>0){
+      const need=[];
+      for(const x of toCheck){
+        if(citeBudget<=0) break;
+        if(citedIds.has(x.cid)) continue;
+        if(cache.has(x.cid)){ if(cache.get(x.cid)) citedIds.add(x.cid); continue; }
+        citeBudget-=1;
+        need.push(x);
+      }
+      const CITE_CONC=5;
+      for(let i=0;i<need.length;i+=CITE_CONC){
+        const chunk=need.slice(i,i+CITE_CONC);
+        await Promise.all(chunk.map(async (x)=>{
+          try{
+            const qUrl="https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid;
+            const qHtml=await fffProxyGet(qUrl,true);
+            if(!/forum\/32[-\/]/.test(qHtml)){cache.set(x.cid,false);return;}
+            const qDoc=new DOMParser().parseFromString(qHtml,"text/html");
+            const el=qDoc.querySelector("article#elComment_"+x.cid);
+            if(!el){cache.set(x.cid,false);return;}
+            const qs=el.querySelectorAll('.ipsQuote[data-ipsquote-userid="'+uid+'"]');
+            const ok=Array.from(qs).some(q=>!q.parentElement.closest(".ipsQuote"));
+            cache.set(x.cid,ok); if(ok)citedIds.add(x.cid);
+          }catch(e){cache.set(x.cid,false);}
+        }));
+      }
+    }
+    if(done) break;
+    if(!foundNew) break;
+    const next=doc.querySelector("li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel='next']");
+    if(!next) break;
+    page++;
+    await new Promise(r=>setTimeout(r,72));
+  }
+  try{
+    localStorage.setItem("ct_page_day_map_"+uid+"_"+(startDate||"")+"_"+(endDate||""),JSON.stringify(pageDayMap));
+  }catch(e){}
+  try{localStorage.setItem(ccKey,JSON.stringify(Object.fromEntries(cache)));}catch(e){}
+  saveInc_(uid,startDate,keySuffix,{lastTs:newLastTs,replies,citations:[...citedIds],emojiReacts});
+  return{replies,citations:citedIds.size,emojiReacts,pageCount,pageDayMap};
+}
+
+async function fetchForumData(showAlert=true, startDate, endDate){
+  return fetchForumDataCustom(showAlert,startDate,endDate,{maxPages:60,maxCitationChecks:24});
+}
+async function refreshForumData(){
+  const sd=(document.getElementById('forum-start-date')||{}).value||'';
+  const ed=(document.getElementById('forum-end-date')||{}).value||'';
+  if(sd&&ed&&new Date(sd)>new Date(ed)){ alert('开始日期不能晚于结束日期'); return; }
+  const ok = await fetchForumData(true, sd||undefined, ed||undefined);
+  if(ok) closeShop();
+}
+async function refreshForumDataFast(){
+  const sd=(document.getElementById('forum-start-date')||{}).value||'';
+  const ed=(document.getElementById('forum-end-date')||{}).value||'';
+  if(sd&&ed&&new Date(sd)>new Date(ed)){ alert('开始日期不能晚于结束日期'); return; }
+  const ok = await fetchForumDataCustom(true, sd||undefined, ed||undefined, {maxPages:30,maxCitationChecks:0});
+  if(ok) closeShop();
+}
+async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
+  if(!G.uid){
+    if(showAlert) alert('请先用有效 UID 登入后再抓取论坛数据。');
+    return false;
+  }
+  if(_offline){
+    if(showAlert) alert('当前为离线状态，无法抓取论坛数据。请先重新连线。');
+    return false;
+  }
+  showLoading("正在抓取论坛数据...");
+  try{
+    const slug=await fffGetSlug(G.uid);
+    const sd = startDate || todayISO();
+    const ed = endDate || sd;
+    const rk = fetchRangeKey_(G.uid, sd, ed);
+    if(!G.fetchRangeHistory || typeof G.fetchRangeHistory!=='object') G.fetchRangeHistory={};
+    if(G.fetchRangeHistory[rk]){
+      if(showAlert) alert('检测到重复抓取区间，本次更新无效（不增加）');
+      hideLoading();
+      return false;
+    }
+    const result=await fffScrapeRange_(G.uid,slug,sd,ed,"_tm_"+sd+"_"+ed,{
+      onProgress:(msg)=>showLoading(msg),
+      maxPages:Number(opt&&opt.maxPages)||60,
+      maxCitationChecks:(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:16
+    });
+    G.replies=result.replies||0;
+    G.citations=result.citations||0;
+    G.fetchRangeHistory[rk]=new Date().toISOString();
+    _forumFetched=true;
+    saveState();
+    cloudSave();
+    gasBeacon({
+      sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(G.uid),
+      replies:String(G.replies||0),citations:String(G.citations||0),
+      startDate:sd,endDate:ed,date:todayISO()
+    });
+    updateMenuUI();
+    if(showAlert) alert("✅ 抓取完成！\n区间: "+sd+" ~ "+ed+"\n页数: "+(result.pageCount||1)+" 页\n回复: "+G.replies+" · 被引用: "+G.citations);
+    return true;
+  }catch(e){
+    if(showAlert) alert("⚠️ 抓取失败："+e.message);
+    return false;
+  }finally{
+    hideLoading();
+  }
+}
+
+// ══════════════════════════════════════════
+// SHOP
+// ══════════════════════════════════════════
+const SHOP_ITEMS_DEF=[
+  {id:"hammer",  icon:"🔨",name:"锤子道具 ×1",  desc:"点击直接消除一个糖果",   costType:"replies",  cost:10, give:{hammer:1}},
+  {id:"lollipop",icon:"🍭",name:"棒棒糖道具 ×1",desc:"把糖果变成条纹特殊糖果", costType:"replies",  cost:20, give:{lollipop:1}},
+  {id:"fish",    icon:"🐟",name:"鱼鱼道具 ×1",  desc:"鱼游向随机目标并消除",   costType:"replies",  cost:15, give:{fish:1}},
+  {id:"ticket",  icon:"🎫",name:"重复挑战卷 ×1",desc:"可重新挑战已通关关卡",   costType:"citations",cost:10, give:{ticket:1}},
+];
+
+function openShop(){
+  renderShopItems();
+  document.getElementById("sh-replies").textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  document.getElementById("sh-citations").textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  document.getElementById("sh-tickets").textContent=G.tickets||0;
+  const today=todayISO();
+  const st=document.getElementById('forum-start-date');
+  const en=document.getElementById('forum-end-date');
+  if(st&&!st.value) st.value=today;
+  if(en&&!en.value) en.value=today;
+  const ov=document.getElementById("shop-overlay");
+  ov.classList.add("show");
+  ov.style.display='flex';
+}
+function closeShop(){
+  const ov=document.getElementById("shop-overlay");
+  ov.classList.remove("show");
+  ov.style.display='none';
+}
+
+function renderShopItems(){
+  const list=document.getElementById("shop-items-list");
+  const availReplies=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  const availCitations=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  list.innerHTML="";
+  SHOP_ITEMS_DEF.forEach(item=>{
+    const avail=item.costType==="replies"?availReplies:availCitations;
+    const canBuy=avail>=item.cost;
+    const div=document.createElement("div");
+    div.className="shop-item";
+    div.innerHTML=`
+      <div style="font-size:1.8rem">${item.icon}</div>
+      <div class="shop-item-info">
+        <div class="shop-item-name">${item.name}</div>
+        <div class="shop-item-desc">${item.desc}</div>
+        <div class="shop-item-cost">花费 ${item.cost} ${item.costType==="replies"?"📝回复数":"💬被引用数"}（剩余 ${avail}）</div>
+      </div>
+      <button class="shop-btn" ${canBuy?"":"disabled"} onclick="buyItemPrompt('${item.id}')">购买</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function buyItemPrompt(itemId){
+  const nRaw=prompt("请输入购买数量（1-99）","1");
+  if(nRaw===null) return;
+  const qty=Math.max(1,Math.min(99,parseInt(String(nRaw).trim(),10)||1));
+  buyItem(itemId,qty);
+}
+function buyItem(itemId, qty){
+  const item=SHOP_ITEMS_DEF.find(x=>x.id===itemId);
+  if(!item) return;
+  qty=Math.max(1,parseInt(qty||1,10)||1);
+  const availReplies=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  const availCitations=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  const avail=item.costType==="replies"?availReplies:availCitations;
+  const totalCost=item.cost*qty;
+  if(avail<totalCost){ alert("数量不足！"); return; }
+  if(!confirm("确认花费 "+totalCost+" "+( item.costType==="replies"?"回复数":"被引用数")+" 购买「"+item.name+" ×"+qty+"」？")) return;
+  if(item.costType==="replies") G.repliesSpent=(G.repliesSpent||0)+totalCost;
+  else G.citationsSpent=(G.citationsSpent||0)+totalCost;
+  if(item.give.hammer)   G.boosters.hammer=(G.boosters.hammer||0)+item.give.hammer*qty;
+  if(item.give.lollipop) G.boosters.lollipop=(G.boosters.lollipop||0)+item.give.lollipop*qty;
+  if(item.give.fish)     G.boosters.fish=(G.boosters.fish||0)+item.give.fish*qty;
+  if(item.give.ticket)   G.tickets=(G.tickets||0)+item.give.ticket*qty;
+  saveState(); cloudSave();
+  updateMenuUI();
+  // 立即更新关卡内道具显示（如果在游戏中购买）
+  const gameEl=document.getElementById('game');
+  if(gameEl&&!gameEl.classList.contains('hidden')&&gameEl.style.display!=='none'){
+    // 同步到 boostersLeft（游戏进行中的道具计数）
+    if(item.give.hammer)   boostersLeft.hammer=(boostersLeft.hammer||0)+item.give.hammer*qty;
+    if(item.give.lollipop) boostersLeft.lollipop=(boostersLeft.lollipop||0)+item.give.lollipop*qty;
+    if(item.give.fish)     boostersLeft.fish=(boostersLeft.fish||0)+item.give.fish*qty;
+    updateBoosterUI(); // 立即刷新道具按钮
+  }
+  openShop(); // refresh
+  gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId,cost:String(totalCost),costType:item.costType,date:todayISO()});
+}
+
+// ════ PLAYER STATE ════
+let G={
+  id:'',uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,
+  tickets:0,unlocked:[1],cleared:[],
+  boosters:{hammer:0,lollipop:0,fish:0},
+  coins:0,skin:'default',fetchRangeHistory:{},
+  seenLevelTypes:[],
+};
+let _offline=false,_forumFetched=false;
+
+// ════ ID 历史记录 ════
+function loadIdHistory(){ try{return JSON.parse(localStorage.getItem(KEY_HISTORY)||'[]');}catch(e){return[];} }
+function saveIdHistory(){
+  if(!G.id)return;
+  let h=loadIdHistory().filter(x=>x.id!==G.id);
+  h.unshift({id:G.id,uid:G.uid});
+  if(h.length>5)h=h.slice(0,5);
+  try{localStorage.setItem(KEY_HISTORY,JSON.stringify(h));}catch(e){}
+}
+function removeFromHistory(id){
+  let h=loadIdHistory().filter(x=>x.id!==id);
+  try{localStorage.setItem(KEY_HISTORY,JSON.stringify(h));}catch(e){}
+  renderIdHistory();
+}
+function renderIdHistory(){
+  const hist=loadIdHistory();
+  const row=document.getElementById('id-history-row');
+  const chips=document.getElementById('id-history-chips');
+  if(!row||!chips)return;
+  row.style.display=hist.length?'block':'none';
+  chips.innerHTML='';
+  hist.forEach(item=>{
+    const wrap=document.createElement('div');wrap.className='ih-chip-wrap';
+    const btn=document.createElement('button');btn.className='ih-chip';
+    btn.textContent=item.id+(item.uid?' ('+item.uid+')':'');
+    btn.onclick=()=>{document.getElementById('inp-id').value=item.id;document.getElementById('inp-uid').value=item.uid||'';};
+    const bx=document.createElement('button');bx.className='ih-x';bx.textContent='×';
+    bx.onclick=ev=>{ev.stopPropagation();removeFromHistory(item.id);};
+    wrap.appendChild(btn);wrap.appendChild(bx);chips.appendChild(wrap);
+  });
+}
+function saveState(){try{localStorage.setItem(KEY_STATE,JSON.stringify(G));}catch(e){}}
+function loadState(){try{const r=localStorage.getItem(KEY_STATE);if(r)Object.assign(G,JSON.parse(r));}catch(e){}}
+let curSkin='default';
+const SKINS={
+  default:{cls:'',unlock:0},forest:{cls:'skin-forest',unlock:15},
+  ocean:{cls:'skin-ocean',unlock:30},sunset:{cls:'skin-sunset',unlock:60},
+};
+function canUseSkin(s){const sk=SKINS[s];return !sk||((G.cleared||[]).length>=sk.unlock);}
+function applySkin(s){
+  if(!canUseSkin(s)){alert('需通关'+SKINS[s].unlock+'关后解锁！');return;}
+  curSkin=s;G.skin=s;saveState();cloudSave();
+  applyThemeNow();
+  updateSkinUI();closeSkinPanel();
+}
+function openCandyGuide(){showOverlay('guide-overlay');}
+function closeGuide(){hideOverlay('guide-overlay');}
+
+function applyThemeNow(){
+  const sk=SKINS[curSkin]||SKINS.default;
+  // 更新 body class 触发 CSS 皮肤规则
+  document.body.className=sk.cls||'';
+  // 直接更新游戏/菜单背景（覆盖inline style）
+  const gameEl=document.getElementById('game');
+  const menuEl=document.getElementById('menu');
+  if(gameEl){
+    const bgs={
+      '':          'radial-gradient(ellipse at 50% 30%,#2d0a5e 0%,#1a0533 60%)',
+      'skin-forest':'radial-gradient(ellipse at 50% 30%,#0a3a1a 0%,#061810 60%)',
+      'skin-ocean': 'radial-gradient(ellipse at 50% 30%,#0a1a4a 0%,#040d28 60%)',
+      'skin-sunset':'radial-gradient(ellipse at 50% 30%,#4a1a0a 0%,#280a04 60%)',
+    };
+    gameEl.style.background=bgs[sk.cls||'']||bgs[''];
+    if(menuEl)menuEl.style.background=(bgs[sk.cls||'']||bgs['']).replace('50% 30%','50% 0%');
+  }
+}
+function updateSkinUI(){document.querySelectorAll('.skin-btn').forEach(b=>{b.classList.toggle('active',b.dataset.skin===curSkin);b.style.opacity=canUseSkin(b.dataset.skin)?'1':'.42';});}
+function openSkinPanel(){updateSkinUI();showOverlay('skin-overlay');}
+function closeSkinPanel(){hideOverlay('skin-overlay');}
+function showOverlay(id){const e=document.getElementById(id);if(e){e.classList.add('show');e.style.display='flex';}}
+function hideOverlay(id){const e=document.getElementById(id);if(e){e.classList.remove('show');e.style.display='none';}}
+
+// ════ 游戏状态 ════
+let curLevel=1,levelCfg=null;
+// board[r][c] = {color(0-5|-1=空), special(SP.*), jelly(0/1/2), ice(0/1), ingredient(false/true), dark(bool), el:Element|null}
+let board=[];
+let score=0,movesLeft=0,comboCount=0;
+let selectedId=null; // candy element的data-id，解决闭包问题
+let candyIdCounter=0; // 全局唯一ID
+let isAnimating=false;
+let hammerMode=false,lollipopMode=false,fishMode=false;
+let isRepeatChallenge=false;
+let movesOvertime=false;
+let boostersLeft={hammer:0,lollipop:0,fish:0};
+let jellyLeft=0,collectDone=0,ingredDone=0,bombMade=0,iceDone=0;
+let shownSpecialTypes=new Set();
+let cellSize=50;
+
+// ════ 棋盘生成 ════
+function makeCell(color=-1,special=SP.NONE){
+  return {color,special,jelly:0,ice:0,ingredient:false,dark:false,_revealed:false,_moveIngred:false,_pendingIngred:false,el:null,cid:0};
+}
+
+function generateBoard(cfg){
+  const {cols,rows,colors,type,jellyCount,iceCount,ingredCount}=cfg;
+  const b=[];
+  for(let r=0;r<rows;r++){
+    b.push([]);
+    for(let c=0;c<cols;c++){
+      b[r].push(makeCell(randColor(colors)));
+    }
+  }
+  // 防止初始匹配
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      let tries=0;
+      while(hasInitMatch(b,r,c,rows,cols)&&tries<15){
+        b[r][c].color=randColor(colors);tries++;
+      }
+    }
+  }
+  // 根据关卡类型添加障碍
+  const positions=[];
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)positions.push([r,c]);
+  shuffleArr(positions);
+  // 果冻关 & 混合关：生成果冻格（必须确保有果冻！）
+  if(type===LEVEL_TYPES.JELLY||type===LEVEL_TYPES.MIXED){
+    let added=0;
+    // 先均匀分布，再随机填充
+    const jellyPos=[];
+    const step=Math.max(1,Math.floor(rows*cols/jellyCount));
+    for(let i=0;i<rows*cols&&added<jellyCount;i+=step){
+      const r=Math.floor(i/cols),cIdx=i%cols;
+      jellyPos.push([r,cIdx]);added++;
+    }
+    // 不足时补随机
+    while(added<jellyCount&&positions.length>added){
+      jellyPos.push(positions[added]);added++;
+    }
+    jellyPos.forEach(([r,cv])=>{
+      if(b[r]&&b[r][cv]) b[r][cv].jelly=Math.random()<0.35?2:1;
+    });
+  }
+  // 冰块关：均匀分布冰块，确保数量足够且可见
+  if(type===LEVEL_TYPES.ICE){
+    // 按网格均匀分布（每隔1-2格放一个冰块）
+    const icePositions=[];
+    // 从所有格子里均匀选取
+    const totalCells=rows*cols;
+    const skipLen=Math.max(1,Math.floor(totalCells/iceCount));
+    for(let i=0;i<totalCells&&icePositions.length<iceCount;i+=skipLen){
+      const r=Math.floor(i/cols),cIdx=i%cols;
+      icePositions.push([r,cIdx]);
+    }
+    // 补足不够的
+    for(const [r,cv] of positions){
+      if(icePositions.length>=iceCount)break;
+      if(!icePositions.some(([pr,pc])=>pr===r&&pc===cv))
+        icePositions.push([r,cv]);
+    }
+    icePositions.forEach(([r,cv])=>{if(b[r]&&b[r][cv])b[r][cv].ice=1;});
+  }
+  if(type===LEVEL_TYPES.INGRED){
+    // 食材放在第0行
+    for(let c=0;c<Math.min(ingredCount,cols);c++){
+      b[0][c].ingredient=true;
+      b[0][c].color=randColor(colors);
+    }
+  }
+  // 暗关（DARK）：不使用暗格，改为正常棋盘（避免卡关BUG）
+  // 暗关的挑战性通过更少步数+更多颜色体现（在 genLevelCfg 里设定）
+  return b;
+}
+
+function hasInitMatch(b,r,c,rows,cols){
+  const col=b[r][c].color;
+  if(c>=2&&b[r][c-1].color===col&&b[r][c-2].color===col)return true;
+  if(r>=2&&b[r-1][c].color===col&&b[r-2][c].color===col)return true;
+  return false;
+}
+function randColor(n){return Math.floor(Math.random()*n);}
+function shuffleArr(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}}
+
+// ════ 棋盘渲染 ════
+function calcCellSize(){
+  const wrap=document.getElementById('board-wrap');
+  if(!wrap)return;
+  const W=wrap.clientWidth-12,H=wrap.clientHeight-12;
+  const {cols,rows}=levelCfg||{cols:6,rows:7};
+  cellSize=Math.floor(Math.min(W/cols,H/rows));
+  cellSize=Math.max(36,Math.min(58,cellSize));
+}
+
+function renderBoard(){
+  calcCellSize();
+  const boardEl=document.getElementById('board');
+  const {cols,rows}=levelCfg;
+  boardEl.style.width=(cols*cellSize)+'px';
+  boardEl.style.height=(rows*cellSize)+'px';
+  boardEl.innerHTML='';
+  // 先渲染底层障碍（果冻/冰块）
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      renderCell(r,c); // 障碍效果直接在糖果元素上处理
+    }
+  }
+}
+
+function updateBgCell(r,c){
+  const cell=board[r][c];
+  if(!cell||!cell.el)return;
+  cell.el.classList.remove('jelly1','jelly2','ice');
+  if(cell.jelly===2)cell.el.classList.add('jelly2');
+  else if(cell.jelly===1)cell.el.classList.add('jelly1');
+  if(cell.ice)cell.el.classList.add('ice');
+}
+
+function renderCell(r,c){
+  const cell=board[r][c];
+  if(!cell)return;
+  const boardEl=document.getElementById('board');
+  // 移除旧元素
+  if(cell.el&&cell.el.parentNode===boardEl){cell.el.remove();}
+  cell.el=null;
+  if(cell.color<0)return; // 空格不渲染
+  const sz=cellSize-3;
+  const el=document.createElement('div');
+  const cid=++candyIdCounter;
+  cell.cid=cid;
+  el.className='candy';
+  el.dataset.cid=String(cid);
+  el.style.cssText='left:'+(c*cellSize+1)+'px;top:'+(r*cellSize+1)+'px;width:'+sz+'px;height:'+sz+'px;font-size:'+(sz*.44)+'px';
+  // 背景色
+  if(cell.special===SP.BOMB){
+    el.style.background='conic-gradient(#ef4444,#3b82f6,#22c55e,#f97316,#a855f7,#eab308,#ef4444)';
+    el.style.animation='bombSpin 2s linear infinite';
+  } else {
+    const cd=CANDY_COLORS[cell.color]||CANDY_COLORS[0];
+    el.style.background='linear-gradient(135deg,'+cd.grad[0]+','+cd.grad[1]+')';
+  }
+  // 表情
+  const cd=CANDY_COLORS[cell.color]||CANDY_COLORS[0];
+  let mainEmoji=cell.special===SP.BOMB?'🌈':(cell.special===SP.FISH?'🐟':(cell.ingredient?'🍰':cd.emoji));
+  // 暗格已移除，不再使用 mainEmoji='🌑'
+  el.textContent=mainEmoji;
+  // 特殊糖果标记层
+  const mark=document.createElement('div');mark.className='special-mark';
+  if(cell.special===SP.STRH)el.classList.add('sp-strH');
+  else if(cell.special===SP.STRV)el.classList.add('sp-strV');
+  else if(cell.special===SP.WRAP)el.classList.add('sp-wrap');
+  else if(cell.special===SP.BOMB)el.classList.add('sp-bomb');
+  else if(cell.special===SP.FISH)el.classList.add('sp-fish');
+  el.appendChild(mark);
+  // 食材标记
+  if(cell.ingredient)el.style.border='2.5px solid #fde68a';
+  // 果冻：加 class 到糖果本身（::before 伪元素覆盖效果）
+  if(cell.jelly===2)el.classList.add('jelly2');
+  else if(cell.jelly===1)el.classList.add('jelly1');
+  // 冰块：加 class 到糖果本身（::before 伪元素覆盖效果）
+  if(cell.ice)el.classList.add('ice');
+  // 暗格样式
+  if(cell.dark&&!cell._revealed)el.classList.add('dark-unrevealed');
+  
+  boardEl.appendChild(el);
+  cell.el=el;
+}
+
+// 用事件委托处理点击，完全避免闭包 r,c 问题
+function setupBoardClick(){
+  const boardEl=document.getElementById('board');
+  boardEl.onclick=(e)=>{
+    const el=e.target.closest('.candy');
+    if(!el)return;
+    const cid=parseInt(el.dataset.cid);
+    if(!cid)return;
+    handleCandyCid(cid);
+  };
+}
+
+function findByCid(cid){
+  for(let r=0;r<board.length;r++){
+    for(let c=0;c<board[r].length;c++){
+      if(board[r][c]&&board[r][c].cid===cid)return{r,c};
+    }
+  }
+  return null;
+}
+
+// ════ 核心点击处理 ════
+function handleCandyCid(cid){
+  if(isAnimating)return;
+  const pos=findByCid(cid);
+  if(!pos)return;
+  const {r,c}=pos;
+  // 道具模式
+  if(hammerMode){triggerHammer(r,c);return;}
+  if(lollipopMode){triggerLollipop(r,c);return;}
+  if(fishMode){triggerFish(r,c);return;}
+
+  if(selectedId===null){
+    // 选中
+    selectedId=cid;
+    board[r][c].el&&board[r][c].el.classList.add('selected');
+    return;
+  }
+  // 取消选中同一格
+  if(selectedId===cid){
+    board[r][c].el&&board[r][c].el.classList.remove('selected');
+    selectedId=null;return;
+  }
+  // 找到之前选中格的位置
+  const prev=findByCid(selectedId);
+  if(!prev){selectedId=null;return;}
+  // 清除选中样式
+  board[prev.r][prev.c].el&&board[prev.r][prev.c].el.classList.remove('selected');
+  const dr=Math.abs(r-prev.r),dc=Math.abs(c-prev.c);
+  if(dr+dc===1){
+    // 相邻：尝试交换
+    selectedId=null;
+    doSwap(prev.r,prev.c,r,c);
+  } else {
+    // 不相邻：重新选
+    selectedId=cid;
+    board[r][c].el&&board[r][c].el.classList.add('selected');
+  }
+}
+
+// ════ 交换与消除核心（完全重写，无闭包bug）════
+async function doSwap(r1,c1,r2,c2){
+  if(isAnimating)return;
+  isAnimating=true;
+  // 动画
+  const el1=board[r1][c1].el,el2=board[r2][c2].el;
+  if(el1&&el2){
+    const x1=parseInt(el1.style.left),y1=parseInt(el1.style.top);
+    const x2=parseInt(el2.style.left),y2=parseInt(el2.style.top);
+    el1.style.transition='left .15s,top .15s';el2.style.transition='left .15s,top .15s';
+    el1.style.left=x2+'px';el1.style.top=y2+'px';
+    el2.style.left=x1+'px';el2.style.top=y1+'px';
+    await sleep(160);
+    el1.style.transition='';el2.style.transition='';
+  }
+  // 交换完整数据（包含所有字段：color/special/jelly/ice/ingredient/dark/_revealed）
+  const tmp={...board[r1][c1]};
+  const tmp2={...board[r2][c2]};
+  // 完整替换 r1c1 的数据
+  board[r1][c1].color=tmp2.color;
+  board[r1][c1].special=tmp2.special;
+  board[r1][c1].cid=tmp2.cid;
+  board[r1][c1].jelly=tmp2.jelly;
+  board[r1][c1].ice=tmp2.ice;
+  board[r1][c1].ingredient=tmp2.ingredient;
+  board[r1][c1].dark=tmp2.dark;
+  board[r1][c1]._revealed=tmp2._revealed;
+  board[r1][c1]._moveIngred=tmp2._moveIngred||false;
+  // 完整替换 r2c2 的数据
+  board[r2][c2].color=tmp.color;
+  board[r2][c2].special=tmp.special;
+  board[r2][c2].cid=tmp.cid;
+  board[r2][c2].jelly=tmp.jelly;
+  board[r2][c2].ice=tmp.ice;
+  board[r2][c2].ingredient=tmp.ingredient;
+  board[r2][c2].dark=tmp.dark;
+  board[r2][c2]._revealed=tmp._revealed;
+  board[r2][c2]._moveIngred=tmp._moveIngred||false;
+  // 交换 el 引用
+  board[r1][c1].el=el2;board[r2][c2].el=el1;
+  // 更新 el 的 cid
+  if(el1)el1.dataset.cid=String(board[r2][c2].cid);
+  if(el2)el2.dataset.cid=String(board[r1][c1].cid);
+  // 更新 el 位置
+  if(el2){el2.style.left=(c1*cellSize+1)+'px';el2.style.top=(r1*cellSize+1)+'px';}
+  if(el1){el1.style.left=(c2*cellSize+1)+'px';el1.style.top=(r2*cellSize+1)+'px';}
+  // 同步更新视觉覆盖层（果冻/冰块 class 可能随数据变了）
+  if(el2){el2.classList.remove('jelly1','jelly2','ice');if(board[r1][c1].jelly===2)el2.classList.add('jelly2');else if(board[r1][c1].jelly===1)el2.classList.add('jelly1');if(board[r1][c1].ice)el2.classList.add('ice');}
+  if(el1){el1.classList.remove('jelly1','jelly2','ice');if(board[r2][c2].jelly===2)el1.classList.add('jelly2');else if(board[r2][c2].jelly===1)el1.classList.add('jelly1');if(board[r2][c2].ice)el1.classList.add('ice');}
+
+  // 检查特殊组合
+  const sc=checkSpecialCombo(r1,c1,r2,c2);
+  if(sc){
+    movesLeft--;updateMoveUI();
+    await executeSpecialCombo(sc,r1,c1,r2,c2);
+    await afterRemove();
+  } else {
+    const matches=findMatches();
+    if(matches.length>0){
+      movesLeft--;updateMoveUI();
+      await processMatches(matches,r1,c1,r2,c2);
+      await afterRemove();
+    } else {
+      // 无效交换：换回
+      await sleep(50);
+      // 完整恢复所有字段
+      board[r1][c1].color=tmp.color;board[r1][c1].special=tmp.special;board[r1][c1].cid=tmp.cid;
+      board[r1][c1].jelly=tmp.jelly;board[r1][c1].ice=tmp.ice;board[r1][c1].ingredient=tmp.ingredient;
+      board[r1][c1].dark=tmp.dark;board[r1][c1]._revealed=tmp._revealed;
+      board[r2][c2].color=tmp2.color;board[r2][c2].special=tmp2.special;board[r2][c2].cid=tmp2.cid;
+      board[r2][c2].jelly=tmp2.jelly;board[r2][c2].ice=tmp2.ice;board[r2][c2].ingredient=tmp2.ingredient;
+      board[r2][c2].dark=tmp2.dark;board[r2][c2]._revealed=tmp2._revealed;
+      board[r1][c1].el=el1;board[r2][c2].el=el2;
+      if(el1){el1.dataset.cid=String(tmp.cid);el1.style.left=(c1*cellSize+1)+'px';el1.style.top=(r1*cellSize+1)+'px';}
+      if(el2){el2.dataset.cid=String(tmp2.cid);el2.style.left=(c2*cellSize+1)+'px';el2.style.top=(r2*cellSize+1)+'px';}
+      // 恢复覆盖层 class
+      if(el1){el1.classList.remove('jelly1','jelly2','ice');if(tmp.jelly===2)el1.classList.add('jelly2');else if(tmp.jelly===1)el1.classList.add('jelly1');if(tmp.ice)el1.classList.add('ice');}
+      if(el2){el2.classList.remove('jelly1','jelly2','ice');if(tmp2.jelly===2)el2.classList.add('jelly2');else if(tmp2.jelly===1)el2.classList.add('jelly1');if(tmp2.ice)el2.classList.add('ice');}
+      if(el1)el1.style.transition='left .14s,top .14s';
+      if(el2)el2.style.transition='left .14s,top .14s';
+      await sleep(160);
+      if(el1)el1.style.transition='';
+      if(el2)el2.style.transition='';
+    }
+  }
+  isAnimating=false;
+}
+
+// ════ 匹配查找（完全重写，修复off-by-one和暗格问题）════
+function findMatches(){
+  const {cols,rows}=levelCfg;
+  const matched=new Set();
+
+  // 判断格子是否可参与普通颜色匹配
+  function canMatch(r,c){
+    if(r<0||r>=rows||c<0||c>=cols)return false;
+    const cell=board[r][c];
+    if(!cell||cell.color<0)return false;
+    if(cell.special===SP.BOMB)return false;      // 彩弹不参与普通三消
+    // 暗格逻辑已简化，不再排除（dark关卡用步数/颜色难度）
+    // 注意：食材格可以参与颜色匹配！消除时食材向下移动而非消失
+    return true;
+  }
+
+  // 获取格子颜色（匹配用）
+  function colorOf(r,c){
+    return (board[r]&&board[r][c])?board[r][c].color:-1;
+  }
+
+  // 横向扫描：每格作为潜在起点检查
+  for(let r=0;r<rows;r++){
+    let c=0;
+    while(c<=cols-3){
+      if(!canMatch(r,c)){c++;continue;}
+      const col=colorOf(r,c);
+      // 找到以 c 为起点的连续同色长度
+      let len=1;
+      while(c+len<cols&&canMatch(r,c+len)&&colorOf(r,c+len)===col)len++;
+      if(len>=3){
+        // 记录这段里所有格
+        for(let k=0;k<len;k++)matched.add(r+'_'+(c+k));
+        c+=len; // 跳过整段（不是 len-1，for 循环不会再 +1）
+      } else {
+        c++;
+      }
+    }
+  }
+
+  // 纵向扫描：每格作为潜在起点检查
+  for(let c=0;c<cols;c++){
+    let r=0;
+    while(r<=rows-3){
+      if(!canMatch(r,c)){r++;continue;}
+      const col=colorOf(r,c);
+      let len=1;
+      while(r+len<rows&&canMatch(r+len,c)&&colorOf(r+len,c)===col)len++;
+      if(len>=3){
+        for(let k=0;k<len;k++)matched.add((r+k)+'_'+c);
+        r+=len; // 跳过整段
+      } else {
+        r++;
+      }
+    }
+  }
+
+  return [...matched].map(k=>{
+    const[row,col]=k.split('_').map(Number);
+    return{r:row,c:col};
+  });
+}
+
+// ════ 特殊糖果判断和生成 ════
+function determineNewSpecial(matches,swapR1,swapC1,swapR2,swapC2){
+  if(matches.length<4)return SP.NONE;
+  // 找匹配子集（同行或同列连续3+）
+  const rowCounts={},colCounts={};
+  matches.forEach(({r,c})=>{rowCounts[r]=(rowCounts[r]||0)+1;colCounts[c]=(colCounts[c]||0)+1;});
+  const maxRow=Math.max(...Object.values(rowCounts));
+  const maxCol=Math.max(...Object.values(colCounts));
+  if(matches.length>=5){
+    // 判断L/T形还是5连
+    const hasLT=maxRow>=3&&maxCol>=3;
+    if(hasLT)return SP.WRAP;
+    if(maxRow>=5||maxCol>=5)return SP.BOMB;
+    return SP.BOMB;
+  }
+  if(matches.length===4){
+    if(maxRow>=4)return SP.STRH;
+    if(maxCol>=4)return SP.STRV;
+    return SP.WRAP; // L/T形
+  }
+  return SP.NONE;
+}
+
+function getSpawnPos(matches,r1,c1,r2,c2){
+  // 在交换的两个位置中找在match里的那个
+  if(matches.some(m=>m.r===r1&&m.c===c1))return{r:r1,c:c1};
+  if(matches.some(m=>m.r===r2&&m.c===c2))return{r:r2,c:c2};
+  return matches[Math.floor(matches.length/2)];
+}
+
+// ════ 处理匹配 ════
+async function processMatches(matches,r1,c1,r2,c2){
+  const newSp=determineNewSpecial(matches,r1,c1,r2,c2);
+  const spawnPos=getSpawnPos(matches,r1,c1,r2,c2);
+  if(newSp!==SP.NONE&&!shownSpecialTypes.has(newSp)){
+    shownSpecialTypes.add(newSp);
+  }
+  // 用队列式扩展：特殊糖果触发后，新加入的格子也要检查连锁
+  const toRemove=new Set(matches.map(m=>m.r+'_'+m.c));
+  const queue=[...matches]; // 待处理的触发源
+  const processed=new Set();
+  while(queue.length>0){
+    const {r,c}=queue.shift();
+    const key=r+'_'+c;
+    if(processed.has(key))continue;
+    processed.add(key);
+    const cell=board[r][c];
+    if(!cell||cell.color<0)continue;
+    if(cell.special===SP.STRH){
+      for(let cc=0;cc<levelCfg.cols;cc++){
+        const k=r+'_'+cc;
+        if(!toRemove.has(k)){toRemove.add(k);queue.push({r,c:cc});}
+      }
+      showBanner('🍬 横条纹爆炸！整行消除！','#fbbf24');
+      spawnStripeFlash(r,-1); // 行闪光
+    } else if(cell.special===SP.STRV){
+      for(let rr=0;rr<levelCfg.rows;rr++){
+        const k=rr+'_'+c;
+        if(!toRemove.has(k)){toRemove.add(k);queue.push({r:rr,c});}
+      }
+      showBanner('🍬 竖条纹爆炸！整列消除！','#fbbf24');
+      spawnStripeFlash(-1,c); // 列闪光
+    } else if(cell.special===SP.WRAP){
+      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+        const nr=r+dr,nc=c+dc;
+        if(nr>=0&&nr<levelCfg.rows&&nc>=0&&nc<levelCfg.cols){
+          const k=nr+'_'+nc;
+          if(!toRemove.has(k)){toRemove.add(k);queue.push({r:nr,c:nc});}
+        }
+      }
+      showBanner('🎀 包装糖爆炸！3×3消除！','#f472b6');
+    } else if(cell.special===SP.BOMB){
+      const color=cell.color;
+      for(let rr=0;rr<levelCfg.rows;rr++)for(let cc=0;cc<levelCfg.cols;cc++){
+        if(board[rr][cc].color===color){
+          const k=rr+'_'+cc;
+          if(!toRemove.has(k)){toRemove.add(k);queue.push({r:rr,c:cc});}
+        }
+      }
+      showBanner('🌈 彩色炸弹！消除所有同色！','#a78bfa');
+    } else if(cell.special===SP.FISH){
+      for(let i=0;i<2;i++){
+        const rr=Math.floor(Math.random()*levelCfg.rows),cc=Math.floor(Math.random()*levelCfg.cols);
+        const k=rr+'_'+cc;
+        if(!toRemove.has(k)){toRemove.add(k);queue.push({r:rr,c:cc});}
+      }
+      showBanner('🐟 鱼鱼出击！随机攻击！','#3b82f6');
+    }
+  }
+  const removeList=[...toRemove].map(s=>{const[r,c]=s.split('_').map(Number);return{r,c};});
+  await doRemove(removeList,newSp,spawnPos.r,spawnPos.c);
+  if(newSp!==SP.NONE)showSpecialBanner(newSp);
+}
+
+// ════ 特殊组合 ════
+function checkSpecialCombo(r1,c1,r2,c2){
+  const a=board[r1][c1],b=board[r2][c2];
+  // 彩色炸弹：移动到任何格子都立即触发（包括普通格）
+  if(a.special===SP.BOMB||b.special===SP.BOMB){
+    return{spA:a.special,spB:b.special,colA:a.color,colB:b.color};
+  }
+  // 其余特殊糖果：必须两个都是特殊才触发组合（防止包装糖等误触）
+  if(a.special===SP.NONE||b.special===SP.NONE)return null;
+  return{spA:a.special,spB:b.special,colA:a.color,colB:b.color};
+}
+async function executeSpecialCombo(sc,r1,c1,r2,c2){
+  const {spA,spB,colA,colB}=sc;
+  const {rows,cols}=levelCfg;
+  const toRemove=new Set();toRemove.add(r1+'_'+c1);toRemove.add(r2+'_'+c2);
+  if(spA===SP.BOMB&&spB===SP.BOMB){
+    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)toRemove.add(r+'_'+c);
+    showBanner('🌈×🌈 全场清除！','#fde68a');
+  } else if(spA===SP.BOMB||spB===SP.BOMB){
+    const bombR=spA===SP.BOMB?r1:r2, bombC=spA===SP.BOMB?c1:c2;
+    const otherR=spA===SP.BOMB?r2:r1, otherC=spA===SP.BOMB?c2:c1;
+    const otherSp=spA===SP.BOMB?spB:spA;
+    const otherCol=board[otherR][otherC].color; // 目标格的颜色
+    if(otherSp===SP.NONE){
+      // 彩弹+普通格：消除所有与目标格同色的糖果
+      for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+        if(board[r][c].color===otherCol)toRemove.add(r+'_'+c);
+      }
+      showBanner('🌈 彩色炸弹！消除所有同色！','#a78bfa');
+    } else {
+      // 彩弹+特殊糖：同色变成该特殊糖并全触发
+      for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+        if(board[r][c].color===otherCol){
+          board[r][c].special=otherSp;
+          toRemove.add(r+'_'+c);
+        }
+      }
+      showBanner('🌈+特效 超强爆破！','#a78bfa');
+    }
+  } else if((spA===SP.STRH||spA===SP.STRV)&&(spB===SP.STRH||spB===SP.STRV)){
+    for(let c=0;c<cols;c++){toRemove.add(r1+'_'+c);toRemove.add(r2+'_'+c);}
+    for(let r=0;r<rows;r++){toRemove.add(r+'_'+c1);toRemove.add(r+'_'+c2);}
+    showBanner('条纹×条纹 十字爆炸！','#f472b6');
+  } else if((spA===SP.WRAP||spB===SP.WRAP)&&(spA===SP.STRH||spA===SP.STRV||spB===SP.STRH||spB===SP.STRV)){
+    for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){
+      const nr=r1+dr,nc=c1+dc;
+      if(nr>=0&&nr<rows&&nc>=0&&nc<cols)toRemove.add(nr+'_'+nc);
+    }
+    for(let c=0;c<cols;c++)toRemove.add(r1+'_'+c);
+    for(let r=0;r<rows;r++)toRemove.add(r+'_'+c1);
+    showBanner('🎀+条纹 超级清扫！','#f97316');
+  } else if(spA===SP.WRAP&&spB===SP.WRAP){
+    for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){
+      const nr=r1+dr,nc=c1+dc;
+      if(nr>=0&&nr<rows&&nc>=0&&nc<cols)toRemove.add(nr+'_'+nc);
+    }
+    showBanner('🎀×🎀 5×5爆炸！','#f472b6');
+  } else if(spA===SP.FISH||spB===SP.FISH){
+    for(let i=0;i<4;i++)toRemove.add(Math.floor(Math.random()*rows)+'_'+Math.floor(Math.random()*cols));
+    showBanner('🐟 鱼群出击！','#3b82f6');
+  }
+  await doRemove([...toRemove].map(s=>{const[r,c]=s.split('_').map(Number);return{r,c};}),SP.NONE,r1,c1);
+}
+
+// ════ 执行消除 ════
+async function doRemove(cells,newSp=SP.NONE,spawnR=0,spawnC=0){
+  // 特殊糖果生成计数（ORDER关和RAINBOW关共用）
+  if(newSp!==SP.NONE){
+    if(newSp===SP.BOMB)bombMade++;
+    orderMade++;
+    updateProgress();
+  }
+  // 分数
+  const pts=cells.length*60*(comboCount+1);
+  score+=pts;comboCount++;
+  updateScore();
+  // 动画（不跳过 color<0 的格子，确保清理残留元素）
+  cells.forEach(({r,c})=>{
+    const cell=board[r][c];if(!cell)return;
+    if(cell.color<0){
+      // 格子已空但可能有残留元素
+      if(cell.el){cell.el.remove();cell.el=null;}
+      return;
+    }
+    if(cell.dark&&!cell._revealed){
+      cell._revealed=true;
+      // 揭示暗格：显示真实颜色和emoji
+      if(cell.el){
+        const rcd=CANDY_COLORS[cell.color]||CANDY_COLORS[0];
+        cell.el.style.background='linear-gradient(135deg,'+rcd.grad[0]+','+rcd.grad[1]+')';
+        cell.el.textContent=rcd.emoji;
+        const m=document.createElement('div');m.className='special-mark';cell.el.appendChild(m);
+      }
+    }
+    if(cell.el){cell.el.classList.add('popping');}
+    // 果冻处理（更新底层视觉）
+    if(cell.jelly>0){
+      cell.jelly--;jellyLeft=Math.max(0,jellyLeft-1);jellyDone++;
+      updateBgCell(r,c);updateProgress();
+    }
+    // 冰块（被直接消除时）
+    if(cell.ice){
+      cell.ice=0;iceDone++;
+      updateBgCell(r,c);updateProgress();
+    }
+    // 食材：参与消除时
+    if(cell.ingredient){
+      if(r>=levelCfg.rows-1){
+        // 已在底行：食材完成
+        cell.ingredient=false;ingredDone++;updateProgress();
+      } else {
+        // 不在底行：将食材标记复制到下一行（食材下移一格）
+        const nextR=r+1;
+        if(nextR<levelCfg.rows){
+          // 在 doRemove 完成清空当前格后，下一行格子也会因正常 dropDown 下落
+          // 我们需要在这个格子被清空前，把 ingredient 传给下一行
+          board[nextR][c]._pendingIngred=true;
+        }
+        cell.ingredient=false;
+      }
+    }
+    // 收集目标
+    if(levelCfg.type===LEVEL_TYPES.COLLECT&&cell.color===levelCfg.collectColor){collectDone++;updateProgress();}
+    // 彩弹生成计数（每次消除产生彩弹时+1）
+    // bombMade 在 processMatches -> doRemove 开始时统一计算
+  });
+  // 弹出分数
+  showScorePop('+'+pts);
+  await sleep(230);
+  // 移除格子（生成新特殊糖果的位置保留）
+  cells.forEach(({r,c})=>{
+    const cell=board[r][c];if(!cell||cell.color<0)return;
+    if(newSp!==SP.NONE&&r===spawnR&&c===spawnC){
+      // 这格变成新特殊糖果
+      if(cell.el){cell.el.classList.remove('popping');cell.el.style.transform='';}
+    } else {
+      if(cell.el){cell.el.remove();cell.el=null;}
+      cell.color=-1;cell.special=SP.NONE;cell.cid=0;
+      cell.ingredient=false;cell.dark=false;cell._revealed=false;cell.jelly=0;cell.ice=0;cell._moveIngred=false;cell._pendingIngred=false;
+    }
+  });
+  // 在生成位置放置新特殊糖果
+  if(newSp!==SP.NONE){
+    const spawnCell=board[spawnR][spawnC];
+    spawnCell.special=newSp;
+    // 重新渲染这格
+    if(spawnCell.el){spawnCell.el.remove();spawnCell.el=null;}
+    renderCell(spawnR,spawnC);
+    // 显示提示
+    showSpecialBanner(newSp);
+  }
+  // 处理食材下移标记
+  for(let r=0;r<levelCfg.rows;r++){
+    for(let cc=0;cc<levelCfg.cols;cc++){
+      if(board[r][cc]&&board[r][cc]._pendingIngred){
+        board[r][cc]._pendingIngred=false;
+        board[r][cc].ingredient=true;
+        // 更新视觉
+        if(board[r][cc].el){
+          board[r][cc].el.style.border='2.5px solid #fde68a';
+          board[r][cc].el.textContent='🍰';
+        }
+      }
+    }
+  }
+  // 邻近冰块效果（消除旁边的冰）
+  cells.forEach(({r,c})=>{
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+      const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nr<levelCfg.rows&&nc>=0&&nc<levelCfg.cols){
+        const adj=board[nr][nc];
+        if(adj&&adj.ice>0){
+          adj.ice=0;iceDone++;
+          updateBgCell(nr,nc);
+          updateProgress();
+        }
+      }
+    });
+  });
+  spawnParticles();
+}
+
+// ════ 下落和补充 ════
+async function afterRemove(){
+  await dropDown();
+  await refillBoard();
+  // 食材关：检查食材到达底部
+  if(levelCfg&&levelCfg.type===LEVEL_TYPES.INGRED){
+    checkIngredAtBottom();
+    // 如果棋盘上没有食材但目标未完成，补充食材（防卡关）
+    if(ingredDone<levelCfg.ingredCount){
+      const hasIngred=board.some(row=>row.some(cell=>cell.ingredient));
+      if(!hasIngred&&ingredDone<levelCfg.ingredCount){
+        spawnNewIngred();
+        await sleep(100);
+      }
+    }
+  }
+  await sleep(80);
+  const newMatches=findMatches();
+  if(newMatches.length>0){
+    await processMatches(newMatches,-1,-1,-1,-1);
+    await afterRemove();
+  } else {
+    comboCount=0;
+    if(!hasAnyMove()){showNoMoveLose();return;}
+    checkWinLose();
+  }
+}
+
+function hasAnyMove(){
+  const {cols,rows}=levelCfg;
+  for(let r=0;r<rows;r++){
+    for(let cc=0;cc<cols;cc++){
+      for(const [dr,dc] of [[0,1],[1,0]]){
+        const nr=r+dr,nc=cc+dc;
+        if(nr>=rows||nc>=cols)continue;
+        const a=board[r][cc],b=board[nr][nc];
+        if(a.color<0||b.color<0)continue;
+        [a.color,b.color]=[b.color,a.color];
+        const m=findMatches();
+        [a.color,b.color]=[b.color,a.color];
+        if(m.length>0)return true;
+      }
+    }
+  }
+  return false;
+}
+
+function showNoMoveLose(){
+  G.boosters.hammer=(G.boosters.hammer||0)+boostersLeft.hammer;
+  G.boosters.lollipop=(G.boosters.lollipop||0)+boostersLeft.lollipop;
+  G.boosters.fish=(G.boosters.fish||0)+boostersLeft.fish;
+  saveState();
+  document.getElementById('lose-body').textContent='棋盘上没有可消除的糖果，挑战失败！';
+  showOverlay('ov-lose');
+}
+
+function checkIngredAtBottom(){
+  const rows=levelCfg.rows,cols=levelCfg.cols;
+  for(let c=0;c<cols;c++){
+    const cell=board[rows-1][c];
+    if(cell&&cell.ingredient){
+      cell.ingredient=false;ingredDone++;
+      updateBgCell(rows-1,c);
+      updateProgress();
+      if(cell.el){
+        cell.el.style.border='';
+        cell.el.textContent=(CANDY_COLORS[cell.color]||CANDY_COLORS[0]).emoji;
+      }
+    }
+  }
+}
+
+function spawnNewIngred(){
+  // 在第0行找一个空格或最靠近中间的格子放置新食材
+  const cols=levelCfg.cols;
+  const mid=Math.floor(cols/2);
+  // 找第0行可用的格
+  for(let dc=0;dc<cols;dc++){
+    const c=((mid+dc)%cols+cols)%cols;
+    const cell=board[0][c];
+    if(cell&&cell.color>=0&&!cell.ingredient){
+      cell.ingredient=true;
+      if(cell.el){
+        cell.el.style.border='2.5px solid #fde68a';
+        cell.el.textContent='🍰';
+      }
+      return;
+    }
+  }
+}
+
+async function dropDown(){
+  const {cols,rows}=levelCfg;
+  let moved=false;
+  for(let c=0;c<cols;c++){
+    let writeR=rows-1;
+    for(let r=rows-1;r>=0;r--){
+      if(board[r][c].color>=0){
+        if(r!==writeR){
+          // 移动数据
+          const from=board[r][c],to=board[writeR][c];
+          to.color=from.color;to.special=from.special;to.cid=from.cid;to.ingredient=from.ingredient;
+          to.ice=from.ice;to.jelly=from.jelly;to.dark=from.dark;to._revealed=from._revealed;to._moveIngred=from._moveIngred||false;to.el=from.el;
+          from.color=-1;from.special=SP.NONE;from.cid=0;from.el=null;from.jelly=0;from.ice=0;from.ingredient=false;from.dark=false;from._revealed=false;from._moveIngred=false;from._pendingIngred=false;
+          // 动画
+          if(to.el){
+            to.el.dataset.cid=String(to.cid);
+            // 同步障碍覆盖层 class（下落时数据已更新）
+            to.el.classList.remove('jelly1','jelly2','ice');
+            if(to.jelly===2)to.el.classList.add('jelly2');
+            else if(to.jelly===1)to.el.classList.add('jelly1');
+            if(to.ice)to.el.classList.add('ice');
+            to.el.style.transition='top .22s ease-in';
+            to.el.style.top=(writeR*cellSize+1)+'px';
+          }
+          moved=true;
+        }
+        writeR--;
+      }
+    }
+  }
+  if(moved)await sleep(240);
+}
+
+async function refillBoard(){
+  const {cols,rows,colors}=levelCfg;
+  let filled=false;
+  for(let c=0;c<cols;c++){
+    let newRow=0;
+    for(let r=0;r<rows;r++){
+      if(board[r][c].color<0){
+        // 生成新糖果时避免立即三消
+        let newColor=randColor(colors);
+        let tries=0;
+        while(tries<8){
+          // 检查横向和纵向是否会造成三消
+          const hMatch=c>=2&&board[r][c-1]&&board[r][c-1].color===newColor&&board[r][c-2]&&board[r][c-2].color===newColor;
+          const vMatch=r>=2&&board[r-1]&&board[r-1][c]&&board[r-1][c].color===newColor&&board[r-2]&&board[r-2][c]&&board[r-2][c].color===newColor;
+          if(!hMatch&&!vMatch)break;
+          newColor=randColor(colors);tries++;
+        }
+        board[r][c].color=newColor;
+        board[r][c].special=SP.NONE;
+        board[r][c].cid=++candyIdCounter;
+        board[r][c].el=null;
+        // 完整重置所有字段（防止残留 dark/jelly/ice 等属性）
+        board[r][c].jelly=0;
+        board[r][c].ice=0;
+        board[r][c].ingredient=false;
+        board[r][c].dark=false;
+        board[r][c]._revealed=false;
+        board[r][c]._moveIngred=false;
+        board[r][c]._pendingIngred=false;
+        // 新格从顶部落下
+        const el=document.createElement('div');
+        const sz=cellSize-3;
+        const cd=CANDY_COLORS[board[r][c].color];
+        const cid=board[r][c].cid;
+        el.className='candy';
+        el.dataset.cid=String(cid);
+        el.style.cssText='left:'+(c*cellSize+1)+'px;top:'+((-1-newRow)*cellSize+1)+'px;width:'+sz+'px;height:'+sz+'px;font-size:'+(sz*.44)+'px;background:linear-gradient(135deg,'+cd.grad[0]+','+cd.grad[1]+');opacity:.8';
+        el.textContent=cd.emoji;
+        const mark=document.createElement('div');mark.className='special-mark';el.appendChild(mark);
+        document.getElementById('board').appendChild(el);
+        board[r][c].el=el;
+        requestAnimationFrame(()=>{
+          el.style.transition='top .22s ease-in';
+          el.style.top=(r*cellSize+1)+'px';
+        });
+        newRow++;filled=true;
+      }
+    }
+  }
+  if(filled)await sleep(250);
+}
+
+// ════ 道具系统 ════
+function updateBoosterUI(){
+  const h=boostersLeft.hammer,l=boostersLeft.lollipop,f=boostersLeft.fish;
+  const bh=document.getElementById('btn-hammer');
+  const bl=document.getElementById('btn-lollipop');
+  const bf=document.getElementById('btn-fish');
+  if(bh){bh.disabled=h<=0&&!hammerMode;bh.classList.toggle('active-mode',hammerMode);document.getElementById('ico-hammer').textContent='×'+h;}
+  if(bl){bl.disabled=l<=0&&!lollipopMode;bl.classList.toggle('active-mode',lollipopMode);document.getElementById('ico-lollipop').textContent='×'+l;}
+  if(bf){bf.disabled=f<=0&&!fishMode;bf.classList.toggle('active-mode',fishMode);document.getElementById('ico-fish').textContent='×'+f;}
+}
+function toggleHammer(){
+  if(boostersLeft.hammer<=0&&!hammerMode){alert('锤子不足！到商店购买（10回复数）');return;}
+  hammerMode=!hammerMode;lollipopMode=false;fishMode=false;updateBoosterUI();
+}
+function toggleLollipop(){
+  if(boostersLeft.lollipop<=0&&!lollipopMode){alert('棒棒糖不足！到商店购买（20回复数）');return;}
+  lollipopMode=!lollipopMode;hammerMode=false;fishMode=false;updateBoosterUI();
+}
+function toggleFishBooster(){
+  if(boostersLeft.fish<=0&&!fishMode){alert('鱼鱼不足！到商店购买（15回复数）');return;}
+  fishMode=!fishMode;hammerMode=false;lollipopMode=false;updateBoosterUI();
+}
+async function triggerHammer(r,c){
+  if(boostersLeft.hammer<=0)return;
+  boostersLeft.hammer--;hammerMode=false;updateBoosterUI();
+  movesLeft--;updateMoveUI();
+  await doRemove([{r,c}]);
+  await afterRemove();
+  isAnimating=false;
+}
+function triggerLollipop(r,c){
+  if(boostersLeft.lollipop<=0)return;
+  boostersLeft.lollipop--;lollipopMode=false;updateBoosterUI();
+  board[r][c].special=Math.random()<0.5?SP.STRH:SP.STRV;
+  if(board[r][c].el){board[r][c].el.remove();board[r][c].el=null;}
+  renderCell(r,c);
+}
+async function triggerFish(r,c){
+  if(boostersLeft.fish<=0)return;
+  boostersLeft.fish--;fishMode=false;updateBoosterUI();
+  movesLeft--;updateMoveUI();
+  const targets=[];
+  for(let i=0;i<3;i++){targets.push({r:Math.floor(Math.random()*levelCfg.rows),c:Math.floor(Math.random()*levelCfg.cols)});}
+  await doRemove(targets);
+  await afterRemove();
+  isAnimating=false;
+}
+
+// ════ 进度/胜负 ════
+function updateScore(){
+  const sv=document.getElementById('score-val');if(sv)sv.textContent=score;
+  // 得分关/暗关：分数变化时同步更新进度条
+  if(levelCfg&&(levelCfg.type===LEVEL_TYPES.SCORE||levelCfg.type===LEVEL_TYPES.TIMED||levelCfg.type===LEVEL_TYPES.DARK||levelCfg.type===LEVEL_TYPES.RAINBOW)){
+    updateProgress();
+  }
+}
+function updateMoveUI(){
+  const mv=document.getElementById('move-val');
+  if(!mv)return;
+  mv.textContent=movesLeft<=0?'0':movesLeft;
+  mv.style.color=movesLeft<=0?'#f87171':'';
+  const mb=document.getElementById('move-badge');
+  if(mb)mb.style.borderColor=movesLeft<=0?'rgba(248,113,113,.5)':'';
+}
+
+function updateProgress(){
+  const cfg=levelCfg;let pct=0,done=0,total=1;
+  const gt=document.getElementById('goal-text');const gp=document.getElementById('goal-progress');
+  if(cfg.type===LEVEL_TYPES.JELLY){
+    done=jellyDone;total=cfg.jellyCount;
+    pct=Math.min(100,Math.round(done/total*100));
+    if(gt)gt.textContent='🟪 消除果冻 '+done+'/'+total;
+    if(gp)gp.textContent=pct+'%';
+  } else if(cfg.type===LEVEL_TYPES.MIXED){
+    // 混合关：果冻+得分双目标，取两者最低进度
+    const jellyPct=Math.min(100,Math.round(jellyDone/Math.max(1,cfg.jellyCount)*100));
+    const scorePct=Math.min(100,Math.round(score/Math.max(1,cfg.scoreTarget)*100));
+    pct=Math.min(jellyPct,scorePct); // 两者都要完成
+    done=jellyDone;total=cfg.jellyCount;
+    if(gt)gt.textContent='🟪 果冻 '+jellyDone+'/'+cfg.jellyCount+' · 🎯 '+score+'/'+cfg.scoreTarget;
+    if(gp)gp.textContent=Math.min(jellyPct,scorePct)+'%';
+  } else if(cfg.type===LEVEL_TYPES.COLLECT){
+    done=collectDone;total=cfg.collectCount;
+    const cd=CANDY_COLORS[cfg.collectColor]||CANDY_COLORS[0];
+    pct=Math.min(100,Math.round(done/total*100));
+    if(gt)gt.textContent='收集 '+cd.emoji+' '+done+'/'+total;
+    if(gp)gp.textContent=pct+'%';
+  } else if(cfg.type===LEVEL_TYPES.INGRED){
+    done=ingredDone;total=cfg.ingredCount;
+    pct=Math.min(100,Math.round(done/total*100));
+    if(gt)gt.textContent='🍰 食材到达底部 '+done+'/'+total;
+    if(gp)gp.textContent=pct+'%';
+  } else if(cfg.type===LEVEL_TYPES.ORDER){
+    done=orderMade;total=cfg.orderTarget.count;
+    pct=Math.min(100,Math.round(done/total*100));
+    if(gt)gt.textContent='⭐ 制造特殊糖果 '+done+'/'+total+'（条纹/包装/炸弹/鱼鱼均可）';
+    if(gp)gp.textContent=pct+'%';
+  } else if(cfg.type===LEVEL_TYPES.ICE){
+    done=iceDone;total=cfg.iceCount;
+    pct=Math.min(100,Math.round(done/total*100));
+    if(gt)gt.textContent='🧊 打碎冰块 '+done+'/'+total;
+    if(gp)gp.textContent=pct+'%';
+  } else if(cfg.type===LEVEL_TYPES.RAINBOW){
+    done=bombMade;total=cfg.bombTarget;
+    pct=Math.min(100,Math.round(done/total*100));
+    if(gt)gt.textContent='🌈 制造彩色炸弹 '+done+'/'+total;
+    if(gp)gp.textContent=pct+'%';
+  } else {
+    // score / timed / dark
+    pct=Math.min(100,Math.round(score/cfg.scoreTarget*100));
+    if(gt)gt.textContent='🎯 目标得分 '+score+'/'+cfg.scoreTarget;
+    if(gp)gp.textContent=pct+'%';
+  }
+  const pb=document.getElementById('progress-bar');if(pb)pb.style.width=pct+'%';
+}
+
+function countSpecialOnBoard(){
+  let cnt=0;
+  for(let r=0;r<levelCfg.rows;r++)for(let c=0;c<levelCfg.cols;c++){
+    if(board[r][c].special!==SP.NONE)cnt++;
+  }
+  return cnt;
+}
+
+let jellyDone=0; // 追踪实际消除果冻数量
+
+function checkWinLose(){
+  const cfg=levelCfg;
+  let win=false;
+  if(cfg.type===LEVEL_TYPES.JELLY) win=jellyDone>=cfg.jellyCount;
+  else if(cfg.type===LEVEL_TYPES.MIXED) win=jellyDone>=cfg.jellyCount&&score>=cfg.scoreTarget;
+  else if(cfg.type===LEVEL_TYPES.COLLECT) win=collectDone>=cfg.collectCount;
+  else if(cfg.type===LEVEL_TYPES.INGRED) win=ingredDone>=cfg.ingredCount;
+  else if(cfg.type===LEVEL_TYPES.ICE) win=iceDone>=cfg.iceCount;
+  else if(cfg.type===LEVEL_TYPES.RAINBOW) win=bombMade>=cfg.bombTarget;
+  else if(cfg.type===LEVEL_TYPES.ORDER) win=orderMade>=cfg.orderTarget.count;
+  else win=score>=cfg.scoreTarget;
+  if(win){showWin();return;}
+  if(movesLeft<=0&&!movesOvertime){movesOvertime=true;showBanner('⏰ 建议步数已用完！仍可继续，但影响星级','#f97316');}
+  if(movesLeft===3&&!movesOvertime)showBanner('⚠️ 只剩 3 步！','#f87171');
+}
+
+// ════ 特效 ════
+function showSpecialBanner(sp){
+  const msgs={
+    [SP.STRH]:'🍬 横条纹糖果！消除整行！',
+    [SP.STRV]:'🍬 竖条纹糖果！消除整列！',
+    [SP.WRAP]:'🎀 包装糖果！3×3双重爆炸！',
+    [SP.BOMB]:'🌈 彩色炸弹！消除所有同色！',
+    [SP.FISH]:'🐟 鱼鱼糖果！随机攻击目标！',
+  };
+  const txt=msgs[sp];if(!txt)return;
+  showBanner(txt,'rgba(253,230,138,.9)');
+}
+function showBanner(txt,color='#fde68a'){
+  const div=document.createElement('div');div.className='combo-banner';
+  div.style.color=color;div.textContent=txt;
+  document.body.appendChild(div);setTimeout(()=>div.remove(),900);
+}
+function showScorePop(txt){
+  const wrap=document.getElementById('board-wrap');if(!wrap)return;
+  const br=wrap.getBoundingClientRect();
+  const pop=document.createElement('div');pop.className='score-pop';
+  pop.textContent=txt;
+  pop.style.left=(br.left+br.width/2-30)+'px';
+  pop.style.top=(br.top+br.height*.4)+'px';
+  document.body.appendChild(pop);setTimeout(()=>pop.remove(),750);
+}
+function spawnStripeFlash(row,col){
+  const boardEl=document.getElementById('board');
+  if(!boardEl||!levelCfg)return;
+  const flash=document.createElement('div');
+  flash.className='stripe-flash';
+  if(row>=0){
+    // 横向整行
+    flash.style.cssText='left:0;top:'+(row*cellSize)+'px;width:'+(levelCfg.cols*cellSize)+'px;height:'+cellSize+'px;border-radius:6px';
+  } else {
+    // 竖向整列
+    flash.classList.add('vert');
+    flash.style.cssText='left:'+(col*cellSize)+'px;top:0;width:'+cellSize+'px;height:'+(levelCfg.rows*cellSize)+'px;border-radius:6px';
+  }
+  boardEl.appendChild(flash);
+  setTimeout(()=>flash.remove(),380);
+}
+
+function spawnParticles(){
+  const colors=['#fde68a','#f472b6','#34d399','#60a5fa','#f87171','#a78bfa'];
+  for(let i=0;i<10;i++){
+    const p=document.createElement('div');p.className='particle';
+    const sz=5+Math.random()*7;
+    p.style.cssText='width:'+sz+'px;height:'+sz+'px;background:'+colors[Math.floor(Math.random()*colors.length)]+';left:'+(25+Math.random()*50)+'vw;top:'+(30+Math.random()*30)+'vh;animation-duration:'+(0.5+Math.random()*.7)+'s;animation-delay:'+(Math.random()*.25)+'s;';
+    document.body.appendChild(p);setTimeout(()=>p.remove(),1200);
+  }
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+
+
+// ════ 关卡说明系统 ════
+const LEVEL_TUTORIALS={
+  score:  {icon:'🎯',title:'得分关',desc:'消除糖果积累分数，达到目标分数即可通关！连续消除有连击加成。'},
+  jelly:  {icon:'🟪',title:'果冻关',desc:'消除粉色果冻格上的糖果来打破果冻。消除所有果冻格即可通关！'},
+  collect:{icon:'🍎',title:'收集关',desc:'收集指定颜色糖果达到目标数量即可通关！消除对应颜色自动计数。'},
+  ice:    {icon:'🧊',title:'冰块关',desc:'棋盘上有冰块覆盖的格子（雪花标记）。消除冰块旁边的糖果可打破冰块，消除所有冰块即可通关！'},
+  ingred: {icon:'🍰',title:'食材关',desc:'让食材格落到棋盘最底部！在食材附近消除糖果使食材下移，全部到底即通关。'},
+  mixed:  {icon:'🎭',title:'混合关',desc:'双重目标：消除所有果冻 AND 达到目标分数，两者同时完成才通关！'},
+  rainbow:{icon:'🌈',title:'彩虹关',desc:'制造指定数量的彩色炸弹即可通关！\n5个同色糖果直线连消即可生成彩色炸弹。'},
+  order:  {icon:'⭐',title:'订单关',desc:'制造指定数量特殊糖果即可通关！\n4连→条纹糖果，L/T形→包装糖，5连→彩色炸弹，鱼鱼糖果均可计入。'},
+  dark:   {icon:'💜',title:'挑战关',desc:'在建议步数内尽量积累高分！步数用完可继续但影响星级。'},
+  timed:  {icon:'⏱',title:'冲分关',desc:'消除糖果积累分数，步数用完后仍可继续，但影响最终星级。'},
+};
+
+function showLevelTutorial(typeKey){
+  if(!G.seenLevelTypes)G.seenLevelTypes=[];
+  if(G.seenLevelTypes.includes(typeKey))return;
+  const tut=LEVEL_TUTORIALS[typeKey];
+  if(!tut)return;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:20px';
+  const card=document.createElement('div');
+  card.style.cssText='background:linear-gradient(160deg,#2d0a5e,#1a0533);border:1.5px solid rgba(244,114,182,.4);border-radius:20px;padding:26px 22px;max-width:340px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.6)';
+  card.innerHTML='<div style="font-size:2.8rem;margin-bottom:8px">'+tut.icon+'</div>'
+    +'<div style="font-size:1.15rem;font-weight:900;color:#fde68a;margin-bottom:10px">'+tut.title+'</div>'
+    +'<div style="font-size:.84rem;color:rgba(255,255,255,.82);line-height:1.75;margin-bottom:18px;white-space:pre-line;text-align:left">'+tut.desc+'</div>'
+    +'<button id="tut-ok" style="padding:11px 36px;border:none;border-radius:50px;background:linear-gradient(135deg,#f472b6,#a855f7);color:#fff;font-size:.95rem;font-weight:800;cursor:pointer;font-family:Nunito,sans-serif;box-shadow:0 4px 0 #7c2d8a">知道了，开始！</button>';
+  ov.appendChild(card);document.body.appendChild(ov);
+  document.getElementById('tut-ok').onclick=()=>{
+    ov.remove();
+    G.seenLevelTypes.push(typeKey);
+    saveState();
+  };
+}
+
+// ════ WIN / LOSE / NAVIGATION ════
+function showWin(){
+  const bu=(boostersLeft.hammer<boostersLeft._h)+(boostersLeft.lollipop<boostersLeft._l)+(boostersLeft.fish<boostersLeft._f);
+  let stars=3;
+  if(movesOvertime)stars--;
+  if(bu>=1)stars=Math.min(stars,2);
+  if(bu>=2)stars=Math.min(stars,1);
+  stars=Math.max(1,stars);
+  const reward=Math.max(8,6+stars*4+Math.floor(curLevel/2));
+  G.coins=(G.coins||0)+reward;
+  const gc=document.getElementById('game-coins');if(gc)gc.textContent=G.coins;
+  gasBeacon({sheet:SHEET,action:'coin_log',id:G.id,delta:String(reward),total:String(G.coins||0),reason:'level_'+curLevel,date:todayISO()});
+  document.querySelectorAll('#win-stars .star').forEach((el,i)=>setTimeout(()=>{if(i<stars)el.classList.add('lit');},i*200));
+  let winDesc='得分 '+score+' · 获得 +'+reward+' 🪙';
+  if(movesOvertime)winDesc+=' (超步数-1星)';
+  document.getElementById('win-body').textContent=winDesc;
+  if(!G.cleared)G.cleared=[];
+  if(!G.cleared.includes(curLevel))G.cleared.push(curLevel);
+  const next=curLevel+1;
+  if(!G.unlocked)G.unlocked=[1];
+  if(!G.unlocked.includes(next))G.unlocked.push(next);
+  G.boosters.hammer=(G.boosters.hammer||0)+boostersLeft.hammer;
+  G.boosters.lollipop=(G.boosters.lollipop||0)+boostersLeft.lollipop;
+  G.boosters.fish=(G.boosters.fish||0)+boostersLeft.fish;
+  saveState();cloudSave();updateMenuUI();
+  gasBeacon({sheet:SHEET,action:'level_clear',id:G.id,uid:String(G.uid),level:curLevel,stars,score,coin_reward:reward,coins_total:G.coins,date:todayISO()});
+  const nextBtn=document.getElementById('btn-next-level');
+  if(nextBtn)nextBtn.style.display=isRepeatChallenge?'none':'';
+  isRepeatChallenge=false;
+  showOverlay('ov-win');spawnParticles();spawnParticles();
+}
+function showLose(){
+  G.boosters.hammer=(G.boosters.hammer||0)+boostersLeft.hammer;
+  G.boosters.lollipop=(G.boosters.lollipop||0)+boostersLeft.lollipop;
+  G.boosters.fish=(G.boosters.fish||0)+boostersLeft.fish;
+  saveState();
+  document.getElementById('lose-body').textContent='得分 '+score+' · 再挑战一次！';
+  showOverlay('ov-lose');
+}
+function nextLevel(){
+  hideOverlay('ov-win');
+  isRepeatChallenge=false;
+  const next=curLevel+1;
+  if(!LEVELS.find(l=>l.id===next))LEVELS.push(genLevelCfg(next));
+  startGame(next);
+}
+function restartLevel(){
+  hideOverlay('ov-lose');
+  G.boosters.hammer=(G.boosters.hammer||0)+boostersLeft.hammer;
+  G.boosters.lollipop=(G.boosters.lollipop||0)+boostersLeft.lollipop;
+  G.boosters.fish=(G.boosters.fish||0)+boostersLeft.fish;
+  startGame(curLevel);
+}
+function backToMenu(){
+  G.boosters.hammer=(G.boosters.hammer||0)+boostersLeft.hammer;
+  G.boosters.lollipop=(G.boosters.lollipop||0)+boostersLeft.lollipop;
+  G.boosters.fish=(G.boosters.fish||0)+boostersLeft.fish;
+  boostersLeft={hammer:0,lollipop:0,fish:0};
+  saveState();
+  hideOverlay('ov-win');hideOverlay('ov-lose');
+  hammerMode=false;lollipopMode=false;fishMode=false;
+  showScreen('menu');updateMenuUI();buildMenu();
+}
+
+// ════ START GAME ════
+function startGame(id){
+  curLevel=id;
+  levelCfg=LEVELS.find(l=>l.id===id)||genLevelCfg(id);
+  if(!LEVELS.find(l=>l.id===id))LEVELS.push(levelCfg);
+  gasBeacon({sheet:SHEET,action:'game_start',id:G.id,uid:String(G.uid),level:String(id),date:todayISO()});
+  score=0;comboCount=0;movesLeft=levelCfg.moves;movesOvertime=false;
+  jellyLeft=levelCfg.jellyCount;jellyDone=0;collectDone=0;ingredDone=0;bombMade=0;iceDone=0;orderMade=0;
+  shownSpecialTypes=new Set();selectedId=null;isAnimating=false;
+  hammerMode=false;lollipopMode=false;fishMode=false;candyIdCounter=0;
+  boostersLeft={
+    hammer:G.boosters.hammer||0,lollipop:G.boosters.lollipop||0,fish:G.boosters.fish||0,
+    _h:G.boosters.hammer||0,_l:G.boosters.lollipop||0,_f:G.boosters.fish||0,
+  };
+  G.boosters={hammer:0,lollipop:0,fish:0};
+  hideOverlay('ov-win');hideOverlay('ov-lose');
+  document.querySelectorAll('#win-stars .star').forEach(el=>el.classList.remove('lit'));
+  const lbl=document.getElementById('level-label');
+  if(lbl)lbl.textContent='第 '+id+' 关 · '+levelCfg.name;
+  const gc=document.getElementById('game-coins');if(gc)gc.textContent=G.coins||0;
+  updateMoveUI();updateScore();
+  board=generateBoard(levelCfg);
+  const actualJelly=board.reduce((s,row)=>s+row.reduce((ss,cv)=>ss+(cv.jelly>0?1:0),0),0);
+  if(actualJelly>0){levelCfg.jellyCount=actualJelly;jellyLeft=actualJelly;jellyDone=0;}
+  showScreen('game');
+  applyThemeNow();
+  setTimeout(()=>{showLevelTutorial(levelCfg.type);},350);
+  setTimeout(()=>{
+    renderBoard();
+    setupBoardClick();
+    updateBoosterUI();
+    updateProgress();
+  },60);
+}
+
+// ════ MENU ════
+function getUnlocked(){return G.unlocked||[1];}
+function startLatestLevel(){isRepeatChallenge=false;const u=getUnlocked();curLevel=Math.max(...u);startGame(curLevel);}
+function buildMenu(){
+  const wrap=document.getElementById('level-select');
+  const unlocked=getUnlocked(),cleared=G.cleared||[];
+  wrap.innerHTML='<div style="font-size:.76rem;color:rgba(255,255,255,.38);margin-bottom:5px">选择关卡（🏆=已通关）</div>';
+  let row=null;
+  LEVELS.forEach((lv,i)=>{
+    if(i%5===0){row=document.createElement('div');row.className='level-row';wrap.appendChild(row);}
+    const isU=unlocked.includes(lv.id),isC=cleared.includes(lv.id);
+    const btn=document.createElement('button');
+    btn.className='level-btn'+(curLevel===lv.id?' active':'')+(isU?'':' locked');
+    if(isC)btn.style.cssText+='border-color:rgba(251,191,36,.6);color:#fbbf24';
+    btn.textContent=!isU?'🔒':(isC?'🏆':lv.id);
+    btn.title=!isU?'先通关第'+(lv.id-1)+'关':(isC?lv.name+' 已通关':lv.name);
+    if(isU){
+      btn.onclick=()=>{
+        if(isC){
+          if(!(G.tickets>0)){alert('该关卡已通关！需购买「重复挑战卷」（10被引用数）');return;}
+          if(!confirm('消耗1张重复挑战卷？（剩余：'+G.tickets+'）'))return;
+          G.tickets--;saveState();cloudSave();updateMenuUI();
+          isRepeatChallenge=true;
+        }
+        curLevel=lv.id;
+        document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');startGame(lv.id);
+      };
+    }
+    row.appendChild(btn);
+  });
+  const maxU=Math.max(...unlocked);
+  if(!unlocked.includes(curLevel))curLevel=Math.min(maxU,LEVELS.length);
+}
+function enterMenu(){
+  buildMenu();updateMenuUI();
+  if(G.skin)curSkin=G.skin;
+  applyThemeNow();
+  updateSkinUI();showScreen('menu');
+  if(!_offline&&!_forumFetched&&G.uid>0)fetchForumData(false);
+}
+function updateMenuUI(){
+  const el=document.getElementById('menu-id-label');
+  const sl=document.getElementById('menu-stats-label');
+  if(el)el.textContent='🍬 '+G.id+' · 🪙 '+(G.coins||0)+' 金币';
+  if(sl)sl.textContent='📝 '+(G.replies||0)+' · 💬 '+(G.citations||0)+' · 🎫 '+(G.tickets||0)+' · 🔨'+(G.boosters.hammer||0)+' 🍭'+(G.boosters.lollipop||0)+' 🐟'+(G.boosters.fish||0);
+  const gc=document.getElementById('game-coins');if(gc)gc.textContent=G.coins||0;
+}
+
+// ════ LOGIN / LOGOUT ════
+async function doLogin(){
+  const loginBtn=document.getElementById('btn-login');
+  const id=document.getElementById('inp-id').value.trim();
+  const uid=parseInt(document.getElementById('inp-uid').value.trim(),10);
+  const err=document.getElementById('login-err');
+  if(!id){err.textContent='请输入论坛 ID';return;}
+  if(!uid||uid<1){err.textContent='请输入有效 UID（数字）';return;}
+  err.textContent='';_offline=false;setOffline(false);
+  G.id=id;G.uid=uid;
+  try{localStorage.setItem(KEY_ID,id);localStorage.setItem(KEY_UID,String(uid));}catch(e){}
+  if(loginBtn){loginBtn.disabled=true;loginBtn.textContent='登录中...';}
+  showLoading('系统：正在登录中...');
+  try{
+    loadState();G.id=id;G.uid=uid;
+    showLoading('系统：正在登录中（读取云端）...');
+    const cloud=await cloudLoad(id);
+    if(cloud&&cloud.state_json){try{const cs=JSON.parse(cloud.state_json);Object.assign(G,cs);G.id=id;G.uid=uid;}catch(e){}}
+  }catch(e){_offline=true;setOffline(true);}
+  saveState();saveIdHistory();
+  gasBeacon({sheet:SHEET,action:'login_log',id:G.id,uid:String(G.uid),date:todayISO(),info:'candy_town_v2.0'});
+  hideLoading();
+  if(loginBtn){loginBtn.disabled=false;loginBtn.textContent='▶ 进入游戏';}
+  enterMenu();
+}
+function doOfflineMode(){
+  _offline=true;G.id='访客';G.uid=0;G.replies=0;G.citations=0;G.unlocked=[1];G.cleared=[];G.tickets=0;
+  G.boosters={hammer:3,lollipop:2,fish:2};setOffline(true);enterMenu();
+}
+function doLogout(){
+  if(!confirm('确认登出？'))return;
+  G={id:'',uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,tickets:0,unlocked:[1],cleared:[],boosters:{hammer:0,lollipop:0,fish:0},coins:0,skin:'default',fetchRangeHistory:{}};
+  try{localStorage.removeItem(KEY_ID);localStorage.removeItem(KEY_UID);}catch(e){}
+  _offline=false;_forumFetched=false;
+  showScreen('screen-login');renderIdHistory();
+  const hist=loadIdHistory();
+  if(hist.length){document.getElementById('inp-id').value=hist[0].id||'';document.getElementById('inp-uid').value=hist[0].uid||'';}
+}
+function downloadGameData(){
+  const rows=[['项目','数值'],['论坛ID',G.id],['UID',G.uid],['金币',G.coins||0],['回复数',G.replies||0],['被引用',G.citations||0],['重复挑战卷',G.tickets||0],['锤子道具',G.boosters.hammer||0],['棒棒糖道具',G.boosters.lollipop||0],['鱼鱼道具',G.boosters.fish||0],['已解锁关卡',(G.unlocked||[]).join(' ')],['已通关关卡',(G.cleared||[]).join(' ')],['皮肤',G.skin||'default'],['时间',new Date().toLocaleString('zh-TW')]];
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='candy-town-'+G.id+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ════ INIT ════
+window.addEventListener('DOMContentLoaded',()=>{
+  // CSS keyframes for bomb spin
+  const s=document.createElement('style');
+  s.textContent='@keyframes bombSpin{to{filter:hue-rotate(360deg)}}';
+  document.head.appendChild(s);
+  loadState();
+  if(G.skin)curSkin=G.skin;
+  applyThemeNow();
+  showScreen('screen-login');
+  const savedId=localStorage.getItem(KEY_ID)||'';
+  const savedUid=localStorage.getItem(KEY_UID)||'';
+  if(savedId)document.getElementById('inp-id').value=savedId;
+  if(savedUid)document.getElementById('inp-uid').value=savedUid;
+  if(!savedId){const h=loadIdHistory();if(h.length){document.getElementById('inp-id').value=h[0].id;document.getElementById('inp-uid').value=h[0].uid||'';}}
+  renderIdHistory();
+});
+document.addEventListener('keydown',e=>{
+  if((e.key||'').toLowerCase()==='x'){const s=document.getElementById('shop-overlay');if(s&&s.classList.contains('show'))closeShop();}
+});
+document.addEventListener('touchend',e=>e.preventDefault(),{passive:false});
+</script>
+</body>
+</html>

@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>串烧时光 · HTML</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#08172a;color:#fff;overflow:hidden}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.hidden{display:none!important}
+.title{font-size:2rem;font-weight:900;color:#7dd3fc}
+.sub{font-size:.85rem;color:rgba(255,255,255,.65);margin:8px 0 14px}
+.card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:12px}
+.inp{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff}
+.btn{border:none;border-radius:10px;padding:10px 12px;background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;font-weight:800;cursor:pointer}
+#top{width:min(980px,98vw);display:flex;gap:8px;align-items:center;padding:8px}
+#lvl{flex:1;text-align:center;font-weight:900}
+#progress-wrap{width:min(980px,98vw);height:4px;background:rgba(255,255,255,.12);border-radius:10px;overflow:hidden}
+#progress{height:100%;width:0%;background:linear-gradient(90deg,#22d3ee,#0ea5e9);transition:width .2s}
+#game-area{width:min(980px,98vw);height:calc(100vh - 170px);display:flex;flex-direction:column;gap:8px}
+#target,#mods,#hint{font-size:.8rem;color:rgba(255,255,255,.8)}
+#sticks{flex:1;display:grid;grid-template-columns:repeat(7,minmax(90px,1fr));gap:8px;align-content:stretch;overflow:hidden;padding-bottom:0;min-height:0}
+#sticks-pager{height:20px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:.75rem;color:rgba(255,255,255,.75)}
+#sticks-pager .pg{cursor:pointer;padding:1px 8px;border-radius:8px;background:rgba(255,255,255,.08)}
+.stick{height:100%;min-height:104px;border-radius:14px;border:2px solid rgba(255,255,255,.26);background:linear-gradient(180deg,rgba(16,30,48,.95),rgba(8,18,34,.95));display:flex;flex-direction:column-reverse;gap:5px;padding:8px;position:relative;cursor:pointer;transition:transform .15s ease}
+.stick.selected{transform:translateY(-3px);box-shadow:0 0 0 2px rgba(56,189,248,.6),0 10px 18px rgba(56,189,248,.22)}
+.stick.skin-clay{background:linear-gradient(180deg,#4a2d1a,#22140d)}
+.stick.skin-iron{background:linear-gradient(180deg,#334155,#1f2937)}
+.stick.skin-bamboo{background:linear-gradient(180deg,#3f5d2e,#1f2f18)}
+.stick.skin-wood{background:linear-gradient(180deg,#7c4a2a,#3a2314);border-color:rgba(255,214,170,.35)}
+.stick.skin-pokemon{background:linear-gradient(180deg,#1f2937,#111827);border-color:rgba(74,222,128,.5);box-shadow:0 0 0 1px rgba(74,222,128,.25) inset}
+.slot{height:clamp(22px,3.2vh,26px);border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08)}
+.slot.real{background:rgba(255,255,255,.06);padding:0 4px}
+.slot.can-drop{outline:2px dashed rgba(74,222,128,.85);background:rgba(74,222,128,.12)}
+.slot.pick{box-shadow:0 0 0 2px rgba(250,204,21,.9) inset}
+.slot.fog{background:repeating-linear-gradient(135deg,#64748b 0 6px,#334155 6px 12px)}
+.sp{position:absolute;top:3px;right:3px;font-size:.72rem;background:rgba(0,0,0,.38);border-radius:8px;padding:1px 6px}
+.stick.ice-coat:before{content:'';position:absolute;inset:3px;border-radius:12px;background:linear-gradient(180deg,rgba(56,189,248,.25),rgba(56,189,248,.06));box-shadow:0 0 0 1px rgba(56,189,248,.35) inset;pointer-events:none}
+.stick.stone-cover:after{content:'';position:absolute;inset:3px;border-radius:12px;background:linear-gradient(180deg,rgba(148,163,184,.28),rgba(71,85,105,.24));box-shadow:0 0 0 1px rgba(255,255,255,.14) inset;pointer-events:none}
+.stick.stone-crack:after{background:linear-gradient(180deg,rgba(148,163,184,.24),rgba(71,85,105,.18)),repeating-linear-gradient(45deg,rgba(255,255,255,.35) 0 2px,rgba(255,255,255,0) 2px 10px)}
+.stick.locked .lid{transform:scaleY(1);opacity:.92;background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(15,23,42,.96))}
+.stick.locked .lock-mark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem;z-index:7;pointer-events:none;opacity:.92}
+.fx-pop{animation:fxPop .25s ease-out}
+@keyframes fxPop{from{transform:scale(.9);filter:brightness(1.3)}to{transform:scale(1)}}
+#tray{display:none}
+.lid{position:absolute;inset:0;border-radius:inherit;background:linear-gradient(180deg,rgba(148,163,184,.92),rgba(71,85,105,.96));transform-origin:center top;transform:scaleY(0);opacity:0;pointer-events:none;z-index:6}
+.stick.closed .lid{transform:scaleY(1);opacity:.96}
+.stick.just-closed .lid{animation:lidClose .35s ease forwards}
+@keyframes lidClose{from{transform:scaleY(0);opacity:.15}to{transform:scaleY(1);opacity:.96}}
+.skewer{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;gap:6px}
+.skewer:before{content:'';position:absolute;left:6px;right:6px;height:4px;background:#d6b07a;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.2) inset}
+.piece{width:12px;height:12px;position:relative;z-index:2;box-shadow:0 1px 2px rgba(0,0,0,.35);background:#f59e0b}
+.piece.round{border-radius:50%}
+.piece.square{border-radius:3px}
+.piece.ring{border-radius:50%;background:transparent;border:3px solid #f59e0b;box-shadow:none}
+.piece.leaf{width:12px;height:9px;border-radius:10px 2px 10px 2px;transform:rotate(-22deg)}
+.piece.tri{width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:12px solid #f59e0b;background:transparent;box-shadow:none}
+.preview{margin-top:4px;display:flex;gap:4px;justify-content:center;min-height:12px}
+.mini-sk{position:relative;width:20px;height:10px;display:inline-flex;align-items:center;justify-content:center;gap:2px}
+.mini-sk:before{content:'';position:absolute;left:1px;right:1px;height:2px;background:#d6b07a;border-radius:2px}
+.mini-p{position:relative;width:11px;height:11px;line-height:11px;font-size:9px;text-align:center;z-index:2}
+.mini-poke{width:14px;height:14px;object-fit:contain;vertical-align:middle}
+.food{position:relative;z-index:2;font-size:13px;line-height:1}
+.poke-food{width:22px;height:22px;object-fit:contain;position:relative;z-index:2;image-rendering:auto}
+#belt-wrap{height:52px;border-radius:12px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(255,255,255,.18);position:relative}
+#belt{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:flex-start;gap:8px;padding:0 10px;will-change:transform}
+.belt-item{width:42px;height:30px;border-radius:8px;background:rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,.2)}
+.belt-item.belt-empty{cursor:default;opacity:.35;background:rgba(0,0,0,.12);border-color:rgba(255,255,255,.12)}
+.belt-item.belt-empty .mini-sk{opacity:.25}
+.belt-item.selected{box-shadow:0 0 0 2px rgba(250,204,21,.95);background:rgba(250,204,21,.18)}
+#belt-wrap:before{content:'';position:absolute;left:0;top:0;bottom:0;width:24px;background:linear-gradient(90deg,rgba(8,23,42,.9),rgba(8,23,42,0));pointer-events:none}
+#belt-wrap:after{content:'';position:absolute;right:0;top:0;bottom:0;width:24px;background:linear-gradient(90deg,rgba(8,23,42,0),rgba(8,23,42,.9));pointer-events:none}
+#tray{display:none!important;min-height:0!important;height:0!important;padding:0!important;border:0!important;background:transparent!important}
+.tray-item{width:52px;height:22px;border-radius:8px;background:linear-gradient(135deg,#22d3ee,#0891b2);display:flex;align-items:center;justify-content:center}
+#boosters{width:min(980px,98vw);display:flex;gap:8px;padding:6px}
+.bbtn{flex:1;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;padding:8px 4px;font-weight:800}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center}
+.shop-list{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow:auto}
+.shop-item{display:flex;gap:8px;align-items:center;padding:8px;border-radius:10px;background:rgba(255,255,255,.06)}
+.ov-card{width:min(340px,92vw);text-align:center}
+.compact-board .stick{padding:6px;gap:4px;min-height:100px}
+.compact-board .mini-p{font-size:8px}
+.belt-on .stick{min-height:88px}
+.belt-on #mods,.belt-on #hint{font-size:.74rem;line-height:1.2}
+@media (max-height:740px){
+  .stick{height:106px}
+  .slot{height:22px}
+  #boosters{padding:4px}
+  .bbtn{padding:6px 2px;font-size:.88rem}
+}
+</style>
+</head>
+<body>
+<div id="login" class="screen">
+  <div class="title">🍢 串烧时光</div>
+  <div class="sub">无时间限制 · 三个相同串烧自动消除</div>
+  <div class="card" style="width:min(360px,92vw)">
+    <input id="inp-id" class="inp" placeholder="论坛ID" style="margin-bottom:8px">
+    <input id="inp-uid" class="inp" placeholder="UID" type="number" style="margin-bottom:8px">
+    <button id="btn-login" class="btn" style="width:100%" onclick="doLogin()">登入</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="offlineMode()">离线模式</button>
+    <div id="login-err" style="min-height:18px;color:#fda4af;margin-top:8px;font-size:.8rem"></div>
+  </div>
+</div>
+
+<div id="menu" class="screen hidden">
+  <div class="title">🍢 串烧时光</div>
+  <div id="menu-stat" class="sub">-</div>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button class="btn" onclick="startLatest()">开始</button>
+    <button class="btn" onclick="openShop()">商店</button>
+    <button class="btn" onclick="openSkin()">皮肤</button>
+  </div>
+  <div class="card" style="width:min(860px,95vw)">
+    <div style="font-weight:800;margin-bottom:8px">关卡（无限）</div>
+    <div id="lvlist" style="display:grid;grid-template-columns:repeat(10,1fr);gap:6px"></div>
+  </div>
+</div>
+
+<div id="game" class="screen hidden">
+  <div id="top">
+    <button class="btn" onclick="backMenu()">←</button>
+    <div id="lvl">第1关</div>
+    <div class="card" style="padding:6px 10px">🪙 <b id="coins">0</b></div>
+  </div>
+  <div id="progress-wrap"><div id="progress"></div></div>
+  <div id="game-area">
+    <div id="target"></div>
+    <div id="sticks"></div>
+    <div id="sticks-pager"></div>
+    <div id="belt-wrap"><div id="belt"></div></div>
+    <div id="tray"></div>
+    <div id="mods"></div>
+    <div id="hint"></div>
+  </div>
+  <div id="boosters">
+    <button class="bbtn" onclick="doUndo()">↩ <span id="uval">0</span><br>撤回</button>
+    <button class="bbtn" onclick="doHint()">💡 <span id="hval">0</span><br>提示</button>
+    <button class="bbtn" onclick="doAddSlot()">➕ <span id="aval">0</span><br>扩盘</button>
+    <button class="bbtn" onclick="doReveal()">🔎 <span id="rval">0</span><br>检视</button>
+    <button class="bbtn" onclick="openShop()">🛒<br>购买</button>
+  </div>
+</div>
+
+<div id="ov-win" class="ov hidden">
+  <div class="card ov-card">
+    <div style="font-size:1.8rem">🎉</div>
+    <div style="font-weight:900;font-size:1.2rem;margin:6px 0">通关成功</div>
+    <div id="win-body" style="font-size:.86rem;color:rgba(255,255,255,.75);margin-bottom:10px"></div>
+    <button class="btn" style="width:100%" onclick="nextLevel()">下一关</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="backMenu()">返回菜单</button>
+  </div>
+</div>
+<div id="ov-lose" class="ov hidden">
+  <div class="card ov-card">
+    <div style="font-size:1.8rem">😵</div>
+    <div style="font-weight:900;font-size:1.2rem;margin:6px 0">挑战失败</div>
+    <div id="lose-body" style="font-size:.86rem;color:rgba(255,255,255,.75);margin-bottom:10px"></div>
+    <button class="btn" style="width:100%" onclick="restartLevel()">重新挑战</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="backMenu()">返回菜单</button>
+  </div>
+</div>
+
+<div id="ov-shop" class="ov hidden">
+  <div class="card" style="width:min(430px,94vw);max-height:86vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b>🛒 商店</b><button class="btn" onclick="closeShop()">关闭</button></div>
+    <div style="font-size:.8rem;margin-bottom:8px">📝回复 <b id="sh-replies">0</b> · 💬被引用 <b id="sh-cites">0</b></div>
+    <div id="forum-status" style="font-size:.78rem;color:#93c5fd;min-height:18px;margin-bottom:6px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><input id="forum-start-date" class="inp" type="date"><input id="forum-end-date" class="inp" type="date"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn" style="flex:1" onclick="refreshForumData()">抓取论坛</button><button class="btn" style="flex:1;background:#1f2937" onclick="refreshForumDataFast()">快速抓取</button></div>
+    <div id="shop-list" class="shop-list"></div>
+  </div>
+</div>
+
+<div id="ov-skin" class="ov hidden">
+  <div class="card" style="width:min(360px,92vw)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>🎨 皮肤</b><button class="btn" onclick="closeSkin()">关闭</button></div>
+    <div id="skin-list" class="shop-list"></div>
+  </div>
+</div>
+
+<script>
+const GAS_URL="https://script.google.com/macros/s/AKfycbxtzW4wVTgHoVQ31DvqJdom0nNum7QEYHtXeDjeHt7QGGoi3Fq3PYz9GkiRfFQlTd8J/exec";
+const SHEET="串烧时光HTML";
+const FORUM_PROXY="https://api.codetabs.com/v1/proxy?quest=";
+const FORUM_PROXIES=[
+  "https://api.codetabs.com/v1/proxy?quest=",
+  "https://r.jina.ai/http://",
+  "https://cors.isomorphic-git.org/"
+];
+const FORUM_FETCH_MS=22000;
+const POKE_BULBASAUR_URL="https://play.pokemonshowdown.com/sprites/gen5/bulbasaur.png";
+const POKE_NAMES=[
+  "bulbasaur","ivysaur","venusaur","charmander","charmeleon","charizard","squirtle","wartortle","blastoise",
+  "caterpie","metapod","butterfree","weedle","kakuna","beedrill","pidgey","pidgeotto","pidgeot",
+  "rattata","raticate","spearow","fearow","ekans","arbok","pikachu","raichu","sandshrew","sandslash",
+  "nidoran-f","nidorina","nidoqueen","nidoran-m","nidorino","nidoking","clefairy","clefable","vulpix",
+  "ninetales","jigglypuff","wigglytuff","zubat","golbat","oddish","gloom","vileplume","paras","parasect",
+  "venonat","venomoth","diglett","dugtrio","meowth","persian","psyduck","golduck","mankey","primeape",
+  "growlithe","arcanine","poliwag","poliwhirl","poliwrath","abra","kadabra","alakazam","machop","machoke",
+  "machamp","bellsprout","weepinbell","victreebel","tentacool","tentacruel","geodude","graveler","golem",
+  "ponyta","rapidash","slowpoke","slowbro","magnemite","magneton","farfetchd","doduo","dodrio","seel",
+  "dewgong","grimer","muk","shellder","cloyster","gastly","haunter","gengar","onix","drowzee","hypno",
+  "krabby","kingler","voltorb","electrode","exeggcute","exeggutor","cubone","marowak","hitmonlee","hitmonchan"
+];
+const KEY_STATE="st_state",KEY_ID="st_id",KEY_UID="st_uid";
+const ITEM_POOL=["🍗","🦑","🍤","🌽","🍄","🥩","🧅","🌶","🍅","🥓","🍆","🫑"];
+const SPECIALS=[
+  {k:"lock",icon:"🔒",desc:"锁住：用🔑可解锁任意锁盘"},
+  {k:"key",icon:"🔑",desc:"钥匙盘：封盘获得一把🔑"},
+  {k:"ice",icon:"🧊",desc:"冰冻：邻近封盘一次解冻"},
+  {k:"stone",icon:"🪨",desc:"石盖：邻近封盘两次击碎"},
+  {k:"fog",icon:"🌫",desc:"下层隐藏"},
+  {k:"bomb",icon:"💣",desc:"点到炸掉目标一串"},
+  {k:"double",icon:"✖2",desc:"本次封盘计数×2"},
+  {k:"portal",icon:"🌀",desc:"传送到其他空位"},
+  {k:"glue",icon:"🧪",desc:"黏合：不可取出"},
+  {k:"fire",icon:"🔥",desc:"奖励加成"}
+];
+const SKINS=[
+  {id:"default",name:"夜摊默认",req:0,bg:"radial-gradient(1200px 600px at 50% -10%,#114a73 0%,#071425 70%)",stick:""},
+  {id:"clay",name:"陶炉皮肤",req:8,bg:"radial-gradient(1000px 500px at 50% -10%,#7c2d12 0%,#111827 70%)",stick:"skin-clay"},
+  {id:"iron",name:"铁板皮肤",req:16,bg:"radial-gradient(1000px 500px at 50% -10%,#334155 0%,#0f172a 70%)",stick:"skin-iron"},
+  {id:"bamboo",name:"竹炭皮肤",req:24,bg:"radial-gradient(1000px 500px at 50% -10%,#3f6212 0%,#111827 70%)",stick:"skin-bamboo"},
+  {id:"wood",name:"木炭炉皮肤",req:32,bg:"radial-gradient(1000px 500px at 50% -10%,#7c4a2a 0%,#1b120b 70%)",stick:"skin-wood"},
+  {id:"pokemon",name:"宝可梦皮肤",req:0,bg:"radial-gradient(1000px 500px at 50% -10%,#14532d 0%,#0b1220 70%)",stick:"skin-pokemon"}
+];
+const SHOP_ITEMS=[{id:"undo",name:"撤回x1",costType:"replies",cost:10,give:{undo:1}},{id:"hint",name:"提示x1",costType:"replies",cost:15,give:{hint:1}},{id:"add",name:"扩盘x1",costType:"replies",cost:20,give:{add:1}},{id:"reveal",name:"检视x1",costType:"replies",cost:20,give:{reveal:1}},{id:"ticket",name:"挑战卷x1",costType:"citations",cost:10,give:{ticket:1}}];
+let G={id:"",uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,coins:0,tickets:0,keys:0,unlocked:[1],cleared:[],skin:"default",boosters:{undo:3,hint:3,add:2,reveal:2}};
+let level=1,sticks=[],tray=[],trayCap=7,targetNeed=18,targetDone=0,history=[];
+const qs=id=>document.getElementById(id),todayISO=()=>new Date().toISOString().slice(0,10);
+function gasBeacon(p){const u=GAS_URL+"?"+new URLSearchParams({...p,game:"skewer_time",_t:Date.now()});const i=new Image();i.referrerPolicy="no-referrer";i.src=u;}
+function gasJsonp(params,timeout=10000){return new Promise((res,rej)=>{const cb="st_cb_"+Math.random().toString(36).slice(2);const s=document.createElement("script");const t=setTimeout(()=>{cleanup();rej(new Error("timeout"));},timeout);function cleanup(){clearTimeout(t);delete window[cb];if(s.parentNode)s.remove();}window[cb]=(d)=>{cleanup();res(d||{});};s.src=GAS_URL+"?"+new URLSearchParams({...params,game:"skewer_time",callback:cb,_t:Date.now()});document.body.appendChild(s);});}
+function save(){localStorage.setItem(KEY_STATE,JSON.stringify(G));}
+function load(){try{Object.assign(G,JSON.parse(localStorage.getItem(KEY_STATE)||"{}"));}catch(e){}}
+function normalize(){if(!G.boosters)G.boosters={undo:0,hint:0,add:0,reveal:0};["undo","hint","add","reveal"].forEach(k=>G.boosters[k]=Math.max(0,Number(G.boosters[k]||0)));G.keys=Math.max(0,Number(G.keys||0));if(!G.unlocked||!G.unlocked.length)G.unlocked=[1];if(!G.cleared)G.cleared=[];}
+async function cloudSave(){if(!G.id)return;try{await gasJsonp({sheet:SHEET,action:"save",id:G.id,uid:String(G.uid),coins:String(G.coins||0),unlocked_count:String((G.unlocked||[]).length),cleared_count:String((G.cleared||[]).length),state_json:JSON.stringify(G),date:todayISO()},12000);}catch(e){}}
+async function cloudLoad(id){try{const d=await gasJsonp({sheet:SHEET,action:"load",id},16000);return d.data||null;}catch(e){return null;}}
+function show(id){["login","menu","game"].forEach(x=>qs(x).classList.add("hidden"));qs(id).classList.remove("hidden");}
+function hint(s){qs("hint").textContent=s||"";}
+function setForumStatus(s){const el=qs("forum-status");if(el)el.textContent=s||"";}
+function updateMenuStat(){
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  const ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  qs("menu-stat").textContent="📝 "+ar+" · 💬 "+ac+" · 🪙 "+(G.coins||0)+" · 🎫 "+(G.tickets||0);
+}
+async function doLogin(){
+  const id=qs("inp-id").value.trim(),uid=parseInt(qs("inp-uid").value.trim(),10);
+  const btn=qs("btn-login");
+  if(!id||!uid){qs("login-err").textContent="请输入论坛ID与UID";return;}
+  qs("login-err").textContent="";
+  const oldText=btn.textContent;
+  btn.disabled=true;btn.textContent="登入中...";
+  try{
+    G.id=id;G.uid=uid;localStorage.setItem(KEY_ID,id);localStorage.setItem(KEY_UID,String(uid));
+    load();normalize();
+    const c=await cloudLoad(id);
+    if(c&&c.state_json){try{Object.assign(G,JSON.parse(c.state_json));G.id=id;G.uid=uid;normalize();}catch(e){}}
+    save();cloudSave();
+    gasBeacon({sheet:SHEET,action:"login_log",id:G.id,uid:String(G.uid),date:todayISO(),info:"skewer_time_v1"});
+    enterMenu();
+  }finally{
+    btn.disabled=false;btn.textContent=oldText;
+  }
+}
+function offlineMode(){load();normalize();enterMenu();}
+function enterMenu(){renderLvList();updateMenuStat();show("menu");}
+function backMenu(){qs("ov-win").classList.add("hidden");qs("ov-lose").classList.add("hidden");enterMenu();}
+function genLevelCfg(lv){const kinds=Math.min(10,4+Math.floor(lv/3)),perKind=3+Math.min(2,Math.floor(lv/12)),stickCount=Math.min(18,8+Math.floor(lv/2)),empty=2+Math.floor(lv/8),spCount=Math.min(6,Math.floor(lv/3));return{id:lv,kinds,perKind,stickCount,empty,spCount};}
+function renderLvList(){const wrap=qs("lvlist");wrap.innerHTML="";const max=Math.max(...G.unlocked);for(let i=1;i<=Math.max(40,max+10);i++){const b=document.createElement("button");b.className="btn";b.style.padding="6px";b.textContent=G.cleared.includes(i)?"🏆"+i:i;if(i>max)b.disabled=true;b.onclick=()=>startGame(i);wrap.appendChild(b);}}
+function startLatest(){startGame(Math.max(...G.unlocked));}
+function pickSkin(){return SKINS.find(s=>s.id===G.skin)||SKINS[0]}
+function applySkin(id){
+  const s=SKINS.find(x=>x.id===id);if(!s)return;
+  const req=Number(s.req||0);
+  if((G.cleared||[]).length<req){alert("需通关"+req+"关");return;}
+  G.skin=id;save();cloudSave();renderAll();
+  // 立即刷新皮肤面板状态，不用重开
+  if(!qs("ov-skin").classList.contains("hidden")) openSkin();
+}
+function openSkin(){const list=qs("skin-list");list.innerHTML="";SKINS.forEach(s=>{const req=Number(s.req||0),can=(G.cleared||[]).length>=req;const d=document.createElement("div");d.className="shop-item";d.innerHTML="<div style='flex:1'><b>"+s.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>通关"+req+"关解锁</div></div><button class='btn' "+(can?"":"disabled")+">"+(G.skin===s.id?"使用中":"使用")+"</button>";d.querySelector("button").onclick=()=>applySkin(s.id);list.appendChild(d);});qs("ov-skin").classList.remove("hidden");}
+function closeSkin(){qs("ov-skin").classList.add("hidden");}
+function generateLevelData(cfg){const pool=[];for(let i=0;i<cfg.kinds;i++)for(let k=0;k<cfg.perKind;k++)pool.push(i);for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}const arr=[];let p=0;for(let s=0;s<cfg.stickCount-cfg.empty;s++){const st=[];const len=Math.min(4,Math.max(1,Math.round((pool.length-p)/(cfg.stickCount-s-cfg.empty))));for(let m=0;m<len&&p<pool.length;m++)st.push(pool[p++]);arr.push({items:st,special:null,saux:0});}while(p<pool.length){arr[Math.floor(Math.random()*arr.length)].items.push(pool[p++]);}for(let e=0;e<cfg.empty;e++)arr.push({items:[],special:null,saux:0});for(let c=0;c<cfg.spCount;c++){const idx=Math.floor(Math.random()*arr.length);if(arr[idx].special||!arr[idx].items.length)continue;const sp=SPECIALS[(cfg.id+c)%SPECIALS.length];arr[idx].special=sp.k;arr[idx].saux=(sp.k==="stone"?2:sp.k==="lock"||sp.k==="ice"?1:0);}return arr;}
+function startGame(lv){qs("ov-win").classList.add("hidden");qs("ov-lose").classList.add("hidden");level=lv;const cfg=genLevelCfg(lv);sticks=generateLevelData(cfg);tray=[];history=[];targetDone=0;targetNeed=cfg.kinds*cfg.perKind;if(!G.unlocked.includes(lv))G.unlocked.push(lv);qs("lvl").textContent="第 "+lv+" 关 · 串烧挑战";qs("coins").textContent=G.coins||0;hint("点串烧格，将最上层放入托盘；3个相同自动消除。");gasBeacon({sheet:SHEET,action:"game_start",id:G.id,uid:String(G.uid),level:String(lv),date:todayISO()});show("game");renderAll();}
+function restartLevel(){startGame(level);}
+function nextLevel(){startGame(level+1);}
+function snapshot(){return{sticks:JSON.parse(JSON.stringify(sticks)),tray:tray.slice(),targetDone,trayCap};}
+function restore(s){sticks=JSON.parse(JSON.stringify(s.sticks));tray=s.tray.slice();targetDone=s.targetDone;trayCap=s.trayCap;}
+function canTap(i){const s=sticks[i];if(!s||!s.items.length)return false;if(s.special==="glue")return false;return true;}
+function resolveTray(doubleScore){
+  const cnt={};let wildIdx=[];
+  tray.forEach((v,i)=>{ if(v===-1) wildIdx.push(i); else cnt[v]=(cnt[v]||0)+1;});
+  let rm=false;
+  Object.keys(cnt).forEach(k=>{
+    while(cnt[k]>=3){
+      let need=3,idx=[];for(let i=0;i<tray.length;i++){if(tray[i]==k&&need>0){idx.push(i);need--;}}
+      idx.reverse().forEach(i=>tray.splice(i,1));
+      targetDone+=doubleScore?2:1;cnt[k]-=3;rm=true;G.coins=(G.coins||0)+1;
+    }
+    while(cnt[k]===2 && tray.includes(-1)){
+      const i1=tray.indexOf(-1);
+      tray.splice(i1,1);
+      let need=2,idx=[];for(let i=0;i<tray.length;i++){if(tray[i]==k&&need>0){idx.push(i);need--;}}
+      idx.reverse().forEach(i=>tray.splice(i,1));
+      targetDone+=doubleScore?2:1;cnt[k]=0;rm=true;G.coins=(G.coins||0)+1;
+    }
+  });
+  if(rm){save();cloudSave();if(targetDone>=targetNeed)showWin();}
+}
+function tapStick(i){
+  const s=sticks[i];if(!s)return;
+  if(s.special==="lock"&&s.saux>0){s.saux--;hint("🔒 已解锁");renderAll();return;}
+  if(s.special==="ice"&&s.saux>0){s.saux--;hint("🧊 已解冻");renderAll();return;}
+  if(s.special==="stone"&&s.saux>0){s.saux--;hint("🪨 石层剩余 "+s.saux);renderAll();return;}
+  if(!canTap(i)){hint("该格当前不可移动");return;}
+  if(tray.length>=trayCap){showLose("托盘已满");return;}
+  history.push(snapshot());if(history.length>30)history.shift();
+  let x=s.items.pop();
+  if(s.special==="wild") x=-1;
+  if(s.special==="portal"){const e=sticks.find(t=>t.items.length<4);if(e&&e!==s){e.items.push(x);hint("🌀 传送到空位");renderAll();return;}}
+  tray.push(x);
+  if(s.special==="bomb"&&tray.length){tray.splice(Math.floor(Math.random()*tray.length),1);hint("💣 炸掉托盘1格");}
+  if(s.special==="fire"){G.coins=(G.coins||0)+2;hint("🔥 火力加成 +2金币");}
+  resolveTray(s.special==="double");
+  renderAll();
+}
+function doUndo(){if(!(G.boosters.undo>0)){openShop();return;}if(!history.length){hint("没有可撤回");return;}G.boosters.undo--;restore(history.pop());save();renderAll();}
+function doHint(){if(!(G.boosters.hint>0)){openShop();return;}G.boosters.hint--;save();const i=sticks.findIndex(s=>s.items.length&&s.special!=="glue");if(i>=0)hint("建议先点第 "+(i+1)+" 格");renderAll();}
+function doAddSlot(){if(!(G.boosters.add>0)){openShop();return;}G.boosters.add--;trayCap=Math.min(12,trayCap+1);save();hint("托盘容量 +1");renderAll();}
+function doReveal(){if(!(G.boosters.reveal>0)){openShop();return;}G.boosters.reveal--;sticks.forEach(s=>{if(s.special==="fog")s.special=null;});save();hint("已揭开全部迷雾格");renderAll();}
+function renderAll(){const sk=pickSkin();qs("game").style.background=sk.bg;qs("menu").style.background=sk.bg;qs("target").textContent="目标：消除 "+targetNeed+" 组（已完成 "+targetDone+"） · 无时间限制";qs("mods").textContent="特殊格≥10种｜道具即时生效｜无限关卡";qs("uval").textContent=G.boosters.undo||0;qs("hval").textContent=G.boosters.hint||0;qs("aval").textContent=G.boosters.add||0;qs("rval").textContent=G.boosters.reveal||0;qs("progress").style.width=Math.min(100,Math.round(targetDone/Math.max(1,targetNeed)*100))+"%";const wrap=qs("sticks");wrap.innerHTML="";const cols=sticks.length>=14?7:6;wrap.style.gridTemplateColumns="repeat("+cols+",minmax(90px,1fr))";sticks.forEach((s,idx)=>{const d=document.createElement("div");d.className="stick "+(sk.stick||"");d.onclick=()=>tapStick(idx);if(s.special){const m=SPECIALS.find(x=>x.k===s.special);if(m)d.innerHTML+="<div class='sp'>"+m.icon+(s.saux>0?(" "+s.saux):"")+"</div>";}for(let i=0;i<4;i++){const row=document.createElement("div");if(i<s.items.length){const item=s.items[i];const fog=s.special==="fog"&&i<s.items.length-1;row.className="slot "+(fog?"fog":"real");row.textContent=fog?"?":(item===-1?"🌀":ITEM_POOL[item%ITEM_POOL.length]);}else row.className="slot";d.appendChild(row);}wrap.appendChild(d);});const tr=qs("tray");tr.innerHTML="";tray.forEach(v=>{const e=document.createElement("div");e.className="tray-item";e.textContent=v===-1?"🌀":ITEM_POOL[v%ITEM_POOL.length];tr.appendChild(e);});qs("coins").textContent=G.coins||0;}
+function showWin(){if(!G.cleared.includes(level))G.cleared.push(level);if(!G.unlocked.includes(level+1))G.unlocked.push(level+1);G.coins=(G.coins||0)+10;save();cloudSave();gasBeacon({sheet:SHEET,action:"level_clear",id:G.id,uid:String(G.uid),level:String(level),coin_reward:"10",date:todayISO()});qs("win-body").textContent="第 "+level+" 关完成！奖励 +10 金币";qs("ov-win").classList.remove("hidden");renderAll();}
+function showLose(msg){qs("lose-body").textContent=msg||"托盘已满";qs("ov-lose").classList.remove("hidden");}
+async function fffProxyGet(url){
+  const b=url+(url.includes("?")?"&":"?")+"_b="+Date.now();
+  let lastErr=new Error("网络错误");
+  for(let i=0;i<FORUM_PROXIES.length;i++){
+    const px=FORUM_PROXIES[i];
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),FORUM_FETCH_MS);
+    try{
+      const target=px.includes("codetabs")?px+encodeURIComponent(b):px+b.replace(/^https?:\/\//,"");
+      const r=await fetch(target,{signal:ctrl.signal});
+      if(!r.ok) throw new Error("proxy_"+(i+1)+"_"+r.status);
+      const text=await r.text();
+      if(text&&text.length>30) return text;
+    }catch(e){ lastErr=e; }
+    finally{ clearTimeout(tid); }
+  }
+  throw new Error("网络错误(代理不可用): "+String(lastErr&&lastErr.message||lastErr));
+}
+async function refreshForumData(){setForumStatus("正在抓取中...");return fetchForumDataCustom(true);}
+async function refreshForumDataFast(){setForumStatus("正在快速抓取中...");return fetchForumDataCustom(true,{maxPages:25,maxCitationChecks:0});}
+async function fetchForumDataCustom(show,opt){
+  if(!G.uid){alert("先登入");return false;}
+  const sd=qs("forum-start-date").value||todayISO(),ed=qs("forum-end-date").value||sd;
+  const startD=new Date(sd+"T00:00:00"),endD=new Date(ed+"T23:59:59");
+  function inRange_(d){ if(!(d instanceof Date)||isNaN(d)) return false; return d>=startD && d<=endD; }
+  function parseItemDate_(it){
+    const t=it.querySelector("time[datetime]")||it.querySelector("time");
+    const dt=t && (t.getAttribute("datetime")||t.textContent||"");
+    const m=String(dt).match(/(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00");
+    return null;
+  }
+  try{
+    const sh=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+G.uid);
+    const slug=(sh.match(/\/profile\/([^\/"?#]+)/)||[])[1];
+    if(!slug)throw new Error("slug失败");
+    let page=1,replies=0,cites=0,budget=(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:20,maxPages=(opt&&opt.maxPages)||60;
+    while(page<=maxPages){
+      setForumStatus("正在抓取中...第 "+page+" 页");
+      const u=page===1?"https://sstm.moe/profile/"+slug+"/content/?type=forums_topic_post&change_section=1":"https://sstm.moe/profile/"+slug+"/content/page/"+page+"/?type=forums_topic_post";
+      const html=await fffProxyGet(u);
+      const doc=new DOMParser().parseFromString(html,"text/html");
+      const items=[...doc.querySelectorAll("ol.cProfileContent>li")];
+      if(!items.length)break;
+      let allOlder=true, anyIn=false;
+      const arr=[];
+      items.forEach(it=>{
+        const d=parseItemDate_(it);
+        if(d && d>=startD) allOlder=false;
+        if(!d || !inRange_(d)) return;
+        anyIn=true;
+        const a=it.querySelector("p.ipsType_light a[href]");
+        if(a&&/forum\/32[-\/]/.test(a.getAttribute("href")||"")) replies++;
+        const bq=it.querySelector(".ipsQuote");
+        if(bq){
+          const cid=bq.getAttribute("data-ipsquote-contentcommentid"),tid=bq.getAttribute("data-ipsquote-contentid");
+          if(cid&&tid) arr.push({cid,tid});
+        }
+      });
+      // 若该页全部都早于开始日期，直接早停（避免一直翻页）
+      if(allOlder && !anyIn) break;
+      const chk=arr.slice(0,Math.max(0,budget));
+      budget-=chk.length;
+      for(let i=0;i<chk.length;i+=10){
+        await Promise.all(chk.slice(i,i+10).map(async x=>{
+          try{
+            const q=await fffProxyGet("https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid);
+            if(/forum\/32[-\/]/.test(q)&&new RegExp('data-ipsquote-userid=\"'+G.uid+'\"').test(q)) cites++;
+          }catch(e){}
+        }));
+      }
+      if(!doc.querySelector("li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel='next']"))break;
+      page++;
+      await new Promise(r=>setTimeout(r,24));
+    }
+    G.replies=(Number(G.replies)||0)+replies;
+    G.citations=(Number(G.citations)||0)+cites;
+    save();cloudSave();updateShopCurrency();updateMenuStat();
+    // 打点记录本次增量（避免与累计值混淆）
+    gasBeacon({sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(G.uid),replies:String(replies),citations:String(cites),startDate:sd,endDate:ed,date:todayISO()});
+    setForumStatus("抓取完成：回复 "+replies+" / 被引用 "+cites);
+    if(show) alert("抓取完成\n回复:"+replies+" 被引用:"+cites);
+    return true;
+  }catch(e){
+    setForumStatus("抓取失败："+e.message);
+    if(show) alert("抓取失败:"+e.message);
+    return false;
+  }
+}
+function openShop(){renderShop();updateShopCurrency();qs("ov-shop").classList.remove("hidden");}
+function closeShop(){qs("ov-shop").classList.add("hidden");}
+function updateShopCurrency(){qs("sh-replies").textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));qs("sh-cites").textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));}
+function renderShop(){const list=qs("shop-list");list.innerHTML="";const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));SHOP_ITEMS.forEach(it=>{const av=it.costType==="replies"?ar:ac,can=av>=it.cost;const d=document.createElement("div");d.className="shop-item";d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>花费 "+it.cost+" "+(it.costType==="replies"?"回复":"被引用")+"</div></div><button class='btn' "+(can?"":"disabled")+">购买</button>";d.querySelector("button").onclick=()=>buyItemPrompt(it.id);list.appendChild(d);});}
+function buyItemPrompt(id){const q=prompt("数量","1");if(q===null)return;buyItem(id,Math.max(1,Math.min(99,parseInt(q,10)||1)));}
+function buyItem(id,qty){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0)),av=it.costType==="replies"?ar:ac,cost=it.cost*qty;if(av<cost){alert("数量不足");return;}if(it.costType==="replies")G.repliesSpent=(G.repliesSpent||0)+cost;else G.citationsSpent=(G.citationsSpent||0)+cost;if(it.give.undo)G.boosters.undo+=it.give.undo*qty;if(it.give.hint)G.boosters.hint+=it.give.hint*qty;if(it.give.add)G.boosters.add+=it.give.add*qty;if(it.give.reveal)G.boosters.reveal+=it.give.reveal*qty;if(it.give.ticket)G.tickets=(G.tickets||0)+it.give.ticket*qty;save();cloudSave();renderShop();updateShopCurrency();updateMenuStat();if(!qs("game").classList.contains("hidden"))renderAll();gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId:id,cost:String(cost),costType:it.costType,date:todayISO()});}
+window.addEventListener("DOMContentLoaded",()=>{load();normalize();const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;});
+</script>
+<script>
+// ===== Skewer mode override (container-to-container) =====
+let selectedPick=null;
+let beltQueue=[];
+let activeFoodPool=ITEM_POOL.slice();
+let pokemonPoolByType=[];
+let beltTimer=null;
+let sticksPage=0;
+let beltEl=null;
+let beltPx=0;
+let beltLast=0;
+const BELT_ITEM_W=42,BELT_GAP=8;
+const BELT_STEP=BELT_ITEM_W+BELT_GAP; // 与 CSS 宽度+gap 一致，滚动步长恒定
+const BELT_LEN=18; // 固定槽位数：避免“剩很少时输送距离变短”
+const BELT_SPEED=28; // px/s
+let beltEnabled=false;
+let beltRemain=0;
+let beltKinds=0;
+let boardCols=8;
+const STICK_CAP=3;
+const FOOD_GROUPS={
+  meat:["🍗","🥩","🥓","🦑","🍤","🍢","🐙"],
+  veg:["🌽","🍄","🧅","🌶","🍅","🍆","🫑","🥦","🥬"]
+};
+function foodEmojiByType(type){return activeFoodPool[type%Math.max(1,activeFoodPool.length)]||"🍢";}
+function pokemonSpriteByType(type){
+  if(!pokemonPoolByType.length) return POKE_BULBASAUR_URL;
+  const name=pokemonPoolByType[type%pokemonPoolByType.length]||"bulbasaur";
+  return "https://play.pokemonshowdown.com/sprites/gen5/"+name+".png";
+}
+function buildPokemonPool(kinds,seed){
+  const a=POKE_NAMES.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j=(seed*131+i*17)%(i+1);
+    const t=a[i];a[i]=a[j];a[j]=t;
+  }
+  while(a.length<kinds) a.push(...POKE_NAMES);
+  return a.slice(0,kinds);
+}
+const WILD_ITEM=-1;
+function foodFor_(v){return v===WILD_ITEM?"🌀":foodEmojiByType(v);}
+function skewerHtml(type){
+  if((pickSkin()||{}).id==="pokemon" && type!==WILD_ITEM){
+    const p='<img class="poke-food" src="'+pokemonSpriteByType(type)+'" alt="pokemon">';
+    return '<div class="skewer">'+p+p+p+'</div>';
+  }
+  const f=foodFor_(type),p='<span class="food">'+f+'</span>';
+  return '<div class="skewer">'+p+p+p+'</div>';
+}
+function miniSkewerHtml(type){
+  if((pickSkin()||{}).id==="pokemon" && type!==WILD_ITEM){
+    const u=pokemonSpriteByType(type);
+    return '<span class="mini-sk"><img class="mini-poke" src="'+u+'" alt="pokemon"><img class="mini-poke" src="'+u+'" alt="pokemon"><img class="mini-poke" src="'+u+'" alt="pokemon"></span>';
+  }
+  const f=foodFor_(type);
+  return '<span class="mini-sk"><span class="mini-p">'+f+'</span><span class="mini-p">'+f+'</span><span class="mini-p">'+f+'</span></span>';
+}
+function itemKey(v){return v===null?null:foodFor_(v);}
+function buildFoodPool(kinds,lv){
+  let arr=[];
+  if(lv%3===1) arr=FOOD_GROUPS.meat.slice();
+  else if(lv%3===2) arr=FOOD_GROUPS.veg.slice();
+  else arr=FOOD_GROUPS.meat.concat(FOOD_GROUPS.veg);
+  while(arr.length<kinds) arr=arr.concat(arr);
+  return arr.slice(0,kinds);
+}
+function emptyStick(){return {items:[null,null,null],hiddenLayers:[],special:null,saux:0,closed:false,justClosed:false,resolving:false};}
+function filledCount(items){return items.filter(v=>v!==null).length;}
+function isEmptyStick(st){return filledCount(st.items)===0 && (!st.hiddenLayers||!st.hiddenLayers.length) && !st.resolving;}
+function firstEmptySlot(st){for(let i=0;i<STICK_CAP;i++) if(st.items[i]===null) return i; return -1;}
+function getNextLayer(st){return (st&&Array.isArray(st.hiddenLayers)&&st.hiddenLayers.length)?st.hiddenLayers[0]:[];}
+function normalizeLayer_(arr){
+  const a=(arr||[]).slice(0,STICK_CAP);
+  while(a.length<STICK_CAP) a.push(null);
+  return a;
+}
+function revealNextLayer(st){
+  if(!st||filledCount(st.items)>0||!st.hiddenLayers.length) return false;
+  st.items=normalizeLayer_(st.hiddenLayers.shift());
+  return true;
+}
+function explainSpecial(st){if(!st||!st.special)return;const m=SPECIALS.find(x=>x.k===st.special);if(m){qs("mods").textContent="特效说明："+m.icon+" "+m.desc;hint(m.icon+" "+m.desc);}}
+function isBlocked_(st){
+  if(!st) return false;
+  if(st.special==="lock" && st.saux>0) return true;
+  if(st.special==="ice" && st.saux>0) return true;
+  if(st.special==="stone" && st.saux>0) return true;
+  return false;
+}
+function neighbors_(idx){
+  const c=Math.max(1,boardCols||8);
+  const out=[];
+  const r=Math.floor(idx/c),cc=idx%c;
+  const cand=[[r-1,cc],[r+1,cc],[r,cc-1],[r,cc+1]];
+  cand.forEach(([rr,rc])=>{
+    if(rc<0||rc>=c||rr<0) return;
+    const ni=rr*c+rc;
+    if(ni>=0 && ni<sticks.length) out.push(ni);
+  });
+  return out;
+}
+function bumpFx_(st,type){
+  st.fxType=type;
+  st.fxUntil=Date.now()+260;
+}
+function triggerAdjacency_(centerIdx){
+  neighbors_(centerIdx).forEach(ni=>{
+    const t=sticks[ni]; if(!t) return;
+    if(t.special==="ice" && t.saux>0){
+      t.saux=Math.max(0,t.saux-1);
+      bumpFx_(t,"ice");
+      if(t.saux===0) t.special=null;
+    }else if(t.special==="stone" && t.saux>0){
+      t.saux=Math.max(0,t.saux-1);
+      bumpFx_(t,"stone");
+      if(t.saux===0) t.special=null;
+    }
+  });
+}
+function clearBeltPick_(){
+  if(selectedPick&&selectedPick.from==="belt"&&selectedPick.beltNode){
+    try{selectedPick.beltNode.classList.remove("selected");}catch(e){}
+  }
+}
+function beltMakeNode_(t){
+  const b=document.createElement("div");
+  b.className="belt-item";
+  b.dataset.type=String(t);
+  b.dataset.filled="1";
+  b.innerHTML=miniSkewerHtml(t);
+  b.onclick=(e)=>{e.stopPropagation();tapBeltNode(b);};
+  return b;
+}
+function beltMakeEmptyNode_(){
+  const b=document.createElement("div");
+  b.className="belt-item belt-empty";
+  b.dataset.type="";
+  b.dataset.filled="0";
+  b.innerHTML='<span class="mini-sk"></span>';
+  b.onclick=(e)=>{e.stopPropagation();};
+  return b;
+}
+function beltRotateOnce_(){
+  if(!beltEl||!beltEl.firstElementChild) return;
+  beltEl.appendChild(beltEl.firstElementChild);
+}
+function buildBeltTripletQueue_(K,total){
+  const out=[];
+  const kk=Math.max(1,K);
+  let n=Math.max(0,total);
+  n-=n%3;
+  for(let i=0;i<n;i+=3){
+    const t=Math.floor(Math.random()*kk);
+    out.push(t,t,t);
+  }
+  return out;
+}
+function beltFillSlotsFromQueue_(){
+  if(!beltEl) return;
+  const kids=[...beltEl.children];
+  for(let i=0;i<kids.length;i++){
+    const b=kids[i];
+    if(b.dataset.filled==="1") continue;
+    if(!beltQueue.length) break;
+    const t=beltQueue.shift();
+    const nn=beltMakeNode_(t);
+    b.replaceWith(nn);
+  }
+}
+function tapBeltNode(node){
+  if(!node) return;
+  if(node.dataset.filled!=="1") return;
+  const t=Number(node.dataset.type);
+  if(!Number.isFinite(t)) return;
+  clearBeltPick_();
+  node.classList.add("selected");
+  selectedPick={from:"belt",beltNode:node,item:t};
+  hint("已选输送带串烧，点烤盘空位放入");
+  renderAll();
+}
+function initConveyor(kinds){
+  beltEl=qs("belt");
+  if(!beltEl) return;
+  const K=Math.max(1,kinds);
+  beltEnabled=true;
+  beltKinds=K;
+  // 限量：本关可从输送带拿走的总串烧数（强制 3 的倍数，避免凑不出三连）
+  let total=Math.max(18,18+Math.min(18,level*2));
+  total-=total%3;
+  beltQueue=buildBeltTripletQueue_(K,total);
+  beltRemain=beltQueue.length;
+  beltEl.innerHTML="";
+  for(let i=0;i<BELT_LEN;i++){
+    beltEl.appendChild(beltMakeEmptyNode_());
+  }
+  beltFillSlotsFromQueue_();
+  beltPx=0;beltLast=performance.now();
+  if(beltTimer) cancelAnimationFrame(beltTimer);
+  const tick=(ts)=>{
+    if(qs("game").classList.contains("hidden")){ beltTimer=requestAnimationFrame(tick); return; }
+    if(!beltEnabled||!beltEl){ beltTimer=requestAnimationFrame(tick); return; }
+    const dt=Math.min(50,Math.max(0,ts-beltLast)); beltLast=ts;
+    beltPx += (dt/1000)*BELT_SPEED;
+    while(beltPx>=BELT_STEP){
+      beltPx -= BELT_STEP;
+      // 循环输送：固定槽位数，只轮换 DOM 顺序，不缩短滚动距离
+      beltRotateOnce_();
+    }
+    beltEl.style.transform="translateX("+(-beltPx)+"px)";
+    beltTimer=requestAnimationFrame(tick);
+  };
+  beltTimer=requestAnimationFrame(tick);
+}
+function renderBelt(){
+  if(!beltEl) beltEl=qs("belt");
+  if(!beltEl) return;
+  beltFillSlotsFromQueue_();
+}
+function generateLevelData(cfg){
+  activeFoodPool=buildFoodPool(cfg.kinds,cfg.id);
+  pokemonPoolByType=buildPokemonPool(cfg.kinds,cfg.id);
+  const layerDepth=1+Math.min(2,Math.floor(cfg.id/10));
+  const pool=[];for(let i=0;i<cfg.kinds;i++)for(let k=0;k<STICK_CAP*layerDepth;k++)pool.push(i);
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  const all=[];let p=0;const nonEmpty=Math.max(3,cfg.stickCount-cfg.empty);
+  for(let s=0;s<nonEmpty;s++){
+    const st=emptyStick();const localDepth=1+Math.floor(Math.random()*layerDepth);
+    for(let d=0;d<localDepth;d++){const layer=pool.slice(p,p+STICK_CAP);p+=STICK_CAP;if(layer.length===STICK_CAP){if(d===0)st.items=normalizeLayer_(layer);else st.hiddenLayers.push(normalizeLayer_(layer));}}
+    all.push(st);
+  }
+  while(p<pool.length){const idx=Math.floor(Math.random()*all.length);if(all[idx].hiddenLayers.length<3){const c=pool.slice(p,p+STICK_CAP);p+=STICK_CAP;if(c.length===STICK_CAP)all[idx].hiddenLayers.push(normalizeLayer_(c));}else break;}
+  for(let e=0;e<cfg.empty;e++)all.push(emptyStick());
+  let lockN=0,keyN=0;
+  for(let c=0;c<cfg.spCount;c++){
+    const idx=Math.floor(Math.random()*all.length);
+    if(all[idx].special||filledCount(all[idx].items)===0)continue;
+    // 不随机到 portal / bomb 等太混乱的，保持核心特效清晰
+    const pick=["ice","stone","lock","key","fog","fire","double"][ (cfg.id+c) % 7 ];
+    all[idx].special=pick;
+    all[idx].saux=(pick==="stone"?2:pick==="lock"||pick==="ice"?1:0);
+    if(pick==="lock") lockN++;
+    if(pick==="key") keyN++;
+  }
+  // 防卡死：只要出现🔒，必定至少出现一个🔑
+  if(lockN>0 && keyN===0){
+    const idx=all.findIndex(x=>!x.special && filledCount(x.items)>0);
+    if(idx>=0){ all[idx].special="key"; all[idx].saux=0; }
+  }
+  return all;
+}
+function renderLvList(){const wrap=qs("lvlist");wrap.innerHTML="";const max=Math.max(...G.unlocked);for(let i=1;i<=Math.max(40,max+10);i++){const cleared=G.cleared.includes(i);const b=document.createElement("button");b.className="btn";b.style.padding="6px";b.textContent=cleared?("🏆"+i):i;if(i>max)b.disabled=true;b.onclick=()=>{if(cleared){if(!(G.tickets>0)){hint("该关已通关，需挑战卷重玩");openShop();return;}if(!confirm("该关已通关，消耗1张挑战卷重玩？"))return;G.tickets=Math.max(0,(G.tickets||0)-1);save();cloudSave();updateMenuStat();}startGame(i);};wrap.appendChild(b);}}
+function applyStickSpecialOnTap(st){if(st.special==="lock"&&st.saux>0){st.saux--;hint("🔒 已解锁");return true;}if(st.special==="ice"&&st.saux>0){st.saux--;hint("🧊 已解冻");return true;}if(st.special==="stone"&&st.saux>0){st.saux--;hint("🪨 石层剩余 "+st.saux);return true;}return false;}
+function canDropToSlot(st,item,slotIdx){
+  if(!st||st.resolving) return false;
+  if(st.items[slotIdx]!==null) return false;
+  return true;
+}
+function tapSlot(stickIdx,slotIdx){
+  const st=sticks[stickIdx];if(!st||st.resolving)return;revealNextLayer(st);
+  if(st.special) explainSpecial(st);
+  if(st.special==="lock" && st.saux>0){
+    if((G.keys||0)>0){
+      G.keys--; st.saux=0; st.special=null; bumpFx_(st,"unlock");
+      hint("🔑 已解锁该烤盘（剩余钥匙 "+G.keys+"）");
+      save();cloudSave(); renderAll(); return;
+    }
+    hint("该烤盘已上锁，需要🔑解锁");
+    renderAll();return;
+  }
+  if(st.special==="ice" && st.saux>0){hint("该烤盘冰冻中：邻近封盘一次解冻");renderAll();return;}
+  if(st.special==="stone" && st.saux>0){hint("该烤盘被石盖：邻近封盘两次击碎");renderAll();return;}
+  const v=st.items[slotIdx];
+  if(selectedPick){
+    if(v!==null){selectedPick={from:"stick",stickIdx,slotIdx,item:v};hint("已改选这个串烧");renderAll();return;}
+    if(!canDropToSlot(st,selectedPick.item,slotIdx)){hint("该格不可放置");renderAll();return;}
+    history.push(snapshot());if(history.length>30)history.shift();
+    if(selectedPick.from==="stick"){
+      const src=sticks[selectedPick.stickIdx];if(!src||src.resolving){selectedPick=null;renderAll();return;}
+      if(src.special==="lock" && src.saux>0){hint("来源烤盘已上锁");selectedPick=null;renderAll();return;}
+      if(src.special==="ice" && src.saux>0){hint("来源烤盘冰冻中");selectedPick=null;renderAll();return;}
+      if(src.special==="stone" && src.saux>0){hint("来源烤盘被石盖");selectedPick=null;renderAll();return;}
+      let moved=src.items[selectedPick.slotIdx];if(moved===null){selectedPick=null;renderAll();return;}
+      src.items[selectedPick.slotIdx]=null;
+      st.items[slotIdx]=moved;
+      if(src.special==="fire"){G.coins=(G.coins||0)+2;}
+      if(src.special==="bomb"){const filled=st.items.map((x,i)=>x!==null?i:-1).filter(i=>i>=0);if(filled.length>1){const ri=filled[Math.floor(Math.random()*filled.length)];st.items[ri]=null;hint("💣 炸掉目标盘一串");}}
+      if(src.special==="portal"){const em=[];sticks.forEach((x,si)=>{if(si!==stickIdx){x.items.forEach((iv,ii)=>{if(iv===null&&!x.resolving)em.push([si,ii]);});}});if(em.length){const pick=em[Math.floor(Math.random()*em.length)];sticks[pick[0]].items[pick[1]]=st.items[slotIdx];st.items[slotIdx]=null;hint("🌀 传送到其他烤盘空位");}}
+      if(filledCount(src.items)===0&&revealNextLayer(src)) hint("来源下一层已显现");
+    }else if(selectedPick.from==="belt"){
+      st.items[slotIdx]=selectedPick.item;
+      if(selectedPick.beltNode){
+        const node=selectedPick.beltNode;
+        node.classList.remove("selected");
+        beltRemain=Math.max(0,beltRemain-1);
+        // 固定槽位：取走后变空位，再从队列按「三连同色」补货（不缩短输送带）
+        node.className="belt-item belt-empty";
+        node.dataset.type="";
+        node.dataset.filled="0";
+        node.innerHTML='<span class="mini-sk"></span>';
+        node.onclick=(e)=>{e.stopPropagation();};
+        beltFillSlotsFromQueue_();
+      }
+    }
+    selectedPick=null;
+    checkClosedAndScore();
+    renderAll();
+    return;
+  }
+  if(v===null){hint("请先选一串（烤盘或输送带）");return;}
+  if(st.special==="glue"){hint("🧪 黏合盘：当前不可取出");return;}
+  selectedPick={from:"stick",stickIdx,slotIdx,item:v};hint("已选串烧，点目标空位放置");renderAll();
+}
+function closeStickFlow(st,multi){
+  if(st.resolving) return;
+  st.closed=true;st.justClosed=true;st.resolving=true;
+  targetDone+=multi?2:1;G.coins=(G.coins||0)+2;
+  setTimeout(()=>{
+    st.items=[null,null,null];
+    st.closed=false;st.justClosed=false;st.resolving=false;
+    revealNextLayer(st);
+    const emptyCount=sticks.filter(isEmptyStick).length;
+    if(emptyCount<2&&sticks.length<24) sticks.push(emptyStick());
+    renderAll();
+    checkWinByClearing_();
+  },420);
+}
+function checkClosedAndScore(){
+  sticks.forEach((s,si)=>{
+    if(s.resolving) return;
+    if(filledCount(s.items)!==STICK_CAP) return;
+    const keys=s.items.map(itemKey);
+    const wildN=keys.filter(k=>k==="🌀").length;
+    const non=keys.filter(k=>k && k!=="🌀");
+    const ok = (non.length===0 && wildN===3) || (non.length>0 && non.every(k=>k===non[0]));
+    if(ok){
+      // 封盘瞬间触发邻近效果（冰/石）
+      triggerAdjacency_(si);
+      // 🔑钥匙盘：封盘获得钥匙（可解锁任意🔒）
+      if(s.special==="key"){
+        G.keys=(G.keys||0)+1;
+        hint("获得🔑 x1（当前 "+G.keys+"）");
+      }
+      closeStickFlow(s,s.special==="double");
+    }
+  });
+  save();cloudSave();
+  checkWinByClearing_();
+}
+function remainingPieces_(){
+  let n=0;
+  sticks.forEach(s=>{
+    (s.items||[]).forEach(v=>{ if(v!==null) n++; });
+    (s.hiddenLayers||[]).forEach(layer=>{ (layer||[]).forEach(v=>{ if(v!==null) n++; }); });
+  });
+  if(level%3===0){
+    n += Math.max(0,beltRemain);
+  }
+  return n;
+}
+function checkWinByClearing_(){
+  if(sticks.some(s=>s.resolving)) return;
+  if(remainingPieces_()<=0) showWin();
+}
+function doUndo(){if(!(G.boosters.undo>0)){openShop();return;}if(!history.length){hint("没有可撤回");return;}G.boosters.undo--;restore(history.pop());selectedPick=null;save();renderAll();}
+function doHint(){if(!(G.boosters.hint>0)){openShop();return;}G.boosters.hint--;save();for(let i=0;i<sticks.length;i++){for(let s=0;s<STICK_CAP;s++){if(sticks[i].items[s]===null)continue;for(let j=0;j<sticks.length;j++){for(let t=0;t<STICK_CAP;t++){if(sticks[j].items[t]===null&&!(i===j&&s===t)){hint("提示：第"+(i+1)+"盘第"+(s+1)+"格 → 第"+(j+1)+"盘第"+(t+1)+"格");renderAll();return;}}}}}hint("暂无可用移动");renderAll();}
+function doAddSlot(){if(!(G.boosters.add>0)){openShop();return;}G.boosters.add--;sticks.push(emptyStick());save();hint("新增空烤盘");renderAll();}
+function doReveal(){if(!(G.boosters.reveal>0)){openShop();return;}G.boosters.reveal--;sticks.forEach(s=>{if(s.special==="fog")s.special=null;});save();hint("已揭开全部迷雾烤盘");renderAll();}
+function showWin(){if(!G.cleared.includes(level))G.cleared.push(level);if(!G.unlocked.includes(level+1))G.unlocked.push(level+1);G.coins=(G.coins||0)+10;save();cloudSave();gasBeacon({sheet:SHEET,action:"level_clear",id:G.id,uid:String(G.uid),level:String(level),stars:"3",moves:"0",coin_reward:"10",coins_total:String(G.coins||0),date:todayISO()});qs("win-body").textContent="第 "+level+" 关完成！奖励 +10 金币";qs("ov-win").classList.remove("hidden");renderAll();}
+function showLose(msg){qs("lose-body").textContent=msg||"无法继续";qs("ov-lose").classList.remove("hidden");}
+function renderAll(){
+  const sk=pickSkin();qs("game").style.background=sk.bg;qs("menu").style.background=sk.bg;
+  const rem=remainingPieces_();
+  const beltInfo=(level%3===0)?("｜输送带剩余 "+Math.max(0,beltRemain)):"";
+  const keyInfo=(G.keys>0)?("｜🔑"+G.keys):"";
+  qs("target").textContent="目标：清空全部串烧（剩余 "+rem+"） · 无时间限制"+beltInfo+keyInfo+" · 屏幕 "+window.innerWidth+"×"+window.innerHeight;
+  const activeSpecials=[...new Set(sticks.map(s=>s.special).filter(Boolean))];
+  const specialText=activeSpecials.length?("｜特效："+activeSpecials.map(k=>{const m=SPECIALS.find(x=>x.k===k);return m?(m.icon+m.desc):k;}).join("；")):"";
+  const group=(level%3===1)?"肉串场":(level%3===2)?"蔬菜场":"综合场";
+  qs("mods").textContent="分组："+group+"｜任意选串、任意放空位（可混色）；仅3串同色才封盘"+specialText;
+  qs("uval").textContent=G.boosters.undo||0;qs("hval").textContent=G.boosters.hint||0;qs("aval").textContent=G.boosters.add||0;qs("rval").textContent=G.boosters.reveal||0;
+  qs("progress").style.width=Math.min(100,Math.round(targetDone/Math.max(1,targetNeed)*100))+"%";
+  const wrap=qs("sticks");wrap.innerHTML="";
+  const compact=sticks.length>=16 || window.innerHeight<760;
+  document.body.classList.toggle("compact-board",compact);
+  const cols=sticks.length>=22?11:(sticks.length>=18?10:(sticks.length>=14?9:8));
+  boardCols=cols;
+  const rows=2;
+  const perPage=Math.max(1,cols*rows);
+  const totalPages=Math.max(1,Math.ceil(sticks.length/perPage));
+  if(sticksPage>=totalPages) sticksPage=totalPages-1;
+  if(sticksPage<0) sticksPage=0;
+  const start=sticksPage*perPage,end=Math.min(sticks.length,start+perPage);
+  wrap.style.gridTemplateColumns="repeat("+cols+",minmax("+(compact?70:78)+"px,1fr))";
+  wrap.style.gridTemplateRows="repeat("+rows+",1fr)";
+  sticks.slice(start,end).forEach((s,localIdx)=>{
+    const idx=start+localIdx;
+    const fxOn=!!(s.fxUntil && Date.now()<s.fxUntil);
+    const d=document.createElement("div");
+    d.className="stick "+(sk.stick||"")+(s.closed?" closed":"")+(s.justClosed?" just-closed":"")+(fxOn?" fx-pop":"")+(s.special==="ice"&&s.saux>0?" ice-coat":"")+(s.special==="stone"&&s.saux>0?" stone-cover":"")+(s.special==="stone"&&s.saux===1?" stone-crack":"")+(s.special==="lock"&&s.saux>0?" locked":"");
+    d.innerHTML+='<div class="lid"></div>';
+    if(s.special==="lock"&&s.saux>0) d.innerHTML+='<div class="lock-mark">🔒</div>';
+    if(s.special){const m=SPECIALS.find(x=>x.k===s.special);if(m){const sp=document.createElement("div");sp.className="sp";sp.textContent=m.icon+(s.saux>0?(" "+s.saux):"");sp.onclick=(e)=>{e.stopPropagation();explainSpecial(s);};d.appendChild(sp);}}
+    for(let i=0;i<STICK_CAP;i++){
+      const row=document.createElement("div");
+      const item=s.items[i],fog=s.special==="fog"&&item!==null&&i<STICK_CAP-1;
+      const isPick=!!(selectedPick&&selectedPick.from==="stick"&&selectedPick.stickIdx===idx&&selectedPick.slotIdx===i);
+      const canDrop=!!(selectedPick&&canDropToSlot(s,selectedPick.item,i));
+      row.className="slot "+(isPick?"pick ":"")+(canDrop?"can-drop ":"")+(fog?"fog":"real");
+      row.innerHTML=item===null?"":(fog?"?":skewerHtml(item));
+      row.onclick=(e)=>{e.stopPropagation();tapSlot(idx,i);};
+      d.appendChild(row);
+    }
+    const preview=document.createElement("div");preview.className="preview";const nx=getNextLayer(s);
+    if(nx.length){nx.forEach(v=>{const node=document.createElement("span");node.innerHTML=miniSkewerHtml(v);preview.appendChild(node.firstChild);});}
+    else preview.innerHTML='<span style="font-size:10px;color:rgba(255,255,255,.45)">-</span>';
+    d.appendChild(preview);wrap.appendChild(d);s.justClosed=false;
+  });
+  const pager=qs("sticks-pager");
+  if(totalPages<=1){pager.innerHTML="";}
+  else{
+    pager.innerHTML='<span class="pg" id="pg-prev">◀</span><span>第 '+(sticksPage+1)+' / '+totalPages+' 页</span><span class="pg" id="pg-next">▶</span>';
+    qs("pg-prev").onclick=()=>{sticksPage=(sticksPage-1+totalPages)%totalPages;renderAll();};
+    qs("pg-next").onclick=()=>{sticksPage=(sticksPage+1)%totalPages;renderAll();};
+  }
+  // 输送带由动画驱动，不在此重绘
+  qs("coins").textContent=G.coins||0;
+}
+function startGame(lv){
+  qs("ov-win").classList.add("hidden");qs("ov-lose").classList.add("hidden");
+  selectedPick=null;sticksPage=0;level=lv;const cfg=genLevelCfg(lv);sticks=generateLevelData(cfg);history=[];targetDone=0;targetNeed=Math.max(6,cfg.kinds+Math.floor(lv/2));
+  // 输送带仅在 3 的倍数关卡出现
+  beltEnabled=false;beltRemain=0;beltQueue=[];
+  const bw=qs("belt-wrap");
+  if(lv%3===0){
+    bw.classList.remove("hidden");
+    document.body.classList.add("belt-on");
+    initConveyor(cfg.kinds);
+  }else{
+    bw.classList.add("hidden");
+    document.body.classList.remove("belt-on");
+    if(beltTimer) cancelAnimationFrame(beltTimer);
+    if(beltEl){ beltEl.style.transform="translateX(0px)"; beltEl.innerHTML=""; }
+  }
+  if(!G.unlocked.includes(lv))G.unlocked.push(lv);qs("lvl").textContent="第 "+lv+" 关 · 串烧挑战";qs("coins").textContent=G.coins||0;hint("可点任意串烧，再点任意烤盘空位；也可从输送带取串。");
+  gasBeacon({sheet:SHEET,action:"game_start",id:G.id,uid:String(G.uid),level:String(lv),date:todayISO()});show("game");renderAll();
+}
+</script>
+</body>
+</html>

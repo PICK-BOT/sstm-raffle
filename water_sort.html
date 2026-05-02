@@ -655,7 +655,8 @@ async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
   else if(opts.maxCitationChecks==null) citeBudget=Number.POSITIVE_INFINITY;
   else citeBudget=Number.isFinite(Number(opts.maxCitationChecks))?Number(opts.maxCitationChecks):16;
   const sTs=startDate?new Date(startDate).getTime():0;
-  const eTs=endDate?new Date(endDate+"T23:59:59Z").getTime():Date.now();
+  // 用本地日界线，避免跨时区导致“上月抓不到”
+  const eTs=endDate?new Date(endDate+"T23:59:59").getTime():Date.now();
   const prev=loadInc_(uid,startDate,keySuffix);
   const lastTs=prev?(prev.lastTs||0):0;
   let replies=prev?(prev.replies||0):0;
@@ -793,25 +794,22 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
     const ed = endDate || sd;
     const rk = fetchRangeKey_(G.uid, sd, ed);
     if(!G.fetchRangeHistory || typeof G.fetchRangeHistory!=='object') G.fetchRangeHistory={};
-    if(G.fetchRangeHistory[rk]){
-      if(showAlert) alert('检测到重复抓取区间，本次更新无效（不增加）');
-      hideLoading();
-      return false;
-    }
+    // 允许重复抓取区间：本次会叠加到已有统计（不清零）
     const result=await fffScrapeRange_(G.uid,slug,sd,ed,"_tm_"+sd+"_"+ed,{
       onProgress:(msg)=>showLoading(msg),
       maxPages:Number(opt&&opt.maxPages)||60,
       maxCitationChecks:(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:16
     });
-    G.replies=result.replies||0;
-    G.citations=result.citations||0;
-    G.fetchRangeHistory[rk]=new Date().toISOString();
+    G.replies = (Number(G.replies)||0) + (result.replies||0);
+    G.citations = (Number(G.citations)||0) + (result.citations||0);
+    if(!G.fetchRangeHistory || typeof G.fetchRangeHistory!=='object') G.fetchRangeHistory={};
+    G.fetchRangeHistory[rk]=(G.fetchRangeHistory[rk]||0)+1;
     _forumFetched=true;
     saveState();
     cloudSave();
     gasBeacon({
       sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(G.uid),
-      replies:String(G.replies||0),citations:String(G.citations||0),
+      replies:String(result.replies||0),citations:String(result.citations||0),
       startDate:sd,endDate:ed,date:todayISO()
     });
     updateMenuUI();
