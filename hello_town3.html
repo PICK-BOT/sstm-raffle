@@ -985,7 +985,7 @@ function updateMenuUI(){
 
 const PLAY_MODE_ITEMS=[
   {id:'star_altar',currency:'star',cost:60,name:'星辉祭坛',desc:'立即获得30分钟免冷却。'},
-  {id:'star_constellation',currency:'star',cost:45,name:'星图收集',desc:'累积星图点，提升长期经营评分。'},
+  {id:'star_constellation',currency:'star',cost:45,name:'星图收集',desc:'星图点+1（用于长期经营评分统计，不直接加金币）。'},
   {id:'star_wish',currency:'star',cost:80,name:'流星许愿',desc:'随机生成1个中级物品到棋盘。'},
   {id:'star_repair',currency:'star',cost:55,name:'星尘修复',desc:'重置全部生产工具冷却。'},
   {id:'star_gate',currency:'star',cost:120,name:'星门挑战',desc:'新增1张高奖励委托（+120金币）。'},
@@ -1109,15 +1109,19 @@ function usePlayMode(id){
   const it=PLAY_MODE_ITEMS.find(x=>x.id===id);
   if(!it) return;
   if(!spendCurrency(it.currency,it.cost)){ alert('资源不足'); return; }
+  const notices=[];
   if(!G.playModeUsage||typeof G.playModeUsage!=='object')G.playModeUsage={};
   G.playModeUsage[id]=(G.playModeUsage[id]||0)+1;
   // 玩法中心每启用一次赠送 1 个奖励盒子
   G.lotteryBoxes=(G.lotteryBoxes||0)+1;
+  notices.push('🎁 奖励盒子 +1（当前：'+(G.lotteryBoxes||0)+'）');
   if(id==='star_altar'){
     G.noCoolEnd=Math.max(G.noCoolEnd||0,Date.now())+30*60*1000;
     startNoCoolTimer();
   }else if(id==='star_constellation'){
     G.constellationPts=(G.constellationPts||0)+1;
+    notices.push('🗺 星图点 +1（当前：'+(G.constellationPts||0)+'）');
+    notices.push('ℹ 星图点用于长期经营评分统计，目前不直接增加金币/道具。');
   }else if(id==='star_wish'){
     const empty=findEmptyCell();
     if(empty){
@@ -1125,6 +1129,11 @@ function usePlayMode(id){
       const lvl=1+Math.floor(Math.random()*2);
       const it2={id:nextItemId++,col:empty.c,row:empty.r,chain,level:lvl,el:null,isBubble:false,bubbleDeadline:0};
       boardItemObjs.push(it2); createItemEl(it2);
+      const def=getItemDef(chain,lvl);
+      notices.push('✨ 棋盘新增：'+(def?def.emoji+' '+def.name:'中级物品')+'（Lv'+lvl+'）');
+      spawnPopEffect(empty.c,empty.r,def?def.emoji:'✨');
+    }else{
+      notices.push('⚠ 棋盘已满，本次未生成中级物品。');
     }
   }else if(id==='star_repair'){
     producers.forEach(p=>{p.cooldownEnd=0;});
@@ -1149,6 +1158,9 @@ function usePlayMode(id){
   }
   updateMenuUI();
   saveState(); cloudSave();
+  if(notices.length){
+    alert(notices.join('\n'));
+  }
   openPlayModes();
 }
 

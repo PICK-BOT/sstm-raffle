@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>新手村打卡游戏 - SSTM</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;
+  font-family:'Microsoft YaHei',Arial,sans-serif;color:#fff;user-select:none}
+.screen{display:none}.screen.active{display:flex}
+/* === SCREEN LOGIN === */
+#screen-login{position:fixed;inset:0;z-index:600;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e)}
+/* === SCREEN CHECKIN === */
+#screen-checkin{position:fixed;inset:0;z-index:600;flex-direction:column;
+  align-items:center;justify-content:center;padding:20px;
+  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e)}
+/* === SCREEN MAIN === */
+#screen-main{min-height:100vh;flex-direction:column;align-items:center;padding:12px 8px;gap:10px}
+
+/* === GLASS CARD === */
+.glass-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);
+  border-radius:20px;padding:28px 36px;max-width:440px;width:94%;text-align:center}
+.glass-card h2{font-size:1.3rem;color:#FFD93D;margin-bottom:6px}
+.glass-card p{font-size:.85rem;opacity:.7;margin-bottom:16px}
+
+/* === INPUTS === */
+.inp{width:100%;padding:10px 14px;font-size:.95rem;background:rgba(255,255,255,.1);
+  border:2px solid rgba(255,255,255,.25);border-radius:10px;color:#fff;
+  outline:none;text-align:center;margin-bottom:10px}
+.inp:focus{border-color:#FFD93D}
+.inp-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.inp-row label{min-width:50px;font-size:.85rem;color:rgba(255,255,255,.8);text-align:left;flex-shrink:0}
+.inp-row .inp{margin:0;flex:1}
+
+/* === BUTTONS === */
+.btn-gold{padding:10px 36px;font-size:.95rem;background:linear-gradient(135deg,#f7971e,#ffd200);
+  color:#1a1a1a;border:none;border-radius:50px;cursor:pointer;font-weight:800;transition:transform .15s}
+.btn-gold:hover{transform:scale(1.04)}.btn-gold:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-sub{padding:7px 20px;font-size:.85rem;background:rgba(255,255,255,.1);
+  color:#fff;border:1.5px solid rgba(255,255,255,.35);border-radius:50px;
+  cursor:pointer;font-weight:700;transition:background .15s}
+.btn-sub:hover{background:rgba(255,255,255,.2)}
+.btn-sub:disabled{opacity:.35;cursor:not-allowed}
+.btn-danger{padding:7px 20px;font-size:.85rem;background:rgba(220,50,50,.2);
+  color:#ff8888;border:1.5px solid rgba(220,50,50,.5);border-radius:50px;cursor:pointer}
+.err-msg{color:#FF6B6B;font-size:.82rem;margin-top:6px;min-height:18px}
+
+/* === ID HISTORY === */
+#id-history-row{margin-top:10px;text-align:center;display:none}
+.ih-label{font-size:.72rem;color:rgba(255,255,255,.55);margin-bottom:6px}
+.ih-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.ih-chip-wrap{display:inline-flex;align-items:center;gap:2px;background:rgba(255,217,61,.12);
+  border:1px solid rgba(255,217,61,.45);border-radius:20px;padding:2px 2px 2px 10px}
+.ih-chip{border:none;padding:3px 6px 3px 2px;border-radius:16px;font-size:.8rem;
+  cursor:pointer;background:transparent;color:#ffe082;font-family:inherit}
+.ih-chip:hover{background:rgba(255,217,61,.2);color:#fff}
+.ih-x{width:20px;height:20px;padding:0;border:none;border-radius:50%;cursor:pointer;
+  background:rgba(255,100,100,.35);color:#fff;font-size:.72rem;font-weight:700;flex-shrink:0}
+.ih-x:hover{background:rgba(255,80,80,.55)}
+
+/* === TOP BAR === */
+#top-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:8px 14px;max-width:680px;width:100%;flex-wrap:wrap}
+#top-id{font-weight:700;color:#FFD93D;font-size:.9rem}
+#top-checkin{font-size:.78rem;color:rgba(255,255,255,.65)}
+#top-actions{display:flex;gap:6px;margin-left:auto}
+
+/* === GRID TABS === */
+.tabs{display:flex;gap:6px;max-width:680px;width:100%;flex-wrap:wrap;justify-content:center}
+.tab-btn{padding:7px 16px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.2);
+  border-radius:50px;color:rgba(255,255,255,.75);cursor:pointer;font-size:.83rem;font-weight:700;transition:all .15s}
+.tab-btn:hover{background:rgba(255,255,255,.15)}
+.tab-btn.active{background:rgba(255,215,0,.22);border-color:#FFD93D;color:#FFD93D}
+
+/* === PANEL === */
+.panel{max-width:680px;width:100%;display:none}
+.panel.active{display:block}
+
+/* === PLAYER PANEL === */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.info-item{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:10px;padding:10px 12px}
+.info-item .k{font-size:.72rem;color:rgba(255,255,255,.55);margin-bottom:3px}
+.info-item .v{font-size:1.1rem;font-weight:700;color:#FFD93D}
+.reward-list{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  border-radius:10px;padding:12px}
+.reward-list h4{color:#FFD93D;font-size:.88rem;margin-bottom:8px}
+.reward-row{display:flex;justify-content:space-between;align-items:center;
+  padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:.84rem}
+.reward-row:last-child{border:none}
+
+/* === CHECKIN GRID === */
+.checkin-grid{display:flex;gap:6px;justify-content:center;margin:16px 0;flex-wrap:wrap}
+.checkin-cell{width:68px;height:68px;background:rgba(255,255,255,.08);
+  border:2px solid rgba(255,255,255,.2);border-radius:12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:.72rem;color:rgba(255,255,255,.6);gap:3px;position:relative;overflow:hidden}
+.checkin-cell.done{border-color:#4CAF50;background:rgba(76,175,80,.15)}
+.checkin-cell.today{border-color:#FFD93D;background:rgba(255,215,0,.12)}
+.checkin-cell .stamp{font-size:1.5rem;position:absolute;opacity:0;
+  transform:scale(3) rotate(-15deg);transition:all .4s}
+.checkin-cell.done .stamp{opacity:1;transform:scale(1) rotate(-10deg)}
+.checkin-cell .day-n{font-weight:700;font-size:.82rem;color:#fff}
+
+/* === TASK PANEL === */
+.task-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;padding:14px;margin-bottom:8px}
+.task-card.done-task{opacity:.45;pointer-events:none}
+.task-card h4{font-size:.88rem;color:#FFD93D;margin-bottom:6px}
+.task-card p{font-size:.82rem;color:rgba(255,255,255,.8);margin-bottom:10px;line-height:1.5}
+.task-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.task-link-inp{flex:1;min-width:180px;padding:6px 10px;background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.3);border-radius:8px;color:#fff;font-size:.82rem;outline:none}
+.task-link-inp:focus{border-color:#FFD93D}
+.task-status{font-size:.75rem;color:rgba(255,255,255,.5);margin-top:6px}
+
+/* === SHOP === */
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.shop-item{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;padding:12px;text-align:center}
+.shop-item.disabled-item{opacity:.4;pointer-events:none}
+.shop-item h5{color:#FFD93D;font-size:.85rem;margin-bottom:4px}
+.shop-item p{font-size:.75rem;color:rgba(255,255,255,.6);margin-bottom:8px}
+.shop-cost{font-size:.78rem;color:#90CAF9;margin-bottom:8px}
+
+/* === CHECKIN ANIMATION === */
+#checkin-anim{position:fixed;inset:0;z-index:800;display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.85);flex-direction:column;gap:16px}
+.anim-title{font-size:1.5rem;color:#FFD93D;font-weight:800;text-align:center}
+.anim-sub{font-size:.9rem;color:rgba(255,255,255,.75);text-align:center}
+.anim-stamp{font-size:4rem;animation:stampIn .5s ease-out forwards;opacity:0;transform:scale(3) rotate(-20deg)}
+@keyframes stampIn{to{opacity:1;transform:scale(1) rotate(-8deg)}}
+.anim-cells{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.anim-cell{width:60px;height:60px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.3);
+  border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:.7rem;color:rgba(255,255,255,.6);gap:2px;transition:all .3s}
+.anim-cell.lit{border-color:#FFD93D;background:rgba(255,215,0,.2)}
+.anim-cell.stamped{border-color:#4CAF50;background:rgba(76,175,80,.25)}
+.anim-cell .s{font-size:1.4rem;opacity:0;transform:scale(2.5);transition:all .35s}
+.anim-cell.stamped .s{opacity:1;transform:scale(1)}
+
+/* === MODAL === */
+.modal{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.85);
+  display:none;align-items:center;justify-content:center;padding:16px}
+.modal.open{display:flex}
+.modal-box{background:#1a1a2e;border:1px solid rgba(255,255,255,.2);
+  border-radius:16px;padding:24px;max-width:400px;width:100%;text-align:center}
+.modal-box h3{color:#FFD93D;font-size:1.1rem;margin-bottom:10px}
+.modal-box p{font-size:.88rem;color:rgba(255,255,255,.85);margin-bottom:16px;line-height:1.6}
+.modal-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.modal-img{width:80px;height:80px;object-fit:contain;margin:0 auto 12px;display:block}
+
+/* === LOADING === */
+#loading-mask{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.9);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.loading-spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.15);
+  border-top-color:#FFD93D;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:#ddd;font-size:.9rem;text-align:center;max-width:320px;line-height:1.8}
+.loading-sysbox{display:flex;gap:10px;align-items:center;background:#1a1a2e;
+  border:1px solid #4e7fca;border-radius:12px;padding:12px 16px;max-width:340px;width:92%}
+.loading-sysbox img{width:56px;height:56px;object-fit:contain;flex-shrink:0}
+
+/* === FORUM FETCH === */
+.fff-modal{display:none;position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.88);align-items:center;justify-content:center}
+.fff-box{background:#1a1a2e;border:1px solid #555;border-radius:12px;padding:22px;width:92%;max-width:380px;text-align:center}
+.fff-box h3{color:#FFD93D;margin:0 0 14px;font-size:1.05rem}
+.fff-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.fff-row label{min-width:68px;font-size:.82rem;color:rgba(255,255,255,.8);text-align:left;flex-shrink:0}
+.fff-inp{flex:1;padding:7px 10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);
+  border-radius:6px;color:#fff;font-size:.88rem;outline:none}
+.fff-inp:focus{border-color:#FFD93D}
+.fff-btn{padding:8px 18px;background:linear-gradient(135deg,#f7971e,#ffd200);color:#1a1a1a;
+  border:none;border-radius:50px;cursor:pointer;font-weight:800;font-size:.88rem}
+.fff-btn-sub{padding:7px 16px;background:rgba(255,255,255,.1);color:#ccc;
+  border:1px solid rgba(255,255,255,.3);border-radius:50px;cursor:pointer;font-size:.82rem}
+.fff-spinner{width:34px;height:34px;border:3px solid rgba(255,255,255,.15);border-top-color:#FFD93D;
+  border-radius:50%;animation:spin .8s linear infinite}
+
+/* === OFFLINE === */
+#offline-bar{display:none;position:fixed;bottom:12px;right:12px;background:rgba(180,40,40,.92);
+  border:1px solid #e55;color:#fdd;padding:7px 12px;border-radius:8px;font-size:.78rem;
+  cursor:pointer;z-index:200;line-height:1.4;text-align:center}
+#offline-bar:hover{background:rgba(200,60,60,.95)}
+
+/* === VERSION === */
+.version{text-align:center;color:rgba(255,255,255,.3);font-size:.72rem;margin-top:16px;padding-bottom:20px}
+
+/* === SCROLLABLE === */
+.scroll-area{max-height:60vh;overflow-y:auto;padding-right:4px}
+.scroll-area::-webkit-scrollbar{width:4px}
+.scroll-area::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:2px}
+
+/* === PRIZE TAG === */
+.prize-tag{display:inline-block;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.4);
+  border-radius:8px;padding:2px 8px;font-size:.75rem;color:#FFD93D;margin:2px}
+.section-title{font-size:.88rem;color:#FFD93D;font-weight:700;margin-bottom:8px;
+  display:flex;align-items:center;gap:6px}
+.divider{height:1px;background:rgba(255,255,255,.08);margin:12px 0}
+</style>
+</head>
+<body>
+
+<!-- ===== SCREEN LOGIN ===== -->
+<div id="screen-login" class="screen active">
+  <div class="glass-card">
+    <h2>🏕️ 新手村打卡游戏</h2>
+    <p>输入你的论坛 ID 与 UID 开始游戏</p>
+    <div class="inp-row">
+      <label>ID</label>
+      <input id="inp-id" class="inp" type="text" placeholder="论坛 ID（显示名）" maxlength="60"
+        onkeydown="if(event.key==='Enter')document.getElementById('inp-uid').focus()">
+    </div>
+    <div class="inp-row">
+      <label>UID</label>
+      <input id="inp-uid" class="inp" type="number" placeholder="论坛数字 UID" inputmode="numeric"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-gold" id="btn-login" onclick="doLogin()">进入游戏 →</button>
+    <div id="id-history-row">
+      <div class="ih-label">最近使用</div>
+      <div class="ih-chips" id="id-history-chips"></div>
+    </div>
+    <div id="login-err" class="err-msg"></div>
+  </div>
+</div>
+
+<!-- ===== SCREEN CHECKIN (打卡盖章动画) ===== -->
+<div id="screen-checkin" class="screen">
+  <div id="checkin-anim-inline" style="text-align:center">
+    <div class="anim-title" id="ci-title">📡 正在读取论坛数据...</div>
+    <div class="anim-sub" id="ci-sub">请稍候，自动抓取今日回复...</div>
+    <div style="margin:20px 0"><div class="loading-spinner" style="margin:0 auto"></div></div>
+    <div class="anim-cells" id="ci-cells"></div>
+    <div id="ci-result" style="display:none;margin-top:20px">
+      <div class="anim-stamp" id="ci-stamp">✅</div>
+      <div style="margin-top:16px;display:flex;gap:10px;justify-content:center">
+        <button class="btn-gold" onclick="enterMain()">进入游戏 →</button>
+      </div>
+    </div>
+    <div id="ci-fail" style="display:none;margin-top:20px">
+      <div style="font-size:.9rem;color:#FF6B6B;margin-bottom:12px" id="ci-fail-msg">今日回复数不足，未能打卡</div>
+      <button class="btn-gold" onclick="enterMain()">继续进入游戏</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN MAIN ===== -->
+<div id="screen-main" class="screen">
+  <!-- Top Bar -->
+  <div id="top-bar">
+    <div>
+      <div id="top-id">—</div>
+      <div id="top-checkin">签到 0 次 · 本周 0/7 · 本月 0/0</div>
+    </div>
+    <div id="top-actions">
+      <button class="btn-sub" style="font-size:.75rem;padding:5px 12px" onclick="openPanel('panel-player')">👤 玩家面板</button>
+      <button class="btn-sub" style="font-size:.75rem;padding:5px 12px" onclick="doLogout()">登出</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('panel-player')">👤 玩家面板</button>
+    <button class="tab-btn" onclick="switchTab('panel-daily')">📅 每日任务</button>
+    <button class="tab-btn" onclick="switchTab('panel-weekly')">📆 每周任务</button>
+    <button class="tab-btn" onclick="switchTab('panel-monthly')">🗓️ 每月任务</button>
+    <button class="tab-btn" onclick="switchTab('panel-shop')">🏪 商店</button>
+  </div>
+
+  <!-- Panel: Player -->
+  <div id="panel-player" class="panel active">
+    <div class="info-grid">
+      <div class="info-item"><div class="k">签到次数</div><div class="v" id="pi-checkin">0</div></div>
+      <div class="info-item"><div class="k">任务完成次数</div><div class="v" id="pi-tasks">0</div></div>
+      <div class="info-item"><div class="k">本周打卡</div><div class="v" id="pi-week">0/7</div></div>
+      <div class="info-item"><div class="k">本月打卡</div><div class="v" id="pi-month">0/0</div></div>
+    </div>
+    <div class="reward-list">
+      <h4>🎁 累计奖励</h4>
+      <div class="reward-row"><span>节操</span><span id="rw-seiso">0</span></div>
+      <div class="reward-row"><span>羽毛</span><span id="rw-feather">0</span></div>
+      <div class="reward-row"><span>本期勋章天数</span><span id="rw-badge-curr">0 天</span></div>
+      <div class="reward-row"><span>永久本期勋章</span><span id="rw-badge-perm">未获得</span></div>
+      <div class="reward-row"><span>字母勋章天数</span><span id="rw-badge-alpha">0 天</span></div>
+    </div>
+    <div class="divider"></div>
+    <div class="checkin-grid" id="weekly-grid"></div>
+    <div style="text-align:center;margin-top:8px">
+      <button class="btn-sub" id="btn-weekly-draw" onclick="drawWeeklyPrize()" style="display:none">🎁 领取周礼包</button>
+      <button class="btn-sub" id="btn-monthly-draw" onclick="drawMonthlyPrize()" style="display:none">🎁 领取月礼包</button>
+    </div>
+    <div class="divider"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+      <button class="btn-sub" style="font-size:.78rem" onclick="downloadData()">📥 下载游玩数据</button>
+    </div>
+  </div>
+
+  <!-- Panel: Daily Tasks -->
+  <div id="panel-daily" class="panel">
+    <div class="section-title">📅 每日任务 <span style="font-size:.75rem;color:rgba(255,255,255,.5);font-weight:400" id="daily-reset-hint"></span></div>
+    <div class="scroll-area" id="daily-tasks-list"></div>
+  </div>
+
+  <!-- Panel: Weekly Tasks -->
+  <div id="panel-weekly" class="panel">
+    <div class="section-title">📆 每周任务 <span style="font-size:.75rem;color:rgba(255,255,255,.5);font-weight:400" id="weekly-reset-hint"></span></div>
+    <div class="scroll-area" id="weekly-tasks-list"></div>
+  </div>
+
+  <!-- Panel: Monthly Tasks -->
+  <div id="panel-monthly" class="panel">
+    <div class="section-title">🗓️ 每月任务 <span style="font-size:.75rem;color:rgba(255,255,255,.5);font-weight:400" id="monthly-reset-hint"></span></div>
+    <div class="scroll-area" id="monthly-tasks-list"></div>
+  </div>
+
+  <!-- Panel: Shop -->
+  <div id="panel-shop" class="panel">
+    <div class="section-title">🏪 商店 <span style="font-size:.75rem;color:rgba(255,255,255,.5);font-weight:400">消耗任务次数兑换奖励</span></div>
+    <div style="font-size:.82rem;color:rgba(255,255,255,.6);margin-bottom:10px">
+      剩余任务次数：<b id="shop-tasks-count" style="color:#FFD93D">0</b>
+    </div>
+    <div class="shop-grid" id="shop-list"></div>
+  </div>
+
+  <div class="version" id="ver-txt">v1.0 新手村打卡游戏</div>
+</div>
+
+<!-- ===== LOADING MASK ===== -->
+<div id="loading-mask">
+  <div class="loading-sysbox">
+    <img src="https://s.sstmlt.com/img/2026/03/19/1-108359ab38de728aad.png" alt="系统"
+      onerror="this.style.display='none'">
+    <div class="loading-text" id="loading-text">系统正在读取中，请静候…</div>
+  </div>
+</div>
+
+<!-- ===== MODAL ===== -->
+<div id="modal" class="modal">
+  <div class="modal-box">
+    <img id="modal-img" class="modal-img" src="https://s.sstmlt.com/img/2026/03/19/1-108359ab38de728aad.png" alt="" onerror="this.style.display='none'">
+    <h3 id="modal-title">提示</h3>
+    <p id="modal-body"></p>
+    <div class="modal-btns" id="modal-btns">
+      <button class="btn-gold" onclick="closeModal()">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== OFFLINE BAR ===== -->
+<div id="offline-bar" onclick="retryCloud()">🔴 离线游玩中<br><span style="font-size:.7rem;opacity:.8">点击重新连线</span></div>
+
+<!-- ===== FORUM FETCH ===== -->
+<div id="fff-modal" class="fff-modal">
+  <div class="fff-box">
+    <h3>📡 论坛抓取</h3>
+    <div id="fff-status-text" style="color:#ddd;font-size:.85rem;min-height:20px;margin-bottom:12px"></div>
+    <div class="fff-row"><label>UID</label><input id="fff-uid-inp" class="fff-inp" type="number" placeholder="数字UID" inputmode="numeric"></div>
+    <div class="fff-row"><label>开始日期</label><input id="fff-start" class="fff-inp" type="date"></div>
+    <div class="fff-row"><label>结束日期</label><input id="fff-end" class="fff-inp" type="date"></div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+      <button class="fff-btn" onclick="fffDoFetch()">🔍 开始抓取</button>
+      <button class="fff-btn-sub" onclick="fffClose()">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// CONFIG
+// ================================================================
+const VER = "v1.0";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzbR0_yhUphjOQRKH5Bpskj8yRdjpXwVRD_CmouHBApHGzPav80ofvmE-jbEBT92gbA/exec";
+// 替换为你的 GAS URL（打卡游戏专用，可与爬塔共用同一 GAS，需在 GAS 中加对应 sheet 处理逻辑）
+const SHEET = "新手村打卡";
+const FORUM_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+const NOVICE_FORUM_RE = /forum\/32[-\/]/;  // 新手保护区 forum/32
+const SEISO_CAP = 5000, FEATHER_CAP = 2000;
+
+const SYS_IMG   = "https://s.sstmlt.com/img/2026/03/19/1-108359ab38de728aad.png";
+const GOOD_IMG  = "https://s.sstmlt.com/img/2026/03/19/1-127cce7b27eb17c91c.png";
+const STAR_IMG  = "https://s.sstmlt.com/img/2026/03/19/1-11c14bafe31ee6ee1c.png";
+
+// ================================================================
+// DAILY / WEEKLY / MONTHLY TASK DEFINITIONS
+// ================================================================
+const DAILY_TASKS_POOL = [
+  {id:"d1", type:"forum_reply", need:10,  txt:"在新手保护区回复 10 次"},
+  {id:"d2", type:"forum_reply", need:15,  txt:"在新手保护区回复 15 次"},
+  {id:"d3", type:"forum_reply", need:20,  txt:"在新手保护区回复 20 次"},
+  {id:"d4", type:"forum_cite",  need:1,   txt:"在新手保护区被引用 1 次"},
+  {id:"d5", type:"forum_cite",  need:5,   txt:"在新手保护区被引用 5 次"},
+  {id:"d6", type:"forum_cite",  need:10,  txt:"在新手保护区被引用 10 次"},
+  {id:"d7", type:"forum_cite",  need:15,  txt:"在新手保护区被引用 15 次"},
+  {id:"d8", type:"game_2048",   need:1,   txt:"完成一局 2048 游戏", link:"https://pick-bot.github.io/sstm-raffle/2048.html",
+   sheet:"https://docs.google.com/spreadsheets/d/19rIEWOjeB8zt-xW_wIbcmalLkrThwT2LKvyTzFPD-48/edit?gid=665180842#gid=665180842"},
+  {id:"d9", type:"game_tetris", need:1,   txt:"完成一局俄罗斯方块", link:"https://pick-bot.github.io/sstm-raffle/%E4%BF%84%E7%BD%97%E6%96%AF%E6%96%B9%E5%9D%97%E6%B8%B8%E6%88%8F.html",
+   sheet:"https://docs.google.com/spreadsheets/d/19rIEWOjeB8zt-xW_wIbcmalLkrThwT2LKvyTzFPD-48/edit?gid=588020315#gid=588020315"},
+  {id:"d10",type:"game_2048",   need:1,   txt:"通关倒水排序一次", link:"https://pick-bot.github.io/sstm-raffle/water_sort.html",
+   sheet:"https://docs.google.com/spreadsheets/d/1eivO2Ar0KitItt1bU9ZyEhSSZM49DHZwCJvmcM_2dsQ/edit?gid=1078516281#gid=1078516281",
+   sheetTab:"倒水排序_通关记录"},
+];
+
+const WEEKLY_TASKS_POOL = [
+  {id:"w1", type:"forum_reply", need:30,  txt:"本周在新手保护区回复 30 次"},
+  {id:"w2", type:"forum_reply", need:60,  txt:"本周在新手保护区回复 60 次"},
+  {id:"w3", type:"forum_cite",  need:20,  txt:"本周在新手保护区被引用 20 次"},
+  {id:"w4", type:"forum_cite",  need:40,  txt:"本周在新手保护区被引用 40 次"},
+  {id:"w5", type:"topic_link",  forum:"32", linkClass:"ipsType_light", txt:"成功让新手发出漫画相关心得主题（附链接）", label:"漫画心得"},
+  {id:"w6", type:"topic_link",  forum:"32", linkClass:"ipsType_light", txt:"成功让新手发出游戏相关心得主题（附链接）", label:"游戏心得"},
+  {id:"w7", type:"topic_link",  forum:"32", linkClass:"ipsType_light", txt:"成功让新手发出动画相关心得主题（附链接）", label:"动画心得"},
+  {id:"w8", type:"newbie_intro",txt:"成功让新手完成新手报道（附主题链接）", keyword:"300字新人报到"},
+  {id:"w9", type:"char_card",   txt:"成功让新手完成人物卡（附链接）", urlPrefix:"https://sstm.moe/topic/261097-"},
+  {id:"w10",type:"game_2048",   need:5,   txt:"通关磁贴探索五次", link:"https://pick-bot.github.io/sstm-raffle/triple_match.html",
+   sheet:"https://docs.google.com/spreadsheets/d/197MGw6XiuU8yTC1DEUPwtZk0Y0-3NTOftVE4rCR0Tx8/edit?gid=9320030#gid=9320030",
+   sheetTab:"磁贴探索_通关记录"},
+  {id:"w11",type:"game_2048",   need:5,   txt:"通关串烧消除五次", link:"https://pick-bot.github.io/sstm-raffle/skewer_time.html",
+   sheet:"https://docs.google.com/spreadsheets/d/1XQTcTQvZL6rP4XfdvgxiRLo1iX9_px24kd1V2IpCD3k/edit?gid=1087701509#gid=1087701509",
+   sheetTab:"串烧时光_通关记录"},
+  {id:"w12",type:"game_2048",   need:5,   txt:"通关糖果小镇五次", link:"https://pick-bot.github.io/sstm-raffle/candy_crush.html",
+   sheet:"https://docs.google.com/spreadsheets/d/1NzIvCSMZWX6peZs2vJrNkRIMPNNMHkx3rbDoDim2v2M/edit?gid=1521436817#gid=1521436817",
+   sheetTab:"糖果小镇_通关记录"},
+];
+
+const MONTHLY_TASKS_POOL = [
+  {id:"m1", type:"forum_reply", need:100, txt:"本月在新手保护区回复 100 次"},
+  {id:"m2", type:"forum_reply", need:150, txt:"本月在新手保护区回复 150 次"},
+  {id:"m3", type:"forum_cite",  need:80,  txt:"本月在新手保护区被引用 80 次"},
+  {id:"m4", type:"forum_cite",  need:160, txt:"本月在新手保护区被引用 160 次"},
+  {id:"m5", type:"grad_speech", txt:"成功让新手完成毕业感言（附链接）", keyword:"毕业感言"},
+  {id:"m6", type:"newbie_road", txt:"成功让新手完成新手上路（附链接）", forum:"节操の广场"},
+  {id:"m7", type:"emoji_react", need:5,   txt:"本月在新手保护区收到 5 次表情反应"},
+  {id:"m8", type:"emoji_react", need:10,  txt:"本月在新手保护区收到 10 次表情反应"},
+  {id:"m9", type:"emoji_react", need:15,  txt:"本月在新手保护区收到 15 次表情反应"},
+];
+
+// ================================================================
+// SHOP ITEMS
+// ================================================================
+const SHOP_ITEMS = [
+  {id:"s1", name:"节操 30",     cost:1,  reward:{seiso:30},        cap:"seiso",  capVal:5000, capMsg:"节操最多取得 5000"},
+  {id:"s2", name:"羽毛 10",     cost:1,  reward:{feather:10},      cap:"feather",capVal:2000, capMsg:"羽毛最多取得 2000"},
+  {id:"s3", name:"本期勋章 30天",cost:1,  reward:{badgeCurr:30},   cap:"badgePerm",capMsg:"已取得永久天数"},
+  {id:"s4", name:"字母勋章 30天",cost:1,  reward:{badgeAlpha:30}},
+  {id:"s5", name:"永久本期勋章", cost:40, reward:{badgePerm:1},    cap:"badgePerm",capMsg:"已取得永久本期勋章"},
+  {id:"s6", name:"往期返乡勋章兑换机会", cost:40, reward:{pastBadge:1}},
+];
+
+// ================================================================
+// STATE
+// ================================================================
+const KEY_ID       = "checkin_id";
+const KEY_UID      = "checkin_uid";
+const KEY_STATE    = "checkin_state";
+const KEY_HISTORY  = "checkin_id_history_v1";
+const KEY_IMP      = "checkin_fff_imp";
+
+let G = {
+  id:"", uid:0,
+  checkinDates:[],        // 已打卡日期 "YYYY-MM-DD"
+  weeklyDrawn:[],         // 已领周礼包的 "YYYY-Wnn"
+  monthlyDrawn:[],        // 已领月礼包的 "YYYY-MM"
+  tasksDone:0,            // 总任务完成次数
+  shopTasksSpent:0,       // 商店已消耗次数
+  rewards:{seiso:0, feather:0, badgeCurr:0, badgeAlpha:0, badgePerm:0, pastBadge:0},
+  // 每日/周/月当前任务状态
+  dailyTasks: null,       // [{taskId, done, doneAt}, ...]
+  dailyTasksDate: "",     // "YYYY-MM-DD"
+  weeklyTasks: null,
+  weeklyTasksWeek: "",    // "YYYY-Wnn"
+  weeklyTasksDone: [],
+  monthlyTasks: null,
+  monthlyTasksMonth: "",  // "YYYY-MM"
+  monthlyTasksDone: [],
+  // 论坛抓取缓存
+  fmtDate: "",
+};
+let _offline = false;
+
+// ================================================================
+// UTIL
+// ================================================================
+function nowDate(){ return new Date().toLocaleDateString("zh-TW",{year:"numeric",month:"2-digit",day:"2-digit"}).replace(/\//g,"-"); }
+function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function weekKey(d){ // "YYYY-Wnn"
+  const dt=d?new Date(d):new Date();
+  const start=new Date(dt);
+  start.setDate(start.getDate()-((start.getDay()+6)%7)); // 周一
+  return start.getFullYear()+"-W"+String(getWeekNum_(start)).padStart(2,"0");
+}
+function getWeekNum_(d){
+  const y=d.getFullYear();
+  const startOfYear=new Date(y,0,1);
+  const days=Math.floor((d-startOfYear)/(86400000));
+  return Math.ceil((days+startOfYear.getDay()+1)/7);
+}
+function monthKey(d){ const dt=d?new Date(d):new Date(); return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0"); }
+function weekStartFromKey_(wk){
+  // wk: "YYYY-Wnn"
+  const m=String(wk||"").match(/^(\d{4})-W(\d{1,2})$/);
+  if(!m) return "";
+  const y=Number(m[1]),w=Number(m[2]);
+  if(!y||!w) return "";
+  const jan1=new Date(y,0,1);
+  const days=(w-1)*7-(jan1.getDay()+6)%7;
+  const d=new Date(y,0,1+days);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function addDays_(iso,days){
+  const d=new Date(iso+"T00:00:00");
+  d.setDate(d.getDate()+days);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function getWeekStart(){ const d=new Date(); d.setDate(d.getDate()-((d.getDay()+6)%7)); d.setHours(0,0,0,0); return d; }
+function getWeekDates(){ // 本周7天（使用本地时区，与 todayISO 保持一致）
+  const start=getWeekStart();
+  return Array.from({length:7},(_,i)=>{
+    const d=new Date(start);
+    d.setDate(d.getDate()+i);
+    // 用本地时间而非 toISOString（toISOString 为 UTC 会在 UTC+8 时区早上差一天）
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  });
+}
+function getMonthStart(){ const d=new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); }
+function rInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function pickN(arr,n){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=rInt(0,i);[a[i],a[j]]=[a[j],a[i]];} return a.slice(0,n); }
+function shopTasksAvailable(){ return Math.max(0, G.tasksDone - G.shopTasksSpent); }
+
+// ================================================================
+// LOCAL STORAGE
+// ================================================================
+function saveState(){
+  try{ localStorage.setItem(KEY_STATE, JSON.stringify(G)); }catch(e){}
+}
+function loadState(){
+  try{
+    const raw=localStorage.getItem(KEY_STATE);
+    if(raw) Object.assign(G, JSON.parse(raw));
+  }catch(e){}
+}
+function loadIdHistory(){ try{return JSON.parse(localStorage.getItem(KEY_HISTORY)||"[]");}catch(e){return [];} }
+function saveIdHistory(id){
+  if(!id) return;
+  let h=loadIdHistory().filter(x=>x.id!==id);
+  h.unshift({id, uid:G.uid});
+  if(h.length>5) h=h.slice(0,5);
+  try{localStorage.setItem(KEY_HISTORY, JSON.stringify(h));}catch(e){}
+  renderIdHistory();
+}
+function removeFromHistory(id){ let h=loadIdHistory().filter(x=>x.id!==id); try{localStorage.setItem(KEY_HISTORY,JSON.stringify(h));}catch(e){} renderIdHistory(); }
+function renderIdHistory(){
+  const hist=loadIdHistory();
+  const row=document.getElementById("id-history-row");
+  const chips=document.getElementById("id-history-chips");
+  if(!row||!chips) return;
+  if(!hist.length){row.style.display="none";return;}
+  row.style.display="block";
+  chips.innerHTML="";
+  hist.forEach(item=>{
+    const wrap=document.createElement("div"); wrap.className="ih-chip-wrap";
+    const btn=document.createElement("button"); btn.type="button"; btn.className="ih-chip";
+    btn.textContent=item.id+(item.uid?" ("+item.uid+")":"");
+    btn.onclick=()=>{ document.getElementById("inp-id").value=item.id; document.getElementById("inp-uid").value=item.uid||""; };
+    const bx=document.createElement("button"); bx.type="button"; bx.className="ih-x"; bx.textContent="×";
+    bx.onclick=(ev)=>{ ev.stopPropagation(); removeFromHistory(item.id); };
+    wrap.appendChild(btn); wrap.appendChild(bx); chips.appendChild(wrap);
+  });
+}
+
+// ================================================================
+// CLOUD (GAS) — 使用 Image Beacon + JSONP
+// ================================================================
+function gasBeacon(params){
+  try{
+    const qs=Object.keys(params).map(k=>encodeURIComponent(k)+"="+encodeURIComponent(params[k])).join("&");
+    new Image().src=GAS_URL+"?"+qs;
+  }catch(e){}
+}
+
+// ── 上报返乡活跃度到云端
+// 策略：
+//   同一天内，用 localStorage 节流控制，距上次发送 >= 5 分钟才允许重发
+//   （每次任务验证间隔通常超过 5 分钟，短时间内连续触发就跳过）
+//   GAS 端有 LockService + 覆写逻辑，保证同天只有一行
+var _activityTimer = null; // 防抖 timer
+function logActivityToCloud_(id, uid, date, replies, citations){
+  if(!id||!date) return;
+  const r=parseInt(replies,10)||0;
+  const c=parseInt(citations,10)||0;
+  const lsKey="cgActLast_"+id+"_"+date;
+  let lastSent={r:-1,c:-1,ts:0};
+  try{ lastSent=JSON.parse(localStorage.getItem(lsKey)||"{}"); }catch(e){}
+
+  const now=Date.now();
+  const THROTTLE_MS=1*60*1000; // 1 分钟节流
+
+  // 数字没有变化 → 永远跳过
+  if(lastSent.r===r && lastSent.c===c) return;
+
+  // 距上次发送不到 5 分钟 → 用防抖延迟到 5 分钟后发
+  if(lastSent.ts && (now-lastSent.ts)<THROTTLE_MS){
+    if(_activityTimer) clearTimeout(_activityTimer);
+    const delay=THROTTLE_MS-(now-lastSent.ts);
+    _activityTimer=setTimeout(()=>{ logActivityToCloud_(id,uid,date,r,c); },delay);
+    return;
+  }
+
+  // 可以发送：更新记录后 beacon
+  try{ localStorage.setItem(lsKey, JSON.stringify({r,c,ts:now})); }catch(e){}
+  gasBeacon({
+    sheet: SHEET,
+    action: "activity_log",
+    id: String(id),
+    uid: String(uid),
+    date: String(date),
+    replies: String(r),
+    citations: String(c)
+  });
+}
+function gasJsonp(params, timeout=8000){
+  return new Promise((resolve,reject)=>{
+    const cb="cg_cb_"+Date.now()+"_"+rInt(1000,9999);
+    const tid=setTimeout(()=>{ try{delete window[cb];}catch(e){} reject(new Error("timeout")); },timeout);
+    window[cb]=(data)=>{
+      clearTimeout(tid); try{delete window[cb];}catch(e){}
+      if(data&&data.ok) resolve(data);
+      else reject(new Error((data&&data.error)||"cloud_error"));
+    };
+    const qs=Object.keys(params).map(k=>encodeURIComponent(k)+"="+encodeURIComponent(params[k])).join("&");
+    const s=document.createElement("script");
+    s.src=GAS_URL+"?"+qs+"&callback="+cb+"&_t="+Date.now();
+    s.onerror=()=>{ clearTimeout(tid); try{delete window[cb];}catch(e){} reject(new Error("script_load_fail")); };
+    document.head.appendChild(s);
+  });
+}
+
+function cloudSave(){
+  // 保存状态到云端（beacon）
+  if(!G.id) return;
+  gasBeacon({
+    sheet: SHEET, action:"save",
+    id: G.id, uid: String(G.uid),
+    state_json: JSON.stringify(G),
+    date: todayISO()
+  });
+}
+
+async function cloudLoad(id){
+  // 从云端读取状态
+  try{
+    const data=await gasJsonp({sheet:SHEET, action:"load", id:id});
+    return data.data || null;
+  }catch(e){
+    return null;
+  }
+}
+
+async function cloudSaveAlias(fromId, toId){
+  try{
+    await gasJsonp({sheet:SHEET, action:"set_alias", from_id:fromId, to_id:toId});
+    return true;
+  }catch(e){ return false; }
+}
+
+// ================================================================
+// LOADING / MODAL / OFFLINE
+// ================================================================
+function showLoading(msg){
+  document.getElementById("loading-text").textContent=msg||"系统正在读取中，请静候…";
+  document.getElementById("loading-mask").style.display="flex";
+}
+function hideLoading(){ document.getElementById("loading-mask").style.display="none"; }
+function showModal(title, body, btns, img){
+  document.getElementById("modal-title").textContent=title||"提示";
+  document.getElementById("modal-body").innerHTML=body||"";
+  const im=document.getElementById("modal-img");
+  im.src=img||SYS_IMG; im.style.display="";
+  const bd=document.getElementById("modal-btns");
+  if(btns){ bd.innerHTML=""; btns.forEach(b=>{ const el=document.createElement("button"); el.className=b.cls||"btn-sub"; el.textContent=b.txt; el.onclick=b.fn; bd.appendChild(el); }); }
+  else{ bd.innerHTML='<button class="btn-gold" onclick="closeModal()">确定</button>'; }
+  document.getElementById("modal").classList.add("open");
+}
+function closeModal(){ document.getElementById("modal").classList.remove("open"); }
+function setOffline(v){
+  _offline=v;
+  document.getElementById("offline-bar").style.display=v?"block":"none";
+}
+async function retryCloud(){
+  document.getElementById("offline-bar").textContent="🔄 正在重新连线...";
+  try{
+    await gasJsonp({sheet:SHEET, action:"ping"}, 5000);
+    setOffline(false);
+    showModal("已连线","云端连线已恢复！",null,GOOD_IMG);
+  }catch(e){
+    document.getElementById("offline-bar").innerHTML='🔴 离线游玩中<br><span style="font-size:.7rem;opacity:.8">点击重新连线</span>';
+  }
+}
+
+// ================================================================
+// SCREENS
+// ================================================================
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+function switchTab(panelId){
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById(panelId).classList.add("active");
+  const tabMap={
+    "panel-player":0,"panel-daily":1,"panel-weekly":2,"panel-monthly":3,"panel-shop":4
+  };
+  const idx=tabMap[panelId];
+  document.querySelectorAll(".tab-btn")[idx].classList.add("active");
+  if(panelId==="panel-shop") renderShop();
+  if(panelId==="panel-daily") renderTasks("daily");
+  if(panelId==="panel-weekly") renderTasks("weekly");
+  if(panelId==="panel-monthly") renderTasks("monthly");
+}
+function openPanel(id){ switchTab(id); }
+
+// ================================================================
+// LOGIN
+// ================================================================
+async function doLogin(){
+  const id=document.getElementById("inp-id").value.trim();
+  const uid=parseInt(document.getElementById("inp-uid").value.trim(),10);
+  const errEl=document.getElementById("login-err");
+  if(!id){errEl.textContent="请输入论坛 ID";return;}
+  if(!uid||isNaN(uid)){errEl.textContent="请输入有效的数字 UID";return;}
+  errEl.textContent="";
+  G.id=id; G.uid=uid;
+  localStorage.setItem(KEY_ID,id);
+  localStorage.setItem(KEY_UID,String(uid));
+  saveIdHistory(id);
+  // 先读本地
+  loadState();
+  G.id=id; G.uid=uid;
+  // 尝试云端读取
+  showLoading("正在从云端读取存档…");
+  try{
+    const cloudData=await cloudLoad(id);
+    if(cloudData && cloudData.state_json){
+      const cs=JSON.parse(cloudData.state_json);
+      // 合并云端数据（取较大值）
+      mergeCloudState(cs);
+    }
+    setOffline(false);
+  }catch(e){
+    setOffline(true);
+  }
+  hideLoading();
+  // 检查今天是否已打卡
+  const today=todayISO();
+  if(G.checkinDates.includes(today)){
+    enterMain();
+  } else {
+    showScreen("screen-checkin");
+    doCheckin();
+  }
+}
+
+function mergeCloudState(cs){
+  // 合并云端 state，取最新/最大值
+  if(!cs) return;
+  if((cs.tasksDone||0)>(G.tasksDone||0)) G.tasksDone=cs.tasksDone;
+  if((cs.shopTasksSpent||0)>(G.shopTasksSpent||0)) G.shopTasksSpent=cs.shopTasksSpent;
+  // 奖励取最大
+  const r=cs.rewards||{};
+  G.rewards.seiso=Math.max(G.rewards.seiso||0, r.seiso||0);
+  G.rewards.feather=Math.max(G.rewards.feather||0, r.feather||0);
+  G.rewards.badgeCurr=Math.max(G.rewards.badgeCurr||0, r.badgeCurr||0);
+  G.rewards.badgeAlpha=Math.max(G.rewards.badgeAlpha||0, r.badgeAlpha||0);
+  G.rewards.badgePerm=Math.max(G.rewards.badgePerm||0, r.badgePerm||0);
+  G.rewards.pastBadge=Math.max(G.rewards.pastBadge||0, r.pastBadge||0);
+  // 签到日期合并
+  const allDates=new Set([...(G.checkinDates||[]), ...(cs.checkinDates||[])]);
+  G.checkinDates=[...allDates].sort();
+  // 任务状态合并（用云端的，若本地更新则保留本地）
+  if(cs.dailyTasks&&cs.dailyTasksDate===todayISO()){
+    if(!G.dailyTasks||G.dailyTasksDate!==todayISO()) {
+      G.dailyTasks=cs.dailyTasks; G.dailyTasksDate=cs.dailyTasksDate;
+    }
+  }
+  if(cs.weeklyTasks&&cs.weeklyTasksWeek===weekKey()){
+    if(!G.weeklyTasks||G.weeklyTasksWeek!==weekKey()){
+      G.weeklyTasks=cs.weeklyTasks; G.weeklyTasksWeek=cs.weeklyTasksWeek; G.weeklyTasksDone=cs.weeklyTasksDone||[];
+    }
+  }
+  if(cs.monthlyTasks&&cs.monthlyTasksMonth===monthKey()){
+    if(!G.monthlyTasks||G.monthlyTasksMonth!==monthKey()){
+      G.monthlyTasks=cs.monthlyTasks; G.monthlyTasksMonth=cs.monthlyTasksMonth; G.monthlyTasksDone=cs.monthlyTasksDone||[];
+    }
+  }
+  // 礼包领取记录合并
+  const wd=new Set([...(G.weeklyDrawn||[]), ...(cs.weeklyDrawn||[])]);
+  G.weeklyDrawn=[...wd];
+  const md=new Set([...(G.monthlyDrawn||[]), ...(cs.monthlyDrawn||[])]);
+  G.monthlyDrawn=[...md];
+}
+
+function doLogout(){
+  showModal("确认登出","登出后将清除本地 ID 记忆，云端存档保留。",[
+    {txt:"确认登出",cls:"btn-danger",fn:()=>{
+      G={id:"",uid:0,checkinDates:[],weeklyDrawn:[],monthlyDrawn:[],tasksDone:0,shopTasksSpent:0,
+         rewards:{seiso:0,feather:0,badgeCurr:0,badgeAlpha:0,badgePerm:0,pastBadge:0},
+         dailyTasks:null,dailyTasksDate:"",weeklyTasks:null,weeklyTasksWeek:"",weeklyTasksDone:[],
+         monthlyTasks:null,monthlyTasksMonth:"",monthlyTasksDone:[],fmtDate:""};
+      saveState();
+      closeModal();
+      document.getElementById("inp-id").value="";
+      document.getElementById("inp-uid").value="";
+      showScreen("screen-login");
+      renderIdHistory();
+    }},
+    {txt:"取消",cls:"btn-sub",fn:closeModal}
+  ],SYS_IMG);
+}
+
+// ================================================================
+// CHECKIN LOGIC
+// ================================================================
+async function doCheckin(){
+  const today=todayISO();
+  // 构建本周格子动画
+  const weekDates=getWeekDates();
+  const ciCells=document.getElementById("ci-cells");
+  ciCells.innerHTML="";
+  const dayLabels=["一","二","三","四","五","六","日"];
+  weekDates.forEach((d,i)=>{
+    const cell=document.createElement("div");
+    cell.className="anim-cell"+(G.checkinDates.includes(d)?" stamped":"");
+    if(d===today) cell.classList.add("lit");
+    cell.innerHTML=`<span class="s">${G.checkinDates.includes(d)?"✅":""}</span><span style="font-size:.68rem;color:rgba(255,255,255,.5)">周${dayLabels[i]}</span>`;
+    cell.id="ci-cell-"+i;
+    ciCells.appendChild(cell);
+  });
+
+  // 自动论坛抓取（5条回复判定）
+  document.getElementById("ci-title").textContent="📡 正在读取论坛数据...";
+  document.getElementById("ci-sub").textContent="正在抓取今日在新手保护区的回复，请稍候...";
+  document.querySelector("#screen-checkin .loading-spinner").style.display="block";
+  document.getElementById("ci-result").style.display="none";
+  document.getElementById("ci-fail").style.display="none";
+
+  let repliesCount=0;
+  try{
+    const result=await fffScrapeDay(G.uid, today);
+    repliesCount=result.replies||0;
+  }catch(e){
+    console.warn("论坛抓取失败",e);
+  }
+
+  document.querySelector("#screen-checkin .loading-spinner").style.display="none";
+
+  if(repliesCount>=5){
+    // 打卡成功
+    G.checkinDates.push(today);
+    G.checkinDates=[...new Set(G.checkinDates)].sort();
+    document.getElementById("ci-title").textContent="✅ 打卡成功！";
+    document.getElementById("ci-sub").textContent="今日已在新手保护区回复 "+repliesCount+" 次，已成功打卡！";
+    // 盖章动画
+    const todayIdx=weekDates.indexOf(today);
+    if(todayIdx>=0){
+      const el=document.getElementById("ci-cell-"+todayIdx);
+      if(el){ el.classList.add("stamped"); el.querySelector(".s").textContent="✅"; }
+    }
+    document.getElementById("ci-stamp").textContent="✅";
+    document.getElementById("ci-result").style.display="block";
+    // 更新签到次数
+    saveState();
+    cloudSave();
+    // 上报到 GAS
+    gasBeacon({sheet:SHEET, action:"checkin_log", id:G.id, uid:String(G.uid), date:today, replies:repliesCount});
+  } else {
+    document.getElementById("ci-title").textContent="❌ 今日未达标";
+    document.getElementById("ci-fail-msg").textContent=
+      "今日在新手保护区的回复数："+repliesCount+" 条（需 5 条以上才可打卡）。今日不计入签到。";
+    document.getElementById("ci-fail").style.display="block";
+  }
+}
+
+// ================================================================
+// ENTER MAIN
+// ================================================================
+function enterMain(){
+  showScreen("screen-main");
+  // 初始化任务
+  initDailyTasks();
+  initWeeklyTasks();
+  initMonthlyTasks();
+  renderAll();
+}
+
+function renderAll(){
+  // Top bar
+  document.getElementById("top-id").textContent="🏕️ "+G.id;
+  const today=todayISO();
+  const weekDates=getWeekDates();
+  const weekCheckins=weekDates.filter(d=>G.checkinDates.includes(d)).length;
+  const monthDays=getDaysInMonth_();
+  const monthCheckins=G.checkinDates.filter(d=>d.startsWith(monthKey())).length;
+  document.getElementById("top-checkin").textContent=
+    "签到 "+G.checkinDates.length+" 次 · 本周 "+weekCheckins+"/7 · 本月 "+monthCheckins+"/"+monthDays;
+  // Player panel
+  document.getElementById("pi-checkin").textContent=G.checkinDates.length;
+  document.getElementById("pi-tasks").textContent=G.tasksDone;
+  document.getElementById("pi-week").textContent=weekCheckins+"/7";
+  document.getElementById("pi-month").textContent=monthCheckins+"/"+monthDays;
+  // Rewards
+  document.getElementById("rw-seiso").textContent=G.rewards.seiso;
+  document.getElementById("rw-feather").textContent=G.rewards.feather;
+  document.getElementById("rw-badge-curr").textContent=G.rewards.badgeCurr+" 天";
+  document.getElementById("rw-badge-perm").textContent=G.rewards.badgePerm>=1?"已获得":"未获得";
+  document.getElementById("rw-badge-alpha").textContent=G.rewards.badgeAlpha+" 天";
+  // Weekly grid
+  renderWeeklyGrid();
+  // Draw buttons
+  checkDrawButtons();
+  // Shop tasks count
+  document.getElementById("shop-tasks-count").textContent=shopTasksAvailable();
+}
+
+function getDaysInMonth_(){
+  const now=new Date(); return new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+}
+
+function renderWeeklyGrid(){
+  const grid=document.getElementById("weekly-grid");
+  grid.innerHTML="";
+  const weekDates=getWeekDates();
+  const dayLabels=["周一","周二","周三","周四","周五","周六","周日"];
+  const today=todayISO();
+  weekDates.forEach((d,i)=>{
+    const done=G.checkinDates.includes(d);
+    const isToday=d===today;
+    const cell=document.createElement("div");
+    cell.className="checkin-cell"+(done?" done":"")+(isToday?" today":"");
+    cell.innerHTML=`<span class="stamp">✅</span><span class="day-n">${dayLabels[i]}</span><span style="font-size:.65rem;color:rgba(255,255,255,.4)">${d.slice(5)}</span>`;
+    grid.appendChild(cell);
+  });
+}
+
+function checkDrawButtons(){
+  const weekDates=getWeekDates();
+  const weekCheckins=weekDates.filter(d=>G.checkinDates.includes(d)).length;
+  const wk=weekKey();
+  const canWeekly=weekCheckins>=7 && !G.weeklyDrawn.includes(wk);
+  document.getElementById("btn-weekly-draw").style.display=canWeekly?"inline-block":"none";
+
+  const monthDays=getDaysInMonth_();
+  const monthCheckins=G.checkinDates.filter(d=>d.startsWith(monthKey())).length;
+  const mk=monthKey();
+  const allMonthDone=(monthCheckins>=monthDays);
+  const canMonthly=allMonthDone && !G.monthlyDrawn.includes(mk);
+  document.getElementById("btn-monthly-draw").style.display=canMonthly?"inline-block":"none";
+}
+
+// ================================================================
+// PRIZE DRAW
+// ================================================================
+function pickPrize(isMonthly){
+  const r=G.rewards;
+  const seisoCapped=r.seiso>=SEISO_CAP;
+  const featherCapped=r.feather>=FEATHER_CAP;
+  const permDone=r.badgePerm>=1;
+
+  let pool=[];
+  if(!seisoCapped) pool.push({key:"seiso",   label:isMonthly?"节操120":"节操60",   val:isMonthly?120:60,  w:30});
+  if(!featherCapped) pool.push({key:"feather", label:isMonthly?"羽毛40":"羽毛20",    val:isMonthly?40:20,   w:30});
+  if(!permDone) pool.push({key:"badgeCurr",label:isMonthly?"本期勋章120天":"本期勋章60天",val:isMonthly?120:60,w:30});
+  // 字母勋章：基础权重低，但其他都满了会提升
+  const alphaW=pool.length===0?100:(pool.length===1?50:(pool.length===2?15:8));
+  pool.push({key:"badgeAlpha",label:isMonthly?"字母勋章120天":"字母勋章60天",val:isMonthly?120:60,w:alphaW});
+
+  const total=pool.reduce((a,b)=>a+b.w,0);
+  let x=rInt(1,total), acc=0;
+  for(const p of pool){ acc+=p.w; if(x<=acc) return p; }
+  return pool[pool.length-1];
+}
+
+function applyPrize(prize){
+  if(prize.key==="seiso") G.rewards.seiso=Math.min(SEISO_CAP, G.rewards.seiso+prize.val);
+  else if(prize.key==="feather") G.rewards.feather=Math.min(FEATHER_CAP, G.rewards.feather+prize.val);
+  else if(prize.key==="badgeCurr"){
+    if(G.rewards.badgePerm>=1) G.rewards.badgeAlpha+=prize.val;
+    else G.rewards.badgeCurr+=prize.val;
+  }
+  else if(prize.key==="badgeAlpha") G.rewards.badgeAlpha+=prize.val;
+  applyCapConvert();
+}
+
+function applyCapConvert(){
+  // 节操超5000 → 转字母勋章天数
+  if(G.rewards.seiso>SEISO_CAP){ const over=G.rewards.seiso-SEISO_CAP; G.rewards.seiso=SEISO_CAP; G.rewards.badgeAlpha+=Math.ceil(over/30); }
+  // 羽毛超2000 → 转字母勋章天数
+  if(G.rewards.feather>FEATHER_CAP){ const over=G.rewards.feather-FEATHER_CAP; G.rewards.feather=FEATHER_CAP; G.rewards.badgeAlpha+=Math.ceil(over/10); }
+  // 获得永久本期 → 本期天数转字母天数
+  if(G.rewards.badgePerm>=1 && G.rewards.badgeCurr>0){ G.rewards.badgeAlpha+=G.rewards.badgeCurr; G.rewards.badgeCurr=0; }
+}
+
+function drawWeeklyPrize(){
+  const prize=pickPrize(false);
+  applyPrize(prize);
+  const wk=weekKey();
+  G.weeklyDrawn.push(wk);
+  saveState(); cloudSave();
+  gasBeacon({sheet:SHEET,action:"prize_log",id:G.id,type:"weekly",prize:prize.label,date:todayISO()});
+  renderAll();
+  showModal("🎁 周礼包抽取！","恭喜获得：<br><b style='color:#FFD93D;font-size:1.1rem'>"+prize.label+"</b>",null,STAR_IMG);
+}
+
+function drawMonthlyPrize(){
+  const prize=pickPrize(true);
+  applyPrize(prize);
+  const mk=monthKey();
+  G.monthlyDrawn.push(mk);
+  saveState(); cloudSave();
+  gasBeacon({sheet:SHEET,action:"prize_log",id:G.id,type:"monthly",prize:prize.label,date:todayISO()});
+  renderAll();
+  showModal("🎁 月礼包抽取！","恭喜获得：<br><b style='color:#FFD93D;font-size:1.1rem'>"+prize.label+"</b>",null,STAR_IMG);
+}
+
+// ================================================================
+// TASKS — INIT
+// ================================================================
+function initDailyTasks(){
+  const today=todayISO();
+  if(G.dailyTasksDate===today && G.dailyTasks && G.dailyTasks.length===3) return;
+  // 日期变了：清除旧日的增量缓存
+  if(G.dailyTasksDate && G.dailyTasksDate!==today){
+    try{ Object.keys(localStorage).filter(k=>k.startsWith("cgInc_"+G.uid+"_"+G.dailyTasksDate))
+      .forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  }
+  const picked=pickN(DAILY_TASKS_POOL,3);
+  G.dailyTasks=picked.map(t=>({taskId:t.id, done:false, doneAt:"", timerStart:0}));
+  G.dailyTasksDate=today;
+  saveState();
+}
+function initWeeklyTasks(){
+  const wk=weekKey();
+  if(G.weeklyTasksWeek===wk && G.weeklyTasks && G.weeklyTasks.length===3) return;
+  // 周变了：清除旧周的增量缓存
+  if(G.weeklyTasksWeek && G.weeklyTasksWeek!==wk){
+    try{
+      const oldStart=G.weeklyTasks&&G.weeklyTasks[0]?G.weeklyTasksWeek:"";
+      Object.keys(localStorage).filter(k=>k.startsWith("cgInc_"+G.uid)&&oldStart&&k.includes(oldStart.replace("W","W")))
+        .forEach(k=>localStorage.removeItem(k));
+    }catch(e){}
+  }
+  const picked=pickN(WEEKLY_TASKS_POOL,3);
+  G.weeklyTasks=picked.map(t=>({taskId:t.id, done:false, doneAt:"", timerStart:0, userLink:""}));
+  G.weeklyTasksWeek=wk;
+  G.weeklyTasksDone=[];
+  saveState();
+}
+function initMonthlyTasks(){
+  const mk=monthKey();
+  if(G.monthlyTasksMonth===mk && G.monthlyTasks && G.monthlyTasks.length===3) return;
+  // 月份变了：清除旧月的增量缓存
+  if(G.monthlyTasksMonth && G.monthlyTasksMonth!==mk){
+    try{ Object.keys(localStorage).filter(k=>k.startsWith("cgInc_"+G.uid)&&k.includes(G.monthlyTasksMonth))
+      .forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  }
+  const picked=pickN(MONTHLY_TASKS_POOL,3);
+  G.monthlyTasks=picked.map(t=>({taskId:t.id, done:false, doneAt:"", timerStart:0, userLink:""}));
+  G.monthlyTasksMonth=mk;
+  G.monthlyTasksDone=[];
+  saveState();
+}
+
+// ================================================================
+// TASKS — RENDER
+// ================================================================
+const LINK_TASK_TYPES=["topic_link","newbie_intro","char_card","grad_speech","newbie_road"];
+const TIMER_MS=10000;
+
+function renderTasks(type){
+  const listEl=document.getElementById(type+"-tasks-list");
+  const tasks=type==="daily"?G.dailyTasks:type==="weekly"?G.weeklyTasks:G.monthlyTasks;
+  const pool=type==="daily"?DAILY_TASKS_POOL:type==="weekly"?WEEKLY_TASKS_POOL:MONTHLY_TASKS_POOL;
+  if(!tasks||!tasks.length){ listEl.innerHTML='<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px">暂无任务</div>'; return; }
+
+  const hint=document.getElementById(type+"-reset-hint");
+  if(hint){
+    if(type==="daily") hint.textContent="（今日 "+G.dailyTasksDate+" · 隔天重置）";
+    if(type==="weekly") hint.textContent="（本周 "+G.weeklyTasksWeek+" · 下周一重置）";
+    if(type==="monthly") hint.textContent="（"+G.monthlyTasksMonth+" · 下月重置）";
+  }
+
+  listEl.innerHTML="";
+  tasks.forEach((ts,idx)=>{
+    const def=pool.find(p=>p.id===ts.taskId);
+    if(!def) return;
+
+    // 需要计时的链接类任务：渲染时立刻启动计时（玩家无感知）
+    const needsTimer=LINK_TASK_TYPES.includes(def.type);
+    if(needsTimer && !ts.done && !ts.timerStart){
+      ts.timerStart=Date.now();
+      saveState();
+    }
+
+    const card=document.createElement("div");
+    card.className="task-card"+(ts.done?" done-task":"");
+    card.id="task-card-"+type+"-"+idx;
+
+    let actionsHTML="";
+    if(def.type==="game_2048"||def.type==="game_tetris"){
+      actionsHTML+=`<a href="${def.link}" target="_blank" class="btn-sub" style="font-size:.78rem;padding:5px 12px;text-decoration:none">🎮 游戏传送门</a>`;
+      actionsHTML+=`<button class="btn-gold" style="font-size:.78rem;padding:5px 14px" onclick="completeTask('${type}',${idx})">完成</button>`;
+    } else if(def.type==="forum_reply"||def.type==="forum_cite"||def.type==="emoji_react"){
+      actionsHTML+=`<button class="btn-gold" style="font-size:.78rem;padding:5px 14px" onclick="completeForumTask('${type}',${idx})">🔍 验证完成</button>`;
+    } else if(needsTimer){
+      // 链接任务：始终显示输入框 + 完成按钮，不显示任何计时相关文字
+      actionsHTML+=`<input type="text" class="task-link-inp" id="task-link-${type}-${idx}" placeholder="贴上链接" value="${ts.userLink||""}">`;
+      actionsHTML+=`<button class="btn-gold" style="font-size:.78rem;padding:5px 14px" onclick="completeLinkTask('${type}',${idx})">完成</button>`;
+    }
+
+    card.innerHTML=`
+      <h4>${ts.done?"✅ ":""}${def.txt}</h4>
+      ${ts.done?`<div class="task-status">已完成 · ${ts.doneAt}</div>`:`<div class="task-actions">${actionsHTML}</div>`}
+    `;
+    listEl.appendChild(card);
+  });
+}
+
+// ================================================================
+// TASKS — COMPLETE
+// ================================================================
+async function completeTask(type, idx){
+  const tasks=type==="daily"?G.dailyTasks:type==="weekly"?G.weeklyTasks:G.monthlyTasks;
+  const pool=type==="daily"?DAILY_TASKS_POOL:type==="weekly"?WEEKLY_TASKS_POOL:MONTHLY_TASKS_POOL;
+  const ts=tasks[idx]; const def=pool.find(p=>p.id===ts.taskId);
+  if(!def||ts.done) return;
+
+  showLoading("正在验证任务...");
+  try{
+    let ok=false;
+    let recCount=0;
+    if(def.type==="game_2048"){
+      let s=todayISO(),e=todayISO();
+      if(type==="weekly"){
+        s=weekStartFromKey_(G.weeklyTasksWeek)||getWeekDates()[0];
+        e=addDays_(s,6);
+      }else if(type==="monthly"){
+        s=G.monthlyTasksMonth?G.monthlyTasksMonth+"-01":monthKey()+"-01";
+        e=todayISO();
+      }
+      recCount=await countGameSheetRecords_(def.sheet, s, e, G.uid);
+      ok=recCount>=(def.need||1);
+    } else if(def.type==="game_tetris"){
+      let s=todayISO(),e=todayISO();
+      if(type==="weekly"){
+        s=weekStartFromKey_(G.weeklyTasksWeek)||getWeekDates()[0];
+        e=addDays_(s,6);
+      }else if(type==="monthly"){
+        s=G.monthlyTasksMonth?G.monthlyTasksMonth+"-01":monthKey()+"-01";
+        e=todayISO();
+      }
+      recCount=await countGameSheetRecords_(def.sheet, s, e, G.uid);
+      ok=recCount>=(def.need||1);
+    } else {
+      ok=true; // 其他类型按钮点了就算
+    }
+    if(ok){
+      markTaskDone(type,idx);
+      if(def.type==="game_2048"||def.type==="game_tetris"){
+        showModal("✅ 任务完成！","周期内检测到通关记录 <b style='color:#FFD93D'>"+recCount+"</b> 次（需求 "+(def.need||1)+" 次），任务次数 +1！",null,GOOD_IMG);
+      }else{
+        showModal("✅ 任务完成！","任务已完成，任务次数 +1！",null,GOOD_IMG);
+      }
+    } else {
+      if(def.type==="game_2048"||def.type==="game_tetris"){
+        showModal("❌ 未达标","周期内仅检测到通关记录 <b style='color:#FF8888'>"+recCount+"</b> 次（需求 "+(def.need||1)+" 次）。",null,SYS_IMG);
+      }else{
+        showModal("❌ 未验证到记录","未检测到今日游玩记录，请先完成游戏后再回来验证。",null,SYS_IMG);
+      }
+    }
+  }catch(e){
+    showModal("⚠️ 验证失败","网络读取失败，请稍后再试。<br><small>"+e.message+"</small>",null,SYS_IMG);
+  }
+  hideLoading();
+}
+
+async function completeForumTask(type, idx){
+  const tasks=type==="daily"?G.dailyTasks:type==="weekly"?G.weeklyTasks:G.monthlyTasks;
+  const pool=type==="daily"?DAILY_TASKS_POOL:type==="weekly"?WEEKLY_TASKS_POOL:MONTHLY_TASKS_POOL;
+  const ts=tasks[idx]; const def=pool.find(p=>p.id===ts.taskId);
+  if(!def||ts.done) return;
+
+  showLoading("正在从论坛抓取数据，请稍候...");
+  try{
+    let startDate, endDate=todayISO();
+    if(type==="daily") startDate=todayISO();
+    else if(type==="weekly"){ startDate=getWeekDates()[0]; }
+    else { startDate=monthKey()+"-01"; }
+
+    const result=await fffScrapeRange(G.uid, startDate, endDate);
+
+    // 取区间累计总量（增量缓存已包含整个区间的累计）
+    let rawCount=0;
+    if(def.type==="forum_reply") rawCount=result.replies||0;
+    else if(def.type==="forum_cite") rawCount=result.citations||0;
+    else if(def.type==="emoji_react") rawCount=result.emojiReacts||0;
+
+    // 判定用的数字：
+    //   周/月任务 → 直接用区间累计总数与 need 比较（整周/整月都算数）
+    //   每日任务  → 用区间累计总数（当天），同样直接比较
+    // 不再扣基准：增量抓取本身已保证 result 是区间内的真实累计
+    const judgeCount = rawCount;
+
+    // ── 上报当天回复/被引用到云端返乡活跃度（HTML端去重，数字更大才发）
+    logActivityToCloud_(G.id, G.uid, todayISO(), result.replies||0, result.citations||0);
+
+    // 显示文字：区分回复/被引用/表情，区分日/周/月范围
+    const typeLabel = def.type==="forum_reply"?"回复":def.type==="forum_cite"?"被引用":"表情反应";
+    const rangeLabel = type==="daily"?"今日":type==="weekly"?"本周":"本月";
+    const progressTxt = rangeLabel+"累计"+typeLabel+"：<b style='color:#FFD93D;font-size:1.1rem'>"+judgeCount+"</b> 条（需 "+def.need+" 条）";
+
+    if(judgeCount>=def.need){
+      markTaskDone(type,idx);
+      showModal("✅ 任务完成！", progressTxt+"<br>任务次数 +1！", null, GOOD_IMG);
+    } else {
+      showModal("❌ 尚未达标", progressTxt+"<br>还需再增加 <b style='color:#FF8888'>"+(def.need-judgeCount)+"</b> 条，继续加油！", null, SYS_IMG);
+    }
+  }catch(e){
+    showModal("⚠️ 抓取失败","论坛数据读取失败，请稍后再试。",null,SYS_IMG);
+  }
+  hideLoading();
+}
+
+async function completeLinkTask(type, idx){
+  const tasks=type==="daily"?G.dailyTasks:type==="weekly"?G.weeklyTasks:G.monthlyTasks;
+  const pool=type==="daily"?DAILY_TASKS_POOL:type==="weekly"?WEEKLY_TASKS_POOL:MONTHLY_TASKS_POOL;
+  const ts=tasks[idx]; const def=pool.find(p=>p.id===ts.taskId);
+  if(!def||ts.done) return;
+
+  // 系统静默等待10秒 — 玩家无感知，按了「完成」若尚未满10秒弹提示
+  if(LINK_TASK_TYPES.includes(def.type) && ts.timerStart && (Date.now()-ts.timerStart)<TIMER_MS){
+    showModal("系统正在侦测中","请稍候片刻再试。",null,SYS_IMG); return;
+  }
+
+  const linkInp=document.getElementById("task-link-"+type+"-"+idx);
+  const link=(linkInp?linkInp.value.trim():"") || ts.userLink || "";
+  if(!link){ showModal("请输入链接","请先贴上相关链接。",null,SYS_IMG); return; }
+  ts.userLink=link; saveState();
+
+  showLoading("正在验证链接...");
+  try{
+    let ok=false, msg="";
+    if(def.type==="topic_link"){
+      // 检查链接对应的论坛是否为新手保护区 forum/32
+      const html=await fffProxyGet(link);
+      const isNovice=NOVICE_FORUM_RE.test(html);
+      if(!isNovice){ msg="链接所属论坛非新手保护区，无法完成。"; }
+      else ok=true;
+    } else if(def.type==="newbie_intro"){
+      const html=await fffProxyGet(link);
+      const doc=new DOMParser().parseFromString(html,"text/html");
+      const breadcrumb=doc.querySelector(".ipsType_noBreak");
+      ok=breadcrumb&&breadcrumb.textContent.includes("300字新人报到");
+      if(!ok) msg="未检测到「300字新人报到」标记。";
+    } else if(def.type==="char_card"){
+      ok=link.startsWith("https://sstm.moe/topic/261097-");
+      if(!ok) msg="链接不是新手村人物卡入村登记处的链接。";
+    } else if(def.type==="grad_speech"){
+      const html=await fffProxyGet(link);
+      const doc=new DOMParser().parseFromString(html,"text/html");
+      const breadcrumb=doc.querySelector(".ipsType_noBreak");
+      ok=breadcrumb&&breadcrumb.textContent.includes("毕业感言");
+      if(!ok) msg="未检测到「毕业感言」标记。";
+    } else if(def.type==="newbie_road"){
+      const html=await fffProxyGet(link);
+      const forumLinks=html.match(/forum\/[^"'\s]+/g)||[];
+      // 检查是否包含"节操の广场"的 forum 路径（非 32）
+      ok=forumLinks.some(f=>f.includes("广场")||f.includes("plaza")||(!f.includes("/32")));
+      // 更精确：检查 ipsType_light 中的 forum 链接
+      const doc=new DOMParser().parseFromString(html,"text/html");
+      const forumEl=doc.querySelector(".ipsType_light a[href*='forum']");
+      if(forumEl){
+        const href=forumEl.getAttribute("href")||"";
+        ok=!NOVICE_FORUM_RE.test(href); // 不是新手保护区就算新手上路
+        if(!ok) msg="链接所在板块仍为新手保护区，需在节操の广场完成。";
+      }
+    } else {
+      ok=true;
+    }
+
+    if(ok){
+      markTaskDone(type,idx);
+      showModal("✅ 任务完成！","链接验证通过，任务次数 +1！",null,GOOD_IMG);
+    } else {
+      showModal("❌ 验证未通过",msg||"链接验证未通过，请检查后重试。",null,SYS_IMG);
+    }
+  }catch(e){
+    showModal("⚠️ 验证失败","页面读取失败："+e.message,null,SYS_IMG);
+  }
+  hideLoading();
+}
+
+function markTaskDone(type, idx){
+  const tasks=type==="daily"?G.dailyTasks:type==="weekly"?G.weeklyTasks:G.monthlyTasks;
+  tasks[idx].done=true;
+  tasks[idx].doneAt=new Date().toLocaleString("zh-TW");
+  G.tasksDone++;
+  saveState(); cloudSave();
+  gasBeacon({sheet:SHEET,action:"task_done",id:G.id,type,taskId:tasks[idx].taskId,date:todayISO()});
+  renderAll();
+  renderTasks(type);
+}
+
+// ================================================================
+// SHOP
+// ================================================================
+function renderShop(){
+  const list=document.getElementById("shop-list");
+  list.innerHTML="";
+  document.getElementById("shop-tasks-count").textContent=shopTasksAvailable();
+  SHOP_ITEMS.forEach(item=>{
+    let disabled=false, disabledMsg="";
+    if(item.cap==="seiso" && G.rewards.seiso>=item.capVal){ disabled=true; disabledMsg=item.capMsg; }
+    if(item.cap==="feather" && G.rewards.feather>=item.capVal){ disabled=true; disabledMsg=item.capMsg; }
+    if(item.cap==="badgePerm" && G.rewards.badgePerm>=1){ disabled=true; disabledMsg=item.capMsg; }
+    if(shopTasksAvailable()<item.cost){ disabled=true; disabledMsg="任务次数不足"; }
+
+    const div=document.createElement("div");
+    div.className="shop-item"+(disabled?" disabled-item":"");
+    div.innerHTML=`
+      <h5>${item.name}</h5>
+      <div class="shop-cost">消耗 ${item.cost} 任务次数</div>
+      ${disabled&&disabledMsg?`<p style="color:#FF8888;font-size:.72rem">${disabledMsg}</p>`:""}
+      <button class="btn-gold" style="font-size:.78rem;padding:5px 14px" ${disabled?"disabled":""} onclick="buyShopItem('${item.id}')">兑换</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function buyShopItem(shopId){
+  const item=SHOP_ITEMS.find(s=>s.id===shopId);
+  if(!item) return;
+  if(shopTasksAvailable()<item.cost){ showModal("任务次数不足","当前可用任务次数不足。",null,SYS_IMG); return; }
+  // Cap checks
+  if(item.cap==="seiso" && G.rewards.seiso>=SEISO_CAP){ showModal("上限提示",item.capMsg,null,SYS_IMG); return; }
+  if(item.cap==="feather" && G.rewards.feather>=FEATHER_CAP){ showModal("上限提示",item.capMsg,null,SYS_IMG); return; }
+  if(item.cap==="badgePerm" && G.rewards.badgePerm>=1){ showModal("上限提示",item.capMsg,null,SYS_IMG); return; }
+
+  showModal("确认兑换","确定消耗 "+item.cost+" 任务次数换取「"+item.name+"」？",[
+    {txt:"确认兑换",cls:"btn-gold",fn:()=>{
+      closeModal();
+      G.shopTasksSpent+=item.cost;
+      // Apply reward
+      const rw=item.reward;
+      if(rw.seiso) G.rewards.seiso=Math.min(SEISO_CAP, G.rewards.seiso+(rw.seiso||0));
+      if(rw.feather) G.rewards.feather=Math.min(FEATHER_CAP, G.rewards.feather+(rw.feather||0));
+      if(rw.badgeCurr){ if(G.rewards.badgePerm>=1) G.rewards.badgeAlpha+=rw.badgeCurr; else G.rewards.badgeCurr+=rw.badgeCurr; }
+      if(rw.badgeAlpha) G.rewards.badgeAlpha+=rw.badgeAlpha;
+      if(rw.badgePerm){ G.rewards.badgePerm=1; applyCapConvert(); }
+      if(rw.pastBadge) G.rewards.pastBadge=(G.rewards.pastBadge||0)+1;
+      applyCapConvert();
+      saveState(); cloudSave();
+      gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,shopId,date:todayISO()});
+      renderAll(); renderShop();
+      showModal("✅ 兑换成功","已成功获得「"+item.name+"」！",null,GOOD_IMG);
+    }},
+    {txt:"取消",cls:"btn-sub",fn:closeModal}
+  ],STAR_IMG);
+}
+
+// ================================================================
+// DOWNLOAD
+// ================================================================
+function downloadData(){
+  const allPools={daily:DAILY_TASKS_POOL,weekly:WEEKLY_TASKS_POOL,monthly:MONTHLY_TASKS_POOL};
+  const taskTypeLabel={daily:"每日",weekly:"每周",monthly:"每月"};
+  const rows=[
+    ["类别","项目","内容","完成时间"],
+    ["基本","论坛ID",G.id,""],
+    ["基本","UID",String(G.uid),""],
+    ["基本","下载时间",new Date().toLocaleString("zh-TW"),""],
+    ["签到","总签到次数",String(G.checkinDates.length),""],
+    ["签到","签到日期",G.checkinDates.join(" | "),""],
+    ["任务","总完成次数",String(G.tasksDone),""],
+    ["任务","商店消耗次数",String(G.shopTasksSpent),""],
+    ["奖励","节操",String(G.rewards.seiso),""],
+    ["奖励","羽毛",String(G.rewards.feather),""],
+    ["奖励","本期勋章天数",String(G.rewards.badgeCurr),""],
+    ["奖励","永久本期勋章",G.rewards.badgePerm>=1?"已获得":"未获得",""],
+    ["奖励","字母勋章天数",String(G.rewards.badgeAlpha),""],
+    ["奖励","往期返乡机会",String(G.rewards.pastBadge||0),""],
+    ["","","",""],
+    ["任务明细","类型","任务内容","完成时间"],
+  ];
+  // 每日任务明细
+  [["daily",G.dailyTasks],["weekly",G.weeklyTasks],["monthly",G.monthlyTasks]].forEach(([type,tasks])=>{
+    if(!tasks||!tasks.length) return;
+    const pool=allPools[type];
+    tasks.forEach(ts=>{
+      const def=pool.find(p=>p.id===ts.taskId);
+      if(!def) return;
+      rows.push([
+        taskTypeLabel[type]+"任务",
+        ts.done?"✅ 已完成":"❌ 未完成",
+        def.txt,
+        ts.doneAt||""
+      ]);
+    });
+  });
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="checkin-game-"+G.id+".csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ================================================================
+// FORUM SCRAPE
+// ================================================================
+async function fffProxyGet(url, noCache){
+  // noCache=true 时跳过缓存（验证回复/CSV 等会随时更新的页面）
+  if(!noCache){
+    const sk="cgfff_"+url;
+    const hit=sessionStorage.getItem(sk);
+    if(hit) return hit;
+  }
+  // 加时间戳避免 proxy 本身缓存
+  const bustUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
+  const resp=await fetch(FORUM_PROXY+encodeURIComponent(bustUrl),{signal:AbortSignal.timeout(30000)});
+  if(!resp.ok) throw new Error("网络错误 "+resp.status);
+  const text=await resp.text();
+  // 只缓存 profile slug 页（url 含 controller=profile），其余不缓存
+  if(!noCache && url.includes("controller=profile")){
+    try{ sessionStorage.setItem("cgfff_"+url, text); }catch(e){}
+  }
+  return text;
+}
+
+async function fffGetSlug(uid){
+  const html=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+uid);
+  const doc=new DOMParser().parseFromString(html,"text/html");
+  for(const a of doc.querySelectorAll("a[href]")){
+    const href=a.getAttribute("href")||"";
+    const m=href.match(/\/profile\/(\d+-[^\/\?#"]+)/);
+    if(m&&m[1].startsWith(uid+"-")) return m[1];
+  }
+  throw new Error("无法获取用户 slug，请确认 UID 正确");
+}
+
+// 抓取某天的回复数（用于打卡判定，独立 key 不混入任务缓存）
+async function fffScrapeDay(uid, date){
+  const slug=await fffGetSlug(uid);
+  // 打卡用独立 key（加 _checkin 后缀），不影响日任务的增量缓存
+  return fffScrapeRange_(uid, slug, date, date, "_checkin");
+}
+
+// ── 增量抓取：记住上次验证时最新回复的时间戳，下次只抓比那个时间更新的
+// key 只用 uid+startDate（endDate 每天变，不能放进 key 否则缓存每天失效）
+// keySuffix 用来区分打卡(_checkin)和任务(空字串)
+function incKey_(uid, startDate, keySuffix){ return "cgInc_"+uid+"_"+startDate+(keySuffix||""); }
+function loadInc_(uid, startDate, keySuffix){
+  try{ return JSON.parse(localStorage.getItem(incKey_(uid,startDate,keySuffix))||"null"); }catch(e){ return null; }
+}
+function saveInc_(uid, startDate, keySuffix, data){
+  try{ localStorage.setItem(incKey_(uid,startDate,keySuffix), JSON.stringify(data)); }catch(e){}
+}
+
+// 抓取某范围的回复/被引用/表情反应（增量版）
+async function fffScrapeRange(uid, startDate, endDate){
+  const slug=await fffGetSlug(uid);
+  return fffScrapeRange_(uid, slug, startDate, endDate);
+}
+
+async function fffScrapeRange_(uid, slug, startDate, endDate, keySuffix){
+  const sTs=startDate?new Date(startDate).getTime():0;
+  const eTs=endDate?new Date(endDate+"T23:59:59Z").getTime():Date.now();
+
+  // 读取上次增量缓存（key=uid+startDate+keySuffix，endDate不入key避免每天失效）
+  const prev=loadInc_(uid, startDate, keySuffix);
+  // lastTs：上次抓到的最新回复时间戳，本次遇到 <= lastTs 的就停止
+  const lastTs=prev ? (prev.lastTs||0) : 0;
+  // 累计上次已有的数字
+  let replies     = prev ? (prev.replies||0)     : 0;
+  let emojiReacts = prev ? (prev.emojiReacts||0) : 0;
+  const citedIds  = new Set(prev ? (prev.citations||[]) : []);
+
+  // 引用验证缓存（localStorage 跨次保留）
+  const ccKey="cgcc_"+uid;
+  let cache; try{cache=new Map(Object.entries(JSON.parse(localStorage.getItem(ccKey)||"{}")));}catch(e){cache=new Map();}
+
+  let page=1, done=false;
+  let newLastTs=lastTs; // 本次抓到的最新时间戳，用于下次增量
+
+  while(!done){
+    const url=page===1
+      ?"https://sstm.moe/profile/"+slug+"/content/?type=forums_topic_post&change_section=1"
+      :"https://sstm.moe/profile/"+slug+"/content/page/"+page+"/?type=forums_topic_post";
+    const html=await fffProxyGet(url, true); // 永远不缓存，抓最新
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const items=doc.querySelectorAll("ol.cProfileContent > li");
+    if(!items.length) break;
+    let foundNew=false; const toCheck=[];
+
+    for(const item of items){
+      const te=item.querySelector("time[datetime]"); if(!te) continue;
+      const ts=new Date(te.getAttribute("datetime")).getTime();
+      if(ts>eTs) continue;
+      if(ts<sTs){ done=true; break; }
+
+      // ★ 核心：遇到上次已处理过的时间戳就停，不再往下翻
+      if(lastTs>0 && ts<=lastTs){ done=true; break; }
+
+      foundNew=true;
+      // 记录本次最新时间戳（第一页第一条最新）
+      if(ts>newLastTs) newLastTs=ts;
+
+      const fa=item.querySelector("p.ipsType_light a[href]");
+      if(!fa||!NOVICE_FORUM_RE.test(fa.getAttribute("href")||"")) continue;
+      replies++;
+
+      // 表情反应
+      item.querySelectorAll(".ipsReact_reactCount").forEach(el=>{
+        const title=el.getAttribute("_title")||el.title||"";
+        if(title.includes("顶(+1)")){
+          const n=parseInt(el.textContent.trim(),10);
+          if(!isNaN(n)) emojiReacts+=n;
+        }
+      });
+
+      // 被引用检查
+      const bq=item.querySelector(".ipsQuote");
+      if(!bq) continue;
+      const c2=bq.getAttribute("data-ipsquote-contentcommentid");
+      const t2=bq.getAttribute("data-ipsquote-contentid");
+      if(c2&&t2) toCheck.push({cid:c2,tid:t2});
+    }
+
+    if(toCheck.length){
+      for(const x of toCheck){
+        if(citedIds.has(x.cid)) continue; // 已计过的不重复
+        if(cache.has(x.cid)){ if(cache.get(x.cid)) citedIds.add(x.cid); continue; }
+        try{
+          const qUrl="https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid;
+          const qHtml=await fffProxyGet(qUrl, true);
+          if(!/forum\/32[-\/]/.test(qHtml)){cache.set(x.cid,false);continue;}
+          const qDoc=new DOMParser().parseFromString(qHtml,"text/html");
+          const el=qDoc.querySelector("article#elComment_"+x.cid);
+          if(!el){cache.set(x.cid,false);continue;}
+          const qs=el.querySelectorAll('.ipsQuote[data-ipsquote-userid="'+uid+'"]');
+          const ok=Array.from(qs).some(q=>!q.parentElement.closest(".ipsQuote"));
+          cache.set(x.cid,ok); if(ok) citedIds.add(x.cid);
+        }catch(e){cache.set(x.cid,false);}
+        await new Promise(r=>setTimeout(r,150));
+      }
+    }
+
+    if(done) break;
+    if(!foundNew) break; // 这页没有新内容，停止
+    const next=doc.querySelector("li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel='next']");
+    if(!next) break;
+    page++;
+    await new Promise(r=>setTimeout(r,300));
+  }
+
+  // 保存引用验证缓存
+  try{localStorage.setItem(ccKey,JSON.stringify(Object.fromEntries(cache)));}catch(e){}
+
+  // 保存增量进度（记住本次最新时间戳，下次从这里接续）
+  saveInc_(uid, startDate, keySuffix, {
+    lastTs: newLastTs,
+    replies,
+    citations: [...citedIds],
+    emojiReacts
+  });
+
+  return{replies, citations:citedIds.size, emojiReacts};
+}
+
+// 检查 Google Sheets 中的游戏记录
+// 每次强制重新抓（加时间戳），不走缓存，否则新增记录不会被侦测到
+async function countGameSheetRecords_(sheetUrl, startDate, endDate, uid){
+  try{
+    const m1=sheetUrl.match(/\/d\/([^\/]+)/);
+    const m2=sheetUrl.match(/gid=(\d+)/);
+    if(!m1||!m2) return 0;
+    // 强制不缓存，加时间戳
+    const csvUrl="https://docs.google.com/spreadsheets/d/"+m1[1]
+      +"/export?format=csv&gid="+m2[1]+"&_t="+Date.now();
+    const resp=await fetch(FORUM_PROXY+encodeURIComponent(csvUrl),
+      {signal:AbortSignal.timeout(25000)});
+    if(!resp.ok) return 0;
+    const text=await resp.text();
+    if(!text||text.startsWith("<!DOCTYPE")||text.startsWith("<html")) return 0;
+    const uidStr=String(uid||"").trim();
+    const sTs=new Date(startDate+"T00:00:00").getTime();
+    const eTs=new Date(endDate+"T23:59:59").getTime();
+    const lines=text.split(/\r?\n/).filter(l=>l.trim());
+    let cnt=0;
+    for(const ln of lines){
+      if(uidStr && !ln.includes(uidStr)) continue;
+      const m=ln.match(/(20\d{2})[-\/](\d{1,2})[-\/](\d{1,2})/);
+      if(!m) continue;
+      const dIso=m[1]+"-"+String(Number(m[2])).padStart(2,"0")+"-"+String(Number(m[3])).padStart(2,"0");
+      const ts=new Date(dIso+"T12:00:00").getTime();
+      if(ts>=sTs && ts<=eTs) cnt++;
+    }
+    return cnt;
+  }catch(e){ console.warn("countGameSheetRecords_ error",e); return 0; }
+}
+async function checkGameSheet_(sheetUrl, date, uid){
+  const n=await countGameSheetRecords_(sheetUrl,date,date,uid);
+  return n>0;
+}
+
+// ================================================================
+// FORUM FETCH MODAL (手动触发)
+// ================================================================
+function fffOpen(){
+  document.getElementById("fff-uid-inp").value=G.uid||"";
+  const today=todayISO();
+  document.getElementById("fff-start").value=today;
+  document.getElementById("fff-end").value=today;
+  document.getElementById("fff-modal").style.display="flex";
+}
+function fffClose(){ document.getElementById("fff-modal").style.display="none"; }
+async function fffDoFetch(){
+  const uid=parseInt(document.getElementById("fff-uid-inp").value.trim(),10);
+  const start=document.getElementById("fff-start").value;
+  const end=document.getElementById("fff-end").value;
+  if(!uid){ document.getElementById("fff-status-text").textContent="请输入有效 UID"; return; }
+  document.getElementById("fff-status-text").textContent="抓取中...";
+  try{
+    const result=await fffScrapeRange(uid,start,end);
+    document.getElementById("fff-status-text").textContent=
+      "完成！回复："+result.replies+"　被引用："+result.citations+"　表情反应："+result.emojiReacts;
+  }catch(e){
+    document.getElementById("fff-status-text").textContent="抓取失败："+e.message;
+  }
+}
+
+// ================================================================
+// INIT
+// ================================================================
+window.addEventListener("DOMContentLoaded",()=>{
+  // 恢复 ID/UID
+  const savedId=localStorage.getItem(KEY_ID)||"";
+  const savedUid=localStorage.getItem(KEY_UID)||"";
+  if(savedId) document.getElementById("inp-id").value=savedId;
+  if(savedUid) document.getElementById("inp-uid").value=savedUid;
+  renderIdHistory();
+  document.getElementById("ver-txt").textContent=VER+" 新手村打卡游戏";
+});
+</script>
+
+<!-- 版本注记 -->
+<!-- v1.0 2026-04 初版：登入/UID记忆/打卡判定(5回复)/7格盖章动画/周月礼包/每日周月任务/商店/云端GAS存档/离线模式/下载数据 -->
+</body>
+</html>

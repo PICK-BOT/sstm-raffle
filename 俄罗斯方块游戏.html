@@ -30,6 +30,19 @@
             gap: 30px;
             position: relative;
         }
+        .story-cover-banner {
+            width: 100%;
+            margin: 0 0 14px 0;
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.18);
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
+        }
+        .story-cover-banner img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
 
         .game-board {
             position: relative;
@@ -277,6 +290,7 @@
         <!-- 登录遮罩 -->
         <div class="login-overlay" id="loginOverlay">
             <div class="login-panel">
+                <div class="story-cover-banner"><img src="covers_v3/cover_tetris_v3.png" alt="俄罗斯方块封面"></div>
                 <h2>🎮 俄罗斯方块游戏</h2>
                 <input type="text" id="userId" class="login-input" placeholder="请输入您的ID（必填）" maxlength="20">
                 <button class="login-btn" id="loginBtn" onclick="startGame()">开始游戏</button>
@@ -335,7 +349,7 @@
         <!-- 版本信息 -->
         <div class="version-info">
             俄罗斯方块游戏 | 
-            最后更新: 2024-03-16 v1.2.1 (修复版)
+            最后更新: 2026-04-12 v1.2.2 (追加故事风封面图)
         </div>
     </div>
 
@@ -642,7 +656,7 @@
                 localStorage.setItem('tetris_api_url', paramUrl); // 持久化
                 return paramUrl;
             }
-            return localStorage.getItem('tetris_api_url') || '';
+            return localStorage.getItem('tetris_api_url') || WEB_APP_URL;
         }
 
         // 保存API配置
@@ -698,16 +712,48 @@
                     document.head.removeChild(script);
                 };
                 
-                // 构建JSONP URL（按照2048的方式）
-                const jsonpUrl = WEB_APP_URL + 
-                    '?callback=' + callbackName + 
-                    '&data=' + encodeURIComponent(JSON.stringify(payload));
+                // 主格式：兼容 data=JSON 的后端
+                const jsonpUrl = WEB_APP_URL + '?callback=' + callbackName + '&data=' + encodeURIComponent(JSON.stringify(payload));
                 
                 script.src = jsonpUrl;
                 script.onerror = function() {
-                    console.error('❌ JSONP请求失败');
+                    console.error('❌ JSONP请求失败，尝试备用参数格式');
                     delete window[callbackName];
                     document.head.removeChild(script);
+                    // 备用格式：兼容 action=save + 平铺字段 的后端
+                    const cb2 = 'jsonp_callback_fallback_' + Date.now();
+                    const s2 = document.createElement('script');
+                    window[cb2] = function(resp2) {
+                        console.log('✅ 备用写入响应:', resp2);
+                        if (resp2 && (resp2.status === 'success' || resp2.ok === true)) {
+                            loadLeaderboard();
+                        }
+                        delete window[cb2];
+                        if (s2.parentNode) s2.parentNode.removeChild(s2);
+                    };
+                    const q = new URLSearchParams({
+                        callback: cb2,
+                        action: 'save',
+                        id: userId,
+                        uid: userId,
+                        score: String(payload.score || 0),
+                        level: String(payload.level || 1),
+                        lines: String(payload.linesCleared || 0),
+                        linesCleared: String(payload.linesCleared || 0),
+                        gameTime: String(payload.gameTime || ''),
+                        pieces: String(payload.pieces || ''),
+                        moves: String(payload.moves || 0),
+                        time: String(payload.time || ''),
+                        date: new Date().toISOString().slice(0,10),
+                        game: 'tetris'
+                    });
+                    s2.src = WEB_APP_URL + '?' + q.toString();
+                    s2.onerror = function() {
+                        console.error('❌ 备用参数格式也失败');
+                        delete window[cb2];
+                        if (s2.parentNode) s2.parentNode.removeChild(s2);
+                    };
+                    document.head.appendChild(s2);
                 };
                 
                 // 发送请求
@@ -736,8 +782,8 @@
                 const rankText = index < 3 ? ['🥇', '🥈', '🥉'][index] : `${index + 1}.`;
                 
                 item.innerHTML = `
-                    <span class="${rankClass}">${rankText} ${record.id || '?'}</span>
-                    <span>${record.score}分 Lv.${record.level || 1}</span>
+                    <span class="${rankClass}">${rankText} ${record.id || record.userId || record.uid || '?'}</span>
+                    <span>${record.score || 0}分 Lv.${record.level || 1}</span>
                 `;
                 
                 leaderboardEl.appendChild(item);
@@ -760,8 +806,9 @@
                 
                 window[callbackName] = function(response) {
                     console.log('排行榜数据:', response);
-                    if (response && response.data) {
-                        updateLeaderboard(response.data);
+                    const lb = (response && (response.data || response.leaderboard || response.rows)) || [];
+                    if (lb && lb.length) {
+                        updateLeaderboard(lb);
                     } else {
                         document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">暂无记录</div>';
                     }
@@ -778,10 +825,25 @@
                 
                 script.src = jsonpUrl;
                 script.onerror = function() {
-                    console.error('加载排行榜失败');
-                    document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">加载排行榜失败</div>';
+                    console.error('加载排行榜失败，尝试备用接口');
                     delete window[callbackName];
                     document.head.removeChild(script);
+                    const cb2 = 'leaderboard_callback_fallback_' + Date.now();
+                    const s2 = document.createElement('script');
+                    window[cb2] = function(resp2) {
+                        const lb2 = (resp2 && (resp2.data || resp2.leaderboard || resp2.rows)) || [];
+                        if (lb2 && lb2.length) updateLeaderboard(lb2);
+                        else document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">暂无记录</div>';
+                        delete window[cb2];
+                        if (s2.parentNode) s2.parentNode.removeChild(s2);
+                    };
+                    s2.src = WEB_APP_URL + '?callback=' + cb2 + '&action=getLeaderboard&t=' + Date.now();
+                    s2.onerror = function() {
+                        document.getElementById('leaderboard').innerHTML = '<div class="leaderboard-item">加载排行榜失败</div>';
+                        delete window[cb2];
+                        if (s2.parentNode) s2.parentNode.removeChild(s2);
+                    };
+                    document.head.appendChild(s2);
                 };
                 
                 document.head.appendChild(script);
@@ -1007,7 +1069,10 @@
         // 初始化游戏
         function init() {
             // 获取API URL
-            WEB_APP_URL = getApiUrl();
+            const resolvedApi = getApiUrl();
+            if (resolvedApi && /^https?:\/\//i.test(resolvedApi)) {
+                WEB_APP_URL = resolvedApi;
+            }
             
             // 检查是否已登录
             const savedUserId = localStorage.getItem('tetris_user_id');
@@ -1023,5 +1088,6 @@
         // 启动游戏
         init();
     </script>
+    <!-- v1.2.2 2026-04-12 追加故事风封面图（covers_v3/cover_tetris_v3.png） -->
 </body>
 </html>

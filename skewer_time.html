@@ -456,7 +456,9 @@ const FOOD_GROUPS={
 function foodEmojiByType(type){return activeFoodPool[type%Math.max(1,activeFoodPool.length)]||"🍢";}
 function pokemonSpriteByType(type){
   if(!pokemonPoolByType.length) return POKE_BULBASAUR_URL;
-  const name=pokemonPoolByType[type%pokemonPoolByType.length]||"bulbasaur";
+  let name=pokemonPoolByType[type%pokemonPoolByType.length]||"bulbasaur";
+  if(name==="nidoran-m") name="nidoranm";
+  if(name==="nidoran-f") name="nidoranf";
   return "https://play.pokemonshowdown.com/sprites/gen5/"+name+".png";
 }
 function buildPokemonPool(kinds,seed){
