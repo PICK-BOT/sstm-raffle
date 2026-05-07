@@ -18,19 +18,19 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#08172a;c
 #lvl{flex:1;text-align:center;font-weight:900}
 #progress-wrap{width:min(980px,98vw);height:4px;background:rgba(255,255,255,.12);border-radius:10px;overflow:hidden}
 #progress{height:100%;width:0%;background:linear-gradient(90deg,#22d3ee,#0ea5e9);transition:width .2s}
-#game-area{width:min(980px,98vw);height:calc(100vh - 170px);display:flex;flex-direction:column;gap:8px}
+#game-area{width:min(980px,98vw);height:calc(100vh - 170px);display:flex;flex-direction:column;gap:8px;min-height:220px}
 #target,#mods,#hint{font-size:.8rem;color:rgba(255,255,255,.8)}
-#sticks{flex:1;display:grid;grid-template-columns:repeat(7,minmax(90px,1fr));gap:8px;align-content:stretch;overflow:hidden;padding-bottom:0;min-height:0}
+#sticks{flex:1;display:grid;grid-template-columns:repeat(5,minmax(118px,1fr));gap:8px;align-content:stretch;overflow:auto;padding-bottom:0;min-height:0}
 #sticks-pager{height:20px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:.75rem;color:rgba(255,255,255,.75)}
 #sticks-pager .pg{cursor:pointer;padding:1px 8px;border-radius:8px;background:rgba(255,255,255,.08)}
-.stick{height:100%;min-height:104px;border-radius:14px;border:2px solid rgba(255,255,255,.26);background:linear-gradient(180deg,rgba(16,30,48,.95),rgba(8,18,34,.95));display:flex;flex-direction:column-reverse;gap:5px;padding:8px;position:relative;cursor:pointer;transition:transform .15s ease}
+.stick{height:100%;min-height:122px;border-radius:14px;border:2px solid rgba(255,255,255,.26);background:linear-gradient(180deg,rgba(16,30,48,.95),rgba(8,18,34,.95));display:flex;flex-direction:column-reverse;gap:5px;padding:8px;position:relative;cursor:pointer;transition:transform .15s ease}
 .stick.selected{transform:translateY(-3px);box-shadow:0 0 0 2px rgba(56,189,248,.6),0 10px 18px rgba(56,189,248,.22)}
 .stick.skin-clay{background:linear-gradient(180deg,#4a2d1a,#22140d)}
 .stick.skin-iron{background:linear-gradient(180deg,#334155,#1f2937)}
 .stick.skin-bamboo{background:linear-gradient(180deg,#3f5d2e,#1f2f18)}
 .stick.skin-wood{background:linear-gradient(180deg,#7c4a2a,#3a2314);border-color:rgba(255,214,170,.35)}
 .stick.skin-pokemon{background:linear-gradient(180deg,#1f2937,#111827);border-color:rgba(74,222,128,.5);box-shadow:0 0 0 1px rgba(74,222,128,.25) inset}
-.slot{height:clamp(22px,3.2vh,26px);border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08)}
+.slot{height:clamp(24px,3.5vh,30px);border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08)}
 .slot.real{background:rgba(255,255,255,.06);padding:0 4px}
 .slot.can-drop{outline:2px dashed rgba(74,222,128,.85);background:rgba(74,222,128,.12)}
 .slot.pick{box-shadow:0 0 0 2px rgba(250,204,21,.9) inset}
@@ -48,7 +48,7 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#08172a;c
 .stick.closed .lid{transform:scaleY(1);opacity:.96}
 .stick.just-closed .lid{animation:lidClose .35s ease forwards}
 @keyframes lidClose{from{transform:scaleY(0);opacity:.15}to{transform:scaleY(1);opacity:.96}}
-.skewer{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;gap:6px}
+.skewer{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;gap:5px;overflow:hidden}
 .skewer:before{content:'';position:absolute;left:6px;right:6px;height:4px;background:#d6b07a;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.2) inset}
 .piece{width:12px;height:12px;position:relative;z-index:2;box-shadow:0 1px 2px rgba(0,0,0,.35);background:#f59e0b}
 .piece.round{border-radius:50%}
@@ -61,8 +61,8 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#08172a;c
 .mini-sk:before{content:'';position:absolute;left:1px;right:1px;height:2px;background:#d6b07a;border-radius:2px}
 .mini-p{position:relative;width:11px;height:11px;line-height:11px;font-size:9px;text-align:center;z-index:2}
 .mini-poke{width:14px;height:14px;object-fit:contain;vertical-align:middle}
-.food{position:relative;z-index:2;font-size:13px;line-height:1}
-.poke-food{width:22px;height:22px;object-fit:contain;position:relative;z-index:2;image-rendering:auto}
+.food{position:relative;z-index:2;font-size:17px;line-height:1}
+.poke-food{width:clamp(22px,3.2vw,32px);height:clamp(22px,3.2vw,32px);object-fit:contain;position:relative;z-index:2;image-rendering:auto;flex-shrink:1}
 #belt-wrap{height:52px;border-radius:12px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(255,255,255,.18);position:relative}
 #belt{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:flex-start;gap:8px;padding:0 10px;will-change:transform}
 .belt-item{width:42px;height:30px;border-radius:8px;background:rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,.2)}
@@ -88,6 +88,21 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#08172a;c
   .slot{height:22px}
   #boosters{padding:4px}
   .bbtn{padding:6px 2px;font-size:.88rem}
+}
+@media (max-height:560px),(max-width:820px){
+  #top{padding:4px;gap:6px}
+  #progress-wrap{height:3px}
+  #game-area{height:calc(100vh - 138px);gap:6px}
+  #target,#mods,#hint{font-size:.7rem;line-height:1.15}
+  .stick{min-height:90px;padding:5px;gap:3px;border-radius:10px}
+  .slot{height:20px}
+  .sp{font-size:.62rem;padding:1px 4px}
+  .food{font-size:14px}
+  .poke-food{width:22px;height:22px}
+  #boosters{padding:2px;gap:6px}
+  .bbtn{padding:4px 2px;font-size:.78rem}
+  #belt-wrap{height:42px}
+  .belt-item{width:36px;height:26px}
 }
 </style>
 </head>
@@ -267,7 +282,13 @@ async function doLogin(){
 function offlineMode(){load();normalize();enterMenu();}
 function enterMenu(){renderLvList();updateMenuStat();show("menu");}
 function backMenu(){qs("ov-win").classList.add("hidden");qs("ov-lose").classList.add("hidden");enterMenu();}
-function genLevelCfg(lv){const kinds=Math.min(10,4+Math.floor(lv/3)),perKind=3+Math.min(2,Math.floor(lv/12)),stickCount=Math.min(18,8+Math.floor(lv/2)),empty=2+Math.floor(lv/8),spCount=Math.min(6,Math.floor(lv/3));return{id:lv,kinds,perKind,stickCount,empty,spCount};}
+function genLevelCfg(lv){
+  const kinds=Math.min(10,4+Math.floor(lv/3));
+  const perKind=3+Math.min(2,Math.floor(lv/12));
+  const stickCount=10,empty=1; // 固定 5x2，最多一个空烤盘
+  const spCount=Math.min(6,Math.floor(lv/3));
+  return{id:lv,kinds,perKind,stickCount,empty,spCount};
+}
 function renderLvList(){const wrap=qs("lvlist");wrap.innerHTML="";const max=Math.max(...G.unlocked);for(let i=1;i<=Math.max(40,max+10);i++){const b=document.createElement("button");b.className="btn";b.style.padding="6px";b.textContent=G.cleared.includes(i)?"🏆"+i:i;if(i>max)b.disabled=true;b.onclick=()=>startGame(i);wrap.appendChild(b);}}
 function startLatest(){startGame(Math.max(...G.unlocked));}
 function pickSkin(){return SKINS.find(s=>s.id===G.skin)||SKINS[0]}
@@ -652,17 +673,17 @@ function renderBelt(){
 function generateLevelData(cfg){
   activeFoodPool=buildFoodPool(cfg.kinds,cfg.id);
   pokemonPoolByType=buildPokemonPool(cfg.kinds,cfg.id);
-  const layerDepth=1+Math.min(2,Math.floor(cfg.id/10));
+  const layerDepth=Math.min(7,1+Math.floor(cfg.id/6)); // 随关卡增加层数
   const pool=[];for(let i=0;i<cfg.kinds;i++)for(let k=0;k<STICK_CAP*layerDepth;k++)pool.push(i);
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
-  const all=[];let p=0;const nonEmpty=Math.max(3,cfg.stickCount-cfg.empty);
+  const all=[];let p=0;const nonEmpty=Math.max(3,Math.min(9,cfg.stickCount-cfg.empty));
   for(let s=0;s<nonEmpty;s++){
     const st=emptyStick();const localDepth=1+Math.floor(Math.random()*layerDepth);
     for(let d=0;d<localDepth;d++){const layer=pool.slice(p,p+STICK_CAP);p+=STICK_CAP;if(layer.length===STICK_CAP){if(d===0)st.items=normalizeLayer_(layer);else st.hiddenLayers.push(normalizeLayer_(layer));}}
     all.push(st);
   }
-  while(p<pool.length){const idx=Math.floor(Math.random()*all.length);if(all[idx].hiddenLayers.length<3){const c=pool.slice(p,p+STICK_CAP);p+=STICK_CAP;if(c.length===STICK_CAP)all[idx].hiddenLayers.push(normalizeLayer_(c));}else break;}
-  for(let e=0;e<cfg.empty;e++)all.push(emptyStick());
+  while(p<pool.length){const idx=Math.floor(Math.random()*all.length);if(all[idx].hiddenLayers.length<7){const c=pool.slice(p,p+STICK_CAP);p+=STICK_CAP;if(c.length===STICK_CAP)all[idx].hiddenLayers.push(normalizeLayer_(c));}else break;}
+  all.push(emptyStick()); // 固定只有一个空盘
   let lockN=0,keyN=0;
   for(let c=0;c<cfg.spCount;c++){
     const idx=Math.floor(Math.random()*all.length);
@@ -679,6 +700,8 @@ function generateLevelData(cfg){
     const idx=all.findIndex(x=>!x.special && filledCount(x.items)>0);
     if(idx>=0){ all[idx].special="key"; all[idx].saux=0; }
   }
+  while(all.length<10) all.push(emptyStick());
+  if(all.length>10) all.length=10;
   return all;
 }
 function renderLvList(){const wrap=qs("lvlist");wrap.innerHTML="";const max=Math.max(...G.unlocked);for(let i=1;i<=Math.max(40,max+10);i++){const cleared=G.cleared.includes(i);const b=document.createElement("button");b.className="btn";b.style.padding="6px";b.textContent=cleared?("🏆"+i):i;if(i>max)b.disabled=true;b.onclick=()=>{if(cleared){if(!(G.tickets>0)){hint("该关已通关，需挑战卷重玩");openShop();return;}if(!confirm("该关已通关，消耗1张挑战卷重玩？"))return;G.tickets=Math.max(0,(G.tickets||0)-1);save();cloudSave();updateMenuStat();}startGame(i);};wrap.appendChild(b);}}
@@ -751,8 +774,6 @@ function closeStickFlow(st,multi){
     st.items=[null,null,null];
     st.closed=false;st.justClosed=false;st.resolving=false;
     revealNextLayer(st);
-    const emptyCount=sticks.filter(isEmptyStick).length;
-    if(emptyCount<2&&sticks.length<24) sticks.push(emptyStick());
     renderAll();
     checkWinByClearing_();
   },420);
@@ -796,7 +817,19 @@ function checkWinByClearing_(){
 }
 function doUndo(){if(!(G.boosters.undo>0)){openShop();return;}if(!history.length){hint("没有可撤回");return;}G.boosters.undo--;restore(history.pop());selectedPick=null;save();renderAll();}
 function doHint(){if(!(G.boosters.hint>0)){openShop();return;}G.boosters.hint--;save();for(let i=0;i<sticks.length;i++){for(let s=0;s<STICK_CAP;s++){if(sticks[i].items[s]===null)continue;for(let j=0;j<sticks.length;j++){for(let t=0;t<STICK_CAP;t++){if(sticks[j].items[t]===null&&!(i===j&&s===t)){hint("提示：第"+(i+1)+"盘第"+(s+1)+"格 → 第"+(j+1)+"盘第"+(t+1)+"格");renderAll();return;}}}}}hint("暂无可用移动");renderAll();}
-function doAddSlot(){if(!(G.boosters.add>0)){openShop();return;}G.boosters.add--;sticks.push(emptyStick());save();hint("新增空烤盘");renderAll();}
+function doAddSlot(){
+  if(!(G.boosters.add>0)){openShop();return;}
+  G.boosters.add--;
+  const candidates=sticks.filter(s=>!s.resolving && (filledCount(s.items)>0 || (s.hiddenLayers&&s.hiddenLayers.length)));
+  if(!candidates.length){hint("当前无可加层烤盘");save();renderAll();return;}
+  const st=candidates[Math.floor(Math.random()*candidates.length)];
+  const kindMax=Math.max(1,activeFoodPool.length||beltKinds||1)-1;
+  st.hiddenLayers=st.hiddenLayers||[];
+  st.hiddenLayers.push([rInt(0,kindMax),rInt(0,kindMax),rInt(0,kindMax)]);
+  save();
+  hint("已为一个烤盘增加一层串烧");
+  renderAll();
+}
 function doReveal(){if(!(G.boosters.reveal>0)){openShop();return;}G.boosters.reveal--;sticks.forEach(s=>{if(s.special==="fog")s.special=null;});save();hint("已揭开全部迷雾烤盘");renderAll();}
 function showWin(){if(!G.cleared.includes(level))G.cleared.push(level);if(!G.unlocked.includes(level+1))G.unlocked.push(level+1);G.coins=(G.coins||0)+10;save();cloudSave();gasBeacon({sheet:SHEET,action:"level_clear",id:G.id,uid:String(G.uid),level:String(level),stars:"3",moves:"0",coin_reward:"10",coins_total:String(G.coins||0),date:todayISO()});qs("win-body").textContent="第 "+level+" 关完成！奖励 +10 金币";qs("ov-win").classList.remove("hidden");renderAll();}
 function showLose(msg){qs("lose-body").textContent=msg||"无法继续";qs("ov-lose").classList.remove("hidden");}
@@ -813,20 +846,13 @@ function renderAll(){
   qs("uval").textContent=G.boosters.undo||0;qs("hval").textContent=G.boosters.hint||0;qs("aval").textContent=G.boosters.add||0;qs("rval").textContent=G.boosters.reveal||0;
   qs("progress").style.width=Math.min(100,Math.round(targetDone/Math.max(1,targetNeed)*100))+"%";
   const wrap=qs("sticks");wrap.innerHTML="";
-  const compact=sticks.length>=16 || window.innerHeight<760;
+  const compact=window.innerHeight<760 || window.innerWidth<900;
   document.body.classList.toggle("compact-board",compact);
-  const cols=sticks.length>=22?11:(sticks.length>=18?10:(sticks.length>=14?9:8));
+  const cols=5,rows=2;
   boardCols=cols;
-  const rows=2;
-  const perPage=Math.max(1,cols*rows);
-  const totalPages=Math.max(1,Math.ceil(sticks.length/perPage));
-  if(sticksPage>=totalPages) sticksPage=totalPages-1;
-  if(sticksPage<0) sticksPage=0;
-  const start=sticksPage*perPage,end=Math.min(sticks.length,start+perPage);
-  wrap.style.gridTemplateColumns="repeat("+cols+",minmax("+(compact?70:78)+"px,1fr))";
-  wrap.style.gridTemplateRows="repeat("+rows+",1fr)";
-  sticks.slice(start,end).forEach((s,localIdx)=>{
-    const idx=start+localIdx;
+  wrap.style.gridTemplateColumns="repeat(5,minmax("+(compact?86:112)+"px,1fr))";
+  wrap.style.gridTemplateRows="repeat(2,minmax("+(compact?86:118)+"px,1fr))";
+  sticks.slice(0,10).forEach((s,idx)=>{
     const fxOn=!!(s.fxUntil && Date.now()<s.fxUntil);
     const d=document.createElement("div");
     d.className="stick "+(sk.stick||"")+(s.closed?" closed":"")+(s.justClosed?" just-closed":"")+(fxOn?" fx-pop":"")+(s.special==="ice"&&s.saux>0?" ice-coat":"")+(s.special==="stone"&&s.saux>0?" stone-cover":"")+(s.special==="stone"&&s.saux===1?" stone-crack":"")+(s.special==="lock"&&s.saux>0?" locked":"");
@@ -849,12 +875,7 @@ function renderAll(){
     d.appendChild(preview);wrap.appendChild(d);s.justClosed=false;
   });
   const pager=qs("sticks-pager");
-  if(totalPages<=1){pager.innerHTML="";}
-  else{
-    pager.innerHTML='<span class="pg" id="pg-prev">◀</span><span>第 '+(sticksPage+1)+' / '+totalPages+' 页</span><span class="pg" id="pg-next">▶</span>';
-    qs("pg-prev").onclick=()=>{sticksPage=(sticksPage-1+totalPages)%totalPages;renderAll();};
-    qs("pg-next").onclick=()=>{sticksPage=(sticksPage+1)%totalPages;renderAll();};
-  }
+  pager.innerHTML="";
   // 输送带由动画驱动，不在此重绘
   qs("coins").textContent=G.coins||0;
 }
@@ -877,6 +898,13 @@ function startGame(lv){
   if(!G.unlocked.includes(lv))G.unlocked.push(lv);qs("lvl").textContent="第 "+lv+" 关 · 串烧挑战";qs("coins").textContent=G.coins||0;hint("可点任意串烧，再点任意烤盘空位；也可从输送带取串。");
   gasBeacon({sheet:SHEET,action:"game_start",id:G.id,uid:String(G.uid),level:String(lv),date:todayISO()});show("game");renderAll();
 }
+let _resizeTid=null;
+window.addEventListener("resize",()=>{
+  if(_resizeTid) clearTimeout(_resizeTid);
+  _resizeTid=setTimeout(()=>{
+    if(!qs("game").classList.contains("hidden")) renderAll();
+  },80);
+});
 </script>
 </body>
 </html>
