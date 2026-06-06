@@ -1750,7 +1750,911 @@ function syncWildCalendar_() {
   }
 }
 
+// === Achievement and surprise-box system ===
+var achievementCheckLock_ = false;
+var achievementCloudDirty_ = false;
+var achievementCloudTimer_ = null;
+var achievementModalTab_ = "all";
+var achievementDefsCache_ = null;
+
+const ACHIEVEMENT_CATEGORIES_ = [
+  ["all", "全部"],
+  ["survival", "生存"],
+  ["battle", "战斗"],
+  ["city", "建设"],
+  ["tech", "科技"],
+  ["hero", "英雄"],
+  ["gather", "采集"],
+  ["activity", "活动"],
+  ["story", "剧情"],
+  ["reward", "奖励"]
+];
+
+const ACHIEVEMENT_REWARD_LABELS_ = {
+  seiso: "节操",
+  feather: "羽毛",
+  currentMedal30d: "30天本期勋章",
+  letterMedal30d: "30天字母勋章",
+  permanentCurrentMedal: "永久本期勋章",
+  legacyChances: "往期勋章兑换机会"
+};
+
+function achievementNumber_(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** 仅「完成游戏内条件」的成就计 1 个惊喜箱配额；奖励类（累计开箱出货）不计入，否则会抵消开箱数。 */
+function achievementIdGrantsSurpriseBox_(id) {
+  const s = String(id || "");
+  if (s.indexOf("reward_") === 0) return false;
+  if (s.indexOf("legacy_chance_") === 0) return false;
+  if (s === "permanent_current_medal") return false;
+  return true;
+}
+
+function achievementSurpriseBoxGrantingEarnedCount_(earnedObj) {
+  const earned = achievementObj_(earnedObj);
+  return Object.keys(earned).filter(achievementIdGrantsSurpriseBox_).length;
+}
+
+function achievementObj_(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function normalizeAchievementState_() {
+  if (!state || typeof state !== "object") return;
+  if (!state.achievements || typeof state.achievements !== "object") {
+    state.achievements = {
+      earned: {},
+      boxes: 0,
+      opened: 0,
+      rewards: {
+        seiso: 0,
+        feather: 0,
+        currentMedal30d: 0,
+        letterMedal30d: 0,
+        permanentCurrentMedal: 0,
+        legacyChances: 0
+      },
+      milestones: {},
+      rewardLog: [],
+      tutorialSeen: false,
+      lastColdAchievementDay: -1
+    };
+  }
+  const ach = state.achievements;
+  if (!ach.earned || typeof ach.earned !== "object") ach.earned = {};
+  if (!ach.rewards || typeof ach.rewards !== "object") ach.rewards = {};
+  const rewards = ach.rewards;
+  rewards.seiso = Math.max(0, Math.floor(achievementNumber_(rewards.seiso)));
+  rewards.feather = Math.max(0, Math.floor(achievementNumber_(rewards.feather)));
+  rewards.currentMedal30d = Math.max(0, Math.floor(achievementNumber_(rewards.currentMedal30d)));
+  rewards.letterMedal30d = Math.max(0, Math.floor(achievementNumber_(rewards.letterMedal30d)));
+  rewards.permanentCurrentMedal = Math.max(0, Math.floor(achievementNumber_(rewards.permanentCurrentMedal)));
+  rewards.legacyChances = Math.max(0, Math.floor(achievementNumber_(rewards.legacyChances)));
+  if (!ach.milestones || typeof ach.milestones !== "object") ach.milestones = {};
+  if (!Array.isArray(ach.rewardLog)) ach.rewardLog = [];
+  else ach.rewardLog = ach.rewardLog.slice(-80);
+  ach.tutorialSeen = !!ach.tutorialSeen;
+  ach.lastColdAchievementDay = Math.max(-1, Math.floor(achievementNumber_(ach.lastColdAchievementDay)));
+  ach.boxes = Math.max(0, Math.floor(achievementNumber_(ach.boxes)));
+  ach.opened = Math.max(0, Math.floor(achievementNumber_(ach.opened)));
+  const boxGrantingEarned = achievementSurpriseBoxGrantingEarnedCount_(ach.earned);
+  if (ach.opened > boxGrantingEarned) {
+    ach.opened = boxGrantingEarned;
+  }
+  ach.boxes = Math.max(0, boxGrantingEarned - ach.opened);
+}
+
+function achievementState_() {
+  normalizeAchievementState_();
+  return state.achievements;
+}
+
+function achEsc_(value) {
+  if (typeof escapeHtml_ === "function") return escapeHtml_(value);
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;"
+  })[ch]);
+}
+
+function achResLabel_(key) {
+  const labels = { wood: "木材", steel: "钢材", food: "食物", fuel: "燃油", fireCrystal: "火晶" };
+  return labels[key] || key;
+}
+
+function achBuildingName_(def) {
+  return def && (def.name || def.label || def.id) ? (def.name || def.label || def.id) : "建筑";
+}
+
+function achTechName_(def) {
+  return def && (def.name || def.label || def.id) ? (def.name || def.label || def.id) : "科技";
+}
+
+function achHeroName_(hero) {
+  return hero && (hero.name || hero.id) ? (hero.name || hero.id) : "英雄";
+}
+
+function achievementSafeList_(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function achievementStats_() {
+  const buildings = achievementObj_(state.buildings);
+  const buildingStars = achievementObj_(state.buildingStars);
+  const techs = achievementObj_(state.techs);
+  const heroes = achievementSafeList_(state.heroes);
+  const squad = achievementSafeList_(state.squad);
+  const resources = achievementObj_(state.resources);
+  const missions = achievementSafeList_(state.missions);
+  const missionStats = achievementObj_(state.missionStats);
+  const activity = achievementObj_(state.activity);
+  const activityMini = achievementObj_(state.activityMinigames);
+  const wild = achievementObj_(state.wild);
+  const alliance = achievementObj_(state.alliance);
+  const stageStats = achievementObj_(state.stageBattleStats);
+  const stageValues = Object.values(stageStats).map((v) => achievementObj_(v));
+  const battleWins = stageValues.reduce((sum, item) => sum + achievementNumber_(item.wins), 0);
+  const battleAttempts = stageValues.reduce((sum, item) => sum + achievementNumber_(item.attempts), 0);
+  const techLevels = Object.values(techs).map(achievementNumber_);
+  const heroLevels = heroes.map((hero) => achievementNumber_(hero.level));
+  const heroStars = heroes.map((hero) => achievementNumber_(hero.stars));
+  const buildingLevels = Object.values(buildings).map(achievementNumber_);
+  const rewards = achievementState_().rewards;
+  return {
+    day: achievementNumber_(state.day),
+    stage: achievementNumber_(state.stage),
+    pop: achievementNumber_(state.pop),
+    morale: achievementNumber_(state.morale),
+    cold: achievementNumber_(state.cold),
+    resources,
+    resourceTotal: Object.values(resources).reduce((sum, v) => sum + achievementNumber_(v), 0),
+    buildings,
+    buildingStars,
+    buildingMax: buildingLevels.length ? Math.max(...buildingLevels) : 0,
+    buildingSum: buildingLevels.reduce((sum, v) => sum + v, 0),
+    techUnlocked: techLevels.filter((v) => v > 0).length,
+    techLevelSum: techLevels.reduce((sum, v) => sum + v, 0),
+    heroesOwned: heroes.length,
+    maxHeroLevel: heroLevels.length ? Math.max(...heroLevels) : 0,
+    totalHeroLevel: heroLevels.reduce((sum, v) => sum + v, 0),
+    maxHeroStars: heroStars.length ? Math.max(...heroStars) : 0,
+    squadSize: squad.length,
+    battleWins,
+    battleAttempts,
+    missionsDone: missions.filter((m) => m && (m.done || m.claimed || m.complete)).length + achievementNumber_(missionStats.doneLifetime),
+    gatherClaims: achievementNumber_(missionStats.gatherClaimLifetime),
+    gatherToday: achievementNumber_(missionStats.gatherClaimToday),
+    checkinStreak: achievementNumber_(activity.checkinStreak),
+    activityTokens: achievementNumber_(activity.tokens),
+    lordPts: achievementNumber_(activity.lordPts),
+    mineClears: achievementNumber_(activityMini.mineClears),
+    fishBest: achievementNumber_(activityMini.fishBest),
+    escortWins: achievementNumber_(activityMini.escortWins),
+    spinCount: achievementNumber_(activityMini.spinCount),
+    bearBest: achievementNumber_(activityMini.bearBest),
+    wildCleared: Object.keys(achievementObj_(wild.cleared)).length,
+    wildLevel: achievementNumber_(wild.level),
+    allianceLevel: achievementNumber_(alliance.level),
+    allianceHonor: achievementNumber_(alliance.honor),
+    alliancePerks: Object.keys(achievementObj_(alliance.perks)).length,
+    storySeen: Object.keys(achievementObj_(state.storySeen)).length,
+    branchSeen: Object.keys(achievementObj_(state.storyBranches)).length,
+    rewards,
+    rewardScore: achievementNumber_(rewards.seiso) + achievementNumber_(rewards.feather) * 3 + achievementNumber_(rewards.currentMedal30d) * 60 + achievementNumber_(rewards.letterMedal30d) * 120 + achievementNumber_(rewards.legacyChances) * 160 + achievementNumber_(rewards.permanentCurrentMedal) * 500
+  };
+}
+
+function achievementPowerScore_() {
+  const s = achievementStats_();
+  return s.day * 20 + s.stage * 45 + s.pop * 18 + s.buildingSum * 15 + s.techLevelSum * 20 + s.totalHeroLevel * 10 + s.battleWins * 30 + s.gatherClaims * 12 + s.resourceTotal / 25 + s.rewardScore;
+}
+
+function buildAchievementDefs_() {
+  if (achievementDefsCache_) return achievementDefsCache_;
+  const defs = [];
+  const used = new Set();
+  const add = (id, category, name, desc, condition) => {
+    const safeId = String(id).replace(/[^a-z0-9_:-]/gi, "_");
+    if (used.has(safeId)) return;
+    used.add(safeId);
+    defs.push({ id: safeId, category, name, desc, condition });
+  };
+
+  [2, 3, 5, 7, 10, 14, 21, 30, 45, 60, 90, 120].forEach((day) => {
+    add("day_" + day, "survival", "熬过第 " + day + " 天", "让避难地运行到第 " + day + " 天。", () => achievementStats_().day >= day);
+  });
+  [15, 20, 25, 30, 40, 55, 70, 90].forEach((pop) => {
+    add("pop_" + pop, "survival", "人口达到 " + pop, "把幸存者人口提升到 " + pop + "。", () => achievementStats_().pop >= pop);
+  });
+  [70, 80, 90, 100].forEach((morale) => {
+    add("morale_" + morale, "survival", "士气达到 " + morale, "当前士气达到 " + morale + "。", () => achievementStats_().morale >= morale);
+  });
+  [30, 20, 10, 5, 0].forEach((cold) => {
+    add(
+      "cold_under_" + cold,
+      "survival",
+      "寒冷压到 " + cold,
+      "当前寒冷值不高于 " + cold + "（同类成就每日最多解锁 1 个，由系统逐日发放）。",
+      () => achievementStats_().cold <= cold
+    );
+  });
+
+  [2, 3, 5, 8, 10, 12, 15, 20, 25, 30, 35, 40, 45, 50].forEach((stage) => {
+    add("stage_" + stage, "battle", "推进到关卡 " + stage, "战斗进度达到第 " + stage + " 关。", () => achievementStats_().stage >= stage);
+  });
+  [3, 5, 10, 20, 40, 80, 120, 180].forEach((wins) => {
+    add("battle_wins_" + wins, "battle", "累计胜利 " + wins + " 次", "战斗胜利累计达到 " + wins + " 次。", () => achievementStats_().battleWins >= wins);
+  });
+  [5, 15, 30, 60, 120, 240].forEach((attempts) => {
+    add("battle_attempts_" + attempts, "battle", "累计出征 " + attempts + " 次", "战斗尝试累计达到 " + attempts + " 次。", () => achievementStats_().battleAttempts >= attempts);
+  });
+
+  const buildingDefs = typeof BUILDING_DEFS !== "undefined" ? achievementSafeList_(BUILDING_DEFS) : [];
+  buildingDefs.forEach((def) => {
+    [2, 3, 5, 8, 10, 12, 15].forEach((level) => {
+      add("building_" + def.id + "_" + level, "city", achBuildingName_(def) + " Lv." + level, "把" + achBuildingName_(def) + "升到 " + level + " 级。", () => achievementNumber_(achievementObj_(state.buildings)[def.id]) >= level);
+    });
+    [1, 3, 5].forEach((stars) => {
+      add("building_star_" + def.id + "_" + stars, "city", achBuildingName_(def) + "星级 " + stars, "把" + achBuildingName_(def) + "星级提升到 " + stars + "。", () => achievementNumber_(achievementObj_(state.buildingStars)[def.id]) >= stars);
+    });
+  });
+  [2, 3, 5, 8, 10, 12].forEach((level) => {
+    add("building_all_" + level, "city", "全城均衡 Lv." + level, "所有主要建筑都达到 " + level + " 级。", () => {
+      const defs2 = typeof BUILDING_DEFS !== "undefined" ? achievementSafeList_(BUILDING_DEFS) : [];
+      return defs2.length > 0 && defs2.every((def) => achievementNumber_(achievementObj_(state.buildings)[def.id]) >= level);
+    });
+  });
+  [30, 60, 100, 150, 220, 320].forEach((sum) => {
+    add("building_sum_" + sum, "city", "建设等级总和 " + sum, "主要建筑等级总和达到 " + sum + "。", () => achievementStats_().buildingSum >= sum);
+  });
+
+  const techDefs = typeof TECH_DEFS !== "undefined" ? achievementSafeList_(TECH_DEFS) : [];
+  [1, 2, 3, 5, 8, 12, 16, 20, 25, 30].forEach((count) => {
+    add("tech_count_" + count, "tech", "研究 " + count + " 项科技", "已解锁科技数量达到 " + count + "。", () => achievementStats_().techUnlocked >= count);
+  });
+  [5, 10, 20, 40, 60, 80, 120].forEach((sum) => {
+    add("tech_sum_" + sum, "tech", "科技等级总和 " + sum, "科技等级总和达到 " + sum + "。", () => achievementStats_().techLevelSum >= sum);
+  });
+  techDefs.slice(0, 24).forEach((def) => {
+    [1, 3, 5].forEach((level) => {
+      add("tech_" + def.id + "_" + level, "tech", achTechName_(def) + " Lv." + level, "把" + achTechName_(def) + "研究到 " + level + " 级。", () => achievementNumber_(achievementObj_(state.techs)[def.id]) >= level);
+    });
+  });
+
+  [4, 6, 8, 10, 12, 15, 20].forEach((count) => {
+    add("hero_count_" + count, "hero", "招募 " + count + " 名英雄", "拥有英雄数量达到 " + count + "。", () => achievementStats_().heroesOwned >= count);
+  });
+  [5, 8, 10, 15, 20, 30, 40, 50].forEach((level) => {
+    add("hero_max_" + level, "hero", "最高英雄 Lv." + level, "任一英雄等级达到 " + level + "。", () => achievementStats_().maxHeroLevel >= level);
+  });
+  [30, 60, 100, 160, 240, 360].forEach((sum) => {
+    add("hero_sum_" + sum, "hero", "英雄总等级 " + sum, "所有英雄等级总和达到 " + sum + "。", () => achievementStats_().totalHeroLevel >= sum);
+  });
+  [2, 3, 4, 5].forEach((stars) => {
+    add("hero_star_" + stars, "hero", "英雄星级 " + stars, "任一英雄星级达到 " + stars + "。", () => achievementStats_().maxHeroStars >= stars);
+  });
+  [3, 4, 5].forEach((size) => {
+    add("squad_size_" + size, "hero", "队伍编成 " + size + " 人", "出战队伍人数达到 " + size + "。", () => achievementStats_().squadSize >= size);
+  });
+
+  ["wood", "steel", "food", "fuel"].forEach((res) => {
+    [500, 1000, 3000, 8000, 20000].forEach((amount) => {
+      add("res_" + res + "_" + amount, "gather", achResLabel_(res) + "库存 " + amount, achResLabel_(res) + "当前库存达到 " + amount + "。", () => achievementNumber_(achievementStats_().resources[res]) >= amount);
+    });
+  });
+  [1, 5, 20, 50, 100].forEach((amount) => {
+    add("res_fireCrystal_" + amount, "gather", "火晶库存 " + amount, "火晶当前库存达到 " + amount + "。", () => achievementNumber_(achievementStats_().resources.fireCrystal) >= amount);
+  });
+  [1, 3, 5, 10, 20, 40, 80, 120, 200].forEach((count) => {
+    add("gather_claim_" + count, "gather", "采集领取 " + count + " 次", "采集奖励累计领取 " + count + " 次。", () => achievementStats_().gatherClaims >= count);
+  });
+  [5000, 15000, 30000, 80000, 150000].forEach((amount) => {
+    add("resource_total_" + amount, "gather", "总库存 " + amount, "所有资源当前总库存达到 " + amount + "。", () => achievementStats_().resourceTotal >= amount);
+  });
+
+  [1, 3, 7, 14, 30].forEach((streak) => {
+    add("checkin_streak_" + streak, "activity", "签到连段 " + streak, "活动签到连段达到 " + streak + "。", () => achievementStats_().checkinStreak >= streak);
+  });
+  [50, 100, 300, 600, 1000].forEach((tokens) => {
+    add("activity_tokens_" + tokens, "activity", "活动代币 " + tokens, "活动代币当前达到 " + tokens + "。", () => achievementStats_().activityTokens >= tokens);
+  });
+  [100, 300, 800, 1500, 3000].forEach((pts) => {
+    add("lord_pts_" + pts, "activity", "领主积分 " + pts, "领主积分当前达到 " + pts + "。", () => achievementStats_().lordPts >= pts);
+  });
+  [1, 3, 5, 10, 20].forEach((count) => {
+    add("mine_clear_" + count, "activity", "矿洞清理 " + count + " 次", "活动矿洞清理累计达到 " + count + " 次。", () => achievementStats_().mineClears >= count);
+    add("escort_win_" + count, "activity", "护送成功 " + count + " 次", "护送成功累计达到 " + count + " 次。", () => achievementStats_().escortWins >= count);
+  });
+  [20, 50, 100, 180, 260].forEach((score) => {
+    add("fish_best_" + score, "activity", "钓鱼最高 " + score, "钓鱼最高分达到 " + score + "。", () => achievementStats_().fishBest >= score);
+    add("bear_best_" + score, "activity", "打熊最高 " + score, "打熊最高分达到 " + score + "。", () => achievementStats_().bearBest >= score);
+  });
+  [3, 10, 25, 50, 100].forEach((count) => {
+    add("spin_count_" + count, "activity", "转盘 " + count + " 次", "活动转盘累计达到 " + count + " 次。", () => achievementStats_().spinCount >= count);
+  });
+
+  [1, 3, 5, 10, 20, 40, 60, 80, 100].forEach((count) => {
+    add("mission_done_" + count, "story", "任务完成 " + count + " 个", "完成任务数量达到 " + count + " 个。", () => achievementStats_().missionsDone >= count);
+  });
+  [1, 3, 5, 10, 15, 20].forEach((count) => {
+    add("story_seen_" + count, "story", "剧情记录 " + count + " 条", "已触发剧情记录达到 " + count + " 条。", () => achievementStats_().storySeen >= count);
+  });
+  [1, 3, 5, 8, 12].forEach((count) => {
+    add("story_branch_" + count, "story", "剧情分支 " + count + " 条", "已记录剧情分支达到 " + count + " 条。", () => achievementStats_().branchSeen >= count);
+  });
+  [1, 3, 5, 10, 20, 50].forEach((count) => {
+    add("wild_cleared_" + count, "story", "野外清理 " + count + " 处", "野外清理累计达到 " + count + " 处。", () => achievementStats_().wildCleared >= count);
+  });
+  [2, 3, 5, 8, 10].forEach((level) => {
+    add("alliance_level_" + level, "story", "联盟 Lv." + level, "联盟等级达到 " + level + "。", () => achievementStats_().allianceLevel >= level);
+  });
+  [100, 300, 800, 1500, 3000].forEach((honor) => {
+    add("alliance_honor_" + honor, "story", "联盟荣誉 " + honor, "联盟荣誉达到 " + honor + "。", () => achievementStats_().allianceHonor >= honor);
+  });
+
+  [30, 120, 300, 600, 1200, 2400, 3600, 5000].forEach((amount) => {
+    add("reward_seiso_" + amount, "reward", "节操累计 " + amount, "惊喜箱累计获得节操达到 " + amount + "。", () => achievementStats_().rewards.seiso >= amount);
+  });
+  [10, 50, 120, 300, 700, 1200, 2000].forEach((amount) => {
+    add("reward_feather_" + amount, "reward", "羽毛累计 " + amount, "惊喜箱累计获得羽毛达到 " + amount + "。", () => achievementStats_().rewards.feather >= amount);
+  });
+  [1, 3, 5, 10, 20].forEach((count) => {
+    add("reward_current_medal_" + count, "reward", "本期30天勋章 " + count, "累计抽到本期30天勋章 " + count + " 个。", () => achievementStats_().rewards.currentMedal30d >= count);
+    add("reward_letter_medal_" + count, "reward", "字母30天勋章 " + count, "累计抽到字母30天勋章 " + count + " 个。", () => achievementStats_().rewards.letterMedal30d >= count);
+  });
+  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48, 56, 64].forEach((count) => {
+    add("legacy_chance_" + count, "reward", "往期兑换 " + count + " 次", "往期勋章兑换机会累计达到 " + count + " 次。", () => achievementStats_().rewards.legacyChances >= count);
+  });
+  [1].forEach((count) => {
+    add("permanent_current_medal", "reward", "永久本期勋章", "获得永久本期勋章。", () => achievementStats_().rewards.permanentCurrentMedal >= count);
+  });
+
+  for (let i = 1; i <= 40; i += 1) {
+    const score = i * 600;
+    add("overall_score_" + score, "survival", "综合发展 " + i, "生存、建设、战斗与奖励综合评分达到 " + score + "。", () => achievementPowerScore_() >= score);
+  }
+
+  achievementDefsCache_ = defs;
+  return defs;
+}
+
+function achievementCategoryName_(id) {
+  const found = ACHIEVEMENT_CATEGORIES_.find((item) => item[0] === id);
+  return found ? found[1] : id;
+}
+
+function achievementCount_() {
+  return Object.keys(achievementState_().earned).length;
+}
+
+function markAchievementCloudDirty_() {
+  achievementCloudDirty_ = true;
+}
+
+function scheduleAchievementCloudSyncIfNeeded_() {
+  if (!achievementCloudDirty_ || achievementCloudTimer_) return;
+  if (typeof cloudWriteNoCors_ !== "function" || typeof cloudUid_ !== "function") return;
+  achievementCloudTimer_ = setTimeout(() => {
+    achievementCloudTimer_ = null;
+    if (!achievementCloudDirty_) return;
+    achievementCloudDirty_ = false;
+    try {
+      const saveJson = JSON.stringify(state);
+      const payload = {
+        uid: cloudUid_(),
+        save_json: saveJson,
+        assets_json: localStorage.getItem(ASSET_KEY) || "{}",
+        gameplay_json: localStorage.getItem(GAMEPLAY_KEY) || "{}",
+        story_json: localStorage.getItem(STORY_KEY) || "{}",
+        meta_json: JSON.stringify({ savedAt: Date.now(), source: "auto_save_debounced" })
+      };
+      cloudWriteNoCors_("save_full", payload).catch(() => {
+        achievementCloudDirty_ = true;
+      });
+    } catch (err) {
+      achievementCloudDirty_ = true;
+      console.warn("Achievement cloud sync failed", err);
+    }
+  }, 2200);
+}
+
+function grantAchievementMilestones_() {
+  const ach = achievementState_();
+  const count = achievementCount_();
+  const msgs = [];
+  if (ach.milestones["30"] && achievementNumber_(ach.rewards.permanentCurrentMedal) >= 1 && !ach.milestones.perm50_medal) {
+    ach.milestones.perm50_medal = true;
+  }
+  if (!ach.milestones._mig_legacy_exc_50) {
+    ach.milestones._mig_legacy_exc_50 = true;
+    const seeded = {};
+    for (let old = 60; old <= 5000; old += 30) {
+      if (!ach.milestones[String(old)]) continue;
+      const tier = Math.max(100, Math.ceil(old / 50) * 50);
+      seeded["legacy_exc_" + tier] = true;
+    }
+    Object.keys(seeded).forEach((k) => {
+      if (!ach.milestones[k]) ach.milestones[k] = true;
+    });
+  }
+  if (count >= 50 && !ach.milestones.perm50_medal) {
+    ach.milestones.perm50_medal = true;
+    ach.rewards.permanentCurrentMedal = Math.max(1, achievementNumber_(ach.rewards.permanentCurrentMedal));
+    markAchievementCloudDirty_();
+    msgs.push("已完成 50 种不同成就，获得永久本期勋章！");
+  }
+  const legacyTiers = [];
+  for (let threshold = 100; threshold <= count; threshold += 50) {
+    const key = "legacy_exc_" + threshold;
+    if (ach.milestones[key]) continue;
+    ach.milestones[key] = true;
+    ach.rewards.legacyChances += 1;
+    legacyTiers.push(threshold);
+  }
+  if (legacyTiers.length) {
+    markAchievementCloudDirty_();
+    msgs.push("不同成就达到 " + legacyTiers.join("、") + " 种，获得往期兑换机会 " + legacyTiers.length + " 次。");
+  }
+  if (msgs.length) alert(msgs.join("\n\n"));
+}
+
+function tryGrantOneColdAchievement_(ach, defs, newly, now, reason) {
+  const today = achievementNumber_(state.day);
+  if (ach.lastColdAchievementDay === today) return;
+  const thresholds = [0, 5, 10, 20, 30];
+  for (const cold of thresholds) {
+    const id = "cold_under_" + cold;
+    const def = defs.find((d) => d.id === id);
+    if (!def || ach.earned[id]) continue;
+    let ok = false;
+    try {
+      ok = !!def.condition();
+    } catch (err) {
+      ok = false;
+    }
+    if (!ok) continue;
+    ach.earned[id] = { at: now, reason: reason || "cold_daily" };
+    ach.boxes += 1;
+    newly.push(def);
+    ach.lastColdAchievementDay = today;
+    break;
+  }
+}
+
+function checkAchievements_(reason) {
+  if (achievementCheckLock_) return [];
+  achievementCheckLock_ = true;
+  try {
+    const ach = achievementState_();
+    const defs = buildAchievementDefs_();
+    const now = Date.now();
+    const newly = [];
+    defs.forEach((def) => {
+      if (ach.earned[def.id]) return;
+      if (String(def.id || "").indexOf("cold_under_") === 0) return;
+      let ok = false;
+      try {
+        ok = !!def.condition();
+      } catch (err) {
+        ok = false;
+      }
+      if (!ok) return;
+      ach.earned[def.id] = { at: now, reason: reason || "gameplay" };
+      if (def.category !== "reward") {
+        ach.boxes += 1;
+      }
+      newly.push(def);
+    });
+    tryGrantOneColdAchievement_(ach, defs, newly, now, reason);
+    if (newly.length) {
+      const boxN = newly.reduce((n, d) => n + (d && d.category !== "reward" ? 1 : 0), 0);
+      logEvent("成就", "完成 " + newly.length + " 项成就" + (boxN ? "，获得 " + boxN + " 个惊喜箱子。" : "。"));
+      markAchievementCloudDirty_();
+      grantAchievementMilestones_();
+      renderAchievementHud_();
+      if (byId("achievement-modal") && !byId("achievement-modal").classList.contains("hidden")) {
+        renderAchievementModal_();
+      }
+    }
+    return newly;
+  } finally {
+    achievementCheckLock_ = false;
+  }
+}
+
+function rollAchievementReward_() {
+  let roll = Math.random() * 100;
+  let type = roll < 50 ? "seiso" : roll < 80 ? "feather" : roll < 97 ? "currentMedal30d" : "letterMedal30d";
+  const rewards = achievementState_().rewards;
+  if (type === "seiso" && rewards.seiso >= 5000) type = "letterMedal30d";
+  if (type === "feather" && rewards.feather >= 2000) type = "letterMedal30d";
+  if (type === "currentMedal30d" && rewards.permanentCurrentMedal > 0) type = "letterMedal30d";
+  return type;
+}
+
+function grantAchievementReward_(type) {
+  const ach = achievementState_();
+  if (type === "seiso") ach.rewards.seiso += 30;
+  else if (type === "feather") ach.rewards.feather += 10;
+  else if (type === "currentMedal30d") ach.rewards.currentMedal30d += 1;
+  else ach.rewards.letterMedal30d += 1;
+  ach.rewardLog.push({ at: Date.now(), type });
+  ach.rewardLog = ach.rewardLog.slice(-80);
+  return ACHIEVEMENT_REWARD_LABELS_[type] || type;
+}
+
+function openSurpriseBoxes_(amount) {
+  const ach = achievementState_();
+  const want = Math.floor(achievementNumber_(amount));
+  const count = Math.min(Math.max(1, want), ach.boxes);
+  if (count <= 0 || ach.boxes <= 0) {
+    alert("目前没有可开启的惊喜箱子。");
+    return;
+  }
+  const tally = {};
+  for (let i = 0; i < count; i += 1) {
+    const type = rollAchievementReward_();
+    ach.boxes -= 1;
+    ach.opened += 1;
+    const label = grantAchievementReward_(type);
+    tally[label] = (tally[label] || 0) + 1;
+  }
+  const lines = Object.entries(tally).map(([label, qty]) => label + " x" + qty);
+  logEvent("成就", "开启惊喜箱子 " + count + " 个，获得：" + lines.join("、") + "。");
+  const boxGrant = achievementSurpriseBoxGrantingEarnedCount_(ach.earned);
+  ach.boxes = Math.max(0, boxGrant - ach.opened);
+  markAchievementCloudDirty_();
+  checkAchievements_("reward");
+  save();
+  renderAll();
+  renderAchievementModal_();
+  alert("已开启 " + count + " 个惊喜箱子：\n" + lines.join("\n"));
+}
+
+function ensureAchievementModal_() {
+  const existing = byId("achievement-modal");
+  if (existing) {
+    const body = byId("achievement-modal-body");
+    if (body && !body.classList.contains("achievement-modal-body-scroll")) {
+      body.classList.add("achievement-modal-body-scroll");
+    }
+    return existing;
+  }
+  const modal = document.createElement("div");
+  modal.id = "achievement-modal";
+  modal.className = "modal hidden";
+  modal.innerHTML = [
+    '<div class="modal-mask" data-ach-close="1"></div>',
+    '<div class="modal-box modal-box-wide achievement-modal-box">',
+    '<div class="modal-head">',
+    '<div><h3>成就与惊喜箱子</h3><p>完成成就取得箱子，开启后抽取活动奖励。</p></div>',
+    '<button class="icon-btn" type="button" data-ach-close="1">×</button>',
+    '</div>',
+    '<div id="achievement-modal-body" class="achievement-modal-body-scroll"></div>',
+    '</div>'
+  ].join("");
+  document.body.appendChild(modal);
+  modal.addEventListener("click", (ev) => {
+    const close = ev.target && ev.target.getAttribute && ev.target.getAttribute("data-ach-close");
+    if (close) modal.classList.add("hidden");
+  });
+  modal.addEventListener("click", (ev) => {
+    const tabBtn = ev.target.closest ? ev.target.closest("[data-ach-tab]") : null;
+    if (tabBtn) {
+      achievementModalTab_ = tabBtn.getAttribute("data-ach-tab") || "all";
+      renderAchievementModal_();
+      return;
+    }
+    const openAllBtn = ev.target.closest ? ev.target.closest("[data-ach-open-all]") : null;
+    if (openAllBtn) {
+      openSurpriseBoxes_(achievementState_().boxes);
+      return;
+    }
+    const openBtn = ev.target.closest ? ev.target.closest("[data-ach-open]") : null;
+    if (openBtn) {
+      openSurpriseBoxes_(achievementNumber_(openBtn.getAttribute("data-ach-open")));
+    }
+  });
+  return modal;
+}
+
+function renderAchievementModal_() {
+  const body = byId("achievement-modal-body");
+  if (!body) return;
+  const ach = achievementState_();
+  const defs = buildAchievementDefs_();
+  const earnedIds = ach.earned;
+  const earnedCount = Object.keys(earnedIds).length;
+  const tab = achievementModalTab_ || "all";
+  const filtered = defs.filter((def) => {
+    if (tab === "all") return true;
+    if (tab === "done") return !!earnedIds[def.id];
+    if (tab === "locked") return !earnedIds[def.id];
+    return def.category === tab;
+  });
+  const categoryTabs = ACHIEVEMENT_CATEGORIES_.concat([["done", "已完成"], ["locked", "未完成"]]).map(([id, label]) => {
+    const active = id === tab ? " active" : "";
+    return '<button class="chip-btn' + active + '" type="button" data-ach-tab="' + achEsc_(id) + '">' + achEsc_(label) + '</button>';
+  }).join("");
+  const reward = ach.rewards;
+  const rewardHtml = [
+    ["惊喜箱子", ach.boxes],
+    [ACHIEVEMENT_REWARD_LABELS_.seiso, reward.seiso],
+    [ACHIEVEMENT_REWARD_LABELS_.feather, reward.feather],
+    [ACHIEVEMENT_REWARD_LABELS_.currentMedal30d, reward.currentMedal30d],
+    [ACHIEVEMENT_REWARD_LABELS_.letterMedal30d, reward.letterMedal30d],
+    [ACHIEVEMENT_REWARD_LABELS_.permanentCurrentMedal, reward.permanentCurrentMedal],
+    [ACHIEVEMENT_REWARD_LABELS_.legacyChances, reward.legacyChances]
+  ].map(([label, value]) => '<div class="achievement-reward-card"><span>' + achEsc_(label) + '</span><strong>' + achEsc_(value) + '</strong></div>').join("");
+  const rows = filtered.map((def) => {
+    const done = !!earnedIds[def.id];
+    return [
+      '<div class="achievement-row ' + (done ? "done" : "locked") + '">',
+      '<div class="achievement-row-mark">' + (done ? "✓" : "·") + '</div>',
+      '<div class="achievement-row-main">',
+      '<div class="achievement-row-title">' + achEsc_(def.name) + '<span>' + achEsc_(achievementCategoryName_(def.category)) + '</span></div>',
+      '<p>' + achEsc_(def.desc) + '</p>',
+      '</div>',
+      '</div>'
+    ].join("");
+  }).join("");
+  body.innerHTML = [
+    '<div class="achievement-summary">',
+    '<div><strong>' + earnedCount + '</strong><span>已完成 / ' + defs.length + '</span></div>',
+    '<div><strong>' + ach.boxes + '</strong><span>未开启箱子</span></div>',
+    '<div><strong>' + ach.opened + '</strong><span>已开启箱子</span></div>',
+    '</div>',
+    '<div class="achievement-reward-grid">' + rewardHtml + '</div>',
+    '<div class="achievement-actions">',
+    '<button class="primary-btn" type="button" data-ach-open="1">打开 1 个</button>',
+    '<button class="ghost-btn" type="button" data-ach-open="10">打开 10 个</button>',
+    '<button class="ghost-btn" type="button" data-ach-open-all="1">全部打开</button>',
+    '</div>',
+    '<div class="achievement-tabs">' + categoryTabs + '</div>',
+    '<div class="achievement-list">' + (rows || '<div class="empty">这个分类目前没有成就。</div>') + '</div>'
+  ].join("");
+}
+
+function openAchievementsModal_() {
+  const modal = ensureAchievementModal_();
+  checkAchievements_("open_panel");
+  renderAchievementModal_();
+  modal.classList.remove("hidden");
+  const ach = achievementState_();
+  if (!ach.tutorialSeen) {
+    ach.tutorialSeen = true;
+    save();
+    alert("成就教学：游玩时达成条件会自动点亮成就，每完成 1 个成就可获得 1 个惊喜箱子。箱子可在这里开启，奖励会写入存档，并在云端可连线时同步。");
+  }
+}
+
+function renderAchievementHud_() {
+  installAchievementUi_();
+  const ach = achievementState_();
+  const rewards = ach.rewards;
+  const earned = achievementCount_();
+  const total = buildAchievementDefs_().length;
+  const strip = byId("achievement-reward-strip");
+  if (strip) {
+    strip.innerHTML = [
+      '<button class="achievement-chip achievement-chip-button" type="button" id="achievement-strip-open">成就 ' + earned + '/' + total + '</button>',
+      '<span class="achievement-chip">箱子 <b>' + ach.boxes + '</b></span>',
+      '<span class="achievement-chip">节操 <b>' + rewards.seiso + '</b></span>',
+      '<span class="achievement-chip">羽毛 <b>' + rewards.feather + '</b></span>',
+      '<span class="achievement-chip">本期30天 <b>' + rewards.currentMedal30d + '</b></span>',
+      '<span class="achievement-chip">字母30天 <b>' + rewards.letterMedal30d + '</b></span>',
+      '<span class="achievement-chip">永久本期 <b>' + rewards.permanentCurrentMedal + '</b></span>',
+      '<span class="achievement-chip">往期兑换 <b>' + rewards.legacyChances + '</b></span>'
+    ].join("");
+    const stripOpen = byId("achievement-strip-open");
+    if (stripOpen) stripOpen.onclick = openAchievementsModal_;
+  }
+  const badge = byId("slg-achievement-badge");
+  if (badge) {
+    badge.textContent = ach.boxes > 99 ? "99+" : String(ach.boxes);
+    badge.classList.toggle("hidden", ach.boxes <= 0);
+  }
+}
+
+function quickSaveNow_() {
+  save();
+  markAchievementCloudDirty_();
+  scheduleAchievementCloudSyncIfNeeded_();
+  logEvent("系统", "已快速存档，并尝试同步云端。");
+  renderLogs();
+  renderAchievementHud_();
+  alert("快速存档完成。云端可连线时会同步这份记录。");
+}
+
+function csvCell_(value) {
+  const text = String(value ?? "");
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+
+function exportSaveExcelFile_() {
+  save();
+  const ach = achievementState_();
+  const rewards = ach.rewards;
+  const rows = [
+    ["类别", "项目", "数值"],
+    ["基本", "存档时间", new Date().toLocaleString()],
+    ["基本", "玩家ID", state.profile && state.profile.id ? state.profile.id : ""],
+    ["基本", "天数", state.day],
+    ["基本", "关卡", state.stage],
+    ["成就", "已完成", achievementCount_()],
+    ["成就", "未开启惊喜箱子", ach.boxes],
+    ["成就", "已开启惊喜箱子", ach.opened],
+    ["奖励", "节操", rewards.seiso],
+    ["奖励", "羽毛", rewards.feather],
+    ["奖励", "30天本期勋章", rewards.currentMedal30d],
+    ["奖励", "30天字母勋章", rewards.letterMedal30d],
+    ["奖励", "永久本期勋章", rewards.permanentCurrentMedal],
+    ["奖励", "往期勋章兑换机会", rewards.legacyChances],
+    ["__FROST_SAVE_JSON__", "save_json", JSON.stringify(state)]
+  ];
+  const csv = "\uFEFF" + rows.map((row) => row.map(csvCell_).join(",")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  const id = state.profile && state.profile.id ? state.profile.id : "local";
+  a.download = "frost-survival-save-" + id + "-" + Date.now() + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+  logEvent("系统", "已下载 Excel 可开启的专用存档 CSV。");
+  renderLogs();
+}
+
+function parseCsvLine_(line) {
+  const out = [];
+  let cur = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (quoted) {
+      if (ch === '"' && line[i + 1] === '"') {
+        cur += '"';
+        i += 1;
+      } else if (ch === '"') {
+        quoted = false;
+      } else {
+        cur += ch;
+      }
+    } else if (ch === '"') {
+      quoted = true;
+    } else if (ch === ",") {
+      out.push(cur);
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+function parseSaveImportText_(txt) {
+  const clean = String(txt || "").replace(/^\uFEFF/, "").trim();
+  if (!clean) throw new Error("empty_save");
+  if (clean[0] === "{") return JSON.parse(clean);
+  const lines = clean.split(/\r?\n/);
+  for (const line of lines) {
+    if (!line.includes("__FROST_SAVE_JSON__")) continue;
+    const cells = parseCsvLine_(line);
+    const json = cells[cells.length - 1];
+    return JSON.parse(json);
+  }
+  throw new Error("unsupported_save_file");
+}
+
+function installAchievementUi_() {
+  const activityBtn = byId("slg-btn-activities");
+  if (activityBtn && !byId("slg-btn-quick-save")) {
+    const quick = document.createElement("button");
+    quick.id = "slg-btn-quick-save";
+    quick.className = "slg-icon-btn achievement-quick-save-btn";
+    quick.type = "button";
+    quick.title = "快速存档";
+    quick.textContent = "💾";
+    activityBtn.insertAdjacentElement("afterend", quick);
+    quick.onclick = quickSaveNow_;
+  }
+  if (activityBtn && !byId("slg-btn-achievements")) {
+    const achBtn = document.createElement("button");
+    achBtn.id = "slg-btn-achievements";
+    achBtn.className = "slg-icon-btn achievement-top-btn";
+    achBtn.type = "button";
+    achBtn.title = "成就与惊喜箱子";
+    achBtn.innerHTML = '<span>🏆</span><b id="slg-achievement-badge" class="hidden">0</b>';
+    byId("slg-btn-quick-save")?.insertAdjacentElement("afterend", achBtn);
+    achBtn.onclick = openAchievementsModal_;
+  }
+  const resStrip = byId("slg-res-strip");
+  let wrap = byId("achievement-reward-wrap");
+  let strip = byId("achievement-reward-strip");
+  const rail = byId("slg-action-rail");
+  if (resStrip) {
+    if (!wrap) {
+      wrap = document.createElement("div");
+      wrap.id = "achievement-reward-wrap";
+      wrap.className = "achievement-reward-strip-wrap";
+      wrap.setAttribute("aria-label", "成就奖励与待办");
+      if (strip && strip.parentNode) {
+        strip.parentNode.insertBefore(wrap, strip);
+      } else {
+        resStrip.insertAdjacentElement("afterend", wrap);
+      }
+      if (!strip) {
+        strip = document.createElement("div");
+        strip.id = "achievement-reward-strip";
+        strip.className = "achievement-reward-strip";
+        wrap.appendChild(strip);
+      } else {
+        wrap.appendChild(strip);
+      }
+      if (rail && !wrap.contains(rail)) wrap.insertBefore(rail, strip);
+    } else {
+      if (!strip) {
+        strip = document.createElement("div");
+        strip.id = "achievement-reward-strip";
+        strip.className = "achievement-reward-strip";
+        wrap.appendChild(strip);
+      } else if (!wrap.contains(strip)) {
+        wrap.appendChild(strip);
+      }
+      if (rail && !wrap.contains(rail)) wrap.insertBefore(rail, strip);
+      else if (rail && strip && wrap.contains(rail) && wrap.contains(strip) && strip.previousElementSibling !== rail) {
+        wrap.insertBefore(rail, strip);
+      }
+    }
+  }
+  const saveBtn = byId("btn-save");
+  if (saveBtn) {
+    saveBtn.textContent = "手动存档 Excel";
+    saveBtn.title = "下载可由 Excel 开启的专用存档 CSV";
+  }
+  if (saveBtn && !byId("btn-shop-save-import")) {
+    const loadBtn = document.createElement("button");
+    loadBtn.id = "btn-shop-save-import";
+    loadBtn.className = "ghost-btn";
+    loadBtn.type = "button";
+    loadBtn.textContent = "读档";
+    saveBtn.insertAdjacentElement("afterend", loadBtn);
+    loadBtn.onclick = () => {
+      const input = byId("save-import-file");
+      if (input) input.click();
+    };
+  }
+  const quickBtn = byId("slg-btn-quick-save");
+  if (quickBtn) quickBtn.onclick = quickSaveNow_;
+  const achButton = byId("slg-btn-achievements");
+  if (achButton) achButton.onclick = openAchievementsModal_;
+  const shopLoadBtn = byId("btn-shop-save-import");
+  if (shopLoadBtn) shopLoadBtn.onclick = () => {
+    const input = byId("save-import-file");
+    if (input) input.click();
+  };
+  const importInput = byId("save-import-file");
+  if (importInput) importInput.setAttribute("accept", ".json,.csv,application/json,text/csv");
+  ensureAchievementModal_();
+}
+
 init();
+setTimeout(() => {
+  try {
+    installAchievementUi_();
+    renderAchievementHud_();
+  } catch (err) {
+    console.error("[Frost] achievement UI init failed:", err);
+  }
+}, 0);
 
 function normalizeState_() {
   const coreRes = { wood: 120, steel: 30, food: 100, fuel: 60 };
@@ -1898,6 +2802,8 @@ function normalizeState_() {
   if (!state.profile || typeof state.profile !== "object") state.profile = { id: "", uid: 0 };
   if (typeof state.profile.id !== "string") state.profile.id = "";
   if (!Number.isFinite(state.profile.uid)) state.profile.uid = 0;
+  if (!state.ui || typeof state.ui !== "object") state.ui = {};
+  if (typeof state.ui.actionRailDismissFp !== "string") state.ui.actionRailDismissFp = "";
   if (!state.alliance || typeof state.alliance !== "object") {
     state.alliance = { name: "霜前哨站", level: 1, exp: 0, honorXp: 0, solo: true, perks: { gather: 0, build: 0, battle: 0 } };
   }
@@ -1985,6 +2891,7 @@ function normalizeState_() {
   if (!Number.isFinite(state.townPass.accAt)) state.townPass.accAt = Date.now();
   normalizeActivity_();
   ensureActivityMinigames_();
+  normalizeAchievementState_();
   if (!Number.isFinite(state.extraBuildSlots)) state.extraBuildSlots = 0;
   if (!Number.isFinite(state.extraGatherSlots)) state.extraGatherSlots = 0;
   syncWildDay_();
@@ -2229,9 +3136,7 @@ function bind() {
     renderAll();
   });
   byId("btn-save")?.addEventListener("click", () => {
-    save();
-    logEvent("系统", "已手动存档。");
-    renderLogs();
+    exportSaveExcelFile_();
   });
   byId("btn-reset")?.addEventListener("click", () => {
     if (!confirm("确定重开新档？将清除存档、论坛同步快取，并重置钻石购买的施工工位、采集伫列扩充等进度。")) return;
@@ -2252,6 +3157,7 @@ function bind() {
   byId("btn-switch-account")?.addEventListener("click", () => openLoginOverlayForSwitch_());
   byId("btn-logout-account")?.addEventListener("click", () => logoutAccount_());
   updateCloudMetaUi_();
+  installAchievementUi_();
   byId("btn-login-enter")?.addEventListener("click", submitLogin_);
   byId("login-id")?.addEventListener("keydown", (ev) => {
     if (ev.key === "Enter") byId("login-uid")?.focus();
@@ -3722,10 +4628,7 @@ function recommendSquad_() {
   renderBattle();
 }
 
-function renderActionHub_() {
-  const list = byId("slg-action-rail-list");
-  const badge = byId("slg-action-rail-badge");
-  if (!list) return;
+function collectActionHubItems_() {
   tickTownAcc_();
   syncWildDay_();
   normalizeActivity_();
@@ -3796,10 +4699,25 @@ function renderActionHub_() {
   if (!stageGateReq_(state.stage)) {
     push("主线：当前关卡可尝试战斗", "去关卡", "battle", "", "combat");
   }
+  return items;
+}
+
+function renderActionHub_() {
+  const list = byId("slg-action-rail-list");
+  const badge = byId("slg-action-rail-badge");
+  if (!list) return;
+  const items = collectActionHubItems_();
   const n = items.length;
   if (badge) {
-    badge.hidden = n <= 0;
-    badge.textContent = String(Math.min(99, n));
+    badge.classList.remove("slg-action-rail-badge--ping");
+    if (n <= 0) {
+      badge.hidden = true;
+      badge.textContent = "0";
+    } else {
+      badge.hidden = false;
+      badge.textContent = String(Math.min(99, n));
+      badge.title = "";
+    }
   }
   list.innerHTML = items.length
     ? items
@@ -3881,6 +4799,7 @@ function renderAll() {
   safe("ensureStoryIndex", () => ensureStoryIndex());
   safe("renderStory", () => renderStory());
   safe("renderActionHub_", () => renderActionHub_());
+  safe("renderAchievementHud_", () => renderAchievementHud_());
   safe("updateNavBadges_", () => updateNavBadges_());
 }
 
@@ -7168,8 +8087,13 @@ function byId(id) { return document.getElementById(id); }
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
+
 function save() {
+  if (!achievementCheckLock_) checkAchievements_("save");
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  const uidN = Number(state?.profile?.uid || state?.forumShop?.uid || 0);
+  if (uidN > 0) markAchievementCloudDirty_();
+  scheduleAchievementCloudSyncIfNeeded_();
 }
 
 function load() {
@@ -7623,7 +8547,7 @@ async function importSaveFile_(ev) {
   if (!f) return;
   try {
     const txt = await f.text();
-    const parsed = JSON.parse(txt);
+    const parsed = parseSaveImportText_(txt);
     if (!isUsableSave_(parsed)) {
       alert("存档格式无效，读取失败。");
       logSave_("读取存档失败：文件格式无效。");

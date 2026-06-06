@@ -8,7 +8,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <link rel="dns-prefetch" href="https://images.unsplash.com" />
   <title>寒霜边境 · 冰雪生存 SLG 界面原型（Frost Frontier）</title>
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=achievements-20260514g" />
 </head>
 <body class="theme-wos">
   <!-- 背景氛围层：免费图库雪景 + CSS 飘雪（不使用官方游戏素材） -->
@@ -46,6 +46,22 @@
       </div>
       <div class="slg-res-chip"><span class="slg-mini-ico" aria-hidden="true">💎</span><strong id="slg-r-gems">0</strong><button type="button" class="slg-plus" id="slg-gems-plus" title="占位">+</button></div>
     </div>
+    <div id="achievement-reward-wrap" class="achievement-reward-strip-wrap" aria-label="成就奖励与待办">
+      <aside class="slg-action-rail" id="slg-action-rail" aria-label="待办与快捷跳转">
+        <button type="button" class="slg-action-rail-fab" id="slg-action-rail-btn" aria-expanded="false" aria-controls="slg-action-rail-panel" title="待办">
+          <span class="slg-action-rail-ico" aria-hidden="true">!</span>
+          <span class="slg-action-rail-badge" id="slg-action-rail-badge" hidden>0</span>
+        </button>
+        <div class="slg-action-rail-panel" id="slg-action-rail-panel" hidden>
+          <div class="slg-action-rail-head">
+            <span class="slg-action-rail-title">待办</span>
+            <button type="button" class="slg-action-rail-min" id="slg-action-rail-min" title="关闭待办面板">关闭</button>
+          </div>
+          <div id="slg-action-rail-list" class="slg-action-rail-list"></div>
+        </div>
+      </aside>
+      <div id="achievement-reward-strip" class="achievement-reward-strip"></div>
+    </div>
     <div id="hud-meta" class="visually-hidden" aria-live="polite"></div>
     <div id="hud-resources" class="visually-hidden" aria-live="polite"></div>
   </header>
@@ -68,19 +84,6 @@
   </div>
 
   <main class="mobile-main slg-main">
-    <aside class="slg-action-rail" id="slg-action-rail" aria-label="待办与快捷跳转">
-      <button type="button" class="slg-action-rail-fab" id="slg-action-rail-btn" aria-expanded="false" aria-controls="slg-action-rail-panel" title="待办">
-        <span class="slg-action-rail-ico" aria-hidden="true">!</span>
-        <span class="slg-action-rail-badge" id="slg-action-rail-badge" hidden>0</span>
-      </button>
-      <div class="slg-action-rail-panel" id="slg-action-rail-panel" hidden>
-        <div class="slg-action-rail-head">
-          <span class="slg-action-rail-title">待办</span>
-          <button type="button" class="slg-action-rail-min" id="slg-action-rail-min" title="收起">收起</button>
-        </div>
-        <div id="slg-action-rail-list" class="slg-action-rail-list"></div>
-      </div>
-    </aside>
     <div class="slg-quest-track" id="slg-quest-track" hidden></div>
     <nav id="city-sub-nav" class="sub-tab-bar" hidden>
       <button type="button" class="sub-tab active" data-city-sub="hub">总览</button>
@@ -561,7 +564,7 @@
   <script src="./pokedex-data.js"></script>
   <script src="./pokedex-evolve.js"></script>
   <script src="./skill-books-data.js"></script>
-  <script src="./game.js"></script>
+  <script src="./game.js?v=achievements-20260514g"></script>
 </body>
 </html>
 
