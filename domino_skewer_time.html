@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>骨牌梦旅 · HTML</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--cyan:#22d3ee;--teal:#14b8a6;--gold:#facc15;--rose:#fb7185;--ink:#111827;--panel:rgba(12,18,32,.82)}
+body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#101827;color:#fff;overflow:hidden}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background-size:cover;background-position:center}
+.hidden{display:none!important}
+.title{font-size:2rem;font-weight:900;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.55)}
+.sub{font-size:.85rem;color:rgba(255,255,255,.78);margin:8px 0 14px}
+.card{background:var(--panel);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:12px;box-shadow:0 18px 42px rgba(0,0,0,.28)}
+.inp{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff}
+.btn{border:none;border-radius:10px;padding:10px 12px;background:linear-gradient(135deg,#0f766e,#0891b2);color:#fff;font-weight:800;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+#top{width:min(1040px,98vw);display:flex;gap:8px;align-items:center;padding:8px}
+#lvl{flex:1;text-align:center;font-weight:900}
+#progress-wrap{width:min(1040px,98vw);height:5px;background:rgba(255,255,255,.14);border-radius:10px;overflow:hidden}
+#progress{height:100%;width:0%;background:linear-gradient(90deg,var(--gold),var(--teal),var(--cyan));transition:width .2s}
+#game-area{width:min(1040px,98vw);height:calc(100vh - 176px);display:flex;flex-direction:column;gap:6px;min-height:260px;overflow:hidden}
+#target,#mods,#hint{font-size:.78rem;color:rgba(255,255,255,.82);min-height:16px}
+#sticks{flex:1;position:relative;overflow:visible;min-height:0}
+#sticks-inner{position:absolute;inset:0;overflow:visible}
+#sticks-pager{display:none}
+#belt-wrap{display:none}
+#tray{min-height:78px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(5,9,16,.62);display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:9px}
+.hand-left,.hand-right{display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;font-size:.76rem;color:rgba(255,255,255,.78)}
+.hand-center{display:flex;flex-direction:column;align-items:center;gap:5px}
+.stock-btn{min-width:92px;background:linear-gradient(135deg,#7c3aed,#db2777)}
+.ends{font-size:.75rem;color:#fde68a}
+.domino-tile{position:absolute;border-radius:9px;padding:5px;background:linear-gradient(180deg,#fff7ed,#e7d9be);border:2px solid rgba(69,47,23,.5);box-shadow:0 4px 10px rgba(0,0,0,.35);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s ease,filter .1s ease,box-shadow .1s ease;user-select:none}
+.domino-tile:hover:not(.blocked){transform:translateY(2px) scale(1.06);z-index:200!important;box-shadow:0 8px 24px rgba(0,0,0,.55)!important}
+.domino-tile.playable{box-shadow:0 0 0 2px rgba(34,211,238,.6),0 6px 14px rgba(0,0,0,.4)}
+.domino-tile.hinted{box-shadow:0 0 0 2px rgba(250,204,21,.9),0 0 20px rgba(250,204,21,.5)}
+.domino-tile.blocked{filter:saturate(.45) brightness(.68);cursor:not-allowed}
+.domino-tile.stack-blocked{filter:brightness(.65) saturate(.5)}
+.domino-inner{width:100%;height:100%;display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.domino-half{position:relative;border-radius:6px;background:#fffaf0;border:1px solid rgba(69,47,23,.18);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:3px}
+.domino-half.hidden-side{display:flex;align-items:center;justify-content:center;color:#7c2d12;font-weight:900;font-size:1rem;background:repeating-linear-gradient(45deg,#fef3c7 0 5px,#fed7aa 5px 10px)}
+.pip{width:5px;height:5px;border-radius:50%;background:#1f2937;align-self:center;justify-self:center}
+.hand-domino{width:100px;min-height:50px;cursor:default;position:relative!important;left:auto!important;top:auto!important}
+.badge{position:absolute;top:3px;right:4px;font-size:.62rem;background:rgba(17,24,39,.78);border-radius:999px;padding:1px 5px;color:#fff;z-index:3}
+.tile-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.56);border-radius:7px;font-size:1.1rem;font-weight:900;z-index:4}
+.cookie-chip{position:absolute;left:3px;bottom:3px;font-size:.6rem;background:rgba(154,52,18,.88);border-radius:999px;padding:1px 5px;color:#fff}
+.trap-mark{position:absolute;left:3px;top:3px;font-size:.62rem;background:rgba(79,70,229,.88);border-radius:999px;padding:1px 5px}
+.puzzle-mark{position:absolute;left:3px;bottom:3px;font-size:.62rem;background:rgba(14,116,144,.9);border-radius:999px;padding:1px 5px}
+.hammer-mark{position:absolute;left:3px;top:3px;font-size:.62rem;background:rgba(100,116,139,.9);border-radius:999px;padding:1px 5px}
+.sp-badge{position:absolute;right:3px;bottom:3px;font-size:.65rem;border-radius:999px;padding:1px 5px;font-weight:900;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.domino-tile.xrayed{box-shadow:0 0 0 2px rgba(52,211,153,.8),0 0 18px rgba(52,211,153,.4);filter:brightness(1)!important}
+.domino-tile.xrayed .domino-half.hidden-side{background:rgba(16,185,129,.18);color:#34d399}
+#boosters{width:min(1040px,98vw);display:flex;gap:8px;padding:6px}
+.bbtn{flex:1;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.09);color:#fff;padding:8px 4px;font-weight:800;cursor:pointer}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:20}
+.ov-card{width:min(360px,92vw);text-align:center}
+.shop-list{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow:auto}
+.shop-item{display:flex;gap:8px;align-items:center;padding:8px;border-radius:10px;background:rgba(255,255,255,.07)}
+.mults{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;margin:0 0 10px}
+.mults .btn{padding:7px 10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18)}
+.mults .on{background:linear-gradient(135deg,#f59e0b,#e11d48)}
+.chapter{width:min(860px,95vw);margin-top:10px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.chapter .bar{height:7px;background:rgba(255,255,255,.13);border-radius:99px;overflow:hidden;flex:1;min-width:100px}
+.chapter .fill{height:100%;background:linear-gradient(90deg,#facc15,#14b8a6)}
+@media (max-width:760px){
+  .title{font-size:1.55rem}
+  #top{padding:4px}
+  #game-area{height:calc(100vh - 140px);gap:4px}
+  #tray{grid-template-columns:1fr;min-height:80px;gap:4px}
+  .hand-left,.hand-right{flex-direction:row}
+  .hand-domino{width:90px;min-height:45px}
+  #target,#mods,#hint{font-size:.68rem;line-height:1.15}
+  .bbtn{font-size:.72rem;padding:4px 2px}
+}
+</style>
+</head>
+<body>
+<div id="login" class="screen">
+  <div class="title">骨牌梦旅</div>
+  <div class="sub">清空桌面骨牌 · 连续接牌 · 无时间限制</div>
+  <div class="card" style="width:min(360px,92vw)">
+    <input id="inp-id" class="inp" placeholder="论坛ID" style="margin-bottom:8px">
+    <input id="inp-uid" class="inp" placeholder="UID" type="number" style="margin-bottom:8px">
+    <button id="btn-login" class="btn" style="width:100%" onclick="doLogin()">登入</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="offlineMode()">离线模式</button>
+    <div id="login-err" style="min-height:18px;color:#fda4af;margin-top:8px;font-size:.8rem"></div>
+  </div>
+</div>
+
+<div id="menu" class="screen hidden">
+  <div class="title">骨牌梦旅</div>
+  <div id="menu-stat" class="sub">-</div>
+  <div id="menu-lootbox-info" style="font-size:.82rem;color:rgba(255,255,255,.85);margin-bottom:4px;text-align:center;min-height:20px"></div>
+  <div id="menu-lootbox-btn-row" style="margin-bottom:10px;text-align:center"></div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;justify-content:center">
+    <button class="btn" onclick="startLatest()">开始</button>
+    <button class="btn" onclick="openShop()">商店</button>
+    <button class="btn" onclick="downloadSkewerData_()">📥 存档</button>
+    <button class="btn" onclick="openSkin()">皮肤</button>
+    <button class="btn" style="background:linear-gradient(135deg,#1d4ed8,#7c3aed)" onclick="openGuide()">📖 玩法介绍</button>
+  </div>
+  <div id="mults" class="mults"></div>
+  <div class="card" style="width:min(860px,95vw)">
+    <div style="font-weight:800;margin-bottom:8px">关卡（无限）</div>
+    <div id="lvlist" style="display:grid;grid-template-columns:repeat(10,1fr);gap:6px"></div>
+  </div>
+  <div id="chapter-card" class="card chapter"></div>
+</div>
+
+<div id="game" class="screen hidden">
+  <div id="top">
+    <button class="btn" onclick="backMenu()">←</button>
+    <div id="lvl">第1关</div>
+    <div class="card" style="padding:6px 10px">🪙 <b id="coins">0</b></div>
+  </div>
+  <div id="progress-wrap"><div id="progress"></div></div>
+  <div id="game-area">
+    <div id="target"></div>
+    <div id="sticks"><div id="sticks-inner"></div></div>
+    <div id="sticks-pager"></div>
+    <div id="belt-wrap"><div id="belt"></div></div>
+    <div id="tray"></div>
+    <div id="mods"></div>
+    <div id="hint"></div>
+  </div>
+  <div id="boosters">
+    <button class="bbtn" onclick="doUndo()">↩ <span id="uval">0</span><br>撤回</button>
+    <button class="bbtn" onclick="doXray()">🔍 <span id="hval">0</span><br>透视</button>
+    <button class="bbtn" onclick="doAddSlot()">➕ <span id="aval">0</span><br>补牌</button>
+    <button class="bbtn" onclick="doReveal()">🃏 <span id="rval">0</span><br>万能</button>
+    <button class="bbtn" onclick="openShop()">🛒<br>购买</button>
+  </div>
+</div>
+
+<div id="ov-win" class="ov hidden">
+  <div class="card ov-card">
+    <div style="font-size:1.8rem">🎉</div>
+    <div style="font-weight:900;font-size:1.2rem;margin:6px 0">通关成功</div>
+    <div id="win-body" style="font-size:.86rem;color:rgba(255,255,255,.75);margin-bottom:10px"></div>
+    <button class="btn" style="width:100%" onclick="nextLevel()">下一关</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="backMenu()">返回菜单</button>
+  </div>
+</div>
+<div id="ov-lose" class="ov hidden">
+  <div class="card ov-card" style="width:min(360px,93vw)">
+    <div style="font-size:1.8rem">😵</div>
+    <div style="font-weight:900;font-size:1.2rem;margin:6px 0">挑战失败</div>
+    <div id="lose-body" style="font-size:.86rem;color:rgba(255,255,255,.75);margin-bottom:10px"></div>
+    <div id="revive-section" style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px;margin-bottom:10px">
+      <div style="font-weight:800;font-size:.88rem;margin-bottom:8px">💊 复活选项（补充 5 张手牌）</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" style="flex:1;min-width:120px;background:linear-gradient(135deg,#b45309,#dc2626);font-size:.82rem" onclick="doRevive('coins')">
+          🪙 消耗金币复活<br><span id="revive-coin-cost" style="font-weight:400;font-size:.75rem"></span>
+        </button>
+        <button class="btn" style="flex:1;min-width:120px;background:linear-gradient(135deg,#1d4ed8,#6d28d9);font-size:.82rem" onclick="doRevive('replies')">
+          📝 消耗回复数复活<br><span id="revive-reply-cost" style="font-weight:400;font-size:.75rem">花费 5 回复数</span>
+        </button>
+      </div>
+    </div>
+    <button class="btn" style="width:100%" onclick="restartLevel()">重新挑战</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="backMenu()">返回菜单</button>
+  </div>
+</div>
+
+<div id="ov-shop" class="ov hidden">
+  <div class="card" style="width:min(430px,94vw);max-height:86vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b>🛒 商店</b><button class="btn" onclick="closeShop()">关闭</button></div>
+    <div style="font-size:.8rem;margin-bottom:8px">📝回复 <b id="sh-replies">0</b> · 💬被引用 <b id="sh-cites">0</b></div>
+    <div id="forum-status" style="font-size:.78rem;color:#93c5fd;min-height:18px;margin-bottom:6px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><input id="forum-start-date" class="inp" type="date"><input id="forum-end-date" class="inp" type="date"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn" style="flex:1" onclick="refreshForumData()">抓取论坛</button><button class="btn" style="flex:1;background:#1f2937" onclick="refreshForumDataFast()">快速抓取</button></div>
+    <div id="shop-list" class="shop-list"></div>
+  </div>
+</div>
+
+<div id="ov-skin" class="ov hidden">
+  <div class="card" style="width:min(360px,92vw)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>🎨 皮肤</b><button class="btn" onclick="closeSkin()">关闭</button></div>
+    <div id="skin-list" class="shop-list"></div>
+  </div>
+</div>
+
+<div id="ov-guide" class="ov hidden">
+  <div class="card" style="width:min(500px,96vw);max-height:88vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <b style="font-size:1.1rem">📖 玩法介绍</b>
+      <button class="btn" onclick="qs('ov-guide').classList.add('hidden')">关闭</button>
+    </div>
+
+    <div style="font-size:.85rem;line-height:1.7;color:rgba(255,255,255,.88)">
+
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:4px">🎯 游戏目标</div>
+      <p style="margin-bottom:10px">清空桌面上所有骨牌。每张骨牌有两半，各有点数（0–6）。你手上有一张当前牌，只要桌面上某张骨牌的<b>任意一端点数</b>符合「可接点数」，就能把它拿走。拿完接上新点数，继续连拿下去！</p>
+
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:4px">🔄 基本操作</div>
+      <p style="margin-bottom:4px">• 点击桌面骨牌拿走（需符合当前可接点数）</p>
+      <p style="margin-bottom:4px">• 点「抽牌」换一张手牌（<b>连击会重置</b>）</p>
+      <p style="margin-bottom:10px">• 连续拿牌可累积连击，有额外金币与道具奖励</p>
+
+      <div style="font-weight:900;color:#facc15;margin-bottom:6px">🃏 骨牌图案说明</div>
+
+      <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div style="background:rgba(154,52,18,.88);border-radius:999px;padding:2px 8px;font-size:.75rem;white-space:nowrap">🍪 0/2</div>
+          <div><b>饼干牌</b> — 需要接触 <b>两次</b>（左右各一次）才会消除，每次接触只去掉打到的那一半</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div style="background:rgba(79,70,229,.88);border-radius:999px;padding:2px 8px;font-size:.75rem;white-space:nowrap">🚪</div>
+          <div><b>陷阱牌</b> — 每回合会切换「可接的那一端」（左↔右交替），时机不对就无法拿走，需要等待或用万能牌</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div style="background:rgba(14,116,144,.9);border-radius:999px;padding:2px 8px;font-size:.75rem;white-space:nowrap">🧩</div>
+          <div><b>拼图牌</b> — 收集场上所有 🧩 碎片之后，才能解锁被 🧩 锁住的隐藏骨牌</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div style="font-size:1.2rem">🧩</div>
+          <div><b>拼图锁（覆盖整张牌）</b> — 该牌被拼图机制锁住，收集完所有碎片后自动解锁</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div style="background:rgba(100,116,139,.9);border-radius:999px;padding:2px 8px;font-size:.75rem;white-space:nowrap">🔨</div>
+          <div><b>锤子牌</b> — 拿走后贡献一把锤子，集满 2 把可解冻场上的冰封骨牌</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:1.2rem">🧊</div>
+          <div><b>冰封牌（覆盖整张牌）</b> — 无法直接操作，需先收集 2 把 🔨 锤子才能解冻</div>
+        </div>
+      </div>
+
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:4px">🛠️ 道具说明</div>
+      <p style="margin-bottom:3px">• <b>↩ 撤回</b>：回到上一步操作</p>
+      <p style="margin-bottom:3px">• <b>🔍 透视</b>：揭示被堆叠遮挡的后排骨牌点数，并以绿框标注；若无遮挡则高亮可接牌</p>
+      <p style="margin-bottom:3px">• <b>➕ 补牌</b>：额外获得 3 张手牌</p>
+      <p style="margin-bottom:10px">• <b>🃏 万能牌</b>：下一张桌面牌无视点数可直接拿，连击不重置</p>
+
+      <div style="font-weight:900;color:#facc15;margin-bottom:6px">✨ 特殊效果骨牌（关卡越高越多）</div>
+      <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px;margin-bottom:8px">
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px"><div style="font-size:1rem;min-width:24px">💣</div><div><b>炸弹</b> — 拿走时同时消除相邻 2 张骨牌</div></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px"><div style="font-size:1rem;min-width:24px">⭐</div><div><b>星爆</b> — 拿走时连击 +3，等同于连着接了3张牌</div></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px"><div style="font-size:1rem;min-width:24px">☠️</div><div><b>毒素</b> — 拿走后连击归零，但同时奖励额外金币（约关卡奖励50%）</div></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px"><div style="font-size:1rem;min-width:24px">⛓️</div><div><b>链式</b> — 拿走后自动接下一张符合条件的骨牌，等于免费多一步</div></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px"><div style="font-size:1rem;min-width:24px">🪞</div><div><b>镜像</b> — 拿走后可接点数翻转（例如 2 变成 4，最大点数减去当前），奇遇连接新链</div></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px"><div style="font-size:1rem;min-width:24px">🧲</div><div><b>磁铁</b> — 拿走后清除手牌中所有能接当前点数的牌（节省手牌），换取更大灵活度</div></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px"><div style="font-size:1rem;min-width:24px">🪙</div><div><b>双倍金币</b> — 拿走时额外奖励 +20 金币</div></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px"><div style="font-size:1rem;min-width:24px">⚡</div><div><b>闪电</b> — 拿走后本回合可立刻再行动一次（连击不重置）</div></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px"><div style="font-size:1rem;min-width:24px">🍀</div><div><b>幸运</b> — 拿走后随机揭示一张暗骨牌；若无暗骨牌则奖励 +10 金币</div></div>
+        <div style="display:flex;align-items:flex-start;gap:10px"><div style="font-size:1rem;min-width:24px">🌑</div><div><b>暗骨牌</b> — 两端点数完全隐藏，须靠透视道具或拿走才知道点数，但拿走奖励 +10 金币</div></div>
+      </div>
+
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:4px">⭐ 通关星星计算</div>
+      <p style="margin-bottom:3px">• 基础：3 星</p>
+      <p style="margin-bottom:3px">• 使用了任何道具：−1 星</p>
+      <p style="margin-bottom:3px">• 最高连击 ≤ 5：−1 星</p>
+      <p style="margin-bottom:3px">• 最高连击 > 10：+1 星</p>
+      <p style="margin-bottom:10px">• 范围：最少 1 星，最多 4 星</p>
+
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:4px">🪙 入场费说明</div>
+      <p style="margin-bottom:3px">• 第 1 关：<b>免费</b></p>
+      <p style="margin-bottom:3px">• 第 2 关起：扣除金币入场费（倍率越高越贵，奖励也越多）</p>
+      <p>• 通关奖励 > 入场费，正常游玩金币会持续增加</p>
+    </div>
+  </div>
+</div>
+
+
+<div id="ov-lootbox" class="ov hidden">
+  <div class="card" style="width:min(420px,94vw);max-height:88vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b>🎁 开宝箱</b>
+      <button class="btn" onclick="closeLootBox()">关闭</button>
+    </div>
+    <div style="font-size:.82rem;color:rgba(255,255,255,.75);margin-bottom:10px">
+      当前宝箱：<b id="lb-count">0</b> 个<br>
+      <span style="font-size:.75rem;color:rgba(255,255,255,.55)">
+        奖励：节操x30 · 羽毛x10 · 30天本期勋章 · 30天字母勋章（稀有）<br>
+        节操满5000或羽毛满2000时，对应奖励替换为30天字母勋章
+      </span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn" style="flex:1;background:linear-gradient(135deg,#7c3aed,#a21caf)" onclick="doOpenLootBox(1)">开 1 个</button>
+      <button class="btn" style="flex:1;background:linear-gradient(135deg,#b45309,#dc2626)" onclick="doOpenLootBox(10)">开 10 个</button>
+      <button class="btn" style="flex:1;background:linear-gradient(135deg,#065f46,#0369a1)" onclick="doOpenLootBoxAll()">全部开</button>
+    </div>
+    <div id="lb-result" style="font-size:.85rem;color:#fde68a;min-height:24px;text-align:center;margin-bottom:10px"></div>
+    <div style="font-size:.8rem;color:rgba(255,255,255,.7);border-top:1px solid rgba(255,255,255,.12);padding-top:10px">
+      <div style="font-weight:800;margin-bottom:6px">📊 奖励累计</div>
+      <div id="lb-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 宝箱系统 =====
+const LOOT_MAX_JIECAO=5000,LOOT_MAX_FEATHER=2000;
+
+function lootBoxPull(){
+  // 权重：节操(30)=50, 羽毛(10)=30, 本期勋章30天=15, 字母勋章30天=5
+  // 若节操已满 → 节操权重转字母勋章；若羽毛已满 → 羽毛权重转字母勋章
+  let wJC=50,wF=30,wM=15,wL=5;
+  if((G.jieCao||0)>=LOOT_MAX_JIECAO){wL+=wJC;wJC=0;}
+  if((G.feather||0)>=LOOT_MAX_FEATHER){wL+=wF;wF=0;}
+  const total=wJC+wF+wM+wL;
+  const r=Math.random()*total;
+  if(r<wJC){G.jieCao=Math.min(LOOT_MAX_JIECAO,(G.jieCao||0)+30);return{type:"jieCao",label:"节操 +30"};}
+  if(r<wJC+wF){G.feather=Math.min(LOOT_MAX_FEATHER,(G.feather||0)+10);return{type:"feather",label:"羽毛 +10"};}
+  if(r<wJC+wF+wM){G.medal30=(G.medal30||0)+1;return{type:"medal30",label:"30天本期勋章 x1"};}
+  G.letterMedal30=(G.letterMedal30||0)+1;return{type:"letterMedal30",label:"30天字母勋章 x1 ✨"};
+}
+
+function doOpenLootBox(n){
+  const boxes=Math.min(n,G.lootBoxes||0);
+  if(boxes<=0){qs("lb-result").textContent="宝箱不足！完成章节项目来获得宝箱。";return;}
+  const results=[];
+  for(let i=0;i<boxes;i++){G.lootBoxes--;results.push(lootBoxPull());}
+  // 汇总显示
+  const tally={};results.forEach(r=>{tally[r.label]=(tally[r.label]||0)+1;});
+  const lines=Object.entries(tally).map(([k,v])=>v>1?k.replace(/x1$/,"x"+v):k);
+  qs("lb-result").textContent="获得："+lines.join("、");
+  save();cloudSave();
+  gasBeacon({sheet:"串烧时光HTML",action:"lootbox_open",id:G.id,uid:String(G.uid),count:String(boxes),results:JSON.stringify(tally),jieCao:String(G.jieCao||0),feather:String(G.feather||0),medal30:String(G.medal30||0),letterMedal30:String(G.letterMedal30||0),date:todayISO()});
+  renderLootBoxOverlay();
+  updateMenuStat();
+}
+
+function doOpenLootBoxAll(){
+  const n=G.lootBoxes||0;
+  if(n<=0){qs("lb-result").textContent="目前没有宝箱，完成章节项目来获得宝箱。";return;}
+  if(n>10&&!confirm("确定要一次开 "+n+" 个宝箱吗？"))return;
+  doOpenLootBox(n);
+}
+
+function renderLootBoxOverlay(){
+  const el=qs("lb-count");if(el)el.textContent=G.lootBoxes||0;
+  const sm=qs("lb-summary");
+  if(sm)sm.innerHTML=[
+    ["🎭 节操",(G.jieCao||0)+"/"+LOOT_MAX_JIECAO],
+    ["🪶 羽毛",(G.feather||0)+"/"+LOOT_MAX_FEATHER],
+    ["🏅 本期勋章(30天)",G.medal30||0],
+    ["✨ 字母勋章(30天)",G.letterMedal30||0]
+  ].map(([k,v])=>"<div style='color:rgba(255,255,255,.7)'>"+k+"</div><div style='font-weight:800'>"+v+"</div>").join("");
+}
+
+function openLootBox(){
+  qs("lb-result").textContent="";
+  renderLootBoxOverlay();
+  qs("ov-lootbox").classList.remove("hidden");
+}
+function closeLootBox(){qs("ov-lootbox").classList.add("hidden");}
+function openGuide(){qs("ov-guide").classList.remove("hidden");}
+</script>
+
+<script>
+const GAS_URL="https://script.google.com/macros/s/AKfycbzib3VRCqMgtN34xdslFcvzYMR1alQsBN7KJHF_htnjPruot9wy6dwrJtCfecQbNuOr/exec";
+const SHEET="串烧时光HTML";
+const FORUM_PROXIES=[
+  "https://api.codetabs.com/v1/proxy?quest=",
+  "https://r.jina.ai/http://",
+  "https://cors.isomorphic-git.org/"
+];
+const FORUM_FETCH_MS=22000;
+const KEY_STATE="st_state",KEY_ID="st_id",KEY_UID="st_uid";
+const BG_SKINS={
+  default:{id:"default",name:"默认皮肤",url:"https://s.sstmlt.com/img/2026/05/26/domino_skewer_time-bb84063fc37ef378.jpeg"},
+  bamboo:{id:"bamboo",name:"竹林炭烤亭",url:"https://s.sstmlt.com/img/2026/05/26/domino_skewer_time-8a5d9c1e30df2523.jpeg"},
+  charcoal:{id:"charcoal",name:"老式炭火炉灶间",url:"https://s.sstmlt.com/img/2026/05/26/domino_skewer_time-25f947c2089792a5.jpeg"},
+  festival:{id:"festival",name:"夏日祭典",url:"https://s.sstmlt.com/img/2026/05/26/domino_skewer_time-7d9b2eeb53ff68b3.jpeg"},
+  beach_bbq:{id:"beach_bbq",name:"海边烧烤摊",url:"https://s.sstmlt.com/img/2026/05/26/domino_skewer_time-4c22576de1be50b6.jpeg"},
+  teppan:{id:"teppan",name:"深夜铁板烧吧台",url:"https://s.sstmlt.com/img/2026/05/26/domino_skewer_time-5908a4863c52b93f.jpeg"},
+  izakaya:{id:"izakaya",name:"霓虹居酒屋",url:"https://s.sstmlt.com/img/2026/05/26/domino_skewer_time-8c9eff195d0b6acf.jpeg"},
+  steampunk:{id:"steampunk",name:"蒸汽朋克铜齿纹理",url:"https://s.sstmlt.com/img/2026/05/26/domino_skewer_time-40b1fa85d6e66850.jpeg"}
+};
+const SKINS=[
+  {id:"default",name:"默认皮肤"},
+  {id:"bamboo",name:"竹林炭烤亭"},
+  {id:"charcoal",name:"老式炭火炉灶间"},
+  {id:"festival",name:"夏日祭典"},
+  {id:"beach_bbq",name:"海边烧烤摊"},
+  {id:"teppan",name:"深夜铁板烧吧台"},
+  {id:"izakaya",name:"霓虹居酒屋"},
+  {id:"steampunk",name:"蒸汽朋克铜齿纹理"}
+];
+const SHOP_ITEMS=[
+  {id:"undo",name:"撤回x1",costType:"replies",cost:10,give:{undo:1}},
+  {id:"hint",name:"提示x1",costType:"replies",cost:15,give:{hint:1}},
+  {id:"add",name:"补牌x1",costType:"replies",cost:20,give:{add:1}},
+  {id:"reveal",name:"万能牌x1",costType:"replies",cost:20,give:{reveal:1}},
+  {id:"ticket",name:"挑战卷x1",costType:"citations",cost:10,give:{ticket:1}},
+  {id:"skin_bamboo",name:"背景：竹林炭烤亭",costType:"replies",cost:25,give:{bgSkin:"bamboo"}},
+  {id:"skin_charcoal",name:"背景：老式炭火炉灶间",costType:"replies",cost:25,give:{bgSkin:"charcoal"}},
+  {id:"skin_festival",name:"背景：夏日祭典",costType:"replies",cost:25,give:{bgSkin:"festival"}},
+  {id:"skin_beach_bbq",name:"背景：海边烧烤摊",costType:"replies",cost:25,give:{bgSkin:"beach_bbq"}},
+  {id:"skin_teppan",name:"背景：深夜铁板烧吧台",costType:"replies",cost:25,give:{bgSkin:"teppan"}},
+  {id:"skin_izakaya",name:"背景：霓虹居酒屋",costType:"replies",cost:25,give:{bgSkin:"izakaya"}},
+  {id:"skin_steampunk",name:"背景：蒸汽朋克铜齿纹理",costType:"replies",cost:35,give:{bgSkin:"steampunk"}}
+];
+let G={id:"",uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,coins:0,tickets:0,stars:0,chapter:1,chapterItems:0,wheel:0,unlocked:[1],cleared:[],skin:"default",ownedBgSkins:["default"],bgSkin:"default",boosters:{undo:3,hint:3,add:2,reveal:2},lootBoxes:0,jieCao:0,feather:0,medal30:0,letterMedal30:0,lootBoxesTotal:0};
+let level=1,board=[],stock=[],currentTile=null,activeEnds=[],history=[],streak=0,maxStreak=0,moves=0,wildMode=false,hammers=0,hammersNeed=0,puzzleHave=0,puzzleNeed=0,hintTileId=null,turn=0,currentCfg=null,curBgSkin="default";
+let boostersUsed=0;
+const qs=id=>document.getElementById(id),todayISO=()=>new Date().toISOString().slice(0,10);
+function gasReady(){return /^https?:\/\//.test(GAS_URL)&&GAS_URL.indexOf("__")<0&&GAS_URL.indexOf("PASTE")<0;}
+function gasBeacon(p){if(!gasReady())return;const u=GAS_URL+"?"+new URLSearchParams({...p,game:"skewer_time",_t:Date.now()});const i=new Image();i.referrerPolicy="no-referrer";i.src=u;}
+function gasJsonp(params,timeout=10000){if(!gasReady())return Promise.resolve({ok:false,offline:true});return new Promise((res,rej)=>{const cb="st_cb_"+Math.random().toString(36).slice(2);const s=document.createElement("script");const t=setTimeout(()=>{cleanup();rej(new Error("timeout"));},timeout);function cleanup(){clearTimeout(t);delete window[cb];if(s.parentNode)s.remove();}window[cb]=(d)=>{cleanup();res(d||{});};s.src=GAS_URL+"?"+new URLSearchParams({...params,game:"skewer_time",callback:cb,_t:Date.now()});document.body.appendChild(s);});}
+function save(){localStorage.setItem(KEY_STATE,JSON.stringify(G));}
+function load(){try{Object.assign(G,JSON.parse(localStorage.getItem(KEY_STATE)||"{}"));}catch(e){}ensureOwnedBgSkins();curBgSkin=G.bgSkin||G.skin||"default";G.skin=curBgSkin;}
+function normalize(){
+  if(!G.boosters)G.boosters={undo:0,hint:0,add:0,reveal:0};
+  ["undo","hint","add","reveal"].forEach(k=>G.boosters[k]=Math.max(0,Number(G.boosters[k]||0)));
+  ["coins","tickets","stars","chapter","chapterItems","wheel","replies","citations","repliesSpent","citationsSpent","lootBoxes","jieCao","feather","medal30","letterMedal30","lootBoxesTotal"].forEach(k=>G[k]=Math.max(0,Number(G[k]||0)));
+  if(!G.chapter)G.chapter=1;
+  if(!G.unlocked||!G.unlocked.length)G.unlocked=[1];
+  if(!G.cleared)G.cleared=[];
+  ensureOwnedBgSkins();
+  if(!G.dominoInit){G.coins=(G.coins||0)+600;G.stars=G.stars||0;G.dominoInit=true;}
+}
+async function cloudSave(){if(!G.id)return;try{await gasJsonp({sheet:SHEET,action:"save",id:G.id,uid:String(G.uid),coins:String(G.coins||0),unlocked_count:String((G.unlocked||[]).length),cleared_count:String((G.cleared||[]).length),state_json:JSON.stringify(G),date:todayISO()},12000);}catch(e){}}
+async function cloudLoad(id){try{const d=await gasJsonp({sheet:SHEET,action:"load",id},16000);return d.data||null;}catch(e){return null;}}
+function show(id){["login","menu","game"].forEach(x=>qs(x).classList.add("hidden"));qs(id).classList.remove("hidden");}
+function hint(s){qs("hint").textContent=s||"";}
+function setForumStatus(s){const el=qs("forum-status");if(el)el.textContent=s||"";}
+function bgStyleFromUrl(url){return "linear-gradient(rgba(0,0,0,.47),rgba(0,0,0,.47)),url('"+url+"') center/cover no-repeat";}
+function ensureOwnedBgSkins(){if(!G.ownedBgSkins||!Array.isArray(G.ownedBgSkins))G.ownedBgSkins=["default"];if(!G.ownedBgSkins.includes("default"))G.ownedBgSkins.unshift("default");}
+function ownsBgSkin(id){ensureOwnedBgSkins();return id==="default"||G.ownedBgSkins.includes(id);}
+function grantBgSkin(id){ensureOwnedBgSkins();if(id&&!G.ownedBgSkins.includes(id))G.ownedBgSkins.push(id);}
+function getBgSkinDef(){return BG_SKINS[curBgSkin]||BG_SKINS.default;}
+const COVER_URL="https://s.sstmlt.com/img/2026/05/26/domino_skewer_timed0f94c699a9bbefe.jpeg";
+function applyBgTheme(){
+  const skinBg=bgStyleFromUrl(getBgSkinDef().url);
+  const coverBg=bgStyleFromUrl(COVER_URL);
+  const loginEl=qs("login");if(loginEl)loginEl.style.background=coverBg;
+  ["menu","game"].forEach(id=>{const el=qs(id);if(el)el.style.background=skinBg;});
+}
+function pickSkin(){const s=SKINS.find(x=>x.id===G.skin)||SKINS[0];const b=BG_SKINS[s.id]||BG_SKINS.default;return{id:s.id,name:s.name,bg:bgStyleFromUrl(b.url)};}
+function updateMenuStat(){
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  const ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  qs("menu-stat").textContent="📝 "+ar+" · 💬 "+ac+" · 🪙 "+(G.coins||0)+" · ⭐ "+(G.stars||0)+" · 🎫 "+(G.tickets||0);
+  const lb=qs("menu-lootbox-info");
+  if(lb)lb.innerHTML="🎁 宝箱：<b>"+(G.lootBoxes||0)+"</b> 个 ｜ 节操 "+(G.jieCao||0)+"/5000 · 羽毛 "+(G.feather||0)+"/2000 · 本期勋章 "+(G.medal30||0)+" · 字母勋章 "+(G.letterMedal30||0);
+  // 主画面宝箱快捷按钮
+  const btnRow=qs("menu-lootbox-btn-row");
+  if(btnRow){
+    const n=G.lootBoxes||0;
+    if(n>0){
+      btnRow.innerHTML="<button class='btn' style='background:linear-gradient(135deg,#92400e,#dc2626);font-size:.82rem;padding:7px 18px' onclick='openLootBox()'>🎁 开宝箱（"+n+"个）</button>"
+        +(n>=10?"&nbsp;<button class='btn' style='background:linear-gradient(135deg,#065f46,#0369a1);font-size:.82rem;padding:7px 14px' onclick='doOpenLootBox(10)'>开10个</button>":"")
+        +(n>=1?"&nbsp;<button class='btn' style='background:linear-gradient(135deg,#1e1b4b,#7c3aed);font-size:.82rem;padding:7px 14px' onclick='doOpenLootBoxAll()'>全开</button>":"");
+    }else{
+      btnRow.innerHTML="<span style='font-size:.78rem;color:rgba(255,255,255,.4)'>🎁 暂无宝箱，完成章节项目可获得</span>";
+    }
+  }
+}
+async function doLogin(){
+  const id=qs("inp-id").value.trim(),uid=parseInt(qs("inp-uid").value.trim(),10);
+  const btn=qs("btn-login");
+  if(!id||!uid){qs("login-err").textContent="请输入论坛ID与UID";return;}
+  qs("login-err").textContent="";
+  const oldText=btn.textContent;btn.disabled=true;btn.textContent="登入中...";
+  try{
+    G.id=id;G.uid=uid;localStorage.setItem(KEY_ID,id);localStorage.setItem(KEY_UID,String(uid));
+    load();normalize();
+    const c=await cloudLoad(id);
+    if(c&&c.state_json){try{Object.assign(G,JSON.parse(c.state_json));G.id=id;G.uid=uid;normalize();}catch(e){}}
+    save();cloudSave();
+    gasBeacon({sheet:SHEET,action:"login_log",id:G.id,uid:String(G.uid),date:todayISO(),info:"domino_skewer_html"});
+    enterMenu();
+  }finally{btn.disabled=false;btn.textContent=oldText;}
+}
+function offlineMode(){load();normalize();enterMenu();}
+function enterMenu(){curBgSkin=G.bgSkin||G.skin||"default";applyBgTheme();renderLvList();renderMultiplier();renderChapter();updateMenuStat();show("menu");}
+function backMenu(){qs("ov-win").classList.add("hidden");qs("ov-lose").classList.add("hidden");enterMenu();}
+function setMultiplier(m){G.multiplier=m;save();renderMultiplier();renderChapter();}
+function renderMultiplier(){
+  const m=Number(G.multiplier||1),wrap=qs("mults");wrap.innerHTML="";
+  [[1,"标准"],[2,"Mega"],[4,"Epic"],[8,"Super"]].forEach(x=>{
+    const b=document.createElement("button");b.className="btn"+(m===x[0]?" on":"");b.textContent="x"+x[0]+" "+x[1];b.onclick=()=>setMultiplier(x[0]);wrap.appendChild(b);
+  });
+}
+function chapterNeed(){return 4+Math.min(12,Math.floor((G.chapter||1)/2));}
+function doChapterTask(){
+  const need=chapterNeed();
+  if((G.stars||0)<need){alert("星星不足");return;}
+  G.stars-=need;G.chapterItems=(G.chapterItems||0)+1;
+  G.lootBoxes=(G.lootBoxes||0)+1;G.lootBoxesTotal=(G.lootBoxesTotal||0)+1;
+  let msg="完成一个章节项目！获得 🎁 宝箱 x1（当前："+G.lootBoxes+"个）";
+  if(G.chapterItems>=5){
+    G.chapter=(G.chapter||1)+1;G.chapterItems=0;G.coins=(G.coins||0)+120;G.boosters.reveal=(G.boosters.reveal||0)+1;msg="章节完成：奖励 120 金币与万能牌 x1！\n另获得 🎁 宝箱 x1（当前："+G.lootBoxes+"个）";
+  }
+  save();cloudSave();renderChapter();updateMenuStat();alert(msg);
+}
+function renderChapter(){
+  const el=qs("chapter-card");if(!el)return;
+  const pct=Math.round(((G.chapterItems||0)/5)*100);
+  el.innerHTML="<div><b>章节 "+(G.chapter||1)+"</b><div style='font-size:.75rem;color:rgba(255,255,255,.7)'>每项消耗 "+chapterNeed()+" ⭐</div></div><div class='bar'><div class='fill' style='width:"+pct+"%'></div></div><button class='btn' onclick='doChapterTask()'>完成项目</button>";
+}
+function renderLvList(){
+  const wrap=qs("lvlist");wrap.innerHTML="";const max=Math.max(...G.unlocked);
+  for(let i=1;i<=Math.max(40,max+10);i++){
+    const cleared=G.cleared.includes(i);const b=document.createElement("button");b.className="btn";b.style.padding="6px";b.textContent=cleared?("🏆"+i):i;
+    if(i>max)b.disabled=true;
+    b.onclick=()=>{if(cleared){if(!(G.tickets>0)){alert("该关已通关，需挑战卷重玩");openShop();return;}if(!confirm("该关已通关，消耗1张挑战卷重玩？"))return;G.tickets=Math.max(0,(G.tickets||0)-1);save();cloudSave();updateMenuStat();}startGame(i);};
+    wrap.appendChild(b);
+  }
+}
+function startLatest(){startGame(Math.max(...G.unlocked));}
+function applySkin(id){if(!ownsBgSkin(id)){alert("骨牌梦旅：这款骨牌背景皮肤未解锁，请先去商店购买后再使用。");return;}G.skin=id;G.bgSkin=id;curBgSkin=id;save();cloudSave();applyBgTheme();if(!qs("ov-skin").classList.contains("hidden"))openSkin();if(!qs("game").classList.contains("hidden"))renderAll();}
+function openSkin(){
+  const list=qs("skin-list");list.innerHTML="";
+  SKINS.forEach(s=>{const b=BG_SKINS[s.id]||BG_SKINS.default;const d=document.createElement("div");d.className="shop-item";d.innerHTML="<img src='"+b.url+"' style='width:48px;height:34px;object-fit:cover;border-radius:6px;margin-right:8px'><div style='flex:1'><b>"+s.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>"+(ownsBgSkin(s.id)?(G.skin===s.id?"使用中":"点击使用"):"🛒 去商店解锁")+"</div></div><button class='btn'>"+(G.skin===s.id?"使用中":"使用")+"</button>";d.querySelector("button").onclick=()=>applySkin(s.id);d.onclick=()=>{if(ownsBgSkin(s.id))applySkin(s.id);};list.appendChild(d);});
+  qs("ov-skin").classList.remove("hidden");
+}
+function closeSkin(){qs("ov-skin").classList.add("hidden");}
+function rInt(a,b){return a+Math.floor(Math.random()*(b-a+1));}
+function uniq(a){return [...new Set(a.filter(x=>x!==null&&x!==undefined))];}
+function genDomino(max){return{a:rInt(0,max),b:rInt(0,max)};}
+function genLevelCfg(lv){
+  const maxPip=Math.min(6,3+Math.floor(lv/4));
+  const tiles=12+Math.min(24,Math.floor(lv*1.35));
+  const stockCount=9+Math.min(9,Math.floor(lv/3));
+  return{id:lv,maxPip,tiles,stockCount,cookies:lv>=3?Math.min(3,Math.floor(lv/7)+1):0,traps:lv>=5?Math.min(3,Math.floor(lv/8)+1):0,puzzles:lv>=7?Math.min(4,Math.floor(lv/9)+1):0,frozen:lv>=9?Math.min(2,Math.floor(lv/12)+1):0};
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function makeChainTiles(cfg,startEnds){
+  let ends=startEnds.slice(),out=[];
+  for(let i=0;i<cfg.tiles;i++){
+    const match=ends[rInt(0,ends.length-1)];
+    const other=rInt(0,cfg.maxPip);
+    const flip=Math.random()<.5;
+    const t=flip?{a:match,b:other}:{a:other,b:match};
+    out.push(t);
+    ends=t.a===t.b?[t.a,t.b]:[other];
+  }
+  return out;
+}
+function addObstacles(cfg){
+  const live=board.filter(t=>!t.removed);
+  shuffle(live);
+  let p=0;
+  for(let i=0;i<cfg.cookies&&p<live.length;i++,p++){live[p].obstacle="cookie";live[p].cookieHits=[false,false];}
+  for(let i=0;i<cfg.traps&&p<live.length;i++,p++){live[p].obstacle="trap";live[p].trapSide=rInt(0,1);}
+  puzzleNeed=0;puzzleHave=0;
+  for(let i=0;i<cfg.puzzles&&p<live.length;i++,p++){live[p].puzzle=true;puzzleNeed++;}
+  if(puzzleNeed>0){
+    for(let i=0;i<Math.min(3,live.length-p);i++,p++){live[p].lockedByPuzzle=true;}
+  }
+  hammersNeed=cfg.frozen?2:0;hammers=0;
+  for(let i=0;i<cfg.frozen&&p<live.length;i++,p++){live[p].frozen=true;}
+  for(let i=0;i<hammersNeed&&p<live.length;i++,p++){live[p].hammer=true;}
+}
+function generateLevelData(cfg){
+  const start=genDomino(cfg.maxPip);
+  currentTile={a:start.a,b:start.b};activeEnds=uniq([start.a,start.b]);
+  board=makeChainTiles(cfg,activeEnds).map((t,i)=>({...t,id:"d"+cfg.id+"_"+i,removed:false}));
+  shuffle(board);addObstacles(cfg);assignSpecialEffects(cfg);
+  if(!board.some(canPlayTile)){
+    const t=board.find(x=>!x.removed&&tileSides(x).some(v=>activeEnds.includes(v)))||board[0];
+    if(t){t.lockedByPuzzle=false;t.frozen=false;t.obstacle=t.obstacle==="trap"?null:t.obstacle;}
+  }
+  stock=[];for(let i=0;i<cfg.stockCount;i++)stock.push(genDomino(cfg.maxPip));
+  pendingExtraMove=false;xrayTileId=null;lastSpecialMsg="";
+}
+function entryCost(lv,m){return Math.max(0,Math.floor((12+lv*2)*m));}
+function startGame(lv){
+  qs("ov-win").classList.add("hidden");qs("ov-lose").classList.add("hidden");
+  const mult=Number(G.multiplier||1),cost=entryCost(lv,mult);
+  // 第1关免费，第2关起扣入场费并弹窗确认
+  if(lv===1){
+    _doStartGame(lv,0,mult);
+    return;
+  }
+  if((G.coins||0)<cost){alert("金币不足！\n需要 "+cost+" 金币才能进入第 "+lv+" 关。\n请先用标准倍率或完成章节领取奖励。");return;}
+  // 弹窗提醒入场费
+  const rewardPreview=(30+lv*5)*mult;
+  if(!confirm("⚠️ 进入第 "+lv+" 关需扣除入场费\n\n入场费："+cost+" 🪙\n通关奖励："+rewardPreview+" 🪙（x"+mult+"倍）\n当前金币："+G.coins+"\n\n确认进入？"))return;
+  _doStartGame(lv,cost,mult);
+}
+function _doStartGame(lv,cost,mult){
+  G.coins=Math.max(0,(G.coins||0)-cost);
+  level=lv;currentCfg=genLevelCfg(lv);generateLevelData(currentCfg);history=[];streak=0;maxStreak=0;boostersUsed=0;moves=0;wildMode=false;hintTileId=null;turn=0;
+  if(!G.unlocked.includes(lv))G.unlocked.push(lv);
+  qs("lvl").textContent="第 "+lv+" 关 · x"+mult+(cost>0?" · 入场 -"+cost:" · 免费入场");
+  gasBeacon({sheet:SHEET,action:"game_start",id:G.id,uid:String(G.uid),level:String(lv),date:todayISO(),info:"domino_level"});
+  save();cloudSave();show("game");applyBgTheme();assignBoardLayout();hint("选择桌面上能接当前点数的骨牌；无牌可接时抽下一张。");renderAll();
+}
+function restartLevel(){startGame(level);}
+function nextLevel(){startGame(level+1);}
+function snapshot(){return JSON.parse(JSON.stringify({board,stock,currentTile,activeEnds,streak,moves,wildMode,hammers,hammersNeed,puzzleHave,puzzleNeed,hintTileId,turn}));}
+function restore(s){board=s.board;stock=s.stock;currentTile=s.currentTile;activeEnds=s.activeEnds;streak=s.streak;moves=s.moves;wildMode=s.wildMode;hammers=s.hammers;hammersNeed=s.hammersNeed;puzzleHave=s.puzzleHave;puzzleNeed=s.puzzleNeed;hintTileId=s.hintTileId;turn=s.turn;}
+function tileSides(t){return[t.a,t.b];}
+function matchInfo(t){
+  if(wildMode)return{ok:true,wild:true,both:true,side:-1};
+  if(t.obstacle==="trap"){
+    const v=tileSides(t)[t.trapSide||0];
+    return{ok:activeEnds.includes(v),side:t.trapSide||0,both:false};
+  }
+  if(t.obstacle==="cookie"){
+    const hits=t.cookieHits||[false,false],sides=tileSides(t);
+    const m=sides.map((v,i)=>!hits[i]&&activeEnds.includes(v));
+    return{ok:m[0]||m[1],side:m[0]?0:1,both:m[0]&&m[1]};
+  }
+  const m=tileSides(t).map(v=>activeEnds.includes(v));
+  return{ok:m[0]||m[1],side:m[0]?0:1,both:m[0]&&m[1]};
+}
+function isBlocked(t){return !!(t.removed||t.lockedByPuzzle||t.frozen);}
+function canPlayTile(t){return !isBlocked(t)&&matchInfo(t).ok;}
+function updateCurrentFromTile(t,info){
+  currentTile={a:t.a,b:t.b};
+  if(info.wild||info.both||t.a===t.b)activeEnds=uniq([t.a,t.b]);
+  else activeEnds=[info.side===0?t.b:t.a];
+}
+function collectTile(t){
+  t.removed=true;
+  if(t.puzzle){puzzleHave++;if(puzzleHave>=puzzleNeed)board.forEach(x=>x.lockedByPuzzle=false);}
+  if(t.hammer){hammers++;if(hammers>=hammersNeed)board.forEach(x=>x.frozen=false);}
+}
+function tickTraps(){board.forEach(t=>{if(t.obstacle==="trap"&&!t.removed)t.trapSide=(turn+(Number(t.id.split("_").pop())||0))%2;});}
+function streakReward(){
+  if(streak>0&&streak%5===0){G.coins=(G.coins||0)+5;hint("连击 "+streak+"：奖励 5 金币");}
+  if(streak>0&&streak%10===0){G.boosters.hint=(G.boosters.hint||0)+1;hint("连击 "+streak+"：提示 x1");}
+}
+function playTile(id){
+  const t=board.find(x=>x.id===id);if(!t||t.removed)return;
+  hintTileId=null;xrayTileId=null;
+  if(t.lockedByPuzzle){hint("先收集全部拼图碎片，才能打开这些隐藏骨牌");renderAll();return;}
+  if(t.frozen){hint("冰封骨牌：先从其他牌下收集 2 把锤子");renderAll();return;}
+  const info=matchInfo(t);
+  if(!info.ok){hint("这张牌接不上当前点数");renderAll();return;}
+  history.push(snapshot());if(history.length>40)history.shift();
+  moves++;turn++;
+  if(t.obstacle==="cookie"&&!info.wild){
+    const side=info.side;
+    t.cookieHits=t.cookieHits||[false,false];
+    t.cookieHits[side]=true;
+    updateCurrentFromTile(t,info);
+    if(t.cookieHits[0]&&t.cookieHits[1])collectTile(t);
+    hint(t.removed?"饼干牌已完全清除":"饼干牌还要再接另一半");
+  }else{
+    updateCurrentFromTile(t,info);
+    collectTile(t);
+    // 触发特殊效果（仅在整张牌被消除时）
+    if(t.special)triggerSpecial(t,info);
+  }
+  // 毒素：连击归零
+  if(t._poisonPending){t._poisonPending=false;streak=0;}
+  else{wildMode=false;streak++;if(streak>maxStreak)maxStreak=streak;streakReward();}
+  if(!t._poisonPending)wildMode=false;
+  tickTraps();save();cloudSave();renderAll();checkEndState();
+  // 闪电：额外行动一次（不重置连击，不抽牌）
+  if(pendingExtraMove){pendingExtraMove=false;hint("⚡ 闪电加速！立刻再行动一次");renderAll();}
+}
+function drawStock(){
+  if(!stock.length){
+    hint("手牌已用完");
+    renderAll();
+    checkEndState();
+    return;
+  }
+  history.push(snapshot());if(history.length>40)history.shift();
+  const d=stock.shift();currentTile={a:d.a,b:d.b};activeEnds=uniq([d.a,d.b]);streak=0;wildMode=false;moves++;turn++;tickTraps();hint("已切换手牌，连击重置");renderAll();checkEndState();
+}
+function remainingTiles(){return board.filter(t=>!t.removed).length;}
+function playableTiles(){
+  // 只计算真正可操作的牌（不被堆叠遮挡）
+  return board.filter(t=>{
+    if(!canPlayTile(t))return false;
+    if(t._stackLayer>0){
+      const front=t._stackFrontId?board.find(b=>b.id===t._stackFrontId):null;
+      if(front&&!front.removed)return false; // 被前排遮挡
+    }
+    return true;
+  });
+}
+function checkEndState(){
+  if(remainingTiles()<=0){showWin();return;}
+  const playable=playableTiles();
+  // 经典失败：无可接牌 + 无手牌 + 无万能
+  if(!playable.length&&!stock.length&&!wildMode){
+    showLose("没有可接的骨牌且手牌已用完。");return;
+  }
+  // 死局失败：手牌已空 + 无万能 + 桌面仍有牌无法靠当前点数全清
+  // 只要剩余牌数 > 当前可拿数，且没有手牌能改变局面，就是死局
+  if(!stock.length&&!wildMode&&remainingTiles()>playable.length){
+    showLose("手牌已用完，剩余骨牌无法全部清除。");return;
+  }
+}
+function doUndo(){if(!(G.boosters.undo>0)){openShop();return;}if(!history.length){hint("没有可撤回");return;}G.boosters.undo--;boostersUsed++;restore(history.pop());save();cloudSave();renderAll();}
+// ====== 透视道具（原提示改为透视） ======
+let xrayTileId=null; // 被透视的骨牌id
+function doXray(){
+  if(!(G.boosters.hint>0)){openShop();return;}
+  G.boosters.hint--;boostersUsed++;
+  // 找最前面一张被堆叠遮挡的骨牌（stacked-behind）
+  const hidden=board.filter(t=>!t.removed&&t._stackLayer>0);
+  if(hidden.length){
+    const t=hidden[0];
+    xrayTileId=t.id;
+    hint("🔍 透视：看见后排骨牌点数 ["+t.a+"|"+t.b+"] — 消除前排骨牌后可接触");
+  }else{
+    // 没有堆叠牌则退化为高亮可接牌
+    const p=playableTiles()[0];
+    if(p){xrayTileId=p.id;hint("🔍 透视：高亮可接骨牌");}
+    else if(stock.length)hint("透视：当前无可接牌，请抽牌");
+    else hint("透视：暂无可用移动");
+  }
+  save();cloudSave();renderAll();
+}
+
+// ====== 10种新骨牌特殊效果 ======
+// 效果类型定义
+const SPECIAL_EFFECTS={
+  bomb:   {icon:"💣",label:"炸弹",color:"rgba(220,38,38,.9)",   desc:"拿走时同时消除相邻2张骨牌"},
+  star:   {icon:"⭐",label:"星爆",color:"rgba(250,204,21,.9)",   desc:"拿走时获得+3连击奖励（连击+3）"},
+  poison: {icon:"☠️",label:"毒素",color:"rgba(134,25,143,.9)",   desc:"拿走时连击归零，但奖励双倍金币"},
+  chain:  {icon:"⛓️",label:"链式",color:"rgba(14,165,233,.9)",   desc:"拿走时自动再接一次点数相同的牌"},
+  mirror: {icon:"🪞",label:"镜像",color:"rgba(99,102,241,.9)",   desc:"可用左端或右端接牌，且翻转当前可接点数"},
+  magnet: {icon:"🧲",label:"磁铁",color:"rgba(239,68,68,.9)",    desc:"拿走时把手牌中所有能接的牌直接清除"},
+  gold:   {icon:"🪙",label:"双倍",color:"rgba(245,158,11,.9)",   desc:"拿走时奖励额外金币（+20）"},
+  swift:  {icon:"⚡",label:"闪电",color:"rgba(34,211,238,.9)",   desc:"拿走后本回合可再行动一次（连续操作）"},
+  lucky:  {icon:"🍀",label:"幸运",color:"rgba(16,185,129,.9)",   desc:"拿走时随机揭示一张背面骨牌为正面"},
+  dark:   {icon:"🌑",label:"暗骨牌",color:"rgba(30,30,50,.95)", desc:"两端点数完全隐藏，拿走才揭示，但有10金币奖励"},
+};
+
+// 出现概率（关卡>=特定关才有机率出现）
+const SPECIAL_UNLOCK={bomb:4,star:2,poison:6,chain:8,mirror:5,magnet:10,gold:3,swift:7,lucky:9,dark:6};
+const SPECIAL_RATE=0.12; // 每张牌有12%机率获得特殊效果（已有obstacle的跳过）
+
+function assignSpecialEffects(cfg){
+  board.forEach(t=>{
+    if(t.removed||t.obstacle||t.puzzle||t.hammer||t.frozen||t.lockedByPuzzle)return;
+    if(Math.random()>SPECIAL_RATE)return;
+    const avail=Object.keys(SPECIAL_UNLOCK).filter(k=>cfg.id>=(SPECIAL_UNLOCK[k]||0));
+    if(!avail.length)return;
+    t.special=avail[Math.floor(Math.random()*avail.length)];
+    if(t.special==="dark"){t._darkHidden=true;} // 隐藏点数
+  });
+}
+
+// 在generateLevelData末尾插入special赋值
+let _origGenerateLevelData=null; // patch below
+
+// 特殊效果触发（在collectTile/playTile中调用）
+let pendingExtraMove=false;
+function triggerSpecial(t,info){
+  const sp=t.special;if(!sp)return;
+  lastSpecialMsg=SPECIAL_EFFECTS[sp]?SPECIAL_EFFECTS[sp].icon+" "+SPECIAL_EFFECTS[sp].label+"触发":"";
+  switch(sp){
+    case "bomb":{
+      // 消除相邻2张（按board index前后各1）
+      const idx=board.indexOf(t);
+      let killed=0;
+      [-1,1].forEach(d=>{const n=board[idx+d];if(n&&!n.removed){n.removed=true;killed++;}});
+      G.coins=(G.coins||0)+killed*5;
+      hint("💣 炸弹爆炸！消除 "+killed+" 张相邻骨牌");
+      break;}
+    case "star":{
+      streak=Math.max(0,streak+3);if(streak>maxStreak)maxStreak=streak;
+      hint("⭐ 星爆！连击 +3 → "+streak);
+      break;}
+    case "poison":{
+      const bonus=(30+level*5)*0.5|0;G.coins=(G.coins||0)+bonus;
+      // streak归零在playTile流程后处理：用flag
+      t._poisonPending=true;
+      hint("☠️ 毒素！连击归零但奖励 +"+bonus+" 金币");
+      break;}
+    case "chain":{
+      // 自动接下一张同点数的牌
+      const ends2=activeEnds.slice();
+      const next=board.find(x=>!x.removed&&!isBlocked(x)&&tileSides(x).some(v=>ends2.includes(v))&&x.id!==t.id);
+      if(next){
+        const inf2=matchInfo(next);
+        if(inf2.ok){updateCurrentFromTile(next,inf2);collectTile(next);hint("⛓️ 链式触发！自动接上 ["+next.a+"|"+next.b+"]");}
+        else hint("⛓️ 链式：未找到可自动接的牌");
+      }else hint("⛓️ 链式：无可接续目标");
+      break;}
+    case "mirror":{
+      // 翻转activeEnds（把点数反向，max-v）
+      const maxP=(currentCfg&&currentCfg.maxPip)||6;
+      activeEnds=uniq(activeEnds.map(v=>maxP-v));
+      currentTile={a:maxP-currentTile.b,b:maxP-currentTile.a};
+      hint("🪞 镜像！可接点数翻转为 "+activeEnds.join("/"));
+      break;}
+    case "magnet":{
+      // 清除手牌中所有能被当前activeEnds接的牌
+      const before=stock.length;
+      stock=stock.filter(s=>!uniq([s.a,s.b]).some(v=>activeEnds.includes(v)));
+      const cleared=before-stock.length;
+      if(cleared)hint("🧲 磁铁！从手牌中清除 "+cleared+" 张可接牌");
+      else hint("🧲 磁铁：手牌中没有可接牌");
+      break;}
+    case "gold":{
+      G.coins=(G.coins||0)+20;
+      hint("🪙 双倍金币！+20 🪙");
+      break;}
+    case "swift":{
+      pendingExtraMove=true;
+      hint("⚡ 闪电！可以立刻再行动一次");
+      break;}
+    case "lucky":{
+      // 揭示一张dark骨牌
+      const darkT=board.find(x=>!x.removed&&x._darkHidden);
+      if(darkT){darkT._darkHidden=false;hint("🍀 幸运！揭示一张暗骨牌 ["+darkT.a+"|"+darkT.b+"]");}
+      else{G.coins=(G.coins||0)+10;hint("🍀 幸运！+10 金币（无暗骨牌）");}
+      break;}
+    case "dark":{
+      G.coins=(G.coins||0)+10;
+      hint("🌑 暗骨牌揭示！+10 🪙 奖励");
+      break;}
+  }
+}
+
+// 特效badge渲染
+// 特效说明 tooltip
+let _tooltipTimer=null;
+function showSpecialTooltip(icon,label,desc,e){
+  e.stopPropagation();
+  let tip=document.getElementById("sp-tooltip");
+  if(!tip){tip=document.createElement("div");tip.id="sp-tooltip";tip.style.cssText="position:fixed;z-index:9999;background:rgba(15,23,42,.96);border:1px solid rgba(255,255,255,.22);border-radius:10px;padding:10px 14px;font-size:.82rem;color:#fff;max-width:220px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none;transition:opacity .15s";document.body.appendChild(tip);}
+  tip.innerHTML="<div style='font-size:1.1rem;margin-bottom:4px'>"+icon+" <b>"+label+"</b></div><div style='color:rgba(255,255,255,.75);line-height:1.5'>"+desc+"</div>";
+  const margin=10;
+  let tx=e.clientX+12,ty=e.clientY-10;
+  tip.style.opacity="0";tip.style.display="block";
+  const tw=tip.offsetWidth||220,th=tip.offsetHeight||60;
+  if(tx+tw>window.innerWidth-margin)tx=e.clientX-tw-12;
+  if(ty+th>window.innerHeight-margin)ty=window.innerHeight-th-margin;
+  tip.style.left=tx+"px";tip.style.top=ty+"px";tip.style.opacity="1";
+  clearTimeout(_tooltipTimer);_tooltipTimer=setTimeout(()=>{if(tip)tip.style.opacity="0";},2800);
+}
+document.addEventListener("click",()=>{const t=document.getElementById("sp-tooltip");if(t)t.style.opacity="0";});
+
+function specialBadgeHtml(sp){
+  if(!sp)return"";
+  const e=SPECIAL_EFFECTS[sp];if(!e)return"";
+  return"<div class='sp-badge' style='background:"+e.color+"' data-sp='"+sp+"'>"+e.icon+"</div>";
+}
+
+// 最后触发的特效名称缓存（用于mods显示）
+let lastSpecialMsg="";
+function doAddSlot(){if(!(G.boosters.add>0)){openShop();return;}G.boosters.add--;boostersUsed++;const max=(currentCfg&&currentCfg.maxPip)||6;for(let i=0;i<3;i++)stock.push(genDomino(max));hint("补牌成功：获得 3 张手牌");save();cloudSave();renderAll();}
+function doReveal(){if(!(G.boosters.reveal>0)){openShop();return;}G.boosters.reveal--;boostersUsed++;wildMode=true;hint("万能牌已启用：下一张桌面牌可任意拿，连击不会重置");save();cloudSave();renderAll();}
+function showWin(){
+  const mult=Number(G.multiplier||1),reward=(30+level*5)*mult;
+  // 星星计算：基础3 → 用过道具-1 → 连击未超过5-1 → 连击超过10+1，上限4，下限1
+  let stars=3;
+  if(boostersUsed>0)stars-=1;
+  if(maxStreak<=5)stars-=1;
+  if(maxStreak>10)stars+=1;
+  stars=Math.max(1,Math.min(4,stars));
+  // 倍率影响金币，不再影响星星
+  if(!G.cleared.includes(level))G.cleared.push(level);
+  if(!G.unlocked.includes(level+1))G.unlocked.push(level+1);
+  G.coins=(G.coins||0)+reward;G.stars=(G.stars||0)+stars;G.wheel=(G.wheel||0)+mult;
+  save();cloudSave();
+  gasBeacon({sheet:SHEET,action:"level_clear",id:G.id,uid:String(G.uid),level:String(level),stars:String(stars),moves:String(moves),max_streak:String(maxStreak),boosters_used:String(boostersUsed),coin_reward:String(reward),coins_total:String(G.coins||0),date:todayISO()});
+  const starStr="⭐".repeat(stars)+"☆".repeat(Math.max(0,4-stars));
+  qs("win-body").innerHTML="第 "+level+" 关完成！<br>奖励 "+reward+" 金币 · "+starStr+"（"+stars+" 星）<br><span style='font-size:.78rem;color:rgba(255,255,255,.6)'>最高连击 "+maxStreak+(boostersUsed?" · 使用道具 "+boostersUsed+"次":"")+"</span>";
+  qs("ov-win").classList.remove("hidden");renderAll();
+}
+function showLose(msg){
+  qs("lose-body").textContent=msg||"无法继续";
+  // 复活费用：金币 = 关卡 * 10，上限300
+  const coinCost=Math.min(300,level*10);
+  const el=qs("revive-coin-cost");
+  if(el)el.textContent="花费 "+coinCost+" 🪙（当前 "+(G.coins||0)+"）";
+  // 检查金币/回复数是否足够，不足则按钮变灰
+  const coinBtn=qs("ov-lose").querySelector("button[onclick=\"doRevive('coins')\"]");
+  const replyBtn=qs("ov-lose").querySelector("button[onclick=\"doRevive('replies')\"]");
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  if(coinBtn)coinBtn.disabled=(G.coins||0)<coinCost;
+  if(replyBtn)replyBtn.disabled=ar<5;
+  qs("ov-lose").classList.remove("hidden");
+}
+function doRevive(type){
+  const coinCost=Math.min(300,level*10);
+  if(type==="coins"){
+    if((G.coins||0)<coinCost){alert("金币不足！需要 "+coinCost+" 金币");return;}
+    G.coins=Math.max(0,(G.coins||0)-coinCost);
+    hint("💊 金币复活！获得 5 张手牌");
+  }else{
+    const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+    if(ar<5){alert("回复数不足！需要 5 回复数");return;}
+    G.repliesSpent=(G.repliesSpent||0)+5;
+    hint("💊 回复数复活！获得 5 张手牌");
+  }
+  // 补充5张手牌
+  const max=(currentCfg&&currentCfg.maxPip)||6;
+  for(let i=0;i<5;i++)stock.push(genDomino(max));
+  qs("ov-lose").classList.add("hidden");
+  save();cloudSave();
+  gasBeacon({sheet:SHEET,action:"revive",id:G.id,uid:String(G.uid),level:String(level),revive_type:type,date:todayISO()});
+  renderAll();checkEndState();
+}
+const PIP_MAP={0:[],1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+function halfHtml(v,hidden){
+  if(hidden)return"<div class='domino-half hidden-side'>?</div>";
+  const spots=PIP_MAP[v]||[];let s="<div class='domino-half'>";
+  for(let i=0;i<9;i++)s+=spots.includes(i)?"<span class='pip'></span>":"<span></span>";
+  return s+"</div>";
+}
+function dominoHtml(t,opt){
+  opt=opt||{};const hideA=opt.hideSide===0,hideB=opt.hideSide===1;
+  return"<div class='domino-inner'>"+halfHtml(t.a,hideA)+halfHtml(t.b,hideB)+"</div>";
+}
+function renderHand(){
+  const tr=qs("tray"),ends=activeEnds.map(x=>"["+x+"]").join(" / ")||"-";
+  tr.innerHTML="<div class='hand-left'><button class='btn stock-btn' onclick='drawStock()'>抽牌</button><span>剩余手牌 "+stock.length+"</span></div><div class='hand-center'><div class='domino-tile hand-domino'>"+dominoHtml(currentTile||{a:0,b:0})+"</div><div class='ends'>可接点数 "+ends+(wildMode?" · 万能中":"")+"</div></div><div class='hand-right'><span>连击 "+streak+"</span><span>步数 "+moves+"</span></div>";
+}
+// 固定布局坐标分配（只在generateLevelData时计算一次）
+function assignBoardLayout(){
+  const W=window.innerWidth,H=window.innerHeight;
+  const isMobile=W<760;
+  const areaW=Math.min(1040,W*0.98)-16;
+  const areaH=Math.max(180,H-(isMobile?140:176)-130);
+  const n=board.length||1;
+  const STACK=2;
+  let bestTW=60,bestCols=6;
+  for(let cols=Math.min(12,Math.ceil(Math.sqrt(n*2)));cols>=2;cols--){
+    const tw=Math.floor(areaW/cols)-4;
+    const th=Math.floor(tw/2);
+    const rows=Math.ceil(Math.ceil(n/STACK)/cols);
+    if(rows*th<=areaH){bestTW=tw;bestCols=cols;break;}
+  }
+  bestTW=Math.max(isMobile?52:60,Math.min(isMobile?90:130,bestTW));
+  const bestTH=Math.floor(bestTW/2);
+  const OFFSET=6,gap=4;
+  board.forEach((t,i)=>{
+    const cellIdx=Math.floor(i/STACK);
+    const layer=i%STACK;
+    const col=cellIdx%bestCols,row=Math.floor(cellIdx/bestCols);
+    const x=col*(bestTW+gap),y=row*(bestTH+gap+OFFSET*(STACK-1))+layer*OFFSET;
+    const z=100-layer*10+(col+row);
+    t._lx=x;t._ly=y;t._lz=z;t._lw=bestTW;t._lh=bestTH;
+    t._stackLayer=layer;t._stackCellIdx=cellIdx;
+    t._stackFrontId=layer>0?board[i-1]?.id:null;
+  });
+}
+
+function renderAll(){
+  const sk=pickSkin();qs("game").style.background=sk.bg;qs("menu").style.background=sk.bg;qs("coins").textContent=G.coins||0;
+  const rem=remainingTiles(),play=playableTiles().length;
+  qs("target").textContent="目标：清空全部骨牌（剩余 "+rem+"） · 当前可拿 "+play+" 张 · 手牌 "+stock.length;
+  const obs=[];if(puzzleNeed)obs.push("拼图 "+puzzleHave+"/"+puzzleNeed);if(hammersNeed)obs.push("锤子 "+hammers+"/"+hammersNeed);if(wildMode)obs.push("万能牌待用");if(pendingExtraMove)obs.push("⚡ 可再行动");
+  qs("mods").textContent="规则：桌面牌任一端接上当前点数即可拿走；切换手牌会中断连击"+(obs.length?"｜"+obs.join("｜"):"")+(lastSpecialMsg?"　▶ "+lastSpecialMsg:"");
+  qs("uval").textContent=G.boosters.undo||0;qs("hval").textContent=G.boosters.hint||0;qs("aval").textContent=G.boosters.add||0;qs("rval").textContent=G.boosters.reveal||0;
+  qs("progress").style.width=Math.min(100,Math.round((1-rem/Math.max(1,board.length))*100))+"%";
+
+  const wrap=qs("sticks-inner");wrap.innerHTML="";
+  const areaEl=qs("sticks");
+  const areaW=areaEl.offsetWidth||300,areaH=areaEl.offsetHeight||200;
+
+  // 使用固定坐标渲染（消除后位置不变）
+  board.forEach(t=>{
+    const tw=t._lw||80,th=t._lh||40;
+    if(t.removed){
+      // 不渲染已消除的骨牌（保持位置空白，不显示灰色）
+      return;
+    }
+    const x=t._lx||0,y=t._ly||0,z=t._lz||1;
+    const layer=t._stackLayer||0;
+    // 检查前排骨牌是否还存在（未消除）→ 决定是否被堆叠遮挡
+    const frontTile=t._stackFrontId?board.find(b=>b.id===t._stackFrontId):null;
+    const blockedByStack=layer>0&&frontTile&&!frontTile.removed;
+    const isXrayed=xrayTileId===t.id;
+    const playable=canPlayTile(t)&&!blockedByStack;
+    const d=document.createElement("div");
+    d.className="domino-tile"+(playable?" playable":"")+(hintTileId===t.id?" hinted":"")+(isBlocked(t)||blockedByStack?" blocked":"")+(isXrayed?" xrayed":"");
+    if(blockedByStack&&!isXrayed)d.classList.add("stack-blocked");
+    d.style.cssText="width:"+tw+"px;height:"+th+"px;left:"+x+"px;top:"+y+"px;z-index:"+(isXrayed?200:z)+";position:absolute";
+    d.onclick=()=>{if(blockedByStack){hint("先消除前面的骨牌才能碰到这张");renderAll();return;}playTile(t.id);};
+    const isDark=t.special==="dark"&&t._darkHidden&&!isXrayed;
+    let hide=-1;if(t.obstacle==="trap")hide=(t.trapSide||0)===0?1:0;
+    d.innerHTML=isDark?"<div class='domino-inner'><div class='domino-half hidden-side'>?</div><div class='domino-half hidden-side'>?</div></div>":dominoHtml(t,{hideSide:hide});
+    if(t.obstacle==="cookie")d.innerHTML+="<div class='cookie-chip'>🍪 "+((t.cookieHits||[]).filter(Boolean).length)+"/2</div>";
+    if(t.obstacle==="trap")d.innerHTML+="<div class='trap-mark'>🚪</div>";
+    if(t.puzzle&&!t.removed)d.innerHTML+="<div class='puzzle-mark'>🧩</div>";
+    if(t.hammer&&!t.removed)d.innerHTML+="<div class='hammer-mark'>🔨</div>";
+    if(t.lockedByPuzzle)d.innerHTML+="<div class='tile-lock'>🧩</div>";
+    if(t.frozen)d.innerHTML+="<div class='tile-lock'>🧊</div>";
+    if(t.special)d.innerHTML+=specialBadgeHtml(t.special);
+    wrap.appendChild(d);
+  });
+
+  wrap.addEventListener("click",ev=>{
+    const badge=ev.target.closest(".sp-badge");
+    if(badge){
+      const sp=badge.dataset.sp;
+      const eff=SPECIAL_EFFECTS[sp];
+      if(eff)showSpecialTooltip(eff.icon,eff.label,eff.desc,ev);
+    }
+  },{capture:true});
+  let maxX=0,maxY=0;
+  board.forEach(t=>{maxX=Math.max(maxX,(t._lx||0)+(t._lw||80));maxY=Math.max(maxY,(t._ly||0)+(t._lh||40));});
+  wrap.style.width=maxX+"px";
+  wrap.style.height=maxY+"px";
+  wrap.style.position="absolute";
+  const offsetX=Math.max(0,Math.floor((areaW-maxX)/2));
+  const offsetY=Math.max(0,Math.floor((areaH-maxY)/2));
+  wrap.style.left=offsetX+"px";wrap.style.top=offsetY+"px";
+
+  renderHand();
+}
+async function fffProxyGet(url){
+  const b=url+(url.includes("?")?"&":"?")+"_b="+Date.now();
+  let lastErr=new Error("网络错误");
+  for(let i=0;i<FORUM_PROXIES.length;i++){
+    const px=FORUM_PROXIES[i],ctrl=new AbortController(),tid=setTimeout(()=>ctrl.abort(),FORUM_FETCH_MS);
+    try{
+      const target=px.includes("codetabs")?px+encodeURIComponent(b):px+b.replace(/^https?:\/\//,"");
+      const r=await fetch(target,{signal:ctrl.signal});
+      if(!r.ok)throw new Error("proxy_"+(i+1)+"_"+r.status);
+      const text=await r.text();if(text&&text.length>30)return text;
+    }catch(e){lastErr=e;}finally{clearTimeout(tid);}
+  }
+  throw new Error("网络错误(代理不可用): "+String(lastErr&&lastErr.message||lastErr));
+}
+async function refreshForumData(){setForumStatus("正在抓取中...");return fetchForumDataCustom(true);}
+async function refreshForumDataFast(){setForumStatus("正在快速抓取中...");return fetchForumDataCustom(true,{maxPages:25,maxCitationChecks:0});}
+async function fetchForumDataCustom(show,opt){
+  if(!G.uid){alert("先登入");return false;}
+  const sd=qs("forum-start-date").value||todayISO(),ed=qs("forum-end-date").value||sd;
+  const startD=new Date(sd+"T00:00:00"),endD=new Date(ed+"T23:59:59");
+  function inRange_(d){return d instanceof Date&&!isNaN(d)&&d>=startD&&d<=endD;}
+  function parseItemDate_(it){const t=it.querySelector("time[datetime]")||it.querySelector("time");const dt=t&&(t.getAttribute("datetime")||t.textContent||"");const m=String(dt).match(/(\d{4})-(\d{2})-(\d{2})/);return m?new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00"):null;}
+  try{
+    const sh=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+G.uid);
+    const slug=(sh.match(/\/profile\/([^\/\"?#]+)/)||[])[1];if(!slug)throw new Error("slug失败");
+    let page=1,replies=0,cites=0,budget=(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:20,maxPages=(opt&&opt.maxPages)||60;
+    while(page<=maxPages){
+      setForumStatus("正在抓取中...第 "+page+" 页");
+      const u=page===1?"https://sstm.moe/profile/"+slug+"/content/?type=forums_topic_post&change_section=1":"https://sstm.moe/profile/"+slug+"/content/page/"+page+"/?type=forums_topic_post";
+      const html=await fffProxyGet(u),doc=new DOMParser().parseFromString(html,"text/html"),items=[...doc.querySelectorAll("ol.cProfileContent>li")];
+      if(!items.length)break;let allOlder=true,anyIn=false,arr=[];
+      items.forEach(it=>{const d=parseItemDate_(it);if(d&&d>=startD)allOlder=false;if(!d||!inRange_(d))return;anyIn=true;const a=it.querySelector("p.ipsType_light a[href]");if(a&&/forum\/32[-\/]/.test(a.getAttribute("href")||""))replies++;const bq=it.querySelector(".ipsQuote");if(bq){const cid=bq.getAttribute("data-ipsquote-contentcommentid"),tid=bq.getAttribute("data-ipsquote-contentid");if(cid&&tid)arr.push({cid,tid});}});
+      if(allOlder&&!anyIn)break;
+      const chk=arr.slice(0,Math.max(0,budget));budget-=chk.length;
+      for(let i=0;i<chk.length;i+=10){await Promise.all(chk.slice(i,i+10).map(async x=>{try{const q=await fffProxyGet("https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid);if(/forum\/32[-\/]/.test(q)&&new RegExp("data-ipsquote-userid=\\\""+G.uid+"\\\"").test(q))cites++;}catch(e){}}));}
+      if(!doc.querySelector("li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel='next']"))break;
+      page++;await new Promise(r=>setTimeout(r,24));
+    }
+    G.replies=(Number(G.replies)||0)+replies;G.citations=(Number(G.citations)||0)+cites;save();cloudSave();updateShopCurrency();updateMenuStat();
+    gasBeacon({sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(G.uid),replies:String(replies),citations:String(cites),startDate:sd,endDate:ed,date:todayISO()});
+    setForumStatus("抓取完成：回复 "+replies+" / 被引用 "+cites);if(show)alert("抓取完成\n回复:"+replies+" 被引用:"+cites);return true;
+  }catch(e){setForumStatus("抓取失败："+e.message);if(show)alert("抓取失败:"+e.message);return false;}
+}
+function openShop(){renderShop();updateShopCurrency();qs("ov-shop").classList.remove("hidden");}
+function closeShop(){qs("ov-shop").classList.add("hidden");}
+function updateShopCurrency(){qs("sh-replies").textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));qs("sh-cites").textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));}
+function renderShop(){
+  const list=qs("shop-list");list.innerHTML="";const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  SHOP_ITEMS.forEach(it=>{const av=it.costType==="replies"?ar:ac,owned=it.give&&it.give.bgSkin&&ownsBgSkin(it.give.bgSkin),can=av>=it.cost&&!owned,d=document.createElement("div");d.className="shop-item"+(owned?" owned":"");if(owned)d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:#94a3b8'>已拥有</div></div><button class='btn' disabled>已拥有</button>";else{d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>花费 "+it.cost+" "+(it.costType==="replies"?"回复":"被引用")+"</div></div><button class='btn' "+(can?"":"disabled")+">购买</button>";d.querySelector("button").onclick=()=>buyItemDirect(it.id);}list.appendChild(d);});
+}
+function buyItemDirect(id){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;if(it.give&&it.give.bgSkin){if(ownsBgSkin(it.give.bgSkin)){alert("你已经拥有这款骨牌背景皮肤了，无法重复购买。");return;}return buyItem(id,1);}return buyItemPrompt(id);}
+function buyItemPrompt(id){const it=SHOP_ITEMS.find(x=>x.id===id);if(it&&it.give&&it.give.bgSkin)return buyItemDirect(id);const q=prompt("数量","1");if(q===null)return;buyItem(id,Math.max(1,Math.min(99,parseInt(q,10)||1)));}
+function buyItem(id,qty){
+  const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0)),av=it.costType==="replies"?ar:ac,cost=it.cost*qty;
+  if(av<cost){alert("数量不足");return;}
+  if(it.costType==="replies")G.repliesSpent=(G.repliesSpent||0)+cost;else G.citationsSpent=(G.citationsSpent||0)+cost;
+  if(it.give.undo)G.boosters.undo+=it.give.undo*qty;if(it.give.hint)G.boosters.hint+=it.give.hint*qty;if(it.give.add)G.boosters.add+=it.give.add*qty;if(it.give.reveal)G.boosters.reveal+=it.give.reveal*qty;if(it.give.ticket)G.tickets=(G.tickets||0)+it.give.ticket*qty;if(it.give.bgSkin){for(let i=0;i<qty;i++)grantBgSkin(it.give.bgSkin);if(!qs("ov-skin").classList.contains("hidden"))openSkin();}
+  save();cloudSave();renderShop();updateShopCurrency();updateMenuStat();if(!qs("game").classList.contains("hidden"))renderAll();gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId:id,cost:String(cost),costType:it.costType,date:todayISO()});
+}
+function downloadSkewerData_(){
+  save();
+  const rows=[["项目","数值"],["论坛ID",G.id],["UID",G.uid],["金币",G.coins||0],["星星",G.stars||0],["章节",G.chapter||1],["今日回复数",G.replies||0],["被引用数",G.citations||0],["重复挑战卷",G.tickets||0],["已解锁关卡",(G.unlocked||[]).join(" ")],["已通关关卡",(G.cleared||[]).join(" ")],["皮肤",G.skin||"default"],["下载时间",new Date().toLocaleString("zh-TW")]];
+  __appendPortableSaveRows(rows,"skewer_time",G);
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="domino-skewer-time-"+(G.id||"player")+".csv";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+window.__applyPortableSaveData=async function(data){if(!data||typeof data!=="object")throw new Error("bad_save");Object.assign(G,data);try{normalize();}catch(e){}try{if(G.id)localStorage.setItem(KEY_ID,G.id);if(G.uid!=null)localStorage.setItem(KEY_UID,String(G.uid));}catch(e){}save();try{await cloudSave();}catch(e){console.warn("cloud save after import failed",e);}try{updateMenuStat();renderChapter();renderMultiplier();renderLvList();renderAll();}catch(e){}};
+(function(){
+  const MARK="__HTML_GAME_SAVE__";
+  window.__appendPortableSaveRows=function(rows,game,state){try{rows.push([MARK,"game",game||""]);rows.push([MARK,"saved_at",new Date().toISOString()]);rows.push([MARK,"state_json",JSON.stringify(state||{})]);}catch(e){console.warn("portable save export failed",e);}return rows;};
+  function parseCsv(text){text=String(text||"").replace(/^\uFEFF/,"");const rows=[];let row=[],cell="",q=false;for(let i=0;i<text.length;i++){const ch=text[i],nx=text[i+1];if(q){if(ch==='"'&&nx==='"'){cell+='"';i++;}else if(ch==='"')q=false;else cell+=ch;}else{if(ch==='"')q=true;else if(ch===","){row.push(cell);cell="";}else if(ch==="\n"){row.push(cell);rows.push(row);row=[];cell="";}else if(ch!=="\r")cell+=ch;}}row.push(cell);rows.push(row);return rows;}
+  function readPayload(text){const raw=String(text||"").replace(/^\uFEFF/,"").trim();if(raw.charAt(0)==="{")return JSON.parse(raw);const rows=parseCsv(text);for(let i=0;i<rows.length;i++){if(rows[i][0]===MARK&&rows[i][1]==="state_json")return JSON.parse(rows[i][2]||"{}");}throw new Error("save_json_not_found");}
+  window.importGameSaveData_=function(){const input=document.createElement("input");input.type="file";input.accept=".csv,.json,text/csv,application/json";input.onchange=function(){const file=input.files&&input.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(){Promise.resolve().then(function(){if(!window.__applyPortableSaveData)throw new Error("import_adapter_missing");const data=readPayload(reader.result);return window.__applyPortableSaveData(data);}).then(function(){alert("读档完成：本机记录已复原，并已尝试同步到云端。");}).catch(function(e){console.error(e);alert("读档失败：请选择由本游戏「下载游玩数据/存档」导出的 CSV。");});};reader.readAsText(file,"utf-8");};input.click();};
+  window.__installPortableSaveImport=function(){let found=false;Array.prototype.forEach.call(document.querySelectorAll("button"),function(btn){const oc=btn.getAttribute("onclick")||"";if(oc.indexOf("download")<0||btn.getAttribute("data-import-save-bound"))return;btn.setAttribute("data-import-save-bound","1");const b=document.createElement("button");b.type="button";b.className=btn.className||"";b.style.cssText=btn.style.cssText||"";b.textContent="📤 读取存档";b.title="读取先前下载的存档 CSV";b.onclick=window.importGameSaveData_;btn.insertAdjacentElement("afterend",b);found=true;});return found;};
+  function boot(){window.__installPortableSaveImport();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
+})();
+window.addEventListener("DOMContentLoaded",()=>{load();normalize();applyBgTheme();const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;save();});
+window.addEventListener("resize",()=>{if(!qs("game").classList.contains("hidden")){assignBoardLayout();renderAll();}});
+</script>
+</body>
+</html>

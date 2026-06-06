@@ -8,12 +8,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#1a0533;--accent:#f472b6;--gold:#fbbf24;--shadow:0 4px 20px rgba(0,0,0,.5)}
-body{background:var(--bg);font-family:'Nunito',sans-serif;color:#fff;min-height:100vh;overflow:hidden;display:flex;flex-direction:column;align-items:center}
-.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10}
+html,body{height:100%;width:100%;overflow:hidden}
+body{background:var(--bg);font-family:'Nunito',sans-serif;color:#fff;overflow:hidden;display:flex;flex-direction:column;align-items:center}
+.screen{position:fixed;inset:0;width:100%;height:100%;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10}
 .screen.hidden{display:none}
 
 /* ── MENU ── */
-#menu{background:radial-gradient(ellipse at 50% 0%,#5b0f8a 0%,#1a0533 70%)}
+#menu{background:radial-gradient(ellipse at 50% 0%,#5b0f8a 0%,#1a0533 70%);background-size:cover;background-position:center;position:relative;overflow:hidden;justify-content:flex-start;padding-bottom:0}
+#menu-top-bar,#menu .menu-title,#menu .menu-sub,#menu .btn-play,#menu .menu-levels{position:relative;z-index:2}
 .menu-glow{position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:300px;height:300px;background:radial-gradient(circle,rgba(244,114,182,.35) 0%,transparent 70%);pointer-events:none}
 .menu-title{font-size:2.5rem;font-weight:900;background:linear-gradient(135deg,#fde68a,#f472b6,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:4px}
 .menu-sub{font-size:.9rem;color:rgba(255,255,255,.5);margin-bottom:24px;text-align:center}
@@ -24,7 +26,7 @@ body{background:var(--bg);font-family:'Nunito',sans-serif;color:#fff;min-height:
 .btn-play{padding:14px 52px;font-size:1.1rem;font-weight:800;font-family:'Nunito',sans-serif;background:linear-gradient(135deg,#f472b6,#a855f7);border:none;border-radius:50px;color:#fff;cursor:pointer;box-shadow:0 6px 0 #7c2d8a;transition:transform .1s,box-shadow .1s}
 .btn-play:active{transform:translateY(3px);box-shadow:0 3px 0 #7c2d8a}
 .btn-play:disabled{opacity:.45;cursor:not-allowed}
-.menu-levels{display:flex;flex-direction:column;gap:8px;margin-top:14px;align-items:center;max-height:180px;overflow-y:auto;width:min(360px,94vw)}
+.menu-levels{display:flex;flex-direction:column;gap:8px;margin-top:14px;align-items:center;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;width:min(360px,94vw);padding-bottom:12px}
 .level-row{display:flex;gap:8px}
 .level-btn{width:52px;height:52px;border-radius:13px;font-size:.88rem;font-weight:800;font-family:'Nunito',sans-serif;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;transition:all .15s}
 .level-btn:hover,.level-btn.active{background:rgba(244,114,182,.25);border-color:#f472b6;color:#fde68a}
@@ -34,10 +36,15 @@ body{background:var(--bg);font-family:'Nunito',sans-serif;color:#fff;min-height:
 .menu-btn-sm{padding:5px 10px;border-radius:18px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;font-size:.72rem;font-weight:700;font-family:'Nunito',sans-serif}
 
 /* ── GAME ── */
-#game{background:radial-gradient(ellipse at 50% 30%,#2d0a5e 0%,#1a0533 60%);flex-direction:column;padding:0;overflow:hidden}
+#game{background:radial-gradient(ellipse at 50% 30%,#2d0a5e 0%,#1a0533 60%);flex-direction:column;padding:0;overflow:hidden;background-size:cover;background-position:center}
 body.skin-forest #game{background:radial-gradient(ellipse at 50% 30%,#0a3a1a 0%,#061810 60%)}
 body.skin-ocean  #game{background:radial-gradient(ellipse at 50% 30%,#0a1a4a 0%,#040d28 60%)}
 body.skin-sunset #game{background:radial-gradient(ellipse at 50% 30%,#4a1a0a 0%,#280a04 60%)}
+body.skin-icecream #game{background:radial-gradient(ellipse at 50% 30%,#5a1060 0%,#1a0533 60%)}
+body.skin-cyber    #game{background:radial-gradient(ellipse at 50% 30%,#001a3a 0%,#000d1a 60%)}
+body.skin-crystal  #game{background:radial-gradient(ellipse at 50% 30%,#0a204a 0%,#05102a 60%)}
+body.skin-plush    #game{background:radial-gradient(ellipse at 50% 30%,#3a1040 0%,#1a0522 60%)}
+body.skin-retro    #game{background:radial-gradient(ellipse at 50% 30%,#3a2000 0%,#1a0e00 60%)}
 
 /* TOPBAR */
 #topbar{width:100%;display:flex;align-items:center;justify-content:space-between;padding:9px 13px 5px;background:rgba(0,0,0,.2);border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
@@ -129,8 +136,12 @@ body.skin-sunset #game{background:radial-gradient(ellipse at 50% 30%,#4a1a0a 0%,
 .skin-btn.active{background:rgba(244,114,182,.2)!important;border-color:#f472b6!important}
 .skin-check{font-size:1rem;color:#f472b6;opacity:0;min-width:18px;text-align:center}
 .skin-btn.active .skin-check{opacity:1}
+/* 登录封面图 */
+#login-cover-bg{position:absolute;inset:0;z-index:0;background:url('https://s.sstmlt.com/img/2026/05/17/candy_crush4a1e13083738fa1d.jpeg') center/cover no-repeat;filter:brightness(.55) saturate(1.2)}
+#screen-login{position:fixed;overflow:hidden}
+#screen-login > *:not(#login-cover-bg){position:relative;z-index:2}
 /* 登录 */
-.login-card{background:rgba(0,0,0,.3);border:1px solid rgba(244,114,182,.2);border-radius:18px;padding:22px 18px;max-width:360px;width:94%;margin-top:12px}
+.login-card{background:rgba(0,0,0,.45);border:1px solid rgba(244,114,182,.3);border-radius:18px;padding:22px 18px;max-width:360px;width:94%;margin-top:12px;backdrop-filter:blur(8px)}
 .inp-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .inp-row label{min-width:48px;font-size:.82rem;color:rgba(255,255,255,.65)}
 .inp{flex:1;padding:9px 12px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.18);border-radius:10px;color:#fff;font-size:.88rem;outline:none;font-family:'Nunito',sans-serif}
@@ -165,6 +176,7 @@ body.skin-sunset #game{background:radial-gradient(ellipse at 50% 30%,#4a1a0a 0%,
 <body>
 <!-- LOGIN -->
 <div id="screen-login" class="screen" style="display:flex">
+  <div id="login-cover-bg"></div>
   <div class="menu-glow"></div>
   <div class="menu-title" style="margin-top:10px">🍬 糖果小镇</div>
   <div class="menu-sub">Candy Town · 三消冒险</div>
@@ -228,15 +240,21 @@ body.skin-sunset #game{background:radial-gradient(ellipse at 50% 30%,#4a1a0a 0%,
 
 <!-- SKIN -->
 <div id="skin-overlay" class="overlay" style="z-index:90">
-  <div class="ov-card" style="max-width:320px">
+  <div class="ov-card" style="max-width:320px;max-height:88vh;overflow-y:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
       <div class="ov-title" style="margin:0">🎨 主题皮肤</div>
       <button onclick="closeSkinPanel()" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:1rem">×</button>
     </div>
-    <div class="skin-option skin-btn" data-skin="default" onclick="applySkin('default')"><div style="font-size:1.3rem">🍬</div><div style="flex:1"><div style="font-weight:800">糖果王国</div><div style="font-size:.7rem;color:rgba(255,255,255,.45)">默认</div></div><div class="skin-check">✓</div></div>
-    <div class="skin-option skin-btn" data-skin="forest" onclick="applySkin('forest')"><div style="font-size:1.3rem">🌲</div><div style="flex:1"><div style="font-weight:800">魔法森林 <span style="font-size:.67rem;color:#fbbf24">（通关15关）</span></div></div><div class="skin-check">✓</div></div>
-    <div class="skin-option skin-btn" data-skin="ocean" onclick="applySkin('ocean')"><div style="font-size:1.3rem">🌊</div><div style="flex:1"><div style="font-weight:800">海底世界 <span style="font-size:.67rem;color:#fbbf24">（通关30关）</span></div></div><div class="skin-check">✓</div></div>
-    <div class="skin-option skin-btn" data-skin="sunset" onclick="applySkin('sunset')"><div style="font-size:1.3rem">🌅</div><div style="flex:1"><div style="font-weight:800">落日糖果 <span style="font-size:.67rem;color:#fbbf24">（通关60关）</span></div></div><div class="skin-check">✓</div></div>
+    <div class="skin-option skin-btn" data-skin="default" onclick="applySkin('default')"><img src="https://s.sstmlt.com/img/2026/05/26/candy_crush-fc14afffda101cb8.jpeg" style="width:44px;height:44px;border-radius:9px;object-fit:cover;flex-shrink:0"><div style="flex:1"><div style="font-weight:800">糖果王国</div><div style="font-size:.7rem;color:rgba(255,255,255,.45)">默认</div></div><div class="skin-check">✓</div></div>
+    <div class="skin-option skin-btn" data-skin="forest" onclick="applySkin('forest')"><img src="https://s.sstmlt.com/img/2026/05/26/candy_crush-f31c2b0b2830a461.jpeg" style="width:44px;height:44px;border-radius:9px;object-fit:cover;flex-shrink:0"><div style="flex:1"><div style="font-weight:800">魔法森林 <span style="font-size:.67rem;color:#fbbf24">（通关15关）</span></div></div><div class="skin-check">✓</div></div>
+    <div class="skin-option skin-btn" data-skin="ocean" onclick="applySkin('ocean')"><img src="https://s.sstmlt.com/img/2026/05/26/candy_crush-af07a9844cf1eae5.jpeg" style="width:44px;height:44px;border-radius:9px;object-fit:cover;flex-shrink:0"><div style="flex:1"><div style="font-weight:800">海底世界 <span style="font-size:.67rem;color:#fbbf24">（通关30关）</span></div></div><div class="skin-check">✓</div></div>
+    <div class="skin-option skin-btn" data-skin="sunset" onclick="applySkin('sunset')"><img src="https://s.sstmlt.com/img/2026/05/26/candy_crush-55005a13147eed19.jpeg" style="width:44px;height:44px;border-radius:9px;object-fit:cover;flex-shrink:0"><div style="flex:1"><div style="font-weight:800">落日糖果 <span style="font-size:.67rem;color:#fbbf24">（通关60关）</span></div></div><div class="skin-check">✓</div></div>
+    <div style="font-size:.72rem;color:rgba(244,114,182,.8);font-weight:800;margin:10px 0 6px">🛒 商店皮肤</div>
+    <div class="skin-option skin-btn" data-skin="icecream" onclick="applySkin('icecream')"><img src="https://s.sstmlt.com/img/2026/05/26/candy_crush-17adfd4339686413.jpeg" style="width:44px;height:44px;border-radius:9px;object-fit:cover;flex-shrink:0"><div style="flex:1"><div style="font-weight:800">梦幻冰淇淋圣代</div><div style="font-size:.68rem;color:rgba(255,255,255,.4)" id="skin-label-icecream">🔒 需购买</div></div><div class="skin-check">✓</div></div>
+    <div class="skin-option skin-btn" data-skin="cyber" onclick="applySkin('cyber')"><img src="https://s.sstmlt.com/img/2026/05/26/candy_crush-8ad4e07bc4fbd83e.jpeg" style="width:44px;height:44px;border-radius:9px;object-fit:cover;flex-shrink:0"><div style="flex:1"><div style="font-weight:800">赛博糖果霓虹</div><div style="font-size:.68rem;color:rgba(255,255,255,.4)" id="skin-label-cyber">🔒 需购买</div></div><div class="skin-check">✓</div></div>
+    <div class="skin-option skin-btn" data-skin="crystal" onclick="applySkin('crystal')"><img src="https://s.sstmlt.com/img/2026/05/26/candy_crush-db28b83d31764429.jpeg" style="width:44px;height:44px;border-radius:9px;object-fit:cover;flex-shrink:0"><div style="flex:1"><div style="font-weight:800">璀璨魔法水晶</div><div style="font-size:.68rem;color:rgba(255,255,255,.4)" id="skin-label-crystal">🔒 需购买</div></div><div class="skin-check">✓</div></div>
+    <div class="skin-option skin-btn" data-skin="plush" onclick="applySkin('plush')"><img src="https://s.sstmlt.com/img/2026/05/26/candy_crush-4b722d4410e160b5.jpeg" style="width:44px;height:44px;border-radius:9px;object-fit:cover;flex-shrink:0"><div style="flex:1"><div style="font-weight:800">治愈系毛绒玩偶</div><div style="font-size:.68rem;color:rgba(255,255,255,.4)" id="skin-label-plush">🔒 需购买</div></div><div class="skin-check">✓</div></div>
+    <div class="skin-option skin-btn" data-skin="retro" onclick="applySkin('retro')"><img src="https://s.sstmlt.com/img/2026/05/26/candy_crush-aa53a0b342e196a6.jpeg" style="width:44px;height:44px;border-radius:9px;object-fit:cover;flex-shrink:0"><div style="flex:1"><div style="font-weight:800">复古美式甜品店</div><div style="font-size:.68rem;color:rgba(255,255,255,.4)" id="skin-label-retro">🔒 需购买</div></div><div class="skin-check">✓</div></div>
   </div>
 </div>
 
@@ -519,28 +537,7 @@ async function retryCloud(){
     if(bar) bar.innerHTML='🔴 离线游玩中<br><span style="font-size:.7rem;opacity:.8">点击重新连线</span>';
   }
 }
-function downloadGameData(){
-  var rows=[
-    ['项目','数值'],
-    ['论坛ID',G.id],['UID',G.uid],
-    ['金币',G.coins||0],
-    ['今日回复数',G.replies||0],['被引用数',G.citations||0],
-    ['重复挑战卷',G.tickets||0],
-    ['撤回道具',G.boosters.undo||0],
-    ['重排道具',G.boosters.shuffle||0],
-    ['提示道具',G.boosters.hint||0],
-    ['已解锁关卡',(G.unlocked||[]).join(' ')],
-    ['已通关关卡',(G.cleared||[]).join(' ')],
-    ['皮肤',G.skin||'default'],
-    ['下载时间',new Date().toLocaleString('zh-TW')],
-  ];
-  var csv=rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\r\n');
-  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a'); a.href=url; a.download='candy-town-'+G.id+'.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(function(){ URL.revokeObjectURL(url); },1000);
-}
+// downloadGameData v1 已移除，使用下方完整版
 
 // ══════════════════════════════════════════
 // UTIL
@@ -617,14 +614,13 @@ function doOfflineMode(){
 
 function doLogout(){
   if(!confirm("确认登出？")) return;
-  G={id:'',uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,tickets:0,unlocked:[1],cleared:[],boosters:{hammer:0,lollipop:0,fish:0},coins:0,skin:'default',fetchRangeHistory:{}};
+  G={id:'',uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,tickets:0,unlocked:[1],cleared:[],boosters:{hammer:0,lollipop:0,fish:0},coins:0,skin:'default',fetchRangeHistory:{},seenLevelTypes:[],levelStars:{},totalCoinsEarned:0,totalStarsEarned:0,purchasedSkins:[]};
   try{
     localStorage.removeItem(KEY_ID);
     localStorage.removeItem(KEY_UID);
   }catch(e){}
   _offline=false; _forumFetched=false;
-  showScreen("screen-login");
-  renderIdHistory();
+  showScreen("screen-login");  renderIdHistory();
   const hist=loadIdHistory();
   if(hist.length){
     document.getElementById('inp-id').value=hist[0].id||'';
@@ -924,6 +920,27 @@ function renderShopItems(){
     `;
     list.appendChild(div);
   });
+  // ── 皮肤商店区块 ──
+  const skinSec=document.createElement("div");
+  skinSec.innerHTML=`<div style="font-size:.78rem;font-weight:800;color:#f472b6;margin:14px 0 7px">🎨 皮肤商店（每个 20 📝回复数）</div>`;
+  list.appendChild(skinSec);
+  const purchased=G.purchasedSkins||[];
+  SHOP_SKINS.forEach(sk=>{
+    const owned=purchased.includes(sk.id);
+    const canBuy=!owned&&availReplies>=sk.cost;
+    const div=document.createElement("div");
+    div.className="shop-item";
+    div.style.opacity=owned?'0.6':'1';
+    div.innerHTML=`
+      <img src="${sk.img}" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0">
+      <div class="shop-item-info">
+        <div class="shop-item-name">${sk.name}</div>
+        <div class="shop-item-cost">${owned?'✅ 已购买':'花费 '+sk.cost+' 📝回复数（剩余 '+availReplies+'）'}</div>
+      </div>
+      <button class="shop-btn" ${(owned||!canBuy)?"disabled":""} style="${owned?'background:rgba(255,255,255,.15);color:rgba(255,255,255,.5)':''}" onclick="buySkin('${sk.id}')">${owned?'已拥有':'购买'}</button>
+    `;
+    list.appendChild(div);
+  });
 }
 
 function buyItemPrompt(itemId){
@@ -963,13 +980,32 @@ function buyItem(itemId, qty){
   gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId,cost:String(totalCost),costType:item.costType,date:todayISO()});
 }
 
-// ════ PLAYER STATE ════
+// ── 购买皮肤 ──
+function buySkin(skinId){
+  const sk=SHOP_SKINS.find(x=>x.id===skinId);
+  if(!sk) return;
+  if(!G.purchasedSkins) G.purchasedSkins=[];
+  if(G.purchasedSkins.includes(skinId)){ alert('已经拥有此皮肤！'); return; }
+  const availReplies=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  if(availReplies<sk.cost){ alert('回复数不足！需要 '+sk.cost+' 回复数。'); return; }
+  if(!confirm('确认花费 '+sk.cost+' 📝回复数 购买「'+sk.name+'」皮肤？')) return;
+  G.repliesSpent=(G.repliesSpent||0)+sk.cost;
+  G.purchasedSkins.push(skinId);
+  saveState(); cloudSave();
+  renderShopItems();
+  gasBeacon({sheet:SHEET,action:"buy_skin",id:G.id,skinId,date:todayISO()});
+  alert('🎉 购买成功！「'+sk.name+'」皮肤已解锁，可在皮肤面板中使用。');
+}
 let G={
   id:'',uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,
   tickets:0,unlocked:[1],cleared:[],
   boosters:{hammer:0,lollipop:0,fish:0},
   coins:0,skin:'default',fetchRangeHistory:{},
   seenLevelTypes:[],
+  levelStars:{},
+  totalCoinsEarned:0,
+  totalStarsEarned:0,
+  purchasedSkins:[],
 };
 let _offline=false,_forumFetched=false;
 
@@ -1005,15 +1041,32 @@ function renderIdHistory(){
   });
 }
 function saveState(){try{localStorage.setItem(KEY_STATE,JSON.stringify(G));}catch(e){}}
-function loadState(){try{const r=localStorage.getItem(KEY_STATE);if(r)Object.assign(G,JSON.parse(r));}catch(e){}}
+function loadState(){try{const r=localStorage.getItem(KEY_STATE);if(r)Object.assign(G,JSON.parse(r));}catch(e){}if(!Array.isArray(G.purchasedSkins))G.purchasedSkins=[];}
 let curSkin='default';
 const SKINS={
   default:{cls:'',unlock:0},forest:{cls:'skin-forest',unlock:15},
   ocean:{cls:'skin-ocean',unlock:30},sunset:{cls:'skin-sunset',unlock:60},
+  icecream:{cls:'skin-icecream',unlock:0,purchase:true},
+  cyber:{cls:'skin-cyber',unlock:0,purchase:true},
+  crystal:{cls:'skin-crystal',unlock:0,purchase:true},
+  plush:{cls:'skin-plush',unlock:0,purchase:true},
+  retro:{cls:'skin-retro',unlock:0,purchase:true},
 };
-function canUseSkin(s){const sk=SKINS[s];return !sk||((G.cleared||[]).length>=sk.unlock);}
+const SHOP_SKINS=[
+  {id:'icecream',name:'梦幻冰淇淋圣代',img:'https://s.sstmlt.com/img/2026/05/26/candy_crush-17adfd4339686413.jpeg',cost:20},
+  {id:'cyber',   name:'赛博糖果霓虹',  img:'https://s.sstmlt.com/img/2026/05/26/candy_crush-8ad4e07bc4fbd83e.jpeg',cost:20},
+  {id:'crystal', name:'璀璨魔法水晶',  img:'https://s.sstmlt.com/img/2026/05/26/candy_crush-db28b83d31764429.jpeg',cost:20},
+  {id:'plush',   name:'治愈系毛绒玩偶',img:'https://s.sstmlt.com/img/2026/05/26/candy_crush-4b722d4410e160b5.jpeg',cost:20},
+  {id:'retro',   name:'复古美式甜品店',img:'https://s.sstmlt.com/img/2026/05/26/candy_crush-aa53a0b342e196a6.jpeg',cost:20},
+];
+function canUseSkin(s){const sk=SKINS[s];if(!sk)return false;if(sk.purchase)return !!(G.purchasedSkins&&G.purchasedSkins.includes(s));return (G.cleared||[]).length>=sk.unlock;}
 function applySkin(s){
-  if(!canUseSkin(s)){alert('需通关'+SKINS[s].unlock+'关后解锁！');return;}
+  if(!canUseSkin(s)){
+    const sk=SKINS[s];
+    if(sk&&sk.purchase){alert('此皮肤需要在商店购买！');}
+    else{alert('需通关'+SKINS[s].unlock+'关后解锁！');}
+    return;
+  }
   curSkin=s;G.skin=s;saveState();cloudSave();
   applyThemeNow();
   updateSkinUI();closeSkinPanel();
@@ -1021,25 +1074,80 @@ function applySkin(s){
 function openCandyGuide(){showOverlay('guide-overlay');}
 function closeGuide(){hideOverlay('guide-overlay');}
 
-function applyThemeNow(){
-  const sk=SKINS[curSkin]||SKINS.default;
-  // 更新 body class 触发 CSS 皮肤规则
-  document.body.className=sk.cls||'';
-  // 直接更新游戏/菜单背景（覆盖inline style）
-  const gameEl=document.getElementById('game');
-  const menuEl=document.getElementById('menu');
-  if(gameEl){
-    const bgs={
-      '':          'radial-gradient(ellipse at 50% 30%,#2d0a5e 0%,#1a0533 60%)',
-      'skin-forest':'radial-gradient(ellipse at 50% 30%,#0a3a1a 0%,#061810 60%)',
-      'skin-ocean': 'radial-gradient(ellipse at 50% 30%,#0a1a4a 0%,#040d28 60%)',
-      'skin-sunset':'radial-gradient(ellipse at 50% 30%,#4a1a0a 0%,#280a04 60%)',
-    };
-    gameEl.style.background=bgs[sk.cls||'']||bgs[''];
-    if(menuEl)menuEl.style.background=(bgs[sk.cls||'']||bgs['']).replace('50% 30%','50% 0%');
+// 皮肤图片映射（关卡解锁 + 商店购买）
+const SKIN_IMAGES={
+  default:  'https://s.sstmlt.com/img/2026/05/26/candy_crush-fc14afffda101cb8.jpeg',
+  forest:   'https://s.sstmlt.com/img/2026/05/26/candy_crush-f31c2b0b2830a461.jpeg',
+  ocean:    'https://s.sstmlt.com/img/2026/05/26/candy_crush-af07a9844cf1eae5.jpeg',
+  sunset:   'https://s.sstmlt.com/img/2026/05/26/candy_crush-55005a13147eed19.jpeg',
+  icecream: 'https://s.sstmlt.com/img/2026/05/26/candy_crush-17adfd4339686413.jpeg',
+  cyber:    'https://s.sstmlt.com/img/2026/05/26/candy_crush-8ad4e07bc4fbd83e.jpeg',
+  crystal:  'https://s.sstmlt.com/img/2026/05/26/candy_crush-db28b83d31764429.jpeg',
+  plush:    'https://s.sstmlt.com/img/2026/05/26/candy_crush-4b722d4410e160b5.jpeg',
+  retro:    'https://s.sstmlt.com/img/2026/05/26/candy_crush-aa53a0b342e196a6.jpeg',
+};
+function setSkinBgLayer(el, imgUrl){
+  if(!el) return;
+  if(imgUrl){
+    el.style.cssText += ';background-image:linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)),url('+imgUrl+') !important';
+    el.style.backgroundSize='cover';
+    el.style.backgroundPosition='center';
+    el.style.backgroundRepeat='no-repeat';
+  } else {
+    el.style.backgroundImage='';
+    el.style.backgroundSize='';
+    el.style.backgroundPosition='';
+    el.style.backgroundRepeat='';
   }
 }
-function updateSkinUI(){document.querySelectorAll('.skin-btn').forEach(b=>{b.classList.toggle('active',b.dataset.skin===curSkin);b.style.opacity=canUseSkin(b.dataset.skin)?'1':'.42';});}
+function applyThemeNow(){
+  const sk=SKINS[curSkin]||SKINS.default;
+  document.body.className=sk.cls||'';
+  const imgUrl=SKIN_IMAGES[curSkin]||null;
+  const gameEl=document.getElementById('game');
+  const menuEl=document.getElementById('menu');
+  const fallbacks={
+    '':           'radial-gradient(ellipse at 50% 30%,#2d0a5e 0%,#1a0533 60%)',
+    'skin-forest':'radial-gradient(ellipse at 50% 30%,#0a3a1a 0%,#061810 60%)',
+    'skin-ocean': 'radial-gradient(ellipse at 50% 30%,#0a1a4a 0%,#040d28 60%)',
+    'skin-sunset':'radial-gradient(ellipse at 50% 30%,#4a1a0a 0%,#280a04 60%)',
+    'skin-icecream':'radial-gradient(ellipse at 50% 30%,#5a1060 0%,#1a0533 60%)',
+    'skin-cyber':   'radial-gradient(ellipse at 50% 30%,#001a3a 0%,#000d1a 60%)',
+    'skin-crystal': 'radial-gradient(ellipse at 50% 30%,#0a204a 0%,#05102a 60%)',
+    'skin-plush':   'radial-gradient(ellipse at 50% 30%,#3a1040 0%,#1a0522 60%)',
+    'skin-retro':   'radial-gradient(ellipse at 50% 30%,#3a2000 0%,#1a0e00 60%)',
+  };
+  const fb=fallbacks[sk.cls||'']||fallbacks[''];
+  if(imgUrl){
+    [gameEl,menuEl].forEach(el=>{
+      if(!el) return;
+      el.style.background='';
+      el.style.backgroundImage='linear-gradient(rgba(0,0,0,.42),rgba(0,0,0,.42)),url('+imgUrl+')';
+      el.style.backgroundSize='cover';
+      el.style.backgroundPosition='center';
+      el.style.backgroundRepeat='no-repeat';
+    });
+  } else {
+    [gameEl,menuEl].forEach(el=>{
+      if(!el) return;
+      el.style.backgroundImage='';
+      el.style.backgroundSize='';
+      el.style.backgroundPosition='';
+      el.style.backgroundRepeat='';
+      el.style.background=fb;
+    });
+  }
+}
+function updateSkinUI(){
+  document.querySelectorAll('.skin-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.skin===curSkin);
+    b.style.opacity=canUseSkin(b.dataset.skin)?'1':'.42';
+  });
+  SHOP_SKINS.forEach(sk=>{
+    const lbl=document.getElementById('skin-label-'+sk.id);
+    if(lbl) lbl.textContent=canUseSkin(sk.id)?'✅ 已购买':'🔒 需购买（前往商店）';
+  });
+}
 function openSkinPanel(){updateSkinUI();showOverlay('skin-overlay');}
 function closeSkinPanel(){hideOverlay('skin-overlay');}
 function showOverlay(id){const e=document.getElementById(id);if(e){e.classList.add('show');e.style.display='flex';}}
@@ -1103,7 +1211,7 @@ function generateBoard(cfg){
       jellyPos.push(positions[added]);added++;
     }
     jellyPos.forEach(([r,cv])=>{
-      if(b[r]&&b[r][cv]) b[r][cv].jelly=Math.random()<0.35?2:1;
+      if(b[r]&&b[r][cv]) b[r][cv].jelly=1; // 统一单层，目标数=格子数，直觉明确
     });
   }
   // 冰块关：均匀分布冰块，确保数量足够且可见
@@ -1388,9 +1496,8 @@ function findMatches(){
     if(r<0||r>=rows||c<0||c>=cols)return false;
     const cell=board[r][c];
     if(!cell||cell.color<0)return false;
-    if(cell.special===SP.BOMB)return false;      // 彩弹不参与普通三消
-    // 暗格逻辑已简化，不再排除（dark关卡用步数/颜色难度）
-    // 注意：食材格可以参与颜色匹配！消除时食材向下移动而非消失
+    if(cell.special===SP.BOMB)return false;  // 彩弹不参与普通三消
+    if(cell.ingredient)return false;         // 食材格不参与三消（食材是障碍物，靠下落到底部完成）
     return true;
   }
 
@@ -1492,14 +1599,16 @@ async function processMatches(matches,r1,c1,r2,c2){
     if(cell.special===SP.STRH){
       for(let cc=0;cc<levelCfg.cols;cc++){
         const k=r+'_'+cc;
-        if(!toRemove.has(k)){toRemove.add(k);queue.push({r,c:cc});}
+        const tc=board[r]&&board[r][cc];
+        if(!toRemove.has(k)&&!(tc&&tc.ingredient)){toRemove.add(k);queue.push({r,c:cc});}
       }
       showBanner('🍬 横条纹爆炸！整行消除！','#fbbf24');
       spawnStripeFlash(r,-1); // 行闪光
     } else if(cell.special===SP.STRV){
       for(let rr=0;rr<levelCfg.rows;rr++){
         const k=rr+'_'+c;
-        if(!toRemove.has(k)){toRemove.add(k);queue.push({r:rr,c});}
+        const tr=board[rr]&&board[rr][c];
+        if(!toRemove.has(k)&&!(tr&&tr.ingredient)){toRemove.add(k);queue.push({r:rr,c});}
       }
       showBanner('🍬 竖条纹爆炸！整列消除！','#fbbf24');
       spawnStripeFlash(-1,c); // 列闪光
@@ -1508,14 +1617,16 @@ async function processMatches(matches,r1,c1,r2,c2){
         const nr=r+dr,nc=c+dc;
         if(nr>=0&&nr<levelCfg.rows&&nc>=0&&nc<levelCfg.cols){
           const k=nr+'_'+nc;
-          if(!toRemove.has(k)){toRemove.add(k);queue.push({r:nr,c:nc});}
+          const tw=board[nr]&&board[nr][nc];
+          if(!toRemove.has(k)&&!(tw&&tw.ingredient)){toRemove.add(k);queue.push({r:nr,c:nc});}
         }
       }
       showBanner('🎀 包装糖爆炸！3×3消除！','#f472b6');
     } else if(cell.special===SP.BOMB){
       const color=cell.color;
       for(let rr=0;rr<levelCfg.rows;rr++)for(let cc=0;cc<levelCfg.cols;cc++){
-        if(board[rr][cc].color===color){
+        const tb=board[rr][cc];
+        if(tb&&tb.color===color&&!tb.ingredient){
           const k=rr+'_'+cc;
           if(!toRemove.has(k)){toRemove.add(k);queue.push({r:rr,c:cc});}
         }
@@ -1530,7 +1641,7 @@ async function processMatches(matches,r1,c1,r2,c2){
       showBanner('🐟 鱼鱼出击！随机攻击！','#3b82f6');
     }
   }
-  const removeList=[...toRemove].map(s=>{const[r,c]=s.split('_').map(Number);return{r,c};});
+  const removeList=filterIngredients([...toRemove].map(s=>{const[r,c]=s.split('_').map(Number);return{r,c};}));
   await doRemove(removeList,newSp,spawnPos.r,spawnPos.c);
   if(newSp!==SP.NONE)showSpecialBanner(newSp);
 }
@@ -1551,7 +1662,9 @@ async function executeSpecialCombo(sc,r1,c1,r2,c2){
   const {rows,cols}=levelCfg;
   const toRemove=new Set();toRemove.add(r1+'_'+c1);toRemove.add(r2+'_'+c2);
   if(spA===SP.BOMB&&spB===SP.BOMB){
-    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)toRemove.add(r+'_'+c);
+    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+      if(!(board[r]&&board[r][c]&&board[r][c].ingredient))toRemove.add(r+'_'+c);
+    }
     showBanner('🌈×🌈 全场清除！','#fde68a');
   } else if(spA===SP.BOMB||spB===SP.BOMB){
     const bombR=spA===SP.BOMB?r1:r2, bombC=spA===SP.BOMB?c1:c2;
@@ -1596,10 +1709,18 @@ async function executeSpecialCombo(sc,r1,c1,r2,c2){
     for(let i=0;i<4;i++)toRemove.add(Math.floor(Math.random()*rows)+'_'+Math.floor(Math.random()*cols));
     showBanner('🐟 鱼群出击！','#3b82f6');
   }
-  await doRemove([...toRemove].map(s=>{const[r,c]=s.split('_').map(Number);return{r,c};}),SP.NONE,r1,c1);
+  await doRemove(filterIngredients([...toRemove].map(s=>{const[r,c]=s.split('_').map(Number);return{r,c};})),SP.NONE,r1,c1);
 }
 
 // ════ 执行消除 ════
+// 过滤掉食材格（食材不可被任何消除方式直接消除，只能靠到达底部完成）
+function filterIngredients(cells){
+  return cells.filter(({r,c})=>{
+    const cell=board[r]&&board[r][c];
+    return cell&&!cell.ingredient;
+  });
+}
+
 async function doRemove(cells,newSp=SP.NONE,spawnR=0,spawnC=0){
   // 特殊糖果生成计数（ORDER关和RAINBOW关共用）
   if(newSp!==SP.NONE){
@@ -1619,6 +1740,15 @@ async function doRemove(cells,newSp=SP.NONE,spawnR=0,spawnC=0){
       if(cell.el){cell.el.remove();cell.el=null;}
       return;
     }
+    // 食材格：不被任何消除方式直接消除（条纹/炸弹等特效也不消除食材）
+    // 食材靠周围消除后自然下落到底部完成任务
+    if(cell.ingredient){
+      // 只处理果冻/冰块层（如果食材格上有果冻/冰块覆盖）
+      if(cell.jelly>0){cell.jelly--;jellyLeft=Math.max(0,jellyLeft-1);jellyDone++;updateBgCell(r,c);updateProgress();}
+      if(cell.ice){cell.ice=0;iceDone++;updateBgCell(r,c);updateProgress();}
+      // 食材本身不消除，跳过后续处理
+      return;
+    }
     if(cell.dark&&!cell._revealed){
       cell._revealed=true;
       // 揭示暗格：显示真实颜色和emoji
@@ -1632,7 +1762,11 @@ async function doRemove(cells,newSp=SP.NONE,spawnR=0,spawnC=0){
     if(cell.el){cell.el.classList.add('popping');}
     // 果冻处理（更新底层视觉）
     if(cell.jelly>0){
-      cell.jelly--;jellyLeft=Math.max(0,jellyLeft-1);jellyDone++;
+      cell.jelly--;
+      if(cell.jelly===0){
+        // 果冻完全消除，计数+1
+        jellyLeft=Math.max(0,jellyLeft-1);jellyDone++;
+      }
       updateBgCell(r,c);updateProgress();
     }
     // 冰块（被直接消除时）
@@ -1640,22 +1774,7 @@ async function doRemove(cells,newSp=SP.NONE,spawnR=0,spawnC=0){
       cell.ice=0;iceDone++;
       updateBgCell(r,c);updateProgress();
     }
-    // 食材：参与消除时
-    if(cell.ingredient){
-      if(r>=levelCfg.rows-1){
-        // 已在底行：食材完成
-        cell.ingredient=false;ingredDone++;updateProgress();
-      } else {
-        // 不在底行：将食材标记复制到下一行（食材下移一格）
-        const nextR=r+1;
-        if(nextR<levelCfg.rows){
-          // 在 doRemove 完成清空当前格后，下一行格子也会因正常 dropDown 下落
-          // 我们需要在这个格子被清空前，把 ingredient 传给下一行
-          board[nextR][c]._pendingIngred=true;
-        }
-        cell.ingredient=false;
-      }
-    }
+    // 食材格已在上方提前 return，不会到达此处
     // 收集目标
     if(levelCfg.type===LEVEL_TYPES.COLLECT&&cell.color===levelCfg.collectColor){collectDone++;updateProgress();}
     // 彩弹生成计数（每次消除产生彩弹时+1）
@@ -1685,20 +1804,6 @@ async function doRemove(cells,newSp=SP.NONE,spawnR=0,spawnC=0){
     renderCell(spawnR,spawnC);
     // 显示提示
     showSpecialBanner(newSp);
-  }
-  // 处理食材下移标记
-  for(let r=0;r<levelCfg.rows;r++){
-    for(let cc=0;cc<levelCfg.cols;cc++){
-      if(board[r][cc]&&board[r][cc]._pendingIngred){
-        board[r][cc]._pendingIngred=false;
-        board[r][cc].ingredient=true;
-        // 更新视觉
-        if(board[r][cc].el){
-          board[r][cc].el.style.border='2.5px solid #fde68a';
-          board[r][cc].el.textContent='🍰';
-        }
-      }
-    }
   }
   // 邻近冰块效果（消除旁边的冰）
   cells.forEach(({r,c})=>{
@@ -1917,6 +2022,11 @@ function toggleFishBooster(){
 }
 async function triggerHammer(r,c){
   if(boostersLeft.hammer<=0)return;
+  const cell=board[r]&&board[r][c];
+  if(cell&&cell.ingredient){
+    showBanner('🔨 锤子无法消除食材！食材需要落到底部才能完成。','#f87171');
+    hammerMode=false;updateBoosterUI();return;
+  }
   boostersLeft.hammer--;hammerMode=false;updateBoosterUI();
   movesLeft--;updateMoveUI();
   await doRemove([{r,c}]);
@@ -1935,8 +2045,15 @@ async function triggerFish(r,c){
   boostersLeft.fish--;fishMode=false;updateBoosterUI();
   movesLeft--;updateMoveUI();
   const targets=[];
-  for(let i=0;i<3;i++){targets.push({r:Math.floor(Math.random()*levelCfg.rows),c:Math.floor(Math.random()*levelCfg.cols)});}
-  await doRemove(targets);
+  let tries=0;
+  while(targets.length<3&&tries<30){
+    tries++;
+    const tr=Math.floor(Math.random()*levelCfg.rows),tc=Math.floor(Math.random()*levelCfg.cols);
+    const cell=board[tr]&&board[tr][tc];
+    // 鱼鱼不攻击食材格
+    if(cell&&!cell.ingredient&&cell.color>=0)targets.push({r:tr,c:tc});
+  }
+  if(targets.length>0)await doRemove(targets);
   await afterRemove();
   isAnimating=false;
 }
@@ -1962,9 +2079,10 @@ function updateProgress(){
   const cfg=levelCfg;let pct=0,done=0,total=1;
   const gt=document.getElementById('goal-text');const gp=document.getElementById('goal-progress');
   if(cfg.type===LEVEL_TYPES.JELLY){
-    done=jellyDone;total=cfg.jellyCount;
+    const jellyTgt=cfg.jellyTarget||cfg.jellyCount;
+    done=jellyDone;total=Math.max(1,jellyTgt);
     pct=Math.min(100,Math.round(done/total*100));
-    if(gt)gt.textContent='🟪 消除果冻 '+done+'/'+total;
+    if(gt)gt.textContent='🟪 消除果冻 '+done+'/'+total+'格';
     if(gp)gp.textContent=pct+'%';
   } else if(cfg.type===LEVEL_TYPES.MIXED){
     // 混合关：果冻+得分双目标，取两者最低进度
@@ -1972,7 +2090,8 @@ function updateProgress(){
     const scorePct=Math.min(100,Math.round(score/Math.max(1,cfg.scoreTarget)*100));
     pct=Math.min(jellyPct,scorePct); // 两者都要完成
     done=jellyDone;total=cfg.jellyCount;
-    if(gt)gt.textContent='🟪 果冻 '+jellyDone+'/'+cfg.jellyCount+' · 🎯 '+score+'/'+cfg.scoreTarget;
+    const mJellyTgt=cfg.jellyTarget||cfg.jellyCount;
+    if(gt)gt.textContent='🟪 果冻 '+jellyDone+'/'+mJellyTgt+'格 · 🎯 '+score+'/'+cfg.scoreTarget;
     if(gp)gp.textContent=Math.min(jellyPct,scorePct)+'%';
   } else if(cfg.type===LEVEL_TYPES.COLLECT){
     done=collectDone;total=cfg.collectCount;
@@ -2022,8 +2141,8 @@ let jellyDone=0; // 追踪实际消除果冻数量
 function checkWinLose(){
   const cfg=levelCfg;
   let win=false;
-  if(cfg.type===LEVEL_TYPES.JELLY) win=jellyDone>=cfg.jellyCount;
-  else if(cfg.type===LEVEL_TYPES.MIXED) win=jellyDone>=cfg.jellyCount&&score>=cfg.scoreTarget;
+  if(cfg.type===LEVEL_TYPES.JELLY) win=jellyDone>=(cfg.jellyTarget||cfg.jellyCount);
+  else if(cfg.type===LEVEL_TYPES.MIXED) win=jellyDone>=(cfg.jellyTarget||cfg.jellyCount)&&score>=cfg.scoreTarget;
   else if(cfg.type===LEVEL_TYPES.COLLECT) win=collectDone>=cfg.collectCount;
   else if(cfg.type===LEVEL_TYPES.INGRED) win=ingredDone>=cfg.ingredCount;
   else if(cfg.type===LEVEL_TYPES.ICE) win=iceDone>=cfg.iceCount;
@@ -2144,6 +2263,9 @@ function showWin(){
   document.getElementById('win-body').textContent=winDesc;
   if(!G.cleared)G.cleared=[];
   if(!G.cleared.includes(curLevel))G.cleared.push(curLevel);
+  if(!G.levelStars)G.levelStars={};
+  G.levelStars[curLevel]=Math.max(stars,G.levelStars[curLevel]||0);
+  G.totalCoinsEarned=(G.totalCoinsEarned||0)+reward;
   const next=curLevel+1;
   if(!G.unlocked)G.unlocked=[1];
   if(!G.unlocked.includes(next))G.unlocked.push(next);
@@ -2193,11 +2315,13 @@ function backToMenu(){
 // ════ START GAME ════
 function startGame(id){
   curLevel=id;
-  levelCfg=LEVELS.find(l=>l.id===id)||genLevelCfg(id);
-  if(!LEVELS.find(l=>l.id===id))LEVELS.push(levelCfg);
+  // 每次都从原始配置重新生成，避免上次游戏修改的 jellyCount 等被复用
+  levelCfg=Object.assign({},genLevelCfg(id));
+  if(!LEVELS.find(l=>l.id===id))LEVELS.push(genLevelCfg(id)); // LEVELS 存原始版
   gasBeacon({sheet:SHEET,action:'game_start',id:G.id,uid:String(G.uid),level:String(id),date:todayISO()});
+  // ── 全部计数器重置（只重置一次，不在后面重复）──
   score=0;comboCount=0;movesLeft=levelCfg.moves;movesOvertime=false;
-  jellyLeft=levelCfg.jellyCount;jellyDone=0;collectDone=0;ingredDone=0;bombMade=0;iceDone=0;orderMade=0;
+  jellyDone=0;jellyLeft=0;collectDone=0;ingredDone=0;bombMade=0;iceDone=0;orderMade=0;
   shownSpecialTypes=new Set();selectedId=null;isAnimating=false;
   hammerMode=false;lollipopMode=false;fishMode=false;candyIdCounter=0;
   boostersLeft={
@@ -2212,8 +2336,11 @@ function startGame(id){
   const gc=document.getElementById('game-coins');if(gc)gc.textContent=G.coins||0;
   updateMoveUI();updateScore();
   board=generateBoard(levelCfg);
-  const actualJelly=board.reduce((s,row)=>s+row.reduce((ss,cv)=>ss+(cv.jelly>0?1:0),0),0);
-  if(actualJelly>0){levelCfg.jellyCount=actualJelly;jellyLeft=actualJelly;jellyDone=0;}
+  // 统计实际果冻格子数（统一单层，格子数=目标数，玩家直觉清晰）
+  const actualJellyCount=board.reduce((s,row)=>s+row.reduce((ss,cv)=>ss+(cv.jelly>0?1:0),0),0);
+  levelCfg.jellyTarget=actualJellyCount;
+  jellyLeft=actualJellyCount;
+  // jellyDone 已在上方重置为0，不在此重复
   showScreen('game');
   applyThemeNow();
   setTimeout(()=>{showLevelTutorial(levelCfg.type);},350);
@@ -2305,7 +2432,7 @@ function doOfflineMode(){
 }
 function doLogout(){
   if(!confirm('确认登出？'))return;
-  G={id:'',uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,tickets:0,unlocked:[1],cleared:[],boosters:{hammer:0,lollipop:0,fish:0},coins:0,skin:'default',fetchRangeHistory:{}};
+  G={id:'',uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,tickets:0,unlocked:[1],cleared:[],boosters:{hammer:0,lollipop:0,fish:0},coins:0,skin:'default',fetchRangeHistory:{},seenLevelTypes:[],levelStars:{},totalCoinsEarned:0,totalStarsEarned:0};
   try{localStorage.removeItem(KEY_ID);localStorage.removeItem(KEY_UID);}catch(e){}
   _offline=false;_forumFetched=false;
   showScreen('screen-login');renderIdHistory();
@@ -2313,10 +2440,48 @@ function doLogout(){
   if(hist.length){document.getElementById('inp-id').value=hist[0].id||'';document.getElementById('inp-uid').value=hist[0].uid||'';}
 }
 function downloadGameData(){
-  const rows=[['项目','数值'],['论坛ID',G.id],['UID',G.uid],['金币',G.coins||0],['回复数',G.replies||0],['被引用',G.citations||0],['重复挑战卷',G.tickets||0],['锤子道具',G.boosters.hammer||0],['棒棒糖道具',G.boosters.lollipop||0],['鱼鱼道具',G.boosters.fish||0],['已解锁关卡',(G.unlocked||[]).join(' ')],['已通关关卡',(G.cleared||[]).join(' ')],['皮肤',G.skin||'default'],['时间',new Date().toLocaleString('zh-TW')]];
-  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  // ── 完整存档：包含所有奖励、道具、通关记录、星级、已见类型等 ──
+  const cleared=G.cleared||[];
+  const stars=G.levelStars||{}; // 各关星级
+  const starRows=cleared.map(id=>['  第'+id+'关星级',stars[id]||'?'+'★']);
+  const rows=[
+    ['=== 糖果小镇 完整存档 ===',''],
+    ['下载时间',new Date().toLocaleString('zh-TW')],
+    ['',''],
+    ['── 玩家基本资料 ──',''],
+    ['论坛ID',G.id],['UID',G.uid],['皮肤',G.skin||'default'],
+    ['',''],
+    ['── 奖励记录 ──',''],
+    ['金币（当前）',G.coins||0],
+    ['总获得金币',G.totalCoinsEarned||0],
+    ['星星点数',G.starPoints||0],
+    ['总获得星星点数',G.totalStarsEarned||0],
+    ['',''],
+    ['── 论坛资源 ──',''],
+    ['今日回复数',G.replies||0],['被引用数',G.citations||0],
+    ['已花费回复数',G.repliesSpent||0],['已花费被引用数',G.citationsSpent||0],
+    ['',''],
+    ['── 道具库存 ──',''],
+    ['重复挑战卷',G.tickets||0],
+    ['锤子道具',G.boosters.hammer||0],
+    ['棒棒糖道具',G.boosters.lollipop||0],
+    ['鱼鱼道具',G.boosters.fish||0],
+    ['',''],
+    ['── 关卡进度 ──',''],
+    ['已解锁关卡数',(G.unlocked||[]).length],
+    ['已通关关卡数',cleared.length],
+    ['已解锁关卡列表',(G.unlocked||[]).join(' ')],
+    ['已通关关卡列表',cleared.join(' ')],
+    ['',''],
+    ['── 各关星级 ──',''],
+    ...starRows,
+    ['',''],
+    ['── 已观看关卡教程类型 ──',''],
+    ['已见类型',(G.seenLevelTypes||[]).join(' ')||'无'],
+  ];
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='candy-town-'+G.id+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='candy-town-'+G.id+'-'+todayISO()+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 // ════ INIT ════

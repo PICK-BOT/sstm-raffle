@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SSTM 新手村趣味考卷</title>
+<style>
+*{box-sizing:border-box}html{min-height:100%;background:#f4f7fb}body{margin:0;min-height:100vh;font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;color:#182230;background:linear-gradient(180deg,#eef6ff 0,#f8fbff 36%,#ffffff 100%)}button,input{font:inherit}.hidden{display:none!important}.offline-badge{position:fixed;left:12px;top:10px;z-index:40;display:none;border:1px solid #f59e0b;background:#fff7ed;color:#9a3412;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:800;box-shadow:0 8px 24px rgba(154,52,18,.12)}.offline-badge.show{display:block}.wrap{width:min(980px,calc(100% - 28px));margin:0 auto}.login-screen{min-height:100vh;display:grid;place-items:center;padding:24px 0}.login-card{width:min(460px,100%);background:#fff;border:1px solid #d8e4f2;border-radius:8px;padding:24px;box-shadow:0 24px 70px rgba(30,64,115,.12)}.brand{font-size:28px;font-weight:900;letter-spacing:0;margin:0 0 6px}.sub{margin:0 0 18px;color:#5d6c80;line-height:1.6}.field{display:grid;gap:7px;margin:0 0 14px}.field label{font-size:14px;font-weight:800;color:#344256}.field input{width:100%;border:1px solid #c9d7e8;border-radius:7px;padding:12px 13px;background:#fbfdff;color:#182230}.actions{display:flex;gap:10px;flex-wrap:wrap}.btn{border:0;border-radius:7px;padding:11px 16px;font-weight:900;cursor:pointer;background:#2563eb;color:#fff;box-shadow:0 10px 20px rgba(37,99,235,.16);transition:transform .12s,filter .12s}.btn:hover{filter:brightness(1.03)}.btn:active{transform:translateY(1px)}.btn.secondary{background:#475569;box-shadow:none}.btn.light{background:#e8eef6;color:#1e293b;box-shadow:none}.btn.warn{background:#d97706}.btn:disabled{opacity:.45;cursor:not-allowed}.msg{min-height:22px;color:#b42318;margin-top:12px;font-size:14px;line-height:1.5}.topbar{position:sticky;top:0;z-index:20;background:rgba(247,251,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid #dbe7f4}.top-inner{display:flex;align-items:center;gap:14px;justify-content:space-between;padding:12px 0}.exam-title{font-size:20px;font-weight:900}.exam-meta{font-size:13px;color:#64748b}.pill{display:inline-flex;align-items:center;border:1px solid #cbd9ea;border-radius:999px;padding:7px 10px;background:#fff;color:#334155;font-weight:800;font-size:13px}.progress{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden}.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,#2563eb,#10b981);transition:width .2s}.main{padding:24px 0 40px}.paper{display:grid;gap:16px}.section-title{font-size:16px;font-weight:900;color:#0f3d73;margin:10px 0 0;padding-left:10px;border-left:4px solid #2563eb}.question{background:#fff;border:1px solid #dbe7f4;border-radius:8px;padding:18px;box-shadow:0 10px 30px rgba(15,55,105,.06)}.q-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}.q-no{flex:0 0 auto;width:30px;height:30px;border-radius:7px;display:grid;place-items:center;background:#e8f1ff;color:#1d4ed8;font-weight:900}.q-text{font-size:17px;line-height:1.7;font-weight:800}.image-frame{margin:10px 0 14px;border:1px solid #d8e4f2;border-radius:8px;background:#f8fbff;display:grid;place-items:center;min-height:140px;overflow:hidden}.image-frame img{display:block;max-width:100%;max-height:280px;object-fit:contain}.image-frame.broken:after{content:"图片暂时无法载入，请联系出题人确认图片链接。";padding:22px;color:#b42318}.options{display:grid;gap:10px}.option{display:flex;gap:10px;align-items:flex-start;border:1px solid #d6e2f0;border-radius:8px;padding:12px 13px;background:#fbfdff;cursor:pointer}.option:hover{border-color:#93b4dc}.option input{margin-top:4px;accent-color:#2563eb}.option-key{font-weight:900;color:#1d4ed8;min-width:22px}.option-text{line-height:1.5}.submit-row{position:sticky;bottom:0;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border-top:1px solid #dbe7f4;padding:14px 0;margin-top:18px}.submit-inner{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.result{background:#fff;border:1px solid #dbe7f4;border-radius:8px;padding:22px;box-shadow:0 14px 36px rgba(15,55,105,.08)}.score{font-size:36px;font-weight:900;color:#0f766e;margin:0}.result-note{color:#5d6c80;line-height:1.7;margin:8px 0 0}.download-panel{margin-top:16px;border:1px dashed #d97706;background:#fff7ed;border-radius:8px;padding:14px}.download-panel p{margin:0 0 12px;line-height:1.7;color:#7c2d12}.lock{font-size:13px;color:#64748b;margin-top:8px}.footer-space{height:12px}@media(max-width:620px){.brand{font-size:23px}.top-inner{align-items:flex-start;flex-direction:column}.submit-inner{align-items:stretch}.submit-inner .btn{width:100%}.question{padding:15px}.q-text{font-size:16px}.score{font-size:30px}}
+</style>
+</head>
+<body>
+<div id="offlineBadge" class="offline-badge">离线答题</div>
+<section id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <h1 class="brand" id="loginTitle">SSTM 新手村趣味考卷</h1>
+    <p class="sub" id="loginSubtitle">请先填写论坛 ID。选择登录会检测 Google 云端记录是否可用；无法连接时会自动改为离线答题。</p>
+    <div class="field">
+      <label for="forumId">论坛 ID</label>
+      <input id="forumId" autocomplete="off" placeholder="请输入论坛 ID">
+    </div>
+    <div class="actions">
+      <button class="btn" id="onlineLoginBtn" type="button">登录并检测云端</button>
+      <button class="btn secondary" id="offlineLoginBtn" type="button">离线登录</button>
+    </div>
+    <div id="loginMsg" class="msg"></div>
+  </div>
+</section>
+
+<section id="examScreen" class="hidden">
+  <header class="topbar">
+    <div class="wrap top-inner">
+      <div>
+        <div class="exam-title" id="examTitle"></div>
+        <div class="exam-meta"><span id="studentLabel"></span> · <span id="modeLabel"></span></div>
+      </div>
+      <div class="pill" id="answeredPill">已答 0 / 0</div>
+    </div>
+    <div class="progress"><span id="progressBar"></span></div>
+  </header>
+  <main class="wrap main">
+    <div id="paper" class="paper"></div>
+    <div class="submit-row">
+      <div class="wrap submit-inner">
+        <div class="exam-meta" id="submitHint">每题 10 节操。提交后只显示总分，不显示答案。</div>
+        <button class="btn" id="submitBtn" type="button">提交答卷</button>
+      </div>
+    </div>
+    <div id="resultBox" class="result hidden"></div>
+    <div class="footer-space"></div>
+  </main>
+</section>
+
+<script id="exam-config" type="application/json">{
+  "title": "SSTM 新手村趣味考卷",
+  "subtitle": "请先填写论坛 ID。选择登录会检测 Google 云端记录；每题 10 节操，提交后只显示总分，不显示答案。",
+  "examId": "sstm_quiz_pokemon_onepiece_aa_20260604",
+  "version": "2026.06.04",
+  "gasEndpoint": "https://script.google.com/macros/s/AKfycbzkmaFhQhnSC2I0hN7fI4enRbg72a7rDKdnwiQGtYD3HpaTabsXGqgs9pnQ4WZugWGj5Q/exec",
+  "pointsPerQuestion": 10,
+  "offlineUploadNote": "离线答题记录已生成，请把下载的 Excel 交给新手村版主。",
+  "questions": [
+    {
+      "id": "game-pokemon-01",
+      "category": "游戏题目",
+      "prompt": "宝可梦中，脱壳忍者的特性是什么？",
+      "options": [
+        {
+          "key": "A",
+          "text": "魔法防守"
+        },
+        {
+          "key": "B",
+          "text": "神奇守护"
+        },
+        {
+          "key": "C",
+          "text": "脱壳"
+        }
+      ]
+    },
+    {
+      "id": "game-pokemon-02",
+      "category": "游戏题目",
+      "prompt": "宝可梦中，卡比兽的设计形象源自于谁？",
+      "options": [
+        {
+          "key": "A",
+          "text": "星之卡比"
+        },
+        {
+          "key": "B",
+          "text": "帝帝帝大王"
+        },
+        {
+          "key": "C",
+          "text": "西野弘二"
+        }
+      ]
+    },
+    {
+      "id": "game-pokemon-03",
+      "category": "游戏题目",
+      "prompt": "宝可梦中，与百变怪一样可以通过等级提升学会【变身】的宝可梦是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "梦幻"
+        },
+        {
+          "key": "B",
+          "text": "索罗亚克"
+        },
+        {
+          "key": "C",
+          "text": "图图犬"
+        }
+      ]
+    },
+    {
+      "id": "anime-onepiece-01",
+      "category": "动漫题目",
+      "prompt": "海贼王中，布鲁克第一次出现时所唱的歌叫_______________ 。",
+      "options": [
+        {
+          "key": "A",
+          "text": "贝卡斯的美酒"
+        },
+        {
+          "key": "B",
+          "text": "宾克斯的美酒"
+        },
+        {
+          "key": "C",
+          "text": "布鲁克的美酒"
+        }
+      ]
+    },
+    {
+      "id": "anime-onepiece-02",
+      "category": "动漫题目",
+      "prompt": "海贼王的七水之都中，海上列车的发明者是______。",
+      "options": [
+        {
+          "key": "A",
+          "text": "汤姆"
+        },
+        {
+          "key": "B",
+          "text": "杰瑞"
+        },
+        {
+          "key": "C",
+          "text": "斯派克"
+        }
+      ]
+    },
+    {
+      "id": "aa-image-01",
+      "category": "AA题目",
+      "prompt": "请给出该角色/物体的名字：",
+      "image": "https://i.postimg.cc/15tBW41k/maiwara-hai-zei-tuan-22.png",
+      "options": [
+        {
+          "key": "A",
+          "text": "泰坦号"
+        },
+        {
+          "key": "B",
+          "text": "胜利号"
+        },
+        {
+          "key": "C",
+          "text": "黄金梅丽号"
+        }
+      ]
+    },
+    {
+      "id": "aa-image-02",
+      "category": "AA题目",
+      "prompt": "请给出该角色/物体的名字：",
+      "image": "https://files.catbox.moe/7ao0a3.png",
+      "options": [
+        {
+          "key": "A",
+          "text": "五条悟"
+        },
+        {
+          "key": "B",
+          "text": "岭上大郎"
+        },
+        {
+          "key": "C",
+          "text": "间桐宗彦"
+        }
+      ]
+    }
+  ]
+}</script>
+<script id="answer-pack" type="text/plain">MngMHeD7grC+iZZpekgaeGhIQa7fjJPyhpNucQhGKDMMF+TygI79wssgUAYZZDAJFO+23NKlup1ufA4EdnRdWsi4h56ssIZtdA9cKjAWHu36z5b87MzFMmMQb3YEGO71zJeksoiOZkVSJ35UR6Stivjo986cbzJZLDMEEaimlprz+KjeITxOIXwLHuXyw5r468jBLlwMQg==</script>
+<script>
+(() => {
+  "use strict";
+  const EXAM = JSON.parse(document.getElementById("exam-config").textContent);
+  const ANSWERS = decodeAnswerPack(document.getElementById("answer-pack").textContent.trim());
+  const POINTS = Number(EXAM.pointsPerQuestion || 10);
+  const TOTAL = EXAM.questions.length * POINTS;
+  const PROTECT_HASH = "C9D5";
+  const state = {
+    forumId: "",
+    mode: "offline",
+    startedAt: "",
+    submittedAt: "",
+    answers: {},
+    submitted: false,
+    lastResult: null
+  };
+
+  const el = (id) => document.getElementById(id);
+  const escapeHtml = (value) => String(value == null ? "" : value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+
+  function decodeAnswerPack(pack) {
+    const bin = atob(pack);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i) ^ ((73 + i * 17) & 255);
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+
+  function cleanId(id) {
+    return String(id || "").trim().replace(/\s+/g, " ");
+  }
+
+  function nowIso() {
+    return new Date().toISOString();
+  }
+
+  function fmtLocal(iso) {
+    if (!iso) return "";
+    try { return new Date(iso).toLocaleString("zh-CN", { hour12: false }); } catch (err) { return iso; }
+  }
+
+  function storageKey() {
+    return "sstm_quiz_draft_" + EXAM.examId + "_" + state.forumId;
+  }
+
+  function saveDraft() {
+    if (!state.forumId || state.submitted) return;
+    try {
+      localStorage.setItem(storageKey(), JSON.stringify({ answers: state.answers, startedAt: state.startedAt }));
+    } catch (err) {}
+  }
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(storageKey());
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (draft && draft.answers) state.answers = draft.answers;
+      if (draft && draft.startedAt) state.startedAt = draft.startedAt;
+    } catch (err) {}
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(storageKey()); } catch (err) {}
+  }
+
+  function setLoginMsg(text, danger = true) {
+    el("loginMsg").style.color = danger ? "#b42318" : "#0f766e";
+    el("loginMsg").textContent = text || "";
+  }
+
+  function setOfflineBadge(show) {
+    el("offlineBadge").classList.toggle("show", !!show);
+  }
+
+  function serializeParams(params) {
+    return Object.keys(params)
+      .filter((key) => params[key] !== undefined && params[key] !== null)
+      .map((key) => encodeURIComponent(key) + "=" + encodeURIComponent(String(params[key])))
+      .join("&");
+  }
+
+  function jsonp(params, timeoutMs = 9000) {
+    return new Promise((resolve, reject) => {
+      const endpoint = String(EXAM.gasEndpoint || "").trim();
+      if (!endpoint) {
+        reject(new Error("missing_endpoint"));
+        return;
+      }
+      const cb = "__sstmQuizCb_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+      const script = document.createElement("script");
+      let done = false;
+      const timer = setTimeout(() => finish(null, new Error("timeout")), timeoutMs);
+      function finish(data, error) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        try { delete window[cb]; } catch (err) { window[cb] = undefined; }
+        if (script.parentNode) script.parentNode.removeChild(script);
+        if (error) reject(error);
+        else resolve(data);
+      }
+      window[cb] = (data) => finish(data, null);
+      script.onerror = () => finish(null, new Error("network_error"));
+      const query = serializeParams({ ...params, callback: cb, _: Date.now() });
+      script.src = endpoint + (endpoint.includes("?") ? "&" : "?") + query;
+      document.head.appendChild(script);
+    });
+  }
+
+  async function loginOnline() {
+    const id = cleanId(el("forumId").value);
+    if (!id) {
+      setLoginMsg("请先填写论坛 ID。");
+      el("forumId").focus();
+      return;
+    }
+    el("onlineLoginBtn").disabled = true;
+    el("offlineLoginBtn").disabled = true;
+    setLoginMsg("正在检测 Google 云端记录...", false);
+    try {
+      const ping = await jsonp({ action: "ping", exam_id: EXAM.examId, version: EXAM.version }, 8500);
+      if (!ping || ping.ok !== true) throw new Error("ping_failed");
+      startExam(id, "online");
+      jsonp({ action: "login", forum_id: id, mode: "online", exam_id: EXAM.examId, user_agent: navigator.userAgent }, 5000).catch(() => {});
+    } catch (err) {
+      setLoginMsg("无法连接 Google 云端，已切换为离线答题。", false);
+      startExam(id, "offline");
+    } finally {
+      el("onlineLoginBtn").disabled = false;
+      el("offlineLoginBtn").disabled = false;
+    }
+  }
+
+  function loginOffline() {
+    const id = cleanId(el("forumId").value);
+    if (!id) {
+      setLoginMsg("请先填写论坛 ID。");
+      el("forumId").focus();
+      return;
+    }
+    startExam(id, "offline");
+  }
+
+  function startExam(id, mode) {
+    state.forumId = id;
+    state.mode = mode === "online" ? "online" : "offline";
+    state.startedAt = state.startedAt || nowIso();
+    loadDraft();
+    setOfflineBadge(state.mode !== "online");
+    el("loginScreen").classList.add("hidden");
+    el("examScreen").classList.remove("hidden");
+    el("examTitle").textContent = EXAM.title;
+    el("studentLabel").textContent = "论坛 ID：" + state.forumId;
+    el("modeLabel").textContent = state.mode === "online" ? "云端记录" : "离线答题";
+    renderPaper();
+    updateProgress();
+  }
+
+  function renderPaper() {
+    let html = "";
+    let currentCategory = "";
+    EXAM.questions.forEach((question, index) => {
+      if (question.category !== currentCategory) {
+        currentCategory = question.category;
+        html += '<div class="section-title">' + escapeHtml(currentCategory) + '</div>';
+      }
+      const selected = state.answers[question.id] || "";
+      html += '<article class="question" data-qid="' + escapeHtml(question.id) + '">';
+      html += '<div class="q-head"><div class="q-no">' + (index + 1) + '</div><div class="q-text">' + escapeHtml(question.prompt) + '</div></div>';
+      if (question.image) {
+        html += '<div class="image-frame"><img src="' + escapeHtml(question.image) + '" alt="题目图片" loading="lazy" onerror="this.parentNode.classList.add(\'broken\');this.remove();"></div>';
+      }
+      html += '<div class="options">';
+      question.options.forEach((option) => {
+        const checked = selected === option.key ? " checked" : "";
+        const disabled = state.submitted ? " disabled" : "";
+        html += '<label class="option"><input type="radio" name="q-' + escapeHtml(question.id) + '" value="' + escapeHtml(option.key) + '"' + checked + disabled + '>';
+        html += '<span class="option-key">' + escapeHtml(option.key) + '.</span><span class="option-text">' + escapeHtml(option.text) + '</span></label>';
+      });
+      html += '</div></article>';
+    });
+    el("paper").innerHTML = html;
+  }
+
+  function updateProgress() {
+    const answered = EXAM.questions.filter((question) => state.answers[question.id]).length;
+    el("answeredPill").textContent = "已答 " + answered + " / " + EXAM.questions.length;
+    const pct = EXAM.questions.length ? Math.round(answered / EXAM.questions.length * 100) : 0;
+    el("progressBar").style.width = pct + "%";
+  }
+
+  function onOptionChange(event) {
+    const input = event.target;
+    if (!input || input.type !== "radio" || !input.name.startsWith("q-")) return;
+    const qid = input.name.slice(2);
+    state.answers[qid] = input.value;
+    saveDraft();
+    updateProgress();
+  }
+
+  function calculateResult() {
+    const details = EXAM.questions.map((question, index) => {
+      const selectedKey = state.answers[question.id] || "";
+      const selectedOption = question.options.find((option) => option.key === selectedKey);
+      const correct = selectedKey === ANSWERS[question.id];
+      return {
+        index: index + 1,
+        id: question.id,
+        category: question.category || "",
+        prompt: question.prompt || "",
+        image: question.image || "",
+        selectedKey,
+        selectedText: selectedOption ? selectedOption.text : "",
+        isCorrect: !!correct,
+        earned: correct ? POINTS : 0
+      };
+    });
+    const correctCount = details.filter((item) => item.isCorrect).length;
+    const score = details.reduce((sum, item) => sum + item.earned, 0);
+    return {
+      forumId: state.forumId,
+      mode: state.mode,
+      startedAt: state.startedAt,
+      submittedAt: state.submittedAt || nowIso(),
+      durationSec: Math.max(0, Math.round((Date.now() - new Date(state.startedAt).getTime()) / 1000)) || 0,
+      score,
+      total: TOTAL,
+      correctCount,
+      totalQuestions: EXAM.questions.length,
+      details
+    };
+  }
+
+  function missingQuestionCount() {
+    return EXAM.questions.filter((question) => !state.answers[question.id]).length;
+  }
+
+  async function submitExam() {
+    const missing = missingQuestionCount();
+    if (missing > 0) {
+      alert("还有 " + missing + " 题尚未作答，请全部答完再提交。");
+      return;
+    }
+    if (state.submitted) return;
+    state.submitted = true;
+    state.submittedAt = nowIso();
+    el("submitBtn").disabled = true;
+    const result = calculateResult();
+    state.lastResult = result;
+    renderPaper();
+    renderResult("正在记录答题结果...", false);
+    if (state.mode === "online") {
+      try {
+        const payload = buildSubmitPayload(result);
+        const response = await jsonp(payload, 13000);
+        if (!response || response.ok !== true) throw new Error(response && response.error ? response.error : "submit_failed");
+        clearDraft();
+        renderResult("云端已记录。本次答题结果已经送出。", false);
+      } catch (err) {
+        state.mode = "offline";
+        result.mode = "offline";
+        setOfflineBadge(true);
+        el("modeLabel").textContent = "离线答题";
+        renderResult("云端记录失败，已切换为离线答题。请下载 Excel 并交给新手村版主。", true);
+      }
+    } else {
+      clearDraft();
+      renderResult("离线答题完成。请下载 Excel 并交给新手村版主。", true);
+    }
+  }
+
+  function buildSubmitPayload(result) {
+    return {
+      action: "submit",
+      exam_id: EXAM.examId,
+      exam_title: EXAM.title,
+      version: EXAM.version,
+      forum_id: result.forumId,
+      mode: result.mode,
+      score: result.score,
+      total_score: result.total,
+      correct_count: result.correctCount,
+      total_questions: result.totalQuestions,
+      started_at: result.startedAt,
+      submitted_at: result.submittedAt,
+      duration_sec: result.durationSec,
+      user_agent: navigator.userAgent,
+      answers_json: JSON.stringify(result.details)
+    };
+  }
+
+  function renderResult(statusText, showOfflineDownload) {
+    const result = state.lastResult;
+    const box = el("resultBox");
+    box.classList.remove("hidden");
+    box.innerHTML = '<p class="score">' + result.score + ' / ' + result.total + ' 节操</p>' +
+      '<p class="result-note">答对 ' + result.correctCount + ' / ' + result.totalQuestions + ' 题。' + escapeHtml(statusText) + '</p>' +
+      (showOfflineDownload ? '<div class="download-panel"><p>' + escapeHtml(EXAM.offlineUploadNote || "请把下载的 Excel 交给新手村版主。") + '</p><button class="btn warn" id="downloadXlsxBtn" type="button">下载离线答题 Excel</button><div class="lock">Excel 记录文件已做保护处理，页面不会显示解锁密码。</div></div>' : "");
+    setTimeout(() => box.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
+    const btn = el("downloadXlsxBtn");
+    if (btn) btn.addEventListener("click", downloadOfflineXlsx);
+  }
+
+  function downloadOfflineXlsx() {
+    const result = state.lastResult || calculateResult();
+    const workbook = buildOfflineWorkbook(result);
+    const filename = "SSTM_离线答题_" + safeFilename(result.forumId) + "_" + compactDate(new Date()) + ".xlsx";
+    downloadBlob(workbook, filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  }
+
+  function safeFilename(value) {
+    return String(value || "unknown").replace(/[\\/:*?"<>|\s]+/g, "_").slice(0, 48);
+  }
+
+  function compactDate(date) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return date.getFullYear() + pad(date.getMonth() + 1) + pad(date.getDate()) + "_" + pad(date.getHours()) + pad(date.getMinutes());
+  }
+
+  function buildOfflineWorkbook(result) {
+    const coverRows = [
+      ["SSTM 离线答题交回文件", ""],
+      ["论坛 ID", result.forumId],
+      ["试卷", EXAM.title],
+      ["试卷版本", EXAM.version],
+      ["得分", result.score + " / " + result.total + " 节操"],
+      ["答对题数", result.correctCount + " / " + result.totalQuestions],
+      ["开始时间", fmtLocal(result.startedAt)],
+      ["提交时间", fmtLocal(result.submittedAt)],
+      ["提醒", "请把这份 Excel 传给新手村版主。"]
+    ];
+    const detailRows = [
+      ["题号", "题目ID", "分类", "题目", "选择代号", "选择内容", "答对与否", "获得节操", "图片链接", "论坛ID", "提交时间"]
+    ];
+    result.details.forEach((item) => {
+      detailRows.push([
+        item.index,
+        item.id,
+        item.category,
+        item.prompt,
+        item.selectedKey,
+        item.selectedText,
+        item.isCorrect ? "答对" : "未答对",
+        item.earned,
+        item.image,
+        result.forumId,
+        fmtLocal(result.submittedAt)
+      ]);
+    });
+    return makeXlsx([
+      { name: "封面", rows: coverRows, hidden: false, protect: true },
+      { name: "答题记录", rows: detailRows, hidden: true, protect: true }
+    ]);
+  }
+
+  function makeXlsx(sheets) {
+    const files = {
+      "[Content_Types].xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' + sheets.map((_, i) => '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join("") + '</Types>',
+      "_rels/.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+      "xl/_rels/workbook.xml.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + sheets.map((_, i) => '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>').join("") + '</Relationships>',
+      "xl/workbook.xml": workbookXml(sheets)
+    };
+    sheets.forEach((sheet, i) => {
+      files["xl/worksheets/sheet" + (i + 1) + ".xml"] = sheetXml(sheet.rows, sheet.protect);
+    });
+    return zipStore(files);
+  }
+
+  function workbookXml(sheets) {
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><workbookProtection workbookPassword="' + PROTECT_HASH + '" lockStructure="1"/><sheets>' +
+      sheets.map((sheet, i) => '<sheet name="' + xml(sheet.name) + '" sheetId="' + (i + 1) + '"' + (sheet.hidden ? ' state="veryHidden"' : '') + ' r:id="rId' + (i + 1) + '"/>').join("") +
+      '</sheets></workbook>';
+  }
+
+  function sheetXml(rows, protect) {
+    const data = rows.map((row, r) => '<row r="' + (r + 1) + '">' + row.map((value, c) => cellXml(value, colName(c + 1) + (r + 1))).join("") + '</row>').join("");
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="18"/><sheetData>' + data + '</sheetData>' + (protect ? '<sheetProtection password="' + PROTECT_HASH + '" sheet="1" objects="1" scenarios="1"/>' : '') + '</worksheet>';
+  }
+
+  function cellXml(value, ref) {
+    if (typeof value === "number" && Number.isFinite(value)) return '<c r="' + ref + '"><v>' + value + '</v></c>';
+    return '<c r="' + ref + '" t="inlineStr"><is><t>' + xml(value) + '</t></is></c>';
+  }
+
+  function colName(n) {
+    let out = "";
+    while (n > 0) {
+      const rem = (n - 1) % 26;
+      out = String.fromCharCode(65 + rem) + out;
+      n = Math.floor((n - 1) / 26);
+    }
+    return out;
+  }
+
+  function xml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+  }
+
+  function zipStore(fileMap) {
+    const enc = new TextEncoder();
+    const locals = [];
+    const centrals = [];
+    let offset = 0;
+    Object.keys(fileMap).forEach((name) => {
+      const nameBytes = enc.encode(name);
+      const data = enc.encode(fileMap[name]);
+      const crc = crc32(data);
+      const local = concat([
+        u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(33),
+        u32(crc), u32(data.length), u32(data.length), u16(nameBytes.length), u16(0),
+        nameBytes, data
+      ]);
+      const central = concat([
+        u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(33),
+        u32(crc), u32(data.length), u32(data.length), u16(nameBytes.length), u16(0), u16(0),
+        u16(0), u16(0), u32(0), u32(offset), nameBytes
+      ]);
+      locals.push(local);
+      centrals.push(central);
+      offset += local.length;
+    });
+    const centralStart = offset;
+    const centralData = concat(centrals);
+    const end = concat([
+      u32(0x06054b50), u16(0), u16(0), u16(centrals.length), u16(centrals.length),
+      u32(centralData.length), u32(centralStart), u16(0)
+    ]);
+    return new Blob([concat([...locals, centralData, end])], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  }
+
+  function u16(value) {
+    const a = new Uint8Array(2);
+    a[0] = value & 255;
+    a[1] = (value >>> 8) & 255;
+    return a;
+  }
+
+  function u32(value) {
+    const a = new Uint8Array(4);
+    a[0] = value & 255;
+    a[1] = (value >>> 8) & 255;
+    a[2] = (value >>> 16) & 255;
+    a[3] = (value >>> 24) & 255;
+    return a;
+  }
+
+  function concat(parts) {
+    const length = parts.reduce((sum, part) => sum + part.length, 0);
+    const out = new Uint8Array(length);
+    let offset = 0;
+    parts.forEach((part) => {
+      out.set(part, offset);
+      offset += part.length;
+    });
+    return out;
+  }
+
+  function crc32(bytes) {
+    let crc = -1;
+    for (let i = 0; i < bytes.length; i += 1) {
+      crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ bytes[i]) & 255];
+    }
+    return (crc ^ -1) >>> 0;
+  }
+
+  const CRC_TABLE = (() => {
+    const table = new Uint32Array(256);
+    for (let i = 0; i < 256; i += 1) {
+      let c = i;
+      for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      table[i] = c >>> 0;
+    }
+    return table;
+  })();
+
+  function downloadBlob(blob, filename, type) {
+    const safeBlob = blob instanceof Blob ? blob : new Blob([blob], { type });
+    const url = URL.createObjectURL(safeBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 800);
+  }
+
+  document.addEventListener("change", onOptionChange);
+  el("onlineLoginBtn").addEventListener("click", loginOnline);
+  el("offlineLoginBtn").addEventListener("click", loginOffline);
+  el("submitBtn").addEventListener("click", submitExam);
+  el("loginTitle").textContent = EXAM.title;
+  el("loginSubtitle").textContent = EXAM.subtitle || "请先填写论坛 ID。";
+  el("submitHint").textContent = "每题 " + POINTS + " 节操，共 " + TOTAL + " 节操。提交后只显示总分，不显示答案。";
+})();
+</script>
+</body>
+</html>

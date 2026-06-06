@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>六色合璧 · Hexa Master</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--panel:rgba(15,23,42,.88);--border:rgba(255,255,255,.15);
+  --gold:#facc15;--teal:#14b8a6;--cyan:#22d3ee;
+}
+body{font-family:"Nunito","Microsoft JhengHei",sans-serif;background:var(--bg);color:#fff;overflow:hidden;height:100dvh;width:100vw;}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background-size:cover;background-position:center;}
+.hidden{display:none!important}
+.title{font-size:2rem;font-weight:900;color:#fff;text-shadow:0 2px 16px rgba(0,0,0,.6);}
+.sub{font-size:.85rem;color:rgba(255,255,255,.75);margin:6px 0 14px;}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 18px 42px rgba(0,0,0,.35);}
+.inp{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-family:inherit;font-size:.9rem;}
+.btn{border:none;border-radius:10px;padding:10px 14px;background:linear-gradient(135deg,#0f766e,#0891b2);color:#fff;font-weight:800;cursor:pointer;font-family:inherit;font-size:.88rem;transition:transform .1s,filter .1s;}
+.btn:active{transform:scale(.96);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+#top{width:min(600px,98vw);display:flex;gap:8px;align-items:center;padding:6px 8px;}
+#lvl{flex:1;text-align:center;font-weight:900;font-size:.9rem;}
+#progress-wrap{width:min(600px,98vw);height:5px;background:rgba(255,255,255,.14);border-radius:10px;overflow:hidden;margin-bottom:2px;}
+#progress{height:100%;width:0%;background:linear-gradient(90deg,var(--gold),var(--teal),var(--cyan));transition:width .35s;}
+#game-area{width:min(600px,98vw);flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;overflow:hidden;min-height:0;}
+#score-bar{display:flex;gap:12px;align-items:center;font-size:.8rem;color:rgba(255,255,255,.82);}
+#hint-line{font-size:.74rem;color:rgba(255,255,255,.7);min-height:16px;text-align:center;}
+/* Board canvas wrapper */
+#board-wrap{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+#board-canvas{display:block;}
+/* Floating number popup */
+.num-pop{position:absolute;pointer-events:none;font-weight:900;font-size:1.1rem;color:#facc15;text-shadow:0 1px 6px rgba(0,0,0,.8);z-index:50;animation:numPop .7s ease-out forwards;}
+@keyframes numPop{0%{opacity:1;transform:translateY(0) scale(1.3);}100%{opacity:0;transform:translateY(-40px) scale(.8);}}
+/* Tray */
+#tray{width:min(600px,98vw);min-height:82px;background:rgba(5,9,20,.62);border:1px solid var(--border);border-radius:14px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.tray-slot{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:5px 3px;border-radius:10px;border:2px solid transparent;transition:border-color .15s,background .15s,transform .1s;}
+.tray-slot.selected{border-color:var(--cyan);background:rgba(34,211,238,.13);}
+.tray-slot.empty{opacity:.3;cursor:default;}
+.tray-slot:not(.empty):hover{transform:translateY(-2px);}
+.tray-label{font-size:.65rem;color:rgba(255,255,255,.6);}
+/* Boosters */
+#boosters{width:min(600px,98vw);display:flex;gap:5px;padding:3px 6px;}
+.bbtn{flex:1;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.08);color:#fff;padding:6px 2px;font-weight:800;cursor:pointer;font-family:inherit;font-size:.7rem;transition:background .15s;}
+.bbtn:active{background:rgba(255,255,255,.22);}
+/* Overlay */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:20;}
+.ov-card{width:min(380px,94vw);text-align:center;}
+.shop-list{display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow:auto;}
+.shop-item{display:flex;gap:8px;align-items:center;padding:9px;border-radius:10px;background:rgba(255,255,255,.07);}
+.mults{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;margin:0 0 10px;}
+.mults .btn{padding:7px 10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);}
+.mults .on{background:linear-gradient(135deg,#f59e0b,#e11d48);}
+.chapter{width:min(600px,98vw);margin-top:10px;display:flex;gap:10px;align-items:center;justify-content:space-between;}
+.chapter .bar{height:7px;background:rgba(255,255,255,.13);border-radius:99px;overflow:hidden;flex:1;min-width:100px;}
+.chapter .fill{height:100%;background:linear-gradient(90deg,#facc15,#14b8a6);}
+@media(max-width:480px){.title{font-size:1.5rem;}#top{padding:4px;}.bbtn{font-size:.62rem;padding:5px 1px;}}
+#right-panel{
+  position:fixed;right:8px;top:50%;transform:translateY(-50%);
+  width:168px;background:rgba(10,15,30,.93);
+  border:1px solid rgba(255,255,255,.22);border-radius:12px;
+  padding:10px 12px;color:#fff;z-index:50;pointer-events:none;
+  box-shadow:0 4px 24px rgba(0,0,0,.55);backdrop-filter:blur(6px);
+}
+@media(max-width:560px){#right-panel{width:130px;font-size:.8rem;padding:8px 9px;right:4px;}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="screen">
+  <div class="title">六色合璧</div>
+  <div class="sub">叠色消牌 · 六边形大师 · 无限关卡</div>
+  <div class="card" style="width:min(360px,92vw)">
+    <input id="inp-id" class="inp" placeholder="论坛ID" style="margin-bottom:8px">
+    <input id="inp-uid" class="inp" placeholder="UID" type="number" style="margin-bottom:8px">
+    <button id="btn-login" class="btn" style="width:100%" onclick="doLogin()">登入</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="offlineMode()">离线模式</button>
+    <div id="login-err" style="min-height:18px;color:#fda4af;margin-top:8px;font-size:.8rem"></div>
+  </div>
+</div>
+
+<!-- MENU -->
+<div id="menu" class="screen hidden">
+  <div class="title">六色合璧</div>
+  <div id="menu-stat" class="sub">-</div>
+  <div id="menu-lootbox-info" style="font-size:.82rem;color:rgba(255,255,255,.85);margin-bottom:4px;text-align:center;min-height:20px"></div>
+  <div id="menu-lootbox-btn-row" style="margin-bottom:10px;text-align:center"></div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;justify-content:center">
+    <button class="btn" onclick="startLatest()">开始</button>
+    <button class="btn" onclick="openShop()">商店</button>
+    <button class="btn" onclick="downloadSaveData()">📥 存档</button>
+    <button class="btn" onclick="openSkin()">皮肤</button>
+    <button class="btn" style="background:linear-gradient(135deg,#1d4ed8,#7c3aed)" onclick="openGuide()">📖 玩法</button>
+  </div>
+  <div id="mults" class="mults"></div>
+  <div class="card" style="width:min(600px,98vw)">
+    <div style="font-weight:800;margin-bottom:8px">关卡（无限）</div>
+    <div id="lvlist" style="display:grid;grid-template-columns:repeat(10,1fr);gap:6px"></div>
+  </div>
+  <div id="chapter-card" class="card chapter"></div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen hidden" style="justify-content:flex-start;padding-top:4px;">
+  <!-- Right-side info panel: shows special cell info or layer breakdown -->
+  <div id="right-panel" class="hidden" data-mode=""></div>
+  <div id="top">
+    <button class="btn" style="padding:8px 10px" onclick="backMenu()">←</button>
+    <div id="lvl">第1关</div>
+    <div class="card" style="padding:5px 10px">🪙 <b id="coins">0</b></div>
+  </div>
+  <div id="progress-wrap"><div id="progress"></div></div>
+  <div id="game-area">
+    <div id="score-bar">
+      <span>目标 <b id="score-val">0</b>/<b id="score-need">100</b></span>
+      <span>空格 <b id="slots-left">19</b></span>
+      <span id="hint-extra" style="color:#facc15"></span>
+      <span id="super-count" style="color:#a78bfa;font-weight:900"></span>
+    </div>
+    <div id="board-wrap" style="position:relative;">
+      <canvas id="board-canvas"></canvas>
+    </div>
+    <div id="hint-line">选择下方色块堆，点击棋盘格放置</div>
+    <div id="tray"></div>
+  </div>
+  <div id="boosters">
+    <button class="bbtn" onclick="doUndo()">↩ <span id="uval">0</span><br>撤回</button>
+    <button class="bbtn" onclick="doShuffle()">🔀 <span id="sval">0</span><br>换三堆</button>
+    <button class="bbtn" onclick="doHammerToggle()">🔨 <span id="hval">0</span><br>锤碎</button>
+    <button class="bbtn" onclick="doColorBomb()">💣 <span id="bval">0</span><br>色爆</button>
+    <button class="bbtn" onclick="openShop()">🛒<br>购买</button>
+  </div>
+</div>
+
+<!-- WIN -->
+<div id="ov-win" class="ov hidden">
+  <div class="card ov-card">
+    <div style="font-size:1.8rem">🎉</div>
+    <div style="font-weight:900;font-size:1.2rem;margin:6px 0">通关成功</div>
+    <div id="win-body" style="font-size:.86rem;color:rgba(255,255,255,.75);margin-bottom:10px"></div>
+    <button class="btn" style="width:100%" onclick="nextLevel()">下一关</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="backMenu()">返回菜单</button>
+  </div>
+</div>
+
+<!-- LOSE -->
+<div id="ov-lose" class="ov hidden">
+  <div class="card ov-card" style="width:min(360px,93vw)">
+    <div style="font-size:1.8rem">😵</div>
+    <div style="font-weight:900;font-size:1.2rem;margin:6px 0">挑战失败</div>
+    <div id="lose-body" style="font-size:.86rem;color:rgba(255,255,255,.75);margin-bottom:10px"></div>
+    <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px;margin-bottom:10px">
+      <div style="font-weight:800;font-size:.88rem;margin-bottom:8px">💊 复活选项（清除层数最多的 3 格色块）</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" style="flex:1;min-width:110px;background:linear-gradient(135deg,#b45309,#dc2626);font-size:.82rem" onclick="doRevive('coins')">🪙 金币复活<br><span id="revive-coin-cost" style="font-weight:400;font-size:.72rem"></span></button>
+        <button class="btn" style="flex:1;min-width:110px;background:linear-gradient(135deg,#1d4ed8,#6d28d9);font-size:.82rem" onclick="doRevive('replies')">📝 回复数复活<br><span style="font-weight:400;font-size:.72rem">花费 5 回复数</span></button>
+      </div>
+    </div>
+    <button class="btn" style="width:100%" onclick="restartLevel()">重新挑战</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="backMenu()">返回菜单</button>
+  </div>
+</div>
+
+<!-- SHOP -->
+<div id="ov-shop" class="ov hidden">
+  <div class="card" style="width:min(430px,94vw);max-height:86vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b>🛒 商店</b><button class="btn" onclick="closeShop()">关闭</button></div>
+    <div style="font-size:.8rem;margin-bottom:8px">📝回复 <b id="sh-replies">0</b> · 💬被引用 <b id="sh-cites">0</b></div>
+    <div id="forum-status" style="font-size:.78rem;color:#93c5fd;min-height:18px;margin-bottom:6px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><input id="forum-start-date" class="inp" type="date"><input id="forum-end-date" class="inp" type="date"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn" style="flex:1" onclick="refreshForumData()">抓取论坛</button><button class="btn" style="flex:1;background:#1f2937" onclick="refreshForumDataFast()">快速抓取</button></div>
+    <div id="shop-list" class="shop-list"></div>
+  </div>
+</div>
+
+<!-- SKIN -->
+<div id="ov-skin" class="ov hidden">
+  <div class="card" style="width:min(360px,92vw)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>🎨 皮肤</b><button class="btn" onclick="closeSkin()">关闭</button></div>
+    <div id="skin-list" class="shop-list"></div>
+  </div>
+</div>
+
+<!-- GUIDE -->
+<div id="ov-guide" class="ov hidden">
+  <div class="card" style="width:min(500px,96vw);max-height:88vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <b style="font-size:1.1rem">📖 玩法介绍</b>
+      <button class="btn" onclick="qs('ov-guide').classList.add('hidden')">关闭</button>
+    </div>
+    <div style="font-size:.85rem;line-height:1.7;color:rgba(255,255,255,.88)">
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:4px">🎯 游戏目标</div>
+      <p style="margin-bottom:10px">每关有分数目标。把彩色六边形色块堆放到棋盘上，让相邻同色色块聚集叠加。顶部同色达到 <b>10层</b> 自动消除得分，底层其他颜色保留！</p>
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:4px">🔄 聚集与连锁规则</div>
+      <p style="margin-bottom:4px">• 放置后，若与相邻格顶色相同，会把顶部同色层全部推过去</p>
+      <p style="margin-bottom:4px">• 推过去后新的顶色若又与其他邻居相同，继续连锁推移</p>
+      <p style="margin-bottom:4px">• 推移方向：当前格推向邻居，不是积累在同一格</p>
+      <p style="margin-bottom:10px">• 三堆全放完后获得下一批</p>
+      <div style="font-weight:900;color:#facc15;margin-bottom:6px">⭐ 星星评分</div>
+      <p style="margin-bottom:3px">• 基础：<b>3星</b></p>
+      <p style="margin-bottom:3px">• 使用任何道具：<b>-1星</b></p>
+      <p style="margin-bottom:3px">• 每次顶层堆到 <b>15层以上</b> 再消除：<b>+1星</b></p>
+      <p style="margin-bottom:10px">• 每次复活：<b>-1星</b></p>
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:4px">🛠️ 道具</div>
+      <p style="margin-bottom:3px">• <b>↩ 撤回</b>：撤销上一步放置</p>
+      <p style="margin-bottom:3px">• <b>🔀 换三堆</b>：丢弃当前三堆，换新的</p>
+      <p style="margin-bottom:3px">• <b>🔨 锤碎</b>：点击棋盘格子，清除该格所有色块与特殊效果</p>
+      <p style="margin-bottom:10px">• <b>💣 色爆</b>：消除棋盘上数量最多的那种颜色（所有层）</p>
+      <div style="font-weight:900;color:#f472b6;margin-bottom:6px">✨ 特殊格子（第5关起陆续出现）</div>
+      <p style="font-size:.8rem;color:rgba(255,255,255,.6);margin-bottom:8px">所有特殊格上方都有预设的色块堆叠，解除特殊效果后色块变为普通，可正常参与移动和消除。</p>
+      <div style="background:rgba(125,211,252,.12);border-radius:8px;padding:8px;margin-bottom:6px">
+        <b style="color:#7dd3fc">❄️ 冰冻格</b>（第5关）<br>
+        <span style="font-size:.8rem">格子上有色块被冰冻锁住，颜色无法进出。需在相邻格触发消除N次才能解冻。解冻后色块可自由参与移动。部分关卡需解冻所有冰冻格才能通关。</span>
+      </div>
+      <div style="background:rgba(251,146,60,.12);border-radius:8px;padding:8px;margin-bottom:6px">
+        <b style="color:#fb923c">⛓️ 锁链格</b>（第7关）<br>
+        <span style="font-size:.8rem">格子上有色块且被1~3种颜色的锁链锁住（用彩色圆点标示）。在相邻格消除对应颜色的色块，就能解掉一种锁链。全部解除后格子恢复正常。部分关卡需解开所有锁链才能通关。</span>
+      </div>
+      <div style="background:rgba(252,165,165,.12);border-radius:8px;padding:8px;margin-bottom:6px">
+        <b style="color:#fca5a5">💥 爆炸格</b>（第9关）<br>
+        <span style="font-size:.8rem">格子上有色块，当此格的色块被消除时，周围所有格子各消除一层色块！利用好时机可触发大范围连锁。</span>
+      </div>
+      <div style="background:rgba(253,230,138,.12);border-radius:8px;padding:8px;margin-bottom:6px">
+        <b style="color:#fde68a">⚡ 加倍格</b>（第11关）<br>
+        <span style="font-size:.8rem">格子上有色块。当此格色块被消除时，本次得分倍率翻倍（一次性），用完变为普通格。</span>
+      </div>
+      <div style="background:rgba(216,180,254,.12);border-radius:8px;padding:8px;margin-bottom:6px">
+        <b style="color:#d8b4fe">🎨 变色格</b>（第13关）<br>
+        <span style="font-size:.8rem">格子上有色块。当色块移动进此格时，顶层颜色变为棋盘上当前最稀有的颜色，制造意外的连锁机会（一次性）。</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SPECIAL TUTORIAL POPUP -->
+<div id="ov-special-tutorial" class="ov hidden" onclick="qs('ov-special-tutorial').classList.add('hidden')">
+  <div class="card" style="width:min(360px,92vw);text-align:center;pointer-events:none">
+    <div style="font-size:2.5rem;margin-bottom:8px" id="special-tut-icon">❄️</div>
+    <div style="font-weight:900;font-size:1.15rem;margin-bottom:8px;color:#22d3ee" id="special-tut-name">冻结格</div>
+    <div style="font-size:.86rem;color:rgba(255,255,255,.85);line-height:1.6;margin-bottom:14px" id="special-tut-desc"></div>
+    <div style="font-size:.75rem;color:rgba(255,255,255,.45)">点击任意处关闭</div>
+  </div>
+</div>
+
+<!-- LOOTBOX -->
+<div id="ov-lootbox" class="ov hidden">
+  <div class="card" style="width:min(420px,94vw);max-height:88vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b>🎁 开宝箱</b><button class="btn" onclick="closeLootBox()">关闭</button></div>
+    <div style="font-size:.82rem;color:rgba(255,255,255,.75);margin-bottom:10px">当前宝箱：<b id="lb-count">0</b> 个<br><span style="font-size:.75rem;color:rgba(255,255,255,.55)">奖励：节操x30 · 羽毛x10 · 30天本期勋章 · 30天字母勋章（稀有）</span></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn" style="flex:1;background:linear-gradient(135deg,#7c3aed,#a21caf)" onclick="doOpenLootBox(1)">开 1 个</button>
+      <button class="btn" style="flex:1;background:linear-gradient(135deg,#b45309,#dc2626)" onclick="doOpenLootBox(10)">开 10 个</button>
+      <button class="btn" style="flex:1;background:linear-gradient(135deg,#065f46,#0369a1)" onclick="doOpenLootBoxAll()">全部开</button>
+    </div>
+    <div id="lb-result" style="font-size:.85rem;color:#fde68a;min-height:24px;text-align:center;margin-bottom:10px"></div>
+    <div style="font-size:.8rem;color:rgba(255,255,255,.7);border-top:1px solid rgba(255,255,255,.12);padding-top:10px">
+      <div style="font-weight:800;margin-bottom:6px">📊 奖励累计</div>
+      <div id="lb-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// LOOT BOX
+// ============================================================
+const LOOT_MAX_JIECAO=5000,LOOT_MAX_FEATHER=2000;
+function lootBoxPull(){
+  let wJC=50,wF=30,wM=15,wL=5;
+  if((G.jieCao||0)>=LOOT_MAX_JIECAO){wL+=wJC;wJC=0;}
+  if((G.feather||0)>=LOOT_MAX_FEATHER){wL+=wF;wF=0;}
+  const total=wJC+wF+wM+wL,r=Math.random()*total;
+  if(r<wJC){G.jieCao=Math.min(LOOT_MAX_JIECAO,(G.jieCao||0)+30);return{label:"节操 +30"};}
+  if(r<wJC+wF){G.feather=Math.min(LOOT_MAX_FEATHER,(G.feather||0)+10);return{label:"羽毛 +10"};}
+  if(r<wJC+wF+wM){G.medal30=(G.medal30||0)+1;return{label:"30天本期勋章 x1"};}
+  G.letterMedal30=(G.letterMedal30||0)+1;return{label:"30天字母勋章 x1 ✨"};
+}
+function doOpenLootBox(n){
+  const boxes=Math.min(n,G.lootBoxes||0);
+  if(!boxes){qs("lb-result").textContent="宝箱不足！";return;}
+  const results=[];for(let i=0;i<boxes;i++){G.lootBoxes--;results.push(lootBoxPull());}
+  const tally={};results.forEach(r=>{tally[r.label]=(tally[r.label]||0)+1;});
+  qs("lb-result").textContent="获得："+Object.entries(tally).map(([k,v])=>v>1?k.replace(/x1$/,"x"+v):k).join("、");
+  save();cloudSave();renderLootBoxOverlay();updateMenuStat();
+  gasBeacon({sheet:SHEET,action:"lootbox_open",id:G.id,uid:String(G.uid),count:String(boxes),date:todayISO()});
+}
+function doOpenLootBoxAll(){const n=G.lootBoxes||0;if(!n){qs("lb-result").textContent="暂无宝箱";return;}if(n>10&&!confirm("确定开 "+n+" 个？"))return;doOpenLootBox(n);}
+function renderLootBoxOverlay(){
+  const el=qs("lb-count");if(el)el.textContent=G.lootBoxes||0;
+  const sm=qs("lb-summary");
+  if(sm)sm.innerHTML=[["🎭 节操",(G.jieCao||0)+"/"+LOOT_MAX_JIECAO],["🪶 羽毛",(G.feather||0)+"/"+LOOT_MAX_FEATHER],["🏅 本期勋章",G.medal30||0],["✨ 字母勋章",G.letterMedal30||0]].map(([k,v])=>"<div style='color:rgba(255,255,255,.7)'>"+k+"</div><div style='font-weight:800'>"+v+"</div>").join("");
+}
+function openLootBox(){qs("lb-result").textContent="";renderLootBoxOverlay();qs("ov-lootbox").classList.remove("hidden");}
+function closeLootBox(){qs("ov-lootbox").classList.add("hidden");}
+function openGuide(){qs("ov-guide").classList.remove("hidden");}
+</script>
+
+<script>
+// ============================================================
+// CONFIG & GLOBALS
+// ============================================================
+const GAS_URL="https://script.google.com/macros/s/AKfycbz7hsNRy2zpEGn4n1MT11Aw09j4ZXpOMzfZYoHCMWDWzqlfgu77WU-OrEO67bdZ9V2w/exec";
+const SHEET="六色合璧HTML";
+const FORUM_PROXIES=["https://api.codetabs.com/v1/proxy?quest=","https://r.jina.ai/http://","https://cors.isomorphic-git.org/"];
+const FORUM_FETCH_MS=22000;
+const KEY_STATE="hx_state",KEY_ID="hx_id",KEY_UID="hx_uid";
+
+// Color palette – rich, saturated
+const COLORS=[
+  {top:"#ff5a5a",side:"#b52222",dark:"#7a1010"},  // red
+  {top:"#ff8c2a",side:"#c05800",dark:"#7a3400"},   // orange
+  {top:"#ffd83a",side:"#c29000",dark:"#7a5c00"},   // yellow
+  {top:"#4de87a",side:"#1da04a",dark:"#0d6030"},   // green
+  {top:"#4a9fff",side:"#1a5fc0",dark:"#0d3880"},   // blue
+  {top:"#b96bff",side:"#7030b0",dark:"#420070"},   // purple
+  {top:"#ff6bb5",side:"#c0306a",dark:"#7a1040"},   // pink
+];
+const COLOR_NAMES=["红","橙","黄","绿","蓝","紫","粉"];
+const CLEAR_THRESHOLD=10;
+
+const BG_SKINS={
+  default:{id:"default",name:"默认皮肤",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-c3e6788005074350.jpeg"},
+  bamboo:{id:"bamboo",name:"赛博流光电路",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-9e1fd50f39b0c49b.jpeg"},
+  charcoal:{id:"charcoal",name:"黄金分割魔方",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-d0d46fc4517d4267.jpeg"},
+  festival:{id:"festival",name:"深渊微光矿洞",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-896908210ef6fcdf.jpeg"},
+  beach_bbq:{id:"beach_bbq",name:"复古波普方块",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-3a84b648531e70f6.jpeg"},
+  teppan:{id:"teppan",name:"极简纸艺叠层",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-5a07f9a51a31a2e7.jpeg"},
+  izakaya:{id:"izakaya",name:"低多边形极光",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-05724281868a03d4.jpeg"},
+  steampunk:{id:"steampunk",name:"无尽层叠星空",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-520aba589500950a.jpeg"}
+  tepsd:{id:"tepsd",name:"无尽层叠星空",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-520aba589500950a.jpeg"},
+  izakaaf:{id:"izakaaf",name:"万花筒几何",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-f3d853ac44dc32ca.jpeg"},
+  steampsf:{id:"steampsf",name:"六色风暴漩涡",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-5b9820dd59473080.jpeg"}
+};
+const SKINS=Object.values(BG_SKINS);
+const SHOP_ITEMS=[
+  {id:"undo",name:"撤回x1",costType:"replies",cost:8,give:{undo:1}},
+  {id:"shuffle",name:"换三堆x1",costType:"replies",cost:10,give:{shuffle:1}},
+  {id:"hammer",name:"锤碎x1",costType:"replies",cost:15,give:{hammer:1}},
+  {id:"bomb",name:"色爆x1",costType:"replies",cost:20,give:{bomb:1}},
+  {id:"ticket",name:"挑战卷x1",costType:"citations",cost:10,give:{ticket:1}},
+  {id:"skin_bamboo",name:"背景：赛博流光电路",costType:"replies",cost:25,give:{bgSkin:"bamboo"}},
+  {id:"skin_charcoal",name:"背景：黄金分割魔方",costType:"replies",cost:25,give:{bgSkin:"charcoal"}},
+  {id:"skin_festival",name:"背景：深渊微光矿洞",costType:"replies",cost:25,give:{bgSkin:"festival"}},
+  {id:"skin_beach_bbq",name:"背景：复古波普方块",costType:"replies",cost:25,give:{bgSkin:"beach_bbq"}},
+  {id:"skin_teppan",name:"背景：极简纸艺叠层",costType:"replies",cost:25,give:{bgSkin:"teppan"}},
+  {id:"skin_izakaya",name:"背景：低多边形极光",costType:"replies",cost:25,give:{bgSkin:"izakaya"}},
+  {id:"skin_steampunk",name:"背景：无尽层叠星空",costType:"replies",cost:35,give:{bgSkin:"steampunk"}}
+  {id:"skin_tepsd",name:"背景：无尽层叠星空",costType:"replies",cost:25,give:{bgSkin:"teppan"}},
+  {id:"skin_izakaaf",name:"背景：万花筒几何",costType:"replies",cost:25,give:{bgSkin:"izakaya"}},
+  {id:"skin_steampsf",name:"背景：六色风暴漩涡",costType:"replies",cost:35,give:{bgSkin:"steampunk"}}
+];
+
+let G={id:"",uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,coins:0,tickets:0,stars:0,chapter:1,chapterItems:0,wheel:0,multiplier:1,unlocked:[1],cleared:[],skin:"default",ownedBgSkins:["default"],bgSkin:"default",boosters:{undo:3,shuffle:2,hammer:2,bomb:1},lootBoxes:0,jieCao:0,feather:0,medal30:0,letterMedal30:0,lootBoxesTotal:0};
+
+// Gameplay state
+let level=1,score=0,scoreNeed=100,numColors=4;
+let cells=[],queue=[],selectedQueue=-1,moveHistory=[],boostersUsed=0;
+let hammerMode=false,curBgSkin="default";
+let superClearCount=0; // how many times a cell hit >=15 before clearing
+let reviveCount=0;     // times revived this level
+
+// Animation state
+let animations=[]; // {type, cellIdx, fromPx,fromPy, toPx,toPy, color, t, duration}
+let numberPops=[];  // {x,y,text,t,duration}
+let animFrame=null;
+
+const qs=id=>document.getElementById(id),todayISO=()=>new Date().toISOString().slice(0,10);
+function gasReady(){return /^https?:\/\//.test(GAS_URL)&&GAS_URL.indexOf("__")<0;}
+function gasBeacon(p){if(!gasReady())return;const u=GAS_URL+"?"+new URLSearchParams({...p,game:"hexa_master",_t:Date.now()});const i=new Image();i.referrerPolicy="no-referrer";i.src=u;}
+function gasJsonp(params,timeout=10000){if(!gasReady())return Promise.resolve({ok:false});return new Promise((res,rej)=>{const cb="hx_cb_"+Math.random().toString(36).slice(2);const s=document.createElement("script");const t=setTimeout(()=>{delete window[cb];s.remove();rej(new Error("timeout"));},timeout);window[cb]=d=>{clearTimeout(t);delete window[cb];s.remove();res(d||{});};s.src=GAS_URL+"?"+new URLSearchParams({...params,game:"hexa_master",callback:cb,_t:Date.now()});document.body.appendChild(s);});}
+function save(){localStorage.setItem(KEY_STATE,JSON.stringify(G));}
+function load(){try{Object.assign(G,JSON.parse(localStorage.getItem(KEY_STATE)||"{}"));}catch(e){}ensureOwnedBgSkins();curBgSkin=G.bgSkin||G.skin||"default";G.skin=curBgSkin;}
+function normalize(){
+  if(!G.boosters)G.boosters={undo:0,shuffle:0,hammer:0,bomb:0};
+  ["undo","shuffle","hammer","bomb"].forEach(k=>G.boosters[k]=Math.max(0,Number(G.boosters[k]||0)));
+  ["coins","tickets","stars","chapter","chapterItems","wheel","replies","citations","repliesSpent","citationsSpent","lootBoxes","jieCao","feather","medal30","letterMedal30","lootBoxesTotal"].forEach(k=>G[k]=Math.max(0,Number(G[k]||0)));
+  if(!G.chapter)G.chapter=1;if(!G.multiplier)G.multiplier=1;
+  if(!G.unlocked||!G.unlocked.length)G.unlocked=[1];
+  if(!G.cleared)G.cleared=[];
+  ensureOwnedBgSkins();
+  if(!G.hexaInit){G.coins=(G.coins||0)+600;G.hexaInit=true;}
+}
+async function cloudSave(){
+  if(!G.id)return;
+  try{
+    await gasJsonp({
+      sheet:SHEET,action:"save",
+      id:G.id,uid:String(G.uid),
+      coins:String(G.coins||0),
+      unlocked_count:String((G.unlocked||[]).length),
+      cleared_count:String((G.cleared||[]).length),
+      state_json:JSON.stringify(G),
+      date:todayISO()
+    },12000);
+  }catch(e){
+    // silent fail
+  }
+}
+async function cloudLoad(id){
+  try{
+    const d=await gasJsonp({sheet:SHEET,action:"load",id},16000);
+    return d.data||null;
+  }catch(e){return null;}
+}
+function show(id){["login","menu","game"].forEach(x=>qs(x).classList.add("hidden"));qs(id).classList.remove("hidden");}
+function hint(s){qs("hint-line").textContent=s||"";}
+function setForumStatus(s){const el=qs("forum-status");if(el)el.textContent=s||"";}
+function bgStyleFromUrl(url){return "linear-gradient(rgba(0,0,0,.47),rgba(0,0,0,.47)),url('"+url+"') center/cover no-repeat";}
+function ensureOwnedBgSkins(){if(!G.ownedBgSkins||!Array.isArray(G.ownedBgSkins))G.ownedBgSkins=["default"];if(!G.ownedBgSkins.includes("default"))G.ownedBgSkins.unshift("default");}
+function ownsBgSkin(id){ensureOwnedBgSkins();return id==="default"||G.ownedBgSkins.includes(id);}
+function grantBgSkin(id){ensureOwnedBgSkins();if(id&&!G.ownedBgSkins.includes(id))G.ownedBgSkins.push(id);}
+function getBgSkinDef(){return BG_SKINS[curBgSkin]||BG_SKINS.default;}
+const COVER_URL="https://s.sstmlt.com/img/2026/06/06/hexa_master_3d964d257a654cb69f.jpeg";
+function applyBgTheme(){
+  const skinBg=bgStyleFromUrl(getBgSkinDef().url);
+  const coverBg=bgStyleFromUrl(COVER_URL);
+  const loginEl=qs("login");if(loginEl)loginEl.style.background=coverBg;
+  ["menu","game"].forEach(id=>{const el=qs(id);if(el)el.style.background=skinBg;});
+}
+
+// ============================================================
+// HEX GRID DEFINITION (19 cells, axial coords)
+// ============================================================
+const HEX_DEFS=[
+  {q:0,r:0},
+  {q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1},{q:1,r:-1},
+  {q:2,r:0},{q:2,r:-1},{q:1,r:-2},{q:0,r:-2},{q:-1,r:-1},{q:-2,r:0},
+  {q:-2,r:1},{q:-1,r:2},{q:0,r:2},{q:1,r:1},{q:-2,r:2},{q:2,r:-2}
+];
+const HEX_DIRS=[{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1},{q:1,r:-1}];
+
+function getNeighbors(idx){
+  const {q,r}=HEX_DEFS[idx],out=[];
+  HEX_DIRS.forEach(d=>{const ni=HEX_DEFS.findIndex(h=>h.q===q+d.q&&h.r===r+d.r);if(ni>=0)out.push(ni);});
+  return out;
+}
+
+// ============================================================
+// CANVAS HEX RENDERING (3D ISOMETRIC STYLE)
+// ============================================================
+let CVS,CTX,HEX_R=40,OFFSET_X=0,OFFSET_Y=0;
+
+function hexCenter(q,r){
+  const x=HEX_R*1.5*q;
+  const y=HEX_R*(Math.sqrt(3)/2*q+Math.sqrt(3)*r);
+  return {x:x+OFFSET_X, y:y+OFFSET_Y};
+}
+
+// Draw all stacked hex layers for a cell — each layer visible even at 9+
+function drawHex3D(cx, cy, r, layersArr, opts){
+  opts = opts || {};
+  const count = layersArr.length;
+  if(count === 0) return;
+
+  const r2 = r - 2;
+
+  // Show up to 9 slabs; each slab slightly smaller radius so lower layers peek out
+  const MAX_SHOW = Math.min(count, 9);
+  const showLayers = layersArr.slice(count - MAX_SHOW);
+
+  // SLAB_H: larger value makes lower layers more visible as distinct colored bands
+  const SLAB_H = Math.max(4, Math.min(r * 0.20, 8));
+  const totalStackH = (MAX_SHOW - 1) * SLAB_H;
+  // topmost face Y: centered vertically (shift up a bit for bottom layers to show)
+  const topFaceY = cy - totalStackH * 0.4;
+
+  function hexPts(cr, baseCy){
+    const p = [];
+    for(let i = 0; i < 6; i++){
+      const a = Math.PI/3 * i;
+      p.push([cx + cr * Math.cos(a), baseCy + cr * Math.sin(a)]);
+    }
+    return p;
+  }
+
+  function drawSlab(topY, colIdx, slabR, isTopmost){
+    const col = COLORS[colIdx] || COLORS[0];
+    const top = hexPts(slabR, topY);
+
+    function sideFace(indices, shade){
+      CTX.beginPath();
+      CTX.moveTo(top[indices[0]][0], top[indices[0]][1]);
+      for(let k = 1; k < indices.length; k++)
+        CTX.lineTo(top[indices[k]][0], top[indices[k]][1]);
+      CTX.lineTo(top[indices[indices.length-1]][0], top[indices[indices.length-1]][1] + SLAB_H);
+      for(let k = indices.length-2; k >= 0; k--)
+        CTX.lineTo(top[indices[k]][0], top[indices[k]][1] + SLAB_H);
+      CTX.closePath();
+      CTX.fillStyle = shade;
+      CTX.fill();
+      CTX.strokeStyle = "rgba(0,0,0,.2)";
+      CTX.lineWidth = 0.5;
+      CTX.stroke();
+    }
+    sideFace([0,1,2,3], col.side);
+    sideFace([3,4,5,0], col.dark);
+
+    CTX.beginPath();
+    CTX.moveTo(top[0][0], top[0][1]);
+    for(let i = 1; i < 6; i++) CTX.lineTo(top[i][0], top[i][1]);
+    CTX.closePath();
+
+    if(isTopmost){
+      const grd = CTX.createRadialGradient(cx, topY - slabR*0.2, slabR*0.08, cx, topY, slabR*0.95);
+      grd.addColorStop(0, "#fff");
+      grd.addColorStop(0.28, col.top);
+      grd.addColorStop(1, col.side);
+      CTX.fillStyle = grd;
+    } else {
+      // Lower slabs: show actual bright color so different colors are clearly visible
+      // Use a simple gradient from the real color to a slightly darker edge
+      const grd2 = CTX.createRadialGradient(cx, topY, slabR*0.05, cx, topY, slabR*0.9);
+      grd2.addColorStop(0, col.top);
+      grd2.addColorStop(1, col.side);
+      CTX.fillStyle = grd2;
+    }
+    CTX.fill();
+    // Strong border on lower slabs to clearly separate layers
+    CTX.strokeStyle = isTopmost ? "rgba(255,255,255,.45)" : "rgba(0,0,0,.55)";
+    CTX.lineWidth   = isTopmost ? 1.2 : 1.5;
+    CTX.stroke();
+
+    if(isTopmost){
+      CTX.beginPath();
+      CTX.moveTo(cx - slabR*0.28, topY - slabR*0.48);
+      CTX.lineTo(cx + slabR*0.08, topY - slabR*0.62);
+      CTX.strokeStyle = "rgba(255,255,255,.5)";
+      CTX.lineWidth = 1.8;
+      CTX.stroke();
+    }
+  }
+
+  // Draw bottom→top; lower slabs get smaller radius so they're visible as colored rings
+  for(let li = 0; li < MAX_SHOW; li++){
+    const topY = topFaceY + (MAX_SHOW - 1 - li) * SLAB_H;
+    const frac = MAX_SHOW > 1 ? li / (MAX_SHOW - 1) : 1;
+    // bottom layer: 62% of radius, top layer: 100% — wide spread makes lower colors clearly visible
+    const slabR = r2 * (0.62 + 0.38 * frac);
+    drawSlab(topY, showLayers[li], slabR, li === MAX_SHOW - 1);
+  }
+
+  // Glow ring on topmost face
+  const topPts = hexPts(r2, topFaceY);
+  if(opts.superClear || opts.nearClear || opts.selected || opts.frozen || opts.chained){
+    CTX.beginPath();
+    CTX.moveTo(topPts[0][0], topPts[0][1]);
+    for(let i = 1; i < 6; i++) CTX.lineTo(topPts[i][0], topPts[i][1]);
+    CTX.closePath();
+    if(opts.superClear){
+      CTX.strokeStyle = "#c084fc"; CTX.lineWidth = 3.5; CTX.stroke();
+      CTX.strokeStyle = "rgba(192,132,252,.4)"; CTX.lineWidth = 8; CTX.stroke();
+    } else if(opts.nearClear){
+      CTX.strokeStyle = "#facc15"; CTX.lineWidth = 2.5; CTX.stroke();
+    } else if(opts.selected){
+      CTX.strokeStyle = "#22d3ee"; CTX.lineWidth = 3; CTX.stroke();
+    } else if(opts.frozen){
+      CTX.fillStyle = "rgba(125,211,252,.28)"; CTX.fill();
+      CTX.strokeStyle = "#7dd3fc"; CTX.lineWidth = 2.5; CTX.stroke();
+    } else if(opts.chained){
+      CTX.strokeStyle = "#fb923c"; CTX.lineWidth = 2.5; CTX.stroke();
+    }
+  }
+
+  // Chain color dots overlay on top face
+  if(opts.chained && opts.chainColors && opts.chainColors.length){
+    const dotR=Math.max(4,r2*0.15);
+    opts.chainColors.forEach((colIdx,i)=>{
+      const angle=(Math.PI/3*i)+Math.PI/6;
+      const dx=cx+r2*0.58*Math.cos(angle);
+      const dy=topFaceY+r2*0.58*Math.sin(angle);
+      const col=COLORS[colIdx]||COLORS[0];
+      CTX.beginPath();CTX.arc(dx,dy,dotR+1.5,0,Math.PI*2);CTX.closePath();
+      CTX.fillStyle="rgba(0,0,0,.65)";CTX.fill();
+      CTX.beginPath();CTX.arc(dx,dy,dotR,0,Math.PI*2);CTX.closePath();
+      CTX.fillStyle=col.top;CTX.fill();
+      CTX.strokeStyle="rgba(255,255,255,.5)";CTX.lineWidth=0.8;CTX.stroke();
+    });
+  }
+
+  // Layer count
+  const fontSize = Math.max(10, Math.min(r2 * 0.54, 20));
+  CTX.font = `900 ${fontSize}px Nunito,sans-serif`;
+  CTX.textAlign = "center";
+  CTX.textBaseline = "middle";
+  CTX.fillStyle = "rgba(0,0,0,.65)";
+  CTX.fillText(count, cx + 1, topFaceY + 1.5);
+  CTX.fillStyle = "#fff";
+  CTX.fillText(count, cx, topFaceY);
+
+  // Multiplier badge
+  if(opts.multiplier && opts.multiplier > 1){
+    const bx = cx + r2*.55, by = topFaceY - r2*.45;
+    CTX.beginPath(); CTX.arc(bx, by, r2*.28, 0, Math.PI*2); CTX.closePath();
+    CTX.fillStyle = "#fde68a"; CTX.fill();
+    CTX.font = `900 ${Math.max(7,r2*.26)}px Nunito,sans-serif`;
+    CTX.fillStyle = "#7c2d12";
+    CTX.fillText("×"+opts.multiplier, bx, by);
+  }
+}
+
+// Draw empty cell (ghost hex)
+function drawEmptyHex(cx,cy,r,opts){
+  opts=opts||{};
+  function pts(cr){
+    const p=[];for(let i=0;i<6;i++){const a=Math.PI/3*i;p.push([cx+cr*Math.cos(a),cy+cr*Math.sin(a)]);}return p;
+  }
+  const r2=r-1.5;
+  const top=pts(r2);
+  CTX.beginPath();
+  CTX.moveTo(top[0][0],top[0][1]);
+  for(let i=1;i<6;i++)CTX.lineTo(top[i][0],top[i][1]);
+  CTX.closePath();
+  CTX.fillStyle=opts.hover?"rgba(255,255,255,.12)":"rgba(255,255,255,.045)";
+  CTX.fill();
+  CTX.strokeStyle=opts.hover?"rgba(34,211,238,.7)":"rgba(255,255,255,.12)";
+  CTX.lineWidth=opts.hover?2:1;
+  CTX.stroke();
+}
+
+// Draw flying tile animation
+function drawFlyTile(anim){
+  const p=anim.t/anim.duration;
+  const ep=1-(1-p)*(1-p); // ease-out
+  const x=anim.fx+(anim.tx-anim.fx)*ep;
+  const y=anim.fy+(anim.ty-anim.fy)*ep-Math.sin(Math.PI*p)*HEX_R*0.35;
+  const col=COLORS[anim.colorIdx]||COLORS[0];
+  const r=HEX_R*0.34*(1-p*0.25);
+
+  // Draw trail line from source to current position
+  if(anim.trail){
+    CTX.save();
+    CTX.beginPath();
+    CTX.moveTo(anim.fx, anim.fy);
+    CTX.lineTo(x, y);
+    const trailGrd=CTX.createLinearGradient(anim.fx,anim.fy,x,y);
+    trailGrd.addColorStop(0,"rgba(255,255,255,0)");
+    trailGrd.addColorStop(1,col.top+"cc");
+    CTX.strokeStyle=trailGrd;
+    CTX.lineWidth=3;
+    CTX.globalAlpha=(1-p)*0.7;
+    CTX.stroke();
+    CTX.restore();
+  }
+
+  // Glowing halo behind tile
+  CTX.save();
+  CTX.globalAlpha=(1-p)*0.35;
+  CTX.beginPath();
+  CTX.arc(x,y,r*1.6,0,Math.PI*2);
+  CTX.closePath();
+  CTX.fillStyle=col.top;
+  CTX.fill();
+  CTX.restore();
+
+  // Flying hex tile
+  CTX.beginPath();
+  for(let i=0;i<6;i++){
+    const a=Math.PI/3*i;
+    if(i===0)CTX.moveTo(x+r*Math.cos(a),y+r*Math.sin(a));
+    else CTX.lineTo(x+r*Math.cos(a),y+r*Math.sin(a));
+  }
+  CTX.closePath();
+  CTX.fillStyle=col.top;
+  CTX.globalAlpha=1-p*0.3;
+  CTX.fill();
+  CTX.strokeStyle="rgba(255,255,255,.6)";
+  CTX.lineWidth=1.5;
+  CTX.stroke();
+  CTX.globalAlpha=1;
+}
+
+let hoveredCell=-1;
+
+function computeLayout(){
+  CVS=qs("board-canvas");
+  const wrap=qs("board-wrap");
+  const W=wrap.offsetWidth||300,H=wrap.offsetHeight||260;
+  CVS.width=W;CVS.height=H;
+  CTX=CVS.getContext("2d");
+
+  // Compute HEX_R to fit all 19 cells
+  const pts=HEX_DEFS.map(h=>({
+    x:h.q*1.5,
+    y:h.q*Math.sqrt(3)/2+h.r*Math.sqrt(3)
+  }));
+  const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);
+  const spanX=Math.max(...xs)-Math.min(...xs),spanY=Math.max(...ys)-Math.min(...ys);
+  const pad=2.4;
+  const rByW=W/((spanX+pad)*1.5);
+  const rByH=H/((spanY+pad)*Math.sqrt(3));
+  HEX_R=Math.max(20,Math.min(rByW,rByH,52));
+
+  const centerX=W/2,centerY=H/2;
+  // Find geometric center of hexes
+  const allX=HEX_DEFS.map(h=>h.q*HEX_R*1.5);
+  const allY=HEX_DEFS.map(h=>(h.q*Math.sqrt(3)/2+h.r*Math.sqrt(3))*HEX_R);
+  const midX=(Math.max(...allX)+Math.min(...allX))/2;
+  const midY=(Math.max(...allY)+Math.min(...allY))/2;
+  OFFSET_X=centerX-midX;
+  OFFSET_Y=centerY-midY;
+}
+
+function drawBoard(){
+  if(!CTX)return;
+  CTX.clearRect(0,0,CVS.width,CVS.height);
+
+  const order=[...cells.keys()].sort((a,b)=>{
+    const ca=hexCenter(cells[a].q,cells[a].r);
+    const cb=hexCenter(cells[b].q,cells[b].r);
+    return ca.y-cb.y||(ca.x-cb.x);
+  });
+
+  order.forEach(i=>{
+    const cell=cells[i];
+    const {x,y}=hexCenter(cell.q,cell.r);
+    const sp=cell.special;
+    const frozen=sp==="frozen"&&isFrozen(i);
+    const chained=sp==="chain"&&isChained(i);
+
+    if(cell.layers.length===0){
+      // Empty cell
+      if(frozen){
+        drawSpecialEmptyHex(x,y,HEX_R,"#7dd3fc","❄️",cell.frozenNeed-cell.frozenHits);
+      } else if(chained){
+        drawSpecialEmptyHexChain(x,y,HEX_R,cell.chainColors);
+      } else {
+        const isHover=hoveredCell===i&&selectedQueue>=0&&!isSpecialLocked(i);
+        drawEmptyHex(x,y,HEX_R,{hover:isHover});
+      }
+    } else {
+      // Cell with layers
+      const topCount=countTopColor(i);
+      const nearClear=topCount>=CLEAR_THRESHOLD-2&&!frozen&&!chained;
+      const superClear=topCount>=15&&!frozen&&!chained;
+      drawHex3D(x,y,HEX_R,cell.layers,{
+        nearClear,superClear,
+        selected:hammerMode&&hoveredCell===i,
+        frozen,
+        chained,
+        chainColors:chained?cell.chainColors:[],
+        multiplier:sp==="multiplier"?cell.scoreMultiplier:0
+      });
+    }
+  });
+
+  animations.forEach(a=>drawFlyTile(a));
+}
+
+// Draw chain overlay on a cell WITH layers — colored chain link dots
+function drawChainOverlay(cx,cy,r,chainColors){
+  if(!chainColors||!chainColors.length) return;
+  const r2=r-2;
+  // Draw chain links as colored dots around the top face
+  const dotR=Math.max(4,r2*0.16);
+  chainColors.forEach((colIdx,i)=>{
+    const angle=(Math.PI/3*i)+(Math.PI/6);
+    const dx=cx+r2*0.62*Math.cos(angle);
+    const dy=cy+r2*0.62*Math.sin(angle)-4;
+    const col=COLORS[colIdx]||COLORS[0];
+    // Chain link: colored circle with dark border
+    CTX.beginPath();CTX.arc(dx,dy,dotR+2,0,Math.PI*2);CTX.closePath();
+    CTX.fillStyle="rgba(0,0,0,.7)";CTX.fill();
+    CTX.beginPath();CTX.arc(dx,dy,dotR,0,Math.PI*2);CTX.closePath();
+    CTX.fillStyle=col.top;CTX.fill();
+    CTX.strokeStyle="#fff";CTX.lineWidth=1;CTX.stroke();
+    // Chain link symbol
+    CTX.font=`bold ${Math.max(6,dotR*1.1)}px serif`;
+    CTX.fillStyle="#000";CTX.textAlign="center";CTX.textBaseline="middle";
+    CTX.fillText("⛓",dx,dy);
+  });
+}
+
+// Draw a special empty hex for chain type
+function drawSpecialEmptyHexChain(cx,cy,r,chainColors){
+  const r2=r-2;
+  function hexPts(cr){
+    const p=[];for(let i=0;i<6;i++){const a=Math.PI/3*i;p.push([cx+cr*Math.cos(a),cy+cr*Math.sin(a)]);}return p;
+  }
+  const top=hexPts(r2);
+  CTX.beginPath();CTX.moveTo(top[0][0],top[0][1]);
+  for(let i=1;i<6;i++)CTX.lineTo(top[i][0],top[i][1]);
+  CTX.closePath();
+  CTX.fillStyle="#fb923c22";CTX.fill();
+  CTX.strokeStyle="#fb923c";CTX.lineWidth=2;CTX.stroke();
+  // Center icon
+  CTX.font=`${Math.max(10,r2*.4)}px serif`;CTX.textAlign="center";CTX.textBaseline="middle";
+  CTX.fillText("⛓️",cx,cy-(chainColors&&chainColors.length?r2*.2:0));
+  // Chain color dots
+  if(chainColors&&chainColors.length){
+    const dotR=Math.max(4,r2*0.17);
+    chainColors.forEach((colIdx,i)=>{
+      const angle=Math.PI/3*i+Math.PI/6;
+      const dx=cx+r2*0.6*Math.cos(angle);
+      const dy=cy+r2*0.6*Math.sin(angle)+r2*0.25;
+      const col=COLORS[colIdx]||COLORS[0];
+      CTX.beginPath();CTX.arc(dx,dy,dotR+1.5,0,Math.PI*2);CTX.closePath();
+      CTX.fillStyle="rgba(0,0,0,.6)";CTX.fill();
+      CTX.beginPath();CTX.arc(dx,dy,dotR,0,Math.PI*2);CTX.closePath();
+      CTX.fillStyle=col.top;CTX.fill();
+      CTX.strokeStyle="rgba(255,255,255,.6)";CTX.lineWidth=1;CTX.stroke();
+    });
+  }
+}
+
+// Draw a special empty hex cell with icon and counter
+function drawSpecialEmptyHex(cx,cy,r,color,icon,counter){
+  const r2=r-2;
+  function hexPts(cr){
+    const p=[];for(let i=0;i<6;i++){const a=Math.PI/3*i;p.push([cx+cr*Math.cos(a),cy+cr*Math.sin(a)]);}return p;
+  }
+  const top=hexPts(r2);
+  CTX.beginPath();CTX.moveTo(top[0][0],top[0][1]);
+  for(let i=1;i<6;i++)CTX.lineTo(top[i][0],top[i][1]);
+  CTX.closePath();
+  CTX.fillStyle=color+"33";CTX.fill();
+  CTX.strokeStyle=color;CTX.lineWidth=2;CTX.stroke();
+
+  // Icon
+  const fs=Math.max(12,Math.min(r2*.58,20));
+  CTX.font=`${fs}px serif`;CTX.textAlign="center";CTX.textBaseline="middle";
+  CTX.fillText(icon,cx,cy-(counter>0?r2*.22:0));
+
+  // Counter badge
+  if(counter>0){
+    CTX.font=`900 ${Math.max(9,fs*.62)}px Nunito,sans-serif`;
+    CTX.fillStyle="rgba(0,0,0,.7)";CTX.fillText(counter,cx+1,cy+r2*.42+1);
+    CTX.fillStyle="#fff";CTX.fillText(counter,cx,cy+r2*.42);
+  }
+}
+
+// ============================================================
+// ANIMATION LOOP
+// ============================================================
+let lastTime=0;
+function animLoop(ts){
+  const dt=ts-lastTime;lastTime=ts;
+  let needRedraw=false;
+
+  // Update fly animations
+  animations=animations.filter(a=>{
+    a.t=Math.min(a.duration,a.t+dt);
+    if(a.t>=a.duration){
+      // Commit: add color layer to destination cell
+      if(a.destIdx!=null&&cells[a.destIdx]){
+        cells[a.destIdx].layers.push(a.colorIdx);
+      }
+      needRedraw=true;
+      return false;
+    }
+    needRedraw=true;
+    return true;
+  });
+
+  // Update number pops via DOM (just let CSS handle them)
+
+  if(needRedraw||hoveredCell>=0)drawBoard();
+  animFrame=requestAnimationFrame(animLoop);
+}
+
+function startAnimLoop(){if(animFrame)cancelAnimationFrame(animFrame);lastTime=performance.now();animFrame=requestAnimationFrame(animLoop);}
+
+// Canvas mouse/touch
+function setupCanvasInput(){
+  function getCell(ex,ey){
+    const rect=CVS.getBoundingClientRect();
+    const mx=ex-rect.left,my=ey-rect.top;
+    let best=-1,bestD=HEX_R*1.05;
+    cells.forEach((cell,i)=>{
+      const {x,y}=hexCenter(cell.q,cell.r);
+      const d=Math.hypot(mx-x,my-y);
+      if(d<bestD){bestD=d;best=i;}
+    });
+    return best;
+  }
+  CVS.addEventListener("mousemove",e=>{
+    hoveredCell=getCell(e.clientX,e.clientY);
+    drawBoard();
+    showHoverSpecialTip(hoveredCell);
+  });
+  CVS.addEventListener("mouseleave",()=>{
+    hoveredCell=-1;drawBoard();
+    const rp=qs("right-panel");
+    if(rp&&rp.dataset.mode==="special") rp.classList.add("hidden");
+  });
+  CVS.addEventListener("click",e=>{
+    const ci=getCell(e.clientX,e.clientY);
+    if(ci<0) return;
+    // Click on cell with layers → show layer breakdown
+    if(cells[ci].layers.length>0){
+      updateRightPanel(ci,"layers");
+    }
+    onCellClick(ci);
+  });
+  CVS.addEventListener("touchstart",e=>{
+    e.preventDefault();
+    const t=e.touches[0];
+    const ci=getCell(t.clientX,t.clientY);
+    if(ci>=0){
+      if(cells[ci].special) showHoverSpecialTip(ci);
+      else if(cells[ci].layers.length>0) updateRightPanel(ci,"layers");
+      setTimeout(()=>onCellClick(ci),80);
+    }
+  },{passive:false});
+}
+
+// ============================================================
+// GAME LOGIC
+// ============================================================
+
+function showHoverSpecialTip(cellIdx){
+  if(cellIdx<0||cellIdx>=cells.length){qs("right-panel")&&qs("right-panel").classList.add("hidden");return;}
+  const cell=cells[cellIdx];
+  if(!cell.special){qs("right-panel")&&qs("right-panel").classList.add("hidden");return;}
+  updateRightPanel(cellIdx,"special");
+}
+function hideHoverSpecialTip(){
+  // Only hide if currently showing special mode (not layer mode)
+  const rp=qs("right-panel");
+  if(rp&&rp.dataset.mode==="special") rp.classList.add("hidden");
+}
+
+// Unified right-side info panel
+function updateRightPanel(cellIdx, mode){
+  const rp=qs("right-panel");
+  if(!rp) return;
+
+  if(cellIdx<0||cellIdx>=cells.length){rp.classList.add("hidden");return;}
+  const cell=cells[cellIdx];
+
+  if(mode==="special"){
+    if(!cell.special){rp.classList.add("hidden");return;}
+    const def=SPECIAL_DEFS[cell.special];
+    if(!def){rp.classList.add("hidden");return;}
+    let extraInfo="";
+    if(cell.special==="frozen"){
+      const rem=(cell.frozenNeed||1)-(cell.frozenHits||0);
+      extraInfo=isFrozen(cellIdx)
+        ?`还需旁边消除 <b style="color:#22d3ee">${rem}</b> 次才能解冻`
+        :"已解冻 ✅";
+    }
+    if(cell.special==="chain"&&cell.chainColors&&cell.chainColors.length){
+      const dots=cell.chainColors.map(c=>`<span style="display:inline-flex;align-items:center;gap:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${COLORS[c].top};border:1px solid rgba(255,255,255,.4)"></span>${COLOR_NAMES[c]}</span>`).join("、");
+      extraInfo=`锁链颜色：${dots}<br>在相邻格消除这些颜色可解链`;
+    }
+    if(cell.special==="bomb") extraInfo="此格色块消除时，周围格各炸掉一层";
+    if(cell.special==="multiplier") extraInfo=`消除时得分 <b style="color:#fde68a">×${cell.scoreMultiplier||2}</b>（一次性）`;
+    if(cell.special==="paint") extraInfo="色块进入时顶层变为最稀有颜色（一次性）";
+    rp.dataset.mode="special";
+    rp.innerHTML=`<div style="font-weight:900;font-size:.9rem;margin-bottom:5px;color:#22d3ee">${def.label}</div>
+      <div style="font-size:.79rem;line-height:1.65;color:rgba(255,255,255,.88)">${extraInfo}</div>`;
+    rp.classList.remove("hidden");
+
+  } else if(mode==="layers"){
+    if(!cell.layers.length){rp.classList.add("hidden");return;}
+    rp.dataset.mode="layers";
+    const rows=cell.layers.slice().reverse().map((colIdx,i)=>{
+      const col=COLORS[colIdx]||COLORS[0];
+      const isTop=i===0;
+      return `<div style="display:flex;align-items:center;gap:6px;padding:2px 0;${isTop?"font-weight:700":""}">
+        <div style="width:13px;height:13px;border-radius:3px;background:${col.top};border:1px solid rgba(0,0,0,.4);flex-shrink:0"></div>
+        <span style="font-size:.77rem;color:${isTop?"#fff":"rgba(255,255,255,.72)"}">${COLOR_NAMES[colIdx]}${isTop?" (顶)":""}</span>
+      </div>`;
+    }).join("");
+    rp.innerHTML=`<div style="font-weight:900;font-size:.88rem;margin-bottom:5px;color:#facc15">🔍 堆叠（${cell.layers.length}层）</div>${rows}`;
+    rp.classList.remove("hidden");
+  }
+}
+
+// Show floating number pop above cell
+function showNumPop(cellIdx,text){
+  const wrap=qs("board-wrap");
+  const {x,y}=hexCenter(cells[cellIdx].q,cells[cellIdx].r);
+  const div=document.createElement("div");
+  div.className="num-pop";
+  div.textContent=text;
+  div.style.left=(x+wrap.offsetLeft-16)+"px";
+  div.style.top=(y+wrap.offsetTop-HEX_R-10)+"px";
+  div.style.position="fixed";
+  document.body.appendChild(div);
+  setTimeout(()=>div.remove(),750);
+}
+
+// ============================================================
+// CASCADE ENGINE v3 — 正确连锁移动规则
+//
+// 核心规则：
+//   1. 放置一堆色块后，检查该格与所有邻居
+//   2. 若邻居顶色 == 该格顶色 → 把该格顶部连续同色层全部推给邻居
+//      （不是看谁多谁少，而是：刚放/刚改变的格子主动向外推）
+//   3. 推出后，目标格变成新的「活跃格」继续检查它的邻居
+//   4. 如此连锁直到没有任何格子可以再推
+//
+// 关键：同色就推出，不是积累在一格！
+// ============================================================
+
+function countTopColor(cellIdx){
+  const layers=cells[cellIdx].layers;
+  if(!layers.length) return 0;
+  const top=layers[layers.length-1];
+  let n=0;
+  for(let k=layers.length-1;k>=0;k--){
+    if(layers[k]===top) n++; else break;
+  }
+  return n;
+}
+
+// ============================================================
+// CASCADE ENGINE — 连通区域合并版（最终修正）
+//
+// 正确规则：
+//   放下色块后，找出所有「顶色相同且互相连通」的格子组成一个区域。
+//   把该区域所有格子的顶部同色层，全部集中到层数最多的那一格。
+//   如果有多格层数相同，选索引最小的。
+//   完成后再检查新的连通区域，直到稳定。
+//   这样红4、中间格、红6 会被识别为同一连通区域，全部合并到红6（最多层）。
+// ============================================================
+function computeCascade(){
+  const allMoves=[];
+  let safety=0;
+
+  while(safety++<500){
+    // 找到一个「有合并空间」的连通区域
+    const regionMoves=findAndMergeOneRegion();
+    if(!regionMoves||regionMoves.length===0) break;
+    allMoves.push(...regionMoves);
+  }
+  return allMoves;
+}
+
+function findAndMergeOneRegion(){
+  // 对每个有层的格子，做 BFS 找同色连通区域
+  // 若区域有多格，就把所有层合并到最多层的那格
+  const visited=new Set();
+
+  for(let start=0;start<cells.length;start++){
+    if(!cells[start].layers.length) continue;
+    if(isFrozen(start)||isChained(start)) continue;
+    if(visited.has(start)) continue;
+
+    const topColor=cells[start].layers[cells[start].layers.length-1];
+    // BFS 找同色连通区域
+    const region=[start];
+    const queue=[start];
+    visited.add(start);
+    let qi=0;
+    while(qi<queue.length){
+      const cur=queue[qi++];
+      for(const ni of getNeighbors(cur)){
+        if(visited.has(ni)) continue;
+        if(!cells[ni].layers.length) continue;
+        if(isFrozen(ni)||isChained(ni)) continue;
+        if(cells[ni].layers[cells[ni].layers.length-1]!==topColor) continue;
+        visited.add(ni);
+        region.push(ni);
+        queue.push(ni);
+      }
+    }
+
+    // 单格区域：没有合并意义
+    if(region.length<2) continue;
+
+    // 找区域中层数最多的格（目标格）
+    let dst=region[0];
+    for(const ri of region){
+      if(cells[ri].layers.length>cells[dst].layers.length) dst=ri;
+    }
+
+    // 把区域所有其他格的顶部连续同色层全部移到 dst
+    const moves=[];
+    for(const src of region){
+      if(src===dst) continue;
+      const srcL=cells[src].layers;
+      const col=topColor;
+      let count=0;
+      const lenBefore=srcL.length;
+      for(let k=lenBefore-1;k>=0;k--){
+        if(srcL[k]===col) count++; else break;
+      }
+      if(count<=0) continue;
+      srcL.splice(lenBefore-count, count);
+      for(let k=0;k<count;k++) cells[dst].layers.push(col);
+      for(let k=0;k<count;k++) moves.push({from:src,to:dst,colorIdx:col});
+    }
+
+    if(moves.length>0) return moves; // 找到一个可合并区域，返回后重新扫描
+  }
+  return []; // 全部稳定
+}// ============================================================
+// SPECIAL TILES — 完整重新设计
+//
+// 特殊格类型：
+//   frozen  : 冰冻格 — 格子上有预设层，被冰冻住。旁边有消除才解冻。解冻后层变为普通可移动层。
+//   chain   : 锁链格 — 格子上有层+最多3种「锁链颜色」。消除旁边锁链颜色的格子才能解链。解链后变普通。
+//   bomb    : 爆炸格 — 有预设层，触发消除时周围格也被炸掉顶层。
+//   multiplier: 加倍格 — 有预设层，此格消除时得分翻倍。
+//   paint   : 变色格 — 有预设层，此格上的层进入时颜色变为最稀有色。
+//
+// 所有特殊格都有预设色块层在上面，玩家不能直接在特殊格上放色块（冰冻/锁链解除前）。
+// 解除后格子变普通，其上的层可正常参与游戏。
+// ============================================================
+
+const SPECIAL_DEFS={
+  frozen:{label:"❄️冻结",color:"#7dd3fc",
+    desc:"冰冻格：格子上有预设色块，被冰冻锁定。需在旁边格子触发消除N次才能解冻，解冻后色块可以自由移动。"},
+  chain:{label:"⛓️锁链",color:"#fb923c",
+    desc:"锁链格：格子上有色块，且被最多3种颜色的锁链锁住。消除锁链颜色的相邻格子才能解除锁链，解除后色块可移动。"},
+  bomb:{label:"💥爆炸",color:"#fca5a5",
+    desc:"爆炸格：格子上有色块且有爆炸效果。当此格色块被消除时，周围所有格子顶层色块也一并消除！"},
+  multiplier:{label:"⚡加倍",color:"#fde68a",
+    desc:"加倍格：格子上有色块。当此格色块被消除时，本次得分倍率翻倍（一次性）。"},
+  paint:{label:"🎨变色",color:"#d8b4fe",
+    desc:"变色格：格子上有色块。进入此格的色块顶层颜色，会变成棋盘上当前最稀有的颜色（一次性）。"}
+};
+
+function isFrozen(idx){
+  const c=cells[idx];
+  return c.special==="frozen" && (c.frozenHits||0)<(c.frozenNeed||1);
+}
+function isChained(idx){
+  const c=cells[idx];
+  return c.special==="chain" && (c.chainColors||[]).length>0;
+}
+// 特殊格：玩家不能直接放色块（冰冻中或锁链中且格子有层）
+function isSpecialLocked(idx){
+  return isFrozen(idx) || isChained(idx);
+}
+
+function clearTopLayers(cellIdx){
+  const layers=cells[cellIdx].layers;
+  if(!layers.length) return 0;
+  const top=layers[layers.length-1];
+  let count=0;
+  const lenSnap=layers.length;
+  for(let k=lenSnap-1;k>=0;k--){if(layers[k]===top)count++;else break;}
+  if(count<CLEAR_THRESHOLD) return 0;
+  layers.splice(lenSnap-count, count);
+
+  // 通知邻居
+  getNeighbors(cellIdx).forEach(ni=>{
+    const nb=cells[ni];
+    // 解冻
+    if(nb.special==="frozen"){
+      nb.frozenHits=(nb.frozenHits||0)+1;
+      if(nb.frozenHits>=(nb.frozenNeed||1)){
+        nb.special=null; nb.frozenDone=true;
+        showNumPop(ni,"❄️解冻！");
+      }
+    }
+    // 解链：消除的顶色是锁链颜色之一
+    if(nb.special==="chain"&&nb.chainColors){
+      nb.chainColors=nb.chainColors.filter(c=>c!==top);
+      if(nb.chainColors.length===0){
+        nb.special=null;
+        showNumPop(ni,"⛓️解链！");
+      }else{
+        showNumPop(ni,"⛓️ -1");
+      }
+    }
+  });
+  return count;
+}
+
+function doClears(){
+  const cleared=[];
+  let found=true;
+  while(found){
+    found=false;
+    for(let i=0;i<cells.length;i++){
+      if(!cells[i].layers.length) continue;
+      if(isFrozen(i)||isChained(i)) continue;
+      const topCount=countTopColor(i);
+      if(topCount>=CLEAR_THRESHOLD){
+        const topColor=cells[i].layers[cells[i].layers.length-1];
+        cleared.push({idx:i,color:topColor,count:topCount});
+        clearTopLayers(i);
+        found=true;
+      }
+    }
+    if(found) computeCascade();
+  }
+  return cleared;
+}
+
+// ============================================================
+// LEVEL CONFIG — 预设格子 & 特殊格
+// ============================================================
+function levelConfig(lv){
+  const specials=lv>=5?buildSpecialList(lv):[];
+  return {
+    id:lv,
+    scoreNeed:80+lv*35,
+    numColors:Math.min(COLORS.length,3+Math.floor(lv/3)),
+    stackMin:1,
+    stackMax:Math.min(4,2+Math.floor(lv/5)),
+    presetCount: lv>=3 ? Math.min(5, Math.floor((lv-2)/2)) : 0,
+    presetMaxLayers: Math.min(5, 2+Math.floor(lv/4)),
+    specials,
+    winConds: buildWinConds(lv,specials)
+  };
+}
+
+function buildSpecialList(lv){
+  // All possible types by level unlock
+  const allTypes=[];
+  if(lv>=5)  allTypes.push("frozen");
+  if(lv>=7)  allTypes.push("chain");
+  if(lv>=9)  allTypes.push("bomb");
+  if(lv>=11) allTypes.push("multiplier");
+  if(lv>=13) allTypes.push("paint");
+
+  // Pick at most 2 types randomly (seeded by level for consistency)
+  // Shuffle with deterministic seed based on level
+  const rng=(seed)=>{let x=Math.sin(seed)*10000;return x-Math.floor(x);};
+  const sorted=[...allTypes].sort((a,b)=>rng(lv+allTypes.indexOf(a)*7)-rng(lv+allTypes.indexOf(b)*7));
+  const chosen=sorted.slice(0,Math.min(2,sorted.length));
+
+  // Each chosen type gets 1-2 cells
+  const list=[];
+  chosen.forEach((type,i)=>{
+    const count=1+(lv>=8&&i===0?1:0); // first type may get 2 cells at higher levels
+    list.push({type,count});
+  });
+  return list;
+}
+
+function buildWinConds(lv,specialList){
+  // Win conditions are DIRECTLY derived from which specials appear in THIS level
+  const conds=[];
+  const types=new Set((specialList||[]).map(s=>s.type));
+  if(types.has("frozen")) conds.push({type:"clear_frozen",label:"解除所有冰冻格 ❄️"});
+  if(types.has("chain"))  conds.push({type:"clear_chain", label:"解开所有锁链格 ⛓️"});
+  return conds;
+}
+
+function checkWinConds(){
+  if(!currentCfg||!currentCfg.winConds||!currentCfg.winConds.length) return true;
+  for(const cond of currentCfg.winConds){
+    if(cond.type==="clear_frozen"){
+      if(cells.some(c=>c.special==="frozen")) return false;
+    }
+    if(cond.type==="clear_chain"){
+      if(cells.some(c=>c.special==="chain")) return false;
+    }
+  }
+  return true;
+}
+
+function genStack(cfg){
+  const depth=cfg.stackMin+Math.floor(Math.random()*(cfg.stackMax-cfg.stackMin+1));
+  const layers=Array.from({length:depth},()=>Math.floor(Math.random()*cfg.numColors));
+  return {layers};
+}
+
+function generateQueue(cfg){return [genStack(cfg),genStack(cfg),genStack(cfg)];}
+
+function initCells(cfg){
+  cells=HEX_DEFS.map((h,i)=>({
+    id:i,q:h.q,r:h.r,layers:[],
+    special:null,
+    frozenHits:0,frozenNeed:1,frozenDone:false,
+    chainColors:[],
+    scoreMultiplier:1
+  }));
+  if(!cfg) return;
+
+  const availIdx=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
+  const shuffled=[...availIdx].sort(()=>Math.random()-.5);
+  let ptr=0;
+
+  // 放置特殊格
+  (cfg.specials||[]).forEach(s=>{
+    for(let k=0;k<s.count&&ptr<shuffled.length;k++,ptr++){
+      const idx=shuffled[ptr];
+      const nc=cfg.numColors;
+      cells[idx].special=s.type;
+
+      if(s.type==="frozen"){
+        cells[idx].frozenHits=0;
+        cells[idx].frozenNeed=1+Math.floor(Math.random()*2);
+        // 预放2~4层随机色块（被冰冻的）
+        const depth=2+Math.floor(Math.random()*3);
+        for(let d=0;d<depth;d++) cells[idx].layers.push(Math.floor(Math.random()*nc));
+      }
+      if(s.type==="chain"){
+        // 预放2~4层
+        const depth=2+Math.floor(Math.random()*3);
+        for(let d=0;d<depth;d++) cells[idx].layers.push(Math.floor(Math.random()*nc));
+        // 1~3种锁链颜色
+        const nChains=1+Math.floor(Math.random()*3);
+        const chainSet=new Set();
+        while(chainSet.size<nChains) chainSet.add(Math.floor(Math.random()*nc));
+        cells[idx].chainColors=[...chainSet];
+      }
+      if(s.type==="bomb"){
+        cells[idx].scoreMultiplier=1;
+        const depth=1+Math.floor(Math.random()*3);
+        for(let d=0;d<depth;d++) cells[idx].layers.push(Math.floor(Math.random()*nc));
+      }
+      if(s.type==="multiplier"){
+        cells[idx].scoreMultiplier=2+Math.floor(Math.random()*2);
+        const depth=1+Math.floor(Math.random()*3);
+        for(let d=0;d<depth;d++) cells[idx].layers.push(Math.floor(Math.random()*nc));
+      }
+      if(s.type==="paint"){
+        const depth=1+Math.floor(Math.random()*3);
+        for(let d=0;d<depth;d++) cells[idx].layers.push(Math.floor(Math.random()*nc));
+      }
+    }
+  });
+
+  // 一般预设格
+  const presetIdxPool=shuffled.slice(ptr);
+  const presetCount=Math.min(cfg.presetCount||0,presetIdxPool.length);
+  for(let k=0;k<presetCount;k++){
+    const idx=presetIdxPool[k];
+    if(cells[idx].special) continue;
+    const depth=1+Math.floor(Math.random()*(cfg.presetMaxLayers||2));
+    for(let d=0;d<depth;d++) cells[idx].layers.push(Math.floor(Math.random()*cfg.numColors));
+  }
+}
+
+// Track newly introduced specials per level for tutorial popup
+const seenSpecials=new Set();
+function checkNewSpecials(cfg){
+  if(!cfg.specials||!cfg.specials.length) return;
+  cfg.specials.forEach(s=>{
+    if(!seenSpecials.has(s.type)){
+      seenSpecials.add(s.type);
+      showSpecialTutorial(s.type,SPECIAL_DEFS[s.type]);
+    }
+  });
+}
+function showSpecialTutorial(type,def){
+  const el=qs("ov-special-tutorial");
+  if(!el) return;
+  qs("special-tut-icon").textContent=def.label.split(" ")[0];
+  qs("special-tut-name").textContent=def.label;
+  qs("special-tut-desc").textContent=def.desc;
+  el.classList.remove("hidden");
+}
+
+let currentCfg=null;
+
+function snapshot(){return {cells:JSON.parse(JSON.stringify(cells)),queue:JSON.parse(JSON.stringify(queue)),selectedQueue,score,boostersUsed};}
+function restoreSnap(s){cells=s.cells;queue=s.queue;selectedQueue=s.selectedQueue;score=s.score;boostersUsed=s.boostersUsed;}
+
+function startGame(lv){
+  qs("ov-win").classList.add("hidden");qs("ov-lose").classList.add("hidden");
+  _doStart(lv,Number(G.multiplier||1));
+}
+function _doStart(lv,mult){
+  level=lv;score=0;boostersUsed=0;moveHistory=[];selectedQueue=-1;hammerMode=false;animations=[];
+  superClearCount=0;reviveCount=0;
+  currentCfg=levelConfig(lv);
+  scoreNeed=currentCfg.scoreNeed;numColors=currentCfg.numColors;
+  initCells(currentCfg);
+  queue=generateQueue(currentCfg);
+  if(!G.unlocked.includes(lv))G.unlocked.push(lv);
+  qs("lvl").textContent="第 "+lv+" 关"+(mult>1?" · x"+mult:"");
+  gasBeacon({sheet:SHEET,action:"game_start",id:G.id,uid:String(G.uid),level:String(lv),date:todayISO()});
+  save();cloudSave();show("game");applyBgTheme();
+  requestAnimationFrame(()=>{
+    computeLayout();
+    setupCanvasInput();
+    drawBoard();
+    startAnimLoop();
+    renderTray();renderHUD();
+    hint("选择下方色块堆，点击棋盘空格放置");
+    // Show tutorial for new specials
+    setTimeout(()=>checkNewSpecials(currentCfg),400);
+  });
+}
+function restartLevel(){startGame(level);}
+function nextLevel(){startGame(level+1);}
+function startLatest(){startGame(Math.max(...G.unlocked));}
+
+// ============================================================
+// PLACE STACK & FULL ANIMATION PIPELINE
+// ============================================================
+let _placing=false;
+
+function onCellClick(idx){
+  if(hammerMode){
+    if(cells[idx].layers.length===0&&!cells[idx].special){hint("该格为空");return;}
+    moveHistory.push(snapshot());
+    cells[idx].layers=[];
+    cells[idx].special=null;
+    G.boosters.hammer=Math.max(0,(G.boosters.hammer||1)-1);
+    boostersUsed++;hammerMode=false;
+    save();cloudSave();hint("🔨 已锤碎！");
+    drawBoard();renderTray();renderHUD();return;
+  }
+  if(selectedQueue<0){hint("先点击下方的色块堆选择！");return;}
+  if(_placing)return;
+  const stk=queue[selectedQueue];
+  if(!stk||!stk.layers.length){hint("这堆已空，请选其他堆");selectedQueue=-1;renderTray();return;}
+
+  // Special locked check
+  if(isSpecialLocked(idx)){
+    const c=cells[idx];
+    if(c.special==="frozen") hint("❄️ 冰冻格：需在旁边消除 "+(c.frozenNeed-c.frozenHits)+" 次才能解冻");
+    if(c.special==="chain") hint("⛓️ 锁链格：需消除周围的「"+c.chainColors.map(ci=>COLOR_NAMES[ci]).join("、")+"」颜色才能解链");
+    return;
+  }
+
+  if(cells[idx].layers.length>0){hint("该格已有色块，请选空格");return;}
+
+  _placing=true;
+  moveHistory.push(snapshot());
+  if(moveHistory.length>30)moveHistory.shift();
+
+  const placed={layers:[...stk.layers]};
+  queue[selectedQueue]={layers:[]};
+  selectedQueue=-1;
+
+  // Apply paint special: randomly recolor top layer to rarest color
+  let finalLayers=[...placed.layers];
+  if(cells[idx].special==="paint" && finalLayers.length>0){
+    const freq=new Array(numColors).fill(0);
+    cells.forEach(c=>c.layers.forEach(col=>freq[col]++));
+    const rarest=freq.indexOf(Math.min(...freq.slice(0,numColors)));
+    finalLayers[finalLayers.length-1]=rarest;
+    showNumPop(idx,"🎨变色！");
+    cells[idx].special=null; // one-time
+  }
+
+  // Apply bomb special: explode neighbors
+  if(cells[idx].special==="bomb"){
+    showNumPop(idx,"💥爆炸！");
+    cells[idx].special=null;
+    getNeighbors(idx).forEach(ni=>{
+      if(cells[ni].layers.length>0){
+        // Remove top layer of each neighbor
+        cells[ni].layers.pop();
+        showNumPop(ni,"💥");
+      }
+    });
+  }
+
+  cells[idx].layers=finalLayers;
+
+  // Animate placement fly-in from tray
+  const trayEl=qs("tray");
+  const trayRect=trayEl.getBoundingClientRect();
+  const wrap=qs("board-wrap");
+  const wrapRect=wrap.getBoundingClientRect();
+  const dst=hexCenter(cells[idx].q,cells[idx].r);
+  const fxRel=trayRect.left+trayRect.width/2-wrapRect.left;
+  const fyRel=trayRect.top-wrapRect.top;
+  animations.push({fx:fxRel,fy:fyRel,tx:dst.x,ty:dst.y,colorIdx:finalLayers[finalLayers.length-1]||0,destIdx:null,t:0,duration:240,trail:false});
+
+  // After placement anim, compute cascade and play each hop sequentially
+  setTimeout(()=>{
+    const cascadeMoves=computeCascade();
+    // cells are already updated; replay visually hop-by-hop
+    playCascadeAnims(cascadeMoves, 0, ()=>afterCascade(idx));
+  }, 260);
+}
+
+// Play cascade moves one hop at a time with a visible flying tile
+function playCascadeAnims(moves, idx, onDone){
+  if(idx>=moves.length){ if(onDone) onDone(); return; }
+  const m=moves[idx];
+  const sp=hexCenter(cells[m.from].q, cells[m.from].r);
+  const dp=hexCenter(cells[m.to].q,   cells[m.to].r);
+  const HOP_MS=140; // ms per hop — fast enough to feel snappy, slow enough to see
+
+  animations.push({
+    fx:sp.x, fy:sp.y,
+    tx:dp.x, ty:dp.y,
+    colorIdx:m.colorIdx,
+    destIdx:null,
+    t:0, duration:HOP_MS,
+    // Draw a trail line for this hop
+    trail:true, trailAlpha:1.0
+  });
+  drawBoard();
+
+  // Play next hop after this one lands
+  setTimeout(()=>playCascadeAnims(moves, idx+1, onDone), HOP_MS+18);
+}
+
+function afterCascade(triggeredIdx){
+  let totalScore=0,comboN=0;
+  let found=true;
+  while(found){
+    found=false;
+    for(let i=0;i<cells.length;i++){
+      if(!cells[i].layers.length) continue;
+      const topCount=countTopColor(i);
+      if(topCount>=CLEAR_THRESHOLD){
+        // Double-check: verify the top count is really same-color consecutive
+        const checkTop=cells[i].layers[cells[i].layers.length-1];
+        let verified=0;
+        for(let k=cells[i].layers.length-1;k>=0;k--){
+          if(cells[i].layers[k]===checkTop) verified++; else break;
+        }
+        if(verified<CLEAR_THRESHOLD) continue; // safety: should not happen
+
+        if(verified>=15){superClearCount++;showNumPop(i,"⭐ SUPER!");}
+        const mult=cells[i].scoreMultiplier||1;
+        const pts=(verified*5+comboN*10)*mult;
+        if(mult>1){showNumPop(i,"⚡×"+mult+"!");cells[i].scoreMultiplier=1;}
+        totalScore+=pts;comboN++;
+        if(verified<15)showNumPop(i,"+"+pts);
+
+        // Clear only top consecutive same-color layers
+        const lenSnap=cells[i].layers.length;
+        cells[i].layers.splice(lenSnap-verified, verified);
+
+        // BOMB: explode neighbors when this cell is cleared
+        if(cells[i].special==="bomb"){
+          cells[i].special=null;
+          getNeighbors(i).forEach(ni=>{
+            if(cells[ni].layers.length>0&&!isFrozen(ni)&&!isChained(ni)){
+              cells[ni].layers.pop();
+              showNumPop(ni,"💥");
+            }
+          });
+          showNumPop(i,"💥爆炸！");
+        }
+
+        // Notify neighbors for frozen/chain
+        getNeighbors(i).forEach(ni=>{
+          if(cells[ni].special==="frozen"){
+            cells[ni].frozenHits=(cells[ni].frozenHits||0)+1;
+            if(cells[ni].frozenHits>=(cells[ni].frozenNeed||1)){cells[ni].special=null;showNumPop(ni,"❄️解冻！");}
+          }
+          if(cells[ni].special==="chain"&&cells[ni].chainColors){
+            cells[ni].chainColors=cells[ni].chainColors.filter(c=>c!==checkTop);
+            if(cells[ni].chainColors.length===0){cells[ni].special=null;showNumPop(ni,"⛓️解链！");}
+            else showNumPop(ni,"⛓️-1");
+          }
+        });
+        found=true;
+      }
+    }
+    if(found) computeCascade();
+  }
+
+  score+=totalScore;
+  if(comboN>1)hint("💥 连锁消除 x"+comboN+"！");
+
+  const allUsed=queue.every(s=>!s||!s.layers.length);
+  if(allUsed){
+    queue=generateQueue(currentCfg||levelConfig(level));
+    hint(totalScore>0?"消除 +"+totalScore+"！新的三堆来了":"获得新的三堆色块！");
+  }else if(totalScore>0){
+    hint("消除 +"+totalScore+"！继续放置");
+  }else{
+    hint("继续放置剩余色块堆");
+  }
+
+  save();cloudSave();
+  _placing=false;
+
+  if(score>=scoreNeed && checkWinConds()){showWin();return;}
+  checkLose();
+  drawBoard();renderTray();renderHUD();
+}
+
+function checkLose(){
+  const placeable=cells.filter((c,i)=>c.layers.length===0&&!isSpecialLocked(i)).length;
+  const pending=queue.filter(s=>s&&s.layers.length>0).length;
+  if(placeable===0&&pending>0){showLose("棋盘已满，无法继续放置！");}
+}
+
+// ============================================================
+// WIN / LOSE
+// ============================================================
+function showWin(){
+  const mult=Number(G.multiplier||1),reward=Math.floor((50+level*15)*mult);
+  // Star system:
+  // Base: 3 stars
+  // -1 if any booster used
+  // +1 for each time a cell hit >=15 layers (superClearCount)
+  // -1 for each revive used (reviveCount)
+  let stars=3;
+  if(boostersUsed>0)stars--;
+  stars+=superClearCount;
+  stars-=reviveCount;
+  stars=Math.max(0,Math.min(5,stars));
+
+  if(!G.cleared.includes(level))G.cleared.push(level);
+  if(!G.unlocked.includes(level+1))G.unlocked.push(level+1);
+  G.coins=(G.coins||0)+reward;
+  G.stars=(G.stars||0)+stars;
+  save();cloudSave();
+  // 通关记录用 gasJsonp 确保真正写入云端（gasBeacon Image方式会被GAS重定向拦截）
+  gasJsonp({sheet:SHEET,action:"level_clear",id:G.id,uid:String(G.uid),
+    level:String(level),stars:String(stars),score:String(score),
+    score_need:String(scoreNeed),boosters_used:String(boostersUsed),
+    revive_count:String(reviveCount),super_clears:String(superClearCount),
+    coin_reward:String(reward),coins_total:String(G.coins||0),date:todayISO()
+  },8000).catch(()=>{
+    // 失败时 fallback 到 beacon
+    gasBeacon({sheet:SHEET,action:"level_clear",id:G.id,uid:String(G.uid),
+      level:String(level),stars:String(stars),score:String(score),
+      score_need:String(scoreNeed),boosters_used:String(boostersUsed),
+      revive_count:String(reviveCount),super_clears:String(superClearCount),
+      coin_reward:String(reward),coins_total:String(G.coins||0),date:todayISO()});
+  });
+
+  const starStr="⭐".repeat(stars)+"☆".repeat(Math.max(0,5-stars));
+  let detail="";
+  if(boostersUsed>0)detail+="道具 -1⭐　";
+  if(superClearCount>0)detail+="超级消除 +"+superClearCount+"⭐　";
+  if(reviveCount>0)detail+="复活 -"+reviveCount+"⭐　";
+
+  qs("win-body").innerHTML=
+    "第 "+level+" 关完成！<br>"+
+    "得分 "+score+" · 目标 "+scoreNeed+"<br>"+
+    "奖励 "+reward+" 🪙 · "+starStr+"（"+stars+" 星）<br>"+
+    (detail?"<span style='font-size:.75rem;color:rgba(255,255,255,.6)'>"+detail.trim()+"</span>":"");
+  qs("ov-win").classList.remove("hidden");
+}
+function showLose(msg){
+  qs("lose-body").textContent=msg||"无法继续";
+  const coinCost=Math.min(300,level*10);
+  const el=qs("revive-coin-cost");if(el)el.textContent="花费 "+coinCost+" 🪙（当前 "+(G.coins||0)+"）";
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  const cb=qs("ov-lose").querySelector("[onclick=\"doRevive('coins')\"]");
+  const rb=qs("ov-lose").querySelector("[onclick=\"doRevive('replies')\"]");
+  if(cb)cb.disabled=(G.coins||0)<coinCost;if(rb)rb.disabled=ar<5;
+  qs("ov-lose").classList.remove("hidden");
+}
+function doRevive(type){
+  const coinCost=Math.min(300,level*10);
+  if(type==="coins"){if((G.coins||0)<coinCost){alert("金币不足");return;}G.coins-=coinCost;hint("💊 金币复活！清除了3格");}
+  else{const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));if(ar<5){alert("回复数不足");return;}G.repliesSpent=(G.repliesSpent||0)+5;hint("💊 回复数复活！清除了3格");}
+  reviveCount++;
+  // Clear the 3 cells with the most layers
+  const ranked=[...cells.keys()]
+    .filter(i=>cells[i].layers.length>0)
+    .sort((a,b)=>cells[b].layers.length-cells[a].layers.length)
+    .slice(0,3);
+  ranked.forEach(i=>{cells[i].layers=[];});
+  qs("ov-lose").classList.add("hidden");
+  save();cloudSave();
+  gasBeacon({sheet:SHEET,action:"revive",id:G.id,uid:String(G.uid),level:String(level),type,revive_type:type,coins_left:String(G.coins||0),date:todayISO()});
+  drawBoard();renderHUD();
+}
+
+// ============================================================
+// BOOSTERS
+// ============================================================
+function doUndo(){
+  if(!(G.boosters.undo>0)){openShop();return;}
+  if(!moveHistory.length){hint("没有可撤回的操作");return;}
+  G.boosters.undo--;boostersUsed++;
+  restoreSnap(moveHistory.pop());
+  save();cloudSave();hint("已撤回上一步");
+  drawBoard();renderTray();renderHUD();
+}
+function doShuffle(){
+  if(!(G.boosters.shuffle>0)){openShop();return;}
+  G.boosters.shuffle--;boostersUsed++;
+  queue=generateQueue(levelConfig(level));selectedQueue=-1;
+  save();cloudSave();hint("🔀 换了新的三堆！");
+  renderTray();renderHUD();
+}
+function doHammerToggle(){
+  if(!(G.boosters.hammer>0)&&!hammerMode){openShop();return;}
+  hammerMode=!hammerMode;
+  hint(hammerMode?"🔨 锤碎模式：点击棋盘格子清除！":"已取消锤碎");
+  drawBoard();renderHUD();
+}
+function doColorBomb(){
+  if(!(G.boosters.bomb>0)){openShop();return;}
+  const freq=new Array(COLORS.length).fill(0);
+  cells.forEach(c=>c.layers.forEach(col=>freq[col]++));
+  const maxCol=freq.indexOf(Math.max(...freq));
+  if(!freq[maxCol]){hint("棋盘无色块");return;}
+  moveHistory.push(snapshot());
+  G.boosters.bomb--;boostersUsed++;
+  // Only remove TOP consecutive layers of that color — never touch layers below other colors
+  cells.forEach(c=>{
+    if(!c.layers.length) return;
+    const top=c.layers[c.layers.length-1];
+    if(top!==maxCol) return;
+    let count=0;
+    for(let k=c.layers.length-1;k>=0;k--){
+      if(c.layers[k]===maxCol) count++; else break;
+    }
+    c.layers.splice(c.layers.length-count, count);
+  });
+  save();cloudSave();hint("💣 色爆！消除了所有"+COLOR_NAMES[maxCol]+"色顶层 ("+freq[maxCol]+"个)");
+  computeCascade();drawBoard();renderTray();renderHUD();
+}
+
+// ============================================================
+// TRAY RENDER (Canvas mini hexes)
+// ============================================================
+function renderTray(){
+  const tray=qs("tray");tray.innerHTML="";
+  for(let qi=0;qi<3;qi++){
+    const slot=document.createElement("div");
+    const stk=queue[qi];
+    const isEmpty=!stk||!stk.layers.length;
+    slot.className="tray-slot"+(isEmpty?" empty":"")+(selectedQueue===qi?" selected":"");
+    if(!isEmpty){
+      const nLayers=stk.layers.length;
+      const miniR=18;
+      const SLAB=7; // bigger slab height for better visibility
+      const MAX_SHOW_T=Math.min(nLayers,5);
+      const W=miniR*2+10;
+      const totalH=(MAX_SHOW_T-1)*SLAB;
+      const H=miniR*2+totalH+12;
+      const cvs=document.createElement("canvas");
+      cvs.width=W; cvs.height=H;
+      const cx2=cvs.getContext("2d");
+      const cx=W/2;
+      // shift topmost face up so bottom layers show below
+      const topFaceY0=miniR+6;
+      const showL=stk.layers.slice(nLayers-MAX_SHOW_T);
+
+      for(let li=0;li<MAX_SHOW_T;li++){
+        const topY=topFaceY0+(MAX_SHOW_T-1-li)*SLAB;
+        const colIdx=showL[li];
+        const col=COLORS[colIdx]||COLORS[0];
+        const frac=MAX_SHOW_T>1?li/(MAX_SHOW_T-1):1;
+        const r2=(miniR-1)*(0.62+0.38*frac); // bottom smaller radius
+        function hexPts2(cr,bcy){const p=[];for(let i=0;i<6;i++){const a=Math.PI/3*i;p.push([cx+cr*Math.cos(a),bcy+cr*Math.sin(a)]);}return p;}
+        const top2=hexPts2(r2,topY);
+        const isTopmost=(li===MAX_SHOW_T-1);
+
+        function sideFace2(indices,shade){
+          cx2.beginPath();cx2.moveTo(top2[indices[0]][0],top2[indices[0]][1]);
+          for(let k=1;k<indices.length;k++)cx2.lineTo(top2[indices[k]][0],top2[indices[k]][1]);
+          cx2.lineTo(top2[indices[indices.length-1]][0],top2[indices[indices.length-1]][1]+SLAB);
+          for(let k=indices.length-2;k>=0;k--)cx2.lineTo(top2[indices[k]][0],top2[indices[k]][1]+SLAB);
+          cx2.closePath();cx2.fillStyle=shade;cx2.fill();
+          cx2.strokeStyle="rgba(0,0,0,.2)";cx2.lineWidth=0.5;cx2.stroke();
+        }
+        sideFace2([0,1,2,3],col.side);
+        sideFace2([3,4,5,0],col.dark);
+
+        cx2.beginPath();cx2.moveTo(top2[0][0],top2[0][1]);
+        for(let i=1;i<6;i++)cx2.lineTo(top2[i][0],top2[i][1]);
+        cx2.closePath();
+        if(isTopmost){
+          const grd=cx2.createRadialGradient(cx,topY-r2*0.2,r2*0.08,cx,topY,r2*0.9);
+          grd.addColorStop(0,"#fff");grd.addColorStop(0.28,col.top);grd.addColorStop(1,col.side);
+          cx2.fillStyle=grd;
+        } else {
+          // Show real color for lower slabs
+          const grd2=cx2.createRadialGradient(cx,topY,r2*0.05,cx,topY,r2*0.9);
+          grd2.addColorStop(0,col.top);grd2.addColorStop(1,col.side);
+          cx2.fillStyle=grd2;
+        }
+        cx2.fill();
+        cx2.strokeStyle=isTopmost?"rgba(255,255,255,.4)":"rgba(0,0,0,.5)";
+        cx2.lineWidth=isTopmost?1:1.2;cx2.stroke();
+
+        if(isTopmost){
+          cx2.beginPath();cx2.moveTo(cx-r2*0.3,topY-r2*0.45);cx2.lineTo(cx+r2*0.08,topY-r2*0.6);
+          cx2.strokeStyle="rgba(255,255,255,.5)";cx2.lineWidth=1.5;cx2.stroke();
+        }
+      }
+      slot.appendChild(cvs);
+      const lbl=document.createElement("div");
+      lbl.className="tray-label";lbl.textContent=nLayers+"层";
+      slot.appendChild(lbl);
+      slot.addEventListener("click",()=>onQueueClick(qi));
+    }else{
+      slot.innerHTML="<div style='font-size:1.4rem;opacity:.25'>✓</div>";
+    }
+    tray.appendChild(slot);
+  }
+}
+
+function onQueueClick(qi){
+  if(!queue[qi]||!queue[qi].layers.length)return;
+  if(hammerMode){hammerMode=false;drawBoard();renderHUD();}
+  selectedQueue=selectedQueue===qi?-1:qi;
+  renderTray();
+  hint(selectedQueue>=0?"已选第"+(selectedQueue+1)+"堆，点击棋盘空格放置":"请选择色块堆");
+}
+
+function renderHUD(){
+  qs("score-val").textContent=score;
+  qs("score-need").textContent=scoreNeed;
+  qs("slots-left").textContent=cells.filter((c,i)=>c.layers.length===0&&!isSpecialLocked(i)).length;
+  qs("progress").style.width=Math.min(100,Math.round(score/scoreNeed*100))+"%";
+  qs("coins").textContent=G.coins||0;
+  qs("uval").textContent=G.boosters.undo||0;
+  qs("sval").textContent=G.boosters.shuffle||0;
+  qs("hval").textContent=(G.boosters.hammer||0);
+  qs("bval").textContent=G.boosters.bomb||0;
+  const he=qs("hint-extra");
+  if(he){
+    if(currentCfg&&currentCfg.winConds&&currentCfg.winConds.length){
+      const parts=currentCfg.winConds.map(c=>{
+        if(c.type==="clear_frozen"){const rem=cells.filter(cl=>cl.special==="frozen").length;return rem>0?"❄️剩"+rem:"❄️✅";}
+        if(c.type==="clear_chain"){const rem=cells.filter(cl=>cl.special==="chain").length;return rem>0?"⛓️剩"+rem:"⛓️✅";}
+        return "";
+      });
+      he.textContent=parts.filter(Boolean).join(" ");
+    } else {
+      he.textContent=hammerMode?"🔨 锤碎中":"";
+    }
+  }
+  const sc=qs("super-count");
+  if(sc) sc.textContent=superClearCount>0?"⭐SUPER×"+superClearCount:"";
+}
+
+// ============================================================
+// LOGIN / MENU
+// ============================================================
+async function doLogin(){
+  const id=qs("inp-id").value.trim(),uid=parseInt(qs("inp-uid").value.trim(),10);
+  const btn=qs("btn-login");
+  if(!id||!uid){qs("login-err").textContent="请输入论坛ID与UID";return;}
+  qs("login-err").textContent="";const oldTxt=btn.textContent;btn.disabled=true;btn.textContent="登入中...";
+  try{
+    G.id=id;G.uid=uid;localStorage.setItem(KEY_ID,id);localStorage.setItem(KEY_UID,String(uid));
+    load();normalize();
+    const c=await cloudLoad(id);
+    if(c&&c.state_json){try{Object.assign(G,JSON.parse(c.state_json));G.id=id;G.uid=uid;normalize();}catch(e){}}
+    save();cloudSave();
+    gasBeacon({sheet:SHEET,action:"login_log",id:G.id,uid:String(G.uid),date:todayISO()});
+    enterMenu();
+  }finally{btn.disabled=false;btn.textContent=oldTxt;}
+}
+function offlineMode(){load();normalize();enterMenu();}
+function enterMenu(){curBgSkin=G.bgSkin||G.skin||"default";applyBgTheme();renderLvList();renderMultiplier();renderChapter();updateMenuStat();show("menu");}
+function backMenu(){qs("ov-win").classList.add("hidden");qs("ov-lose").classList.add("hidden");if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}enterMenu();}
+function setMultiplier(m){G.multiplier=m;save();renderMultiplier();renderChapter();}
+function renderMultiplier(){
+  const m=Number(G.multiplier||1),wrap=qs("mults");wrap.innerHTML="";
+  [[1,"标准"],[2,"Mega"],[4,"Epic"],[8,"Super"]].forEach(x=>{const b=document.createElement("button");b.className="btn"+(m===x[0]?" on":"");b.textContent="x"+x[0]+" "+x[1];b.onclick=()=>setMultiplier(x[0]);wrap.appendChild(b);});
+}
+function chapterNeed(){return 4+Math.min(12,Math.floor((G.chapter||1)/2));}
+function doChapterTask(){
+  const need=chapterNeed();if((G.stars||0)<need){alert("星星不足");return;}
+  G.stars-=need;G.chapterItems=(G.chapterItems||0)+1;G.lootBoxes=(G.lootBoxes||0)+1;G.lootBoxesTotal=(G.lootBoxesTotal||0)+1;
+  let msg="完成章节项目！获得 🎁 宝箱 x1";
+  if(G.chapterItems>=5){G.chapter=(G.chapter||1)+1;G.chapterItems=0;G.coins=(G.coins||0)+120;G.boosters.bomb=(G.boosters.bomb||0)+1;msg="章节完成：奖励 120 金币与色爆 x1！\n获得 🎁 宝箱 x1";}
+  save();cloudSave();renderChapter();updateMenuStat();alert(msg);
+}
+function renderChapter(){
+  const el=qs("chapter-card");if(!el)return;
+  const pct=Math.round(((G.chapterItems||0)/5)*100);
+  el.innerHTML="<div><b>章节 "+(G.chapter||1)+"</b><div style='font-size:.75rem;color:rgba(255,255,255,.7)'>每项消耗 "+chapterNeed()+" ⭐</div></div><div class='bar'><div class='fill' style='width:"+pct+"%'></div></div><button class='btn' onclick='doChapterTask()'>完成项目</button>";
+}
+function renderLvList(){
+  const wrap=qs("lvlist");wrap.innerHTML="";const max=Math.max(...G.unlocked);
+  for(let i=1;i<=Math.max(40,max+10);i++){
+    const cleared=G.cleared.includes(i);const b=document.createElement("button");b.className="btn";b.style.padding="6px";b.textContent=cleared?("🏆"+i):i;
+    if(i>max)b.disabled=true;
+    b.onclick=()=>startGame(i);
+    wrap.appendChild(b);
+  }
+}
+function updateMenuStat(){
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  qs("menu-stat").textContent="📝 "+ar+" · 💬 "+ac+" · 🪙 "+(G.coins||0)+" · ⭐ "+(G.stars||0)+" · 🎫 "+(G.tickets||0);
+  const lb=qs("menu-lootbox-info");
+  if(lb)lb.innerHTML="🎁 宝箱：<b>"+(G.lootBoxes||0)+"</b> 个 ｜ 节操 "+(G.jieCao||0)+"/5000 · 羽毛 "+(G.feather||0)+"/2000 · 本期勋章 "+(G.medal30||0)+" · 字母勋章 "+(G.letterMedal30||0);
+  const btnRow=qs("menu-lootbox-btn-row");
+  if(btnRow){
+    const n=G.lootBoxes||0;
+    if(n>0)btnRow.innerHTML="<button class='btn' style='background:linear-gradient(135deg,#92400e,#dc2626);font-size:.82rem;padding:7px 18px' onclick='openLootBox()'>🎁 开宝箱（"+n+"个）</button>"+(n>=10?"&nbsp;<button class='btn' style='background:linear-gradient(135deg,#065f46,#0369a1);font-size:.82rem;padding:7px 14px' onclick='doOpenLootBox(10)'>开10个</button>":"")+(n>=1?"&nbsp;<button class='btn' style='background:linear-gradient(135deg,#1e1b4b,#7c3aed);font-size:.82rem;padding:7px 14px' onclick='doOpenLootBoxAll()'>全开</button>":"");
+    else btnRow.innerHTML="<span style='font-size:.78rem;color:rgba(255,255,255,.4)'>🎁 暂无宝箱，完成章节项目可获得</span>";
+  }
+}
+
+// ============================================================
+// SHOP / SKIN
+// ============================================================
+function openShop(){
+  // Refresh G from localStorage in case it wasn't loaded (offline mode / game screen)
+  if(!G.id){
+    const savedId=localStorage.getItem(KEY_ID)||"";
+    const savedUid=parseInt(localStorage.getItem(KEY_UID)||"0",10);
+    if(savedId){G.id=savedId;G.uid=savedUid;}
+  }
+  renderShop();updateShopCurrency();
+  // Show login status in shop
+  const fs=qs("forum-status");
+  if(fs){
+    if(G.id) fs.textContent="已登入："+G.id+" (UID "+G.uid+")";
+    else fs.textContent="⚠️ 未登入 — 请先在主页面登入才能抓取论坛数据";
+  }
+  qs("ov-shop").classList.remove("hidden");
+}
+function closeShop(){qs("ov-shop").classList.add("hidden");}
+function updateShopCurrency(){qs("sh-replies").textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));qs("sh-cites").textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));}
+function renderShop(){
+  const list=qs("shop-list");list.innerHTML="";
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  SHOP_ITEMS.forEach(it=>{
+    const av=it.costType==="replies"?ar:ac,owned=it.give&&it.give.bgSkin&&ownsBgSkin(it.give.bgSkin),can=av>=it.cost&&!owned;
+    const d=document.createElement("div");d.className="shop-item";
+    if(owned)d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:#94a3b8'>已拥有</div></div><button class='btn' disabled>已拥有</button>";
+    else{d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>花费 "+it.cost+" "+(it.costType==="replies"?"回复":"被引用")+"</div></div><button class='btn' "+(can?"":"disabled")+">购买</button>";d.querySelector("button").onclick=()=>buyItemDirect(it.id);}
+    list.appendChild(d);
+  });
+}
+function buyItemDirect(id){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;if(it.give&&it.give.bgSkin){if(ownsBgSkin(it.give.bgSkin)){alert("已拥有");return;}return buyItem(id,1);}return buyItemPrompt(id);}
+function buyItemPrompt(id){const q=prompt("数量","1");if(q===null)return;buyItem(id,Math.max(1,Math.min(99,parseInt(q,10)||1)));}
+function buyItem(id,qty){
+  const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0)),av=it.costType==="replies"?ar:ac,cost=it.cost*qty;
+  if(av<cost){alert("数量不足");return;}
+  if(it.costType==="replies")G.repliesSpent+=cost;else G.citationsSpent+=cost;
+  if(it.give.undo)G.boosters.undo+=(it.give.undo||0)*qty;
+  if(it.give.shuffle)G.boosters.shuffle+=(it.give.shuffle||0)*qty;
+  if(it.give.hammer)G.boosters.hammer+=(it.give.hammer||0)*qty;
+  if(it.give.bomb)G.boosters.bomb+=(it.give.bomb||0)*qty;
+  if(it.give.ticket)G.tickets=(G.tickets||0)+it.give.ticket*qty;
+  if(it.give.bgSkin){for(let i=0;i<qty;i++)grantBgSkin(it.give.bgSkin);}
+  save();cloudSave();renderShop();updateShopCurrency();updateMenuStat();
+  gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId:id,cost:String(cost),date:todayISO()});
+}
+function applySkin(id){if(!ownsBgSkin(id)){alert("未解锁，请先购买。");return;}G.skin=id;G.bgSkin=id;curBgSkin=id;save();cloudSave();applyBgTheme();if(!qs("ov-skin").classList.contains("hidden"))openSkin();}
+function openSkin(){
+  const list=qs("skin-list");list.innerHTML="";
+  SKINS.forEach(s=>{const b=BG_SKINS[s.id]||BG_SKINS.default;const d=document.createElement("div");d.className="shop-item";d.innerHTML="<img src='"+b.url+"' style='width:48px;height:34px;object-fit:cover;border-radius:6px;margin-right:8px'><div style='flex:1'><b>"+s.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>"+(ownsBgSkin(s.id)?(G.skin===s.id?"使用中":"点击使用"):"🛒 去商店解锁")+"</div></div><button class='btn'>"+(G.skin===s.id?"使用中":"使用")+"</button>";d.querySelector("button").onclick=()=>applySkin(s.id);list.appendChild(d);});
+  qs("ov-skin").classList.remove("hidden");
+}
+function closeSkin(){qs("ov-skin").classList.add("hidden");}
+
+// ============================================================
+// FORUM FETCH
+// ============================================================
+async function fffProxyGet(url){
+  const b=url+(url.includes("?")?"&":"?")+"_b="+Date.now();let lastErr=new Error("错误");
+  for(let i=0;i<FORUM_PROXIES.length;i++){
+    const px=FORUM_PROXIES[i],ctrl=new AbortController(),tid=setTimeout(()=>ctrl.abort(),FORUM_FETCH_MS);
+    try{const target=px.includes("codetabs")?px+encodeURIComponent(b):px+b.replace(/^https?:\/\//,"");const r=await fetch(target,{signal:ctrl.signal});if(!r.ok)throw new Error("p"+(i+1)+"_"+r.status);const text=await r.text();if(text&&text.length>30)return text;}catch(e){lastErr=e;}finally{clearTimeout(tid);}
+  }throw new Error("代理不可用: "+lastErr.message);
+}
+async function refreshForumData(){setForumStatus("正在抓取...");return fetchForumDataCustom(true);}
+async function refreshForumDataFast(){setForumStatus("快速抓取...");return fetchForumDataCustom(true,{maxPages:25,maxCitationChecks:0});}
+async function fetchForumDataCustom(show,opt){
+  // 重新从 localStorage 确认登入状态
+  if(!G.id){
+    G.id=localStorage.getItem(KEY_ID)||"";
+    G.uid=parseInt(localStorage.getItem(KEY_UID)||"0",10);
+  }
+  if(!G.id||!G.uid){alert("先登入论坛帐号才能抓取！");return false;}
+  const sdEl=qs("forum-start-date"), edEl=qs("forum-end-date");
+  const sd=(sdEl&&sdEl.value)||todayISO(), ed=(edEl&&edEl.value)||sd;
+  const startD=new Date(sd+"T00:00:00"),endD=new Date(ed+"T23:59:59");
+  function inRange_(d){return d instanceof Date&&!isNaN(d)&&d>=startD&&d<=endD;}
+  function parseItemDate_(it){const t=it.querySelector("time[datetime]")||it.querySelector("time");const dt=t&&(t.getAttribute("datetime")||t.textContent||"");const m=String(dt).match(/(\d{4})-(\d{2})-(\d{2})/);return m?new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00"):null;}
+  try{
+    const sh=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+G.uid);
+    const slug=(sh.match(/\/profile\/([^\/\"?#]+)/)||[])[1];if(!slug)throw new Error("slug失败");
+    let page=1,replies=0,cites=0,budget=(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:20,maxPages=(opt&&opt.maxPages)||60;
+    while(page<=maxPages){
+      setForumStatus("抓取第 "+page+" 页...");
+      const u=page===1?"https://sstm.moe/profile/"+slug+"/content/?type=forums_topic_post&change_section=1":"https://sstm.moe/profile/"+slug+"/content/page/"+page+"/?type=forums_topic_post";
+      const html=await fffProxyGet(u),doc=new DOMParser().parseFromString(html,"text/html"),items=[...doc.querySelectorAll("ol.cProfileContent>li")];
+      if(!items.length)break;let allOlder=true,anyIn=false,arr=[];
+      items.forEach(it=>{const d=parseItemDate_(it);if(d&&d>=startD)allOlder=false;if(!d||!inRange_(d))return;anyIn=true;const a=it.querySelector("p.ipsType_light a[href]");if(a&&/forum\/32[-\/]/.test(a.getAttribute("href")||""))replies++;const bq=it.querySelector(".ipsQuote");if(bq){const cid=bq.getAttribute("data-ipsquote-contentcommentid"),tid=bq.getAttribute("data-ipsquote-contentid");if(cid&&tid)arr.push({cid,tid});}});
+      if(allOlder&&!anyIn)break;
+      const chk=arr.slice(0,Math.max(0,budget));budget-=chk.length;
+      for(let i=0;i<chk.length;i+=10){await Promise.all(chk.slice(i,i+10).map(async x=>{try{const q=await fffProxyGet("https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid);if(/forum\/32[-\/]/.test(q)&&new RegExp("data-ipsquote-userid=\\\""+G.uid+"\\\"").test(q))cites++;}catch(e){}}));}
+      if(!doc.querySelector("li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel='next']"))break;
+      page++;await new Promise(r=>setTimeout(r,24));
+    }
+    G.replies=(Number(G.replies)||0)+replies;G.citations=(Number(G.citations)||0)+cites;save();cloudSave();updateShopCurrency();updateMenuStat();
+    gasBeacon({sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(G.uid),replies:String(replies),citations:String(cites),date:todayISO()});
+    setForumStatus("完成：回复 "+replies+" / 被引用 "+cites);if(show)alert("抓取完成\n回复:"+replies+" 被引用:"+cites);return true;
+  }catch(e){setForumStatus("失败："+e.message);if(show)alert("失败:"+e.message);return false;}
+}
+
+// ============================================================
+// SAVE / IMPORT / EXPORT
+// ============================================================
+function downloadSaveData(){
+  save();
+  const rows=[["项目","数值"],["论坛ID",G.id],["UID",G.uid],["金币",G.coins||0],["星星",G.stars||0],["章节",G.chapter||1],["回复数",G.replies||0],["被引用数",G.citations||0],["挑战卷",G.tickets||0],["已解锁",(G.unlocked||[]).join(" ")],["已通关",(G.cleared||[]).join(" ")],["皮肤",G.skin||"default"],["时间",new Date().toLocaleString("zh-TW")]];
+  __appendPortableSaveRows(rows,"hexa_master",G);
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="hexa-master-"+(G.id||"player")+".csv";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+window.__applyPortableSaveData=async function(data){if(!data||typeof data!=="object")throw new Error("bad_save");Object.assign(G,data);try{normalize();}catch(e){}try{if(G.id)localStorage.setItem(KEY_ID,G.id);if(G.uid!=null)localStorage.setItem(KEY_UID,String(G.uid));}catch(e){}save();try{await cloudSave();}catch(e){}try{updateMenuStat();renderChapter();renderMultiplier();renderLvList();}catch(e){}};
+(function(){
+  const MARK="__HTML_GAME_SAVE__";
+  window.__appendPortableSaveRows=function(rows,game,state){try{rows.push([MARK,"game",game||""]);rows.push([MARK,"saved_at",new Date().toISOString()]);rows.push([MARK,"state_json",JSON.stringify(state||{})]);}catch(e){}return rows;};
+  function parseCsv(text){text=String(text||"").replace(/^\uFEFF/,"");const rows=[];let row=[],cell="",q=false;for(let i=0;i<text.length;i++){const ch=text[i],nx=text[i+1];if(q){if(ch==='"'&&nx==='"'){cell+='"';i++;}else if(ch==='"')q=false;else cell+=ch;}else{if(ch==='"')q=true;else if(ch===","){row.push(cell);cell="";}else if(ch==="\n"){row.push(cell);rows.push(row);row=[];cell="";}else if(ch!=="\r")cell+=ch;}}row.push(cell);rows.push(row);return rows;}
+  function readPayload(text){const raw=String(text||"").replace(/^\uFEFF/,"").trim();if(raw.charAt(0)==="{")return JSON.parse(raw);const rows=parseCsv(text);for(let i=0;i<rows.length;i++){if(rows[i][0]===MARK&&rows[i][1]==="state_json")return JSON.parse(rows[i][2]||"{}");}throw new Error("not_found");}
+  window.importGameSaveData_=function(){const input=document.createElement("input");input.type="file";input.accept=".csv,.json";input.onchange=function(){const file=input.files&&input.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(){Promise.resolve().then(()=>{if(!window.__applyPortableSaveData)throw new Error("missing");return window.__applyPortableSaveData(readPayload(reader.result));}).then(()=>alert("读档完成！")).catch(e=>{console.error(e);alert("读档失败");});};reader.readAsText(file,"utf-8");};input.click();};
+  window.__installPortableSaveImport=function(){Array.prototype.forEach.call(document.querySelectorAll("button"),function(btn){const oc=btn.getAttribute("onclick")||"";if(oc.indexOf("download")<0||btn.getAttribute("data-import-save-bound"))return;btn.setAttribute("data-import-save-bound","1");const b=document.createElement("button");b.type="button";b.className=btn.className||"";b.textContent="📤 读取存档";b.onclick=window.importGameSaveData_;btn.insertAdjacentElement("afterend",b);});};
+  function boot(){window.__installPortableSaveImport();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
+})();
+
+window.addEventListener("DOMContentLoaded",()=>{
+  load();normalize();applyBgTheme();
+  const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";
+  if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;
+  const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;
+  save();
+});
+window.addEventListener("resize",()=>{
+  if(!qs("game").classList.contains("hidden")){
+    computeLayout();drawBoard();
+  }
+});
+</script>
+</body>
+</html>
