@@ -219,6 +219,8 @@ body{background:#1a2a1a;font-family:'Nunito',sans-serif;color:#fff;min-height:10
   .prod-count{width:13px;height:13px;font-size:.44rem}
   #bag-btn{bottom:72px;right:8px}
 }
+/* sstm-login-cover */
+#screen-login{background-image:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,.58)),url('https://s.sstmlt.com/img/2026/05/17/hello_town3600d7a9b3df44a68.jpeg');background-size:cover;background-position:center;background-repeat:no-repeat}
 </style>
 </head>
 <body>
@@ -687,27 +689,49 @@ const KEY_UID="ht_login_uid";
 // 棋盘最大尺寸
 const BOARD_MIN=7, BOARD_MAX=12;
 
-// ── 皮肤 ──
-const SKINS={
-  default:{name:'春日小镇',unlock:0,bg:'radial-gradient(ellipse at 50% 30%,#243524 0%,#1a2a1a 60%)',accent:'#86efac'},
-  city:   {name:'都市风格', unlock:15,bg:'radial-gradient(ellipse at 50% 30%,#1e3a5f 0%,#0f1f3a 60%)',accent:'#60a5fa'},
-  beach:  {name:'海边小镇', unlock:30,bg:'radial-gradient(ellipse at 50% 30%,#4a3200 0%,#2a1a00 60%)',accent:'#fbbf24'},
-  snow:   {name:'雪国小镇', unlock:60,bg:'radial-gradient(ellipse at 50% 30%,#2a3a50 0%,#1a2535 60%)',accent:'#bae6fd'},
+// ── 背景皮肤（IMG.xlsx）──
+const BG_SKINS={
+  default:{id:'default',name:'默认皮肤',url:'https://s.sstmlt.com/img/2026/05/18/hello_town-64de3a8065c997ac.jpeg',shop:false},
+  plaza:{id:'plaza',name:'小镇广场喷泉夜景',url:'https://s.sstmlt.com/img/2026/05/18/hello_town-5b0619d23e41891d.jpeg',shop:true},
+  workshop:{id:'workshop',name:'合并工坊后院',url:'https://s.sstmlt.com/img/2026/05/18/hello_town-5b358dbc063dfaa3.jpeg',shop:true},
+  snowcabin:{id:'snowcabin',name:'松林小屋雪夜',url:'https://s.sstmlt.com/img/2026/05/18/hello_town-3e19c23ec071d4b5.jpeg',shop:true},
+  harbor:{id:'harbor',name:'码头面包香',url:'https://s.sstmlt.com/img/2026/05/18/hello_town-2b355be62a5fb248.jpeg',shop:true},
+  market:{id:'market',name:'晨雾绿野市集',url:'https://s.sstmlt.com/img/2026/05/18/hello_town-bb3877e3aa5688b2.jpeg',shop:true},
+  cafe:{id:'cafe',name:'霓虹咖啡街角',url:'https://s.sstmlt.com/img/2026/05/18/hello_town-5c1601d8c071ab24.jpeg',shop:true},
 };
+function bgStyleFromUrl(url){return "linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)),url('"+url+"') center/cover no-repeat";}
+function ensureOwnedBgSkins(){if(!G.ownedBgSkins||!Array.isArray(G.ownedBgSkins))G.ownedBgSkins=['default'];if(!G.ownedBgSkins.includes('default'))G.ownedBgSkins.unshift('default');}
+function ownsBgSkin(id){ensureOwnedBgSkins();return id==='default'||(G.ownedBgSkins||[]).includes(id);}
+function grantBgSkin(id){ensureOwnedBgSkins();if(id&&!G.ownedBgSkins.includes(id))G.ownedBgSkins.push(id);}
 let curSkin='default';
-function getSkinDef(){return SKINS[curSkin]||SKINS.default;}
-function canUseSkin(s){const sk=SKINS[s];return !sk||((G.orders_done||0)>=sk.unlock);}
+function getSkinDef(){return BG_SKINS[curSkin]||BG_SKINS.default;}
+function canUseSkin(s){return ownsBgSkin(s);}
 function applySkin(s){
-  if(!canUseSkin(s)){alert('需完成'+SKINS[s].unlock+'个订单后解锁！');return;}
-  curSkin=s;G.skin=s;saveState();cloudSave();applyTheme();updateSkinUI();closeSkinPanel();
+  if(!canUseSkin(s)){alert('请先在商店购买此背景皮肤');return;}
+  curSkin=s;G.skin=s;saveState();cloudSave();applyTheme();renderBgSkinPanel();closeSkinPanel();
 }
+const LOGIN_COVER_URL='https://s.sstmlt.com/img/2026/05/17/hello_town3600d7a9b3df44a68.jpeg';
 function applyTheme(){
-  const sk=getSkinDef();
-  const g=document.getElementById('game');if(g)g.style.background=sk.bg;
-  const m=document.getElementById('menu');if(m)m.style.background=sk.bg.replace('50% 30%','50% 0%');
-  document.documentElement.style.setProperty('--accent',sk.accent);
+  const sk=getSkinDef(),bg=bgStyleFromUrl(sk.url);
+  const g=document.getElementById('game');if(g)g.style.background=bg;
+  const m=document.getElementById('menu');if(m)m.style.background=bg;
+  const login=document.getElementById('screen-login');
+  if(login)login.style.background=bgStyleFromUrl(LOGIN_COVER_URL);
 }
-function updateSkinUI(){document.querySelectorAll('.skin-btn').forEach(b=>{b.classList.toggle('active',b.dataset.skin===curSkin);b.style.opacity=canUseSkin(b.dataset.skin)?'1':'.4';});}
+function renderBgSkinPanel(){
+  const box=document.getElementById('bg-skin-list');if(!box)return;
+  box.innerHTML='';
+  Object.keys(BG_SKINS).forEach(function(id){
+    const sk=BG_SKINS[id],owned=ownsBgSkin(id);
+    const row=document.createElement('div');
+    row.className='skin-option skin-btn'+(curSkin===id?' active':'');
+    row.style.opacity=owned?'1':'.45';
+    row.onclick=function(){applySkin(id);};
+    const sub=owned?(curSkin===id?'使用中':'点击使用'):'🛒 商店购买';
+    row.innerHTML='<img src="'+sk.url+'" alt="" style="width:52px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0"><div style="flex:1"><div style="font-weight:800">'+sk.name+'</div><motionless style="font-size:.68rem;color:rgba(255,255,255,.45)">'+sub+'</div></div><div class="skin-check">'+(curSkin===id?'✓':'')+'</div>';
+  });
+}
+function updateSkinUI(){renderBgSkinPanel();}
 
 // ── PLAYER STATE (持久化) ──
 let G={
@@ -844,6 +868,7 @@ function downloadGameData(){
     ['皮肤',G.skin||'default'],
     ['下载时间',new Date().toLocaleString('zh-TW')],
   ];
+  __appendPortableSaveRows(rows,'hello_town',G);
   var csv=rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\r\n');
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   var url=URL.createObjectURL(blob);
@@ -1424,6 +1449,8 @@ function loadState(){
   if(typeof G.bubblePinCount!=='number')G.bubblePinCount=0;
   if(!Array.isArray(G.pinUseLog))G.pinUseLog=[];
   if(!G.guideFound||typeof G.guideFound!=='object')G.guideFound={};
+  ensureOwnedBgSkins();
+  if(G.skin)curSkin=G.skin;
 }
 function loadIdHistory(){try{return JSON.parse(localStorage.getItem(KEY_HISTORY)||'[]');}catch(e){return[];}}
 function saveIdHistory(){
@@ -1479,6 +1506,7 @@ async function retryCloud(){
 function downloadGameData(){
   saveState();
   const rows=[['项目','数值'],['论坛ID',G.id],['UID',G.uid],['金币',G.coins||0],['星星点数',G.starPoints||0],['回复数',G.replies||0],['被引用',G.citations||0],['已完成订单数',G.orders_done||0],['棋盘尺寸',G.boardCols+'×'+G.boardRows],['背包格数',G.bagMaxSlots],['皮肤',G.skin||'default'],['时间',new Date().toLocaleString('zh-TW')]];
+  __appendPortableSaveRows(rows,'hello_town',G);
   const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='hello-town-'+G.id+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -3559,6 +3587,108 @@ setInterval(()=>{
 },10000);
 // 防止触摸滚动影响拖拽
 document.addEventListener('touchend',e=>{if(dragState)e.preventDefault();},{passive:false});
+
+
+window.__applyPortableSaveData=async function(data){
+  if(!data||typeof data!=='object') throw new Error('bad_save');
+  Object.assign(G,data);
+  try{ if(typeof normalize==='function') normalize(); }catch(e){}
+  try{ if(G.id) localStorage.setItem(KEY_ID,G.id); if(G.uid!=null) localStorage.setItem(KEY_UID,String(G.uid)); }catch(e){}
+  if(typeof saveState==='function') saveState(); else if(typeof save==='function') save();
+  try{ if(typeof cloudSave==='function') await cloudSave(); }catch(e){ console.warn('cloud save after import failed',e); }
+  try{ if(typeof updateMenuUI==='function') updateMenuUI(); }catch(e){}
+  try{ if(typeof updateMenuStat==='function') updateMenuStat(); }catch(e){}
+  try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
+  try{ if(typeof renderMenu==='function') renderMenu(); }catch(e){}
+};
+
+/* Portable save import/export support */
+(function(){
+  var MARK='__HTML_GAME_SAVE__';
+  window.__appendPortableSaveRows=function(rows,game,state){
+    try{
+      rows.push([MARK,'game',game||'']);
+      rows.push([MARK,'saved_at',new Date().toISOString()]);
+      rows.push([MARK,'state_json',JSON.stringify(state||{})]);
+    }catch(e){ console.warn('portable save export failed',e); }
+    return rows;
+  };
+  function parseCsv(text){
+    text=String(text||'').replace(/^\uFEFF/,'');
+    var rows=[],row=[],cell='',q=false;
+    for(var i=0;i<text.length;i++){
+      var ch=text[i],nx=text[i+1];
+      if(q){
+        if(ch==='"'&&nx==='"'){cell+='"';i++;}
+        else if(ch==='"'){q=false;}
+        else cell+=ch;
+      }else{
+        if(ch==='"') q=true;
+        else if(ch===','){row.push(cell);cell='';}
+        else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+        else if(ch!=='\r') cell+=ch;
+      }
+    }
+    row.push(cell); rows.push(row);
+    return rows;
+  }
+  function readPayload(text){
+    var raw=String(text||'').replace(/^\uFEFF/,'').trim();
+    if(raw.charAt(0)==='{') return JSON.parse(raw);
+    var rows=parseCsv(text);
+    for(var i=0;i<rows.length;i++){
+      if(rows[i][0]===MARK && rows[i][1]==='state_json'){
+        return JSON.parse(rows[i][2]||'{}');
+      }
+    }
+    throw new Error('save_json_not_found');
+  }
+  window.importGameSaveData_=function(){
+    var input=document.createElement('input');
+    input.type='file';
+    input.accept='.csv,.json,text/csv,application/json';
+    input.onchange=function(){
+      var file=input.files&&input.files[0];
+      if(!file) return;
+      var reader=new FileReader();
+      reader.onload=function(){
+        Promise.resolve().then(function(){
+          if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+          var data=readPayload(reader.result);
+          return window.__applyPortableSaveData(data);
+        }).then(function(){
+          alert('读档完成：本机记录已复原，并已尝试同步到云端。');
+        }).catch(function(e){
+          console.error(e);
+          alert('读档失败：请选择由本游戏「下载游玩数据/存档」导出的 CSV。');
+        });
+      };
+      reader.readAsText(file,'utf-8');
+    };
+    input.click();
+  };
+  window.__installPortableSaveImport=function(){
+    var found=false;
+    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
+      var oc=btn.getAttribute('onclick')||'';
+      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
+      btn.setAttribute('data-import-save-bound','1');
+      var b=document.createElement('button');
+      b.type='button';
+      b.className=btn.className||'';
+      b.style.cssText=btn.style.cssText||'';
+      b.textContent='📤 读取存档';
+      b.title='读取先前下载的存档 CSV';
+      b.onclick=window.importGameSaveData_;
+      btn.insertAdjacentElement('afterend',b);
+      found=true;
+    });
+    return found;
+  };
+  function boot(){ window.__installPortableSaveImport(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();
 </script>
 </body>
 </html>

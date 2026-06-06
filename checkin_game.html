@@ -10,9 +10,10 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
   font-family:'Microsoft YaHei',Arial,sans-serif;color:#fff;user-select:none}
 .screen{display:none}.screen.active{display:flex}
 /* === SCREEN LOGIN === */
+/* sstm-login-cover */
+#screen-login{background-image:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,.58)),url('https://s.sstmlt.com/img/2026/05/17/checkin_game28349a691eb17afb.jpeg');background-size:cover;background-position:center;background-repeat:no-repeat}
 #screen-login{position:fixed;inset:0;z-index:600;flex-direction:column;
-  align-items:center;justify-content:center;
-  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e)}
+  align-items:center;justify-content:center}
 /* === SCREEN CHECKIN === */
 #screen-checkin{position:fixed;inset:0;z-index:600;flex-direction:column;
   align-items:center;justify-content:center;padding:20px;
@@ -1409,6 +1410,7 @@ function downloadData(){
       ]);
     });
   });
+  __appendPortableSaveRows(rows,'checkin_game',G);
   const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
   const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob);
@@ -1595,19 +1597,39 @@ async function countGameSheetRecords_(sheetUrl, startDate, endDate, uid){
     const text=await resp.text();
     if(!text||text.startsWith("<!DOCTYPE")||text.startsWith("<html")) return 0;
     const uidStr=String(uid||"").trim();
+    const idStr=String((G&&G.id)||"").trim();
     const sTs=new Date(startDate+"T00:00:00").getTime();
     const eTs=new Date(endDate+"T23:59:59").getTime();
     const lines=text.split(/\r?\n/).filter(l=>l.trim());
-    let cnt=0;
+    let cnt=0, cntDateOnly=0;
+    const toLocalYmd_=(dt)=>{
+      const d=new Date(dt);
+      if(isNaN(d)) return "";
+      return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    };
     for(const ln of lines){
-      if(uidStr && !ln.includes(uidStr)) continue;
-      const m=ln.match(/(20\d{2})[-\/](\d{1,2})[-\/](\d{1,2})/);
-      if(!m) continue;
-      const dIso=m[1]+"-"+String(Number(m[2])).padStart(2,"0")+"-"+String(Number(m[3])).padStart(2,"0");
-      const ts=new Date(dIso+"T12:00:00").getTime();
-      if(ts>=sTs && ts<=eTs) cnt++;
+      const hasIdentity=(uidStr&&ln.includes(uidStr)) || (idStr&&ln.includes(idStr));
+      // 1) 优先抓完整 ISO 时间（含 Z）
+      let ts=NaN;
+      const isoMatch=ln.match(/(20\d{2}-\d{1,2}-\d{1,2}T\d{1,2}:\d{2}:\d{2}(?:\.\d+)?Z)/);
+      if(isoMatch){
+        const localYmd=toLocalYmd_(isoMatch[1]); // 按本地时区换算日界线
+        if(localYmd) ts=new Date(localYmd+"T12:00:00").getTime();
+      }
+      // 2) 退回普通日期格式
+      if(isNaN(ts)){
+        const m=ln.match(/(20\d{2})[-\/](\d{1,2})[-\/](\d{1,2})/);
+        if(!m) continue;
+        const dIso=m[1]+"-"+String(Number(m[2])).padStart(2,"0")+"-"+String(Number(m[3])).padStart(2,"0");
+        ts=new Date(dIso+"T12:00:00").getTime();
+      }
+      if(ts>=sTs && ts<=eTs){
+        if(hasIdentity) cnt++;
+        cntDateOnly++;
+      }
     }
-    return cnt;
+    // 某些游戏页只写 ID 不写 UID 或格式不固定：有日期但无身份命中时，回退日期计数避免误判未达标
+    return cnt>0 ? cnt : cntDateOnly;
   }catch(e){ console.warn("countGameSheetRecords_ error",e); return 0; }
 }
 async function checkGameSheet_(sheetUrl, date, uid){
@@ -1653,6 +1675,108 @@ window.addEventListener("DOMContentLoaded",()=>{
   renderIdHistory();
   document.getElementById("ver-txt").textContent=VER+" 新手村打卡游戏";
 });
+
+
+window.__applyPortableSaveData=async function(data){
+  if(!data||typeof data!=='object') throw new Error('bad_save');
+  Object.assign(G,data);
+  try{ if(typeof normalize==='function') normalize(); }catch(e){}
+  try{ if(G.id) localStorage.setItem(KEY_ID,G.id); if(G.uid!=null) localStorage.setItem(KEY_UID,String(G.uid)); }catch(e){}
+  if(typeof saveState==='function') saveState(); else if(typeof save==='function') save();
+  try{ if(typeof cloudSave==='function') await cloudSave(); }catch(e){ console.warn('cloud save after import failed',e); }
+  try{ if(typeof updateMenuUI==='function') updateMenuUI(); }catch(e){}
+  try{ if(typeof updateMenuStat==='function') updateMenuStat(); }catch(e){}
+  try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
+  try{ if(typeof renderMenu==='function') renderMenu(); }catch(e){}
+};
+
+/* Portable save import/export support */
+(function(){
+  var MARK='__HTML_GAME_SAVE__';
+  window.__appendPortableSaveRows=function(rows,game,state){
+    try{
+      rows.push([MARK,'game',game||'']);
+      rows.push([MARK,'saved_at',new Date().toISOString()]);
+      rows.push([MARK,'state_json',JSON.stringify(state||{})]);
+    }catch(e){ console.warn('portable save export failed',e); }
+    return rows;
+  };
+  function parseCsv(text){
+    text=String(text||'').replace(/^\uFEFF/,'');
+    var rows=[],row=[],cell='',q=false;
+    for(var i=0;i<text.length;i++){
+      var ch=text[i],nx=text[i+1];
+      if(q){
+        if(ch==='"'&&nx==='"'){cell+='"';i++;}
+        else if(ch==='"'){q=false;}
+        else cell+=ch;
+      }else{
+        if(ch==='"') q=true;
+        else if(ch===','){row.push(cell);cell='';}
+        else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+        else if(ch!=='\r') cell+=ch;
+      }
+    }
+    row.push(cell); rows.push(row);
+    return rows;
+  }
+  function readPayload(text){
+    var raw=String(text||'').replace(/^\uFEFF/,'').trim();
+    if(raw.charAt(0)==='{') return JSON.parse(raw);
+    var rows=parseCsv(text);
+    for(var i=0;i<rows.length;i++){
+      if(rows[i][0]===MARK && rows[i][1]==='state_json'){
+        return JSON.parse(rows[i][2]||'{}');
+      }
+    }
+    throw new Error('save_json_not_found');
+  }
+  window.importGameSaveData_=function(){
+    var input=document.createElement('input');
+    input.type='file';
+    input.accept='.csv,.json,text/csv,application/json';
+    input.onchange=function(){
+      var file=input.files&&input.files[0];
+      if(!file) return;
+      var reader=new FileReader();
+      reader.onload=function(){
+        Promise.resolve().then(function(){
+          if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+          var data=readPayload(reader.result);
+          return window.__applyPortableSaveData(data);
+        }).then(function(){
+          alert('读档完成：本机记录已复原，并已尝试同步到云端。');
+        }).catch(function(e){
+          console.error(e);
+          alert('读档失败：请选择由本游戏「下载游玩数据/存档」导出的 CSV。');
+        });
+      };
+      reader.readAsText(file,'utf-8');
+    };
+    input.click();
+  };
+  window.__installPortableSaveImport=function(){
+    var found=false;
+    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
+      var oc=btn.getAttribute('onclick')||'';
+      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
+      btn.setAttribute('data-import-save-bound','1');
+      var b=document.createElement('button');
+      b.type='button';
+      b.className=btn.className||'';
+      b.style.cssText=btn.style.cssText||'';
+      b.textContent='📤 读取存档';
+      b.title='读取先前下载的存档 CSV';
+      b.onclick=window.importGameSaveData_;
+      btn.insertAdjacentElement('afterend',b);
+      found=true;
+    });
+    return found;
+  };
+  function boot(){ window.__installPortableSaveImport(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();
 </script>
 
 <!-- 版本注记 -->

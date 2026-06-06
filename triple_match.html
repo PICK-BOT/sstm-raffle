@@ -337,8 +337,10 @@ body{
 .shop-btn:disabled{opacity:.35;cursor:not-allowed}
 /* screen active 修正 */
 .screen.active{display:flex}
+/* sstm-login-cover */
+#screen-login{background-image:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,.58)),url('https://s.sstmlt.com/img/2026/05/17/triple_matchfcb3494d530e4b29.jpeg');background-size:cover;background-position:center;background-repeat:no-repeat}
 #screen-login{position:fixed;inset:0;z-index:600;flex-direction:column;
-  align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 0%,#3b1d8a 0%,#1a1033 70%)}
+  align-items:center;justify-content:center}
 
 /* PARTICLES */
 .particle{
@@ -389,8 +391,7 @@ body{
 <!-- ══ LOGIN ══ -->
 <div id="screen-login" class="screen" style="display:flex">
   <div class="menu-glow"></div>
-  <div class="story-cover-banner"><img src="covers_v3/cover_triple_match_v3.png" alt="磁贴探索封面"></div>
-  <div class="menu-title">磁贴探索</div>
+<div class="menu-title">磁贴探索</div>
   <div class="menu-sub">Triple Match · 三消益智 · v1.4.0</div>
   <div class="menu-tiles">
     <div class="demo-tile" style="background:linear-gradient(135deg,#ef4444,#dc2626)">🍎</div>
@@ -413,8 +414,7 @@ body{
 <!-- ══ MENU（主画面）══ -->
 <div id="menu" class="screen" style="display:none">
   <div class="menu-glow"></div>
-  <div class="story-cover-banner"><img src="covers_v3/cover_triple_match_v3.png" alt="磁贴探索封面"></div>
-  <div style="width:100%;max-width:440px;display:flex;align-items:center;justify-content:space-between;padding:12px 16px 0">
+<div style="width:100%;max-width:440px;display:flex;align-items:center;justify-content:space-between;padding:12px 16px 0">
     <div>
       <div style="font-size:.9rem;font-weight:800;color:#c084fc" id="menu-id-label">-</div>
       <div style="font-size:.75rem;color:rgba(255,255,255,.5)" id="menu-stats-label">回复数: - · 被引用: -</div>
@@ -460,11 +460,14 @@ body{
 
 <!-- ══ SKIN OVERLAY ══ -->
 <div id="skin-overlay" class="overlay hidden">
-  <div class="ov-card" style="max-width:360px">
+  <div class="ov-card" style="max-width:360px;max-height:min(88vh,720px);overflow-y:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div class="ov-title" style="margin:0">🎨 皮肤切换</div>
       <button onclick="closeSkinPanel()" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1.1rem">×</button>
     </div>
+    <div style="font-size:.78rem;color:rgba(255,255,255,.68);margin:0 0 8px">背景皮肤（商店购买后选用）</div>
+    <div id="bg-skin-list" style="display:flex;flex-direction:column;gap:8px;max-height:28vh;overflow-y:auto;margin-bottom:12px"></div>
+    <div style="font-size:.78rem;color:rgba(255,255,255,.68);margin:0 0 6px">磁贴图案</div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <div class="skin-option skin-btn" data-skin="default" onclick="applySkin('default')">
         <div style="font-size:1.6rem">🎮</div>
@@ -596,6 +599,39 @@ const TILE_COLORS = [
 ];
 
 // ══ 皮肤系统 ══
+
+// ── 背景皮肤（IMG.xlsx）──
+const BG_SKINS={
+  default:{id:'default',name:'默认皮肤',url:'https://s.sstmlt.com/img/2026/05/18/triple_match-468459d53478eed3.jpeg'},
+  fruit_market:{id:'fruit_market',name:'水果魔法市集',url:'https://s.sstmlt.com/img/2026/05/18/triple_match-cc3ebcd74cf0d2c8.jpeg'},
+  crystal_cave:{id:'crystal_cave',name:'水晶洞穴探险',url:'https://s.sstmlt.com/img/2026/05/18/triple_match-a7e2c57717017e97.jpeg'},
+  stargazer:{id:'stargazer',name:'星空探索工坊',url:'https://s.sstmlt.com/img/2026/05/18/triple_match-f6efece2d19fd7c7.jpeg'},
+  sakura_fest:{id:'sakura_fest',name:'樱花夜祭',url:'https://s.sstmlt.com/img/2026/05/18/triple_match-81e12b455ed50fcf.jpeg'},
+  neon_arcade:{id:'neon_arcade',name:'霓虹紫电玩厅',url:'https://s.sstmlt.com/img/2026/05/18/triple_match-82dd38a75ea7a4d2.jpeg'}
+};
+function bgStyleFromUrl(url){return "linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)),url('"+url+"') center/cover no-repeat";}
+function ensureOwnedBgSkins(){if(!G.ownedBgSkins||!Array.isArray(G.ownedBgSkins))G.ownedBgSkins=['default'];if(!G.ownedBgSkins.includes('default'))G.ownedBgSkins.unshift('default');}
+function ownsBgSkin(id){ensureOwnedBgSkins();return id==='default'||(G.ownedBgSkins||[]).includes(id);}
+function grantBgSkin(id){ensureOwnedBgSkins();if(id&&!G.ownedBgSkins.includes(id))G.ownedBgSkins.push(id);}
+let curBgSkin='default';
+function getBgSkinDef(){return BG_SKINS[curBgSkin]||BG_SKINS.default;}
+function applyBgTheme(){var sk=getBgSkinDef(),bg=bgStyleFromUrl(sk.url);['game','menu','screen-login'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.background=bg;});}
+function applyBgSkin(id){if(!ownsBgSkin(id)){alert('请先在商店购买此背景皮肤');return;}curBgSkin=id;G.bgSkin=id;saveState();cloudSave();applyBgTheme();renderBgSkinPanel();closeSkinPanel();}
+function renderBgSkinPanel(){
+  var box=document.getElementById('bg-skin-list');if(!box)return;
+  box.innerHTML='';
+  Object.keys(BG_SKINS).forEach(function(id){
+    var sk=BG_SKINS[id],owned=ownsBgSkin(id);
+    var row=document.createElement('div');
+    row.className='skin-option skin-btn'+(curBgSkin===id?' active':'');
+    row.style.opacity=owned?'1':'.45';
+    row.onclick=function(){applyBgSkin(id);};
+    var sub=owned?(curBgSkin===id?'使用中':'点击使用'):'🛒 商店购买';
+    row.innerHTML='<img src="'+sk.url+'" style="width:52px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0"><div style="flex:1"><div style="font-weight:800">'+sk.name+'</div><div style="font-size:.68rem;color:rgba(255,255,255,.45)">'+sub+'</div></div><div class="skin-check">'+(curBgSkin===id?'✓':'')+'</div>';
+    box.appendChild(row);
+  });
+}
+
 const SKINS = {
   default: {
     name:'默认', icon:'🎮', imgMode:false,
@@ -872,12 +908,7 @@ async function cloudLoad(id){
   try{ const d=await gasJsonp({sheet:SHEET,action:"load",id}); return d.data||null; }catch(e){ return null; }
 }
 
-function openSkinPanel(){
-  updateSkinUI();
-  updateShapeUI();
-  var el=document.getElementById('skin-overlay');
-  if(el){ el.classList.remove('hidden'); el.style.display='flex'; }
-}
+function openSkinPanel(){ensureOwnedBgSkins();if(G.bgSkin)curBgSkin=G.bgSkin;else curBgSkin='default';renderBgSkinPanel();applyBgTheme();updateSkinUI();var el=document.getElementById('skin-overlay');if(el){el.classList.remove('hidden');el.style.display='flex';}}
 function closeSkinPanel(){
   var el=document.getElementById('skin-overlay');
   if(el){ el.classList.add('hidden'); el.style.display='none'; }
@@ -929,6 +960,7 @@ function downloadGameData(){
     ['皮肤',G.skin||'default'],
     ['下载时间',new Date().toLocaleString('zh-TW')],
   ];
+  __appendPortableSaveRows(rows,'triple_match',G);
   var csv=rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\r\n');
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   var url=URL.createObjectURL(blob);
@@ -1277,7 +1309,13 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
 const SHOP_ITEMS_DEF=[
   {id:"undo",  icon:"↩", name:"撤回道具 ×1",  desc:"在关卡中可撤回上一步", costType:"replies",   cost:10, give:{undo:1}},
   {id:"shuffle",icon:"🔀",name:"重排道具 ×1",  desc:"打乱棋盘顶层和槽",   costType:"replies",   cost:30, give:{shuffle:1}},
-  {id:"hint",  icon:"💡",name:"提示道具 ×1",   desc:"高亮最佳可配对格",    costType:"replies",   cost:15, give:{hint:1}},
+  
+  {id:'skin_fruit_market',icon:'🖼',name:'背景：水果魔法市集',desc:'购买后可在皮肤面板选用',costType:'replies',cost:25,give:{bgSkin:'fruit_market'}},
+  {id:'skin_crystal_cave',icon:'🖼',name:'背景：水晶洞穴探险',desc:'购买后可在皮肤面板选用',costType:'replies',cost:25,give:{bgSkin:'crystal_cave'}},
+  {id:'skin_stargazer',icon:'🖼',name:'背景：星空探索工坊',desc:'购买后可在皮肤面板选用',costType:'replies',cost:25,give:{bgSkin:'stargazer'}},
+  {id:'skin_sakura_fest',icon:'🖼',name:'背景：樱花夜祭',desc:'购买后可在皮肤面板选用',costType:'replies',cost:25,give:{bgSkin:'sakura_fest'}},
+  {id:'skin_neon_arcade',icon:'🖼',name:'背景：霓虹紫电玩厅',desc:'购买后可在皮肤面板选用',costType:'replies',cost:25,give:{bgSkin:'neon_arcade'}},
+{id:"hint",  icon:"💡",name:"提示道具 ×1",   desc:"高亮最佳可配对格",    costType:"replies",   cost:15, give:{hint:1}},
   {id:"ticket",icon:"🎫",name:"重复挑战卷 ×1", desc:"可重新挑战已通关关卡", costType:"citations", cost:10, give:{ticket:1}},
 ];
 
@@ -1307,24 +1345,29 @@ function renderShopItems(){
   const availCitations=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
   list.innerHTML="";
   SHOP_ITEMS_DEF.forEach(item=>{
+    const skinOwned=item.give&&item.give.bgSkin&&ownsBgSkin(item.give.bgSkin);
     const avail=item.costType==="replies"?availReplies:availCitations;
-    const canBuy=avail>=item.cost;
+    const canBuy=!skinOwned&&avail>=item.cost;
     const div=document.createElement("div");
-    div.className="shop-item";
-    div.innerHTML=`
-      <div style="font-size:1.8rem">${item.icon}</div>
-      <div class="shop-item-info">
-        <div class="shop-item-name">${item.name}</div>
-        <div class="shop-item-desc">${item.desc}</div>
-        <div class="shop-item-cost">花费 ${item.cost} ${item.costType==="replies"?"📝回复数":"💬被引用数"}（剩余 ${avail}）</div>
-      </div>
-      <button class="shop-btn" ${canBuy?"":"disabled"} onclick="buyItemPrompt('${item.id}')">购买</button>
-    `;
+    div.className="shop-item"+(skinOwned?" owned":"");
+    if(skinOwned){
+      div.innerHTML='<div style="font-size:1.8rem">'+item.icon+'</div><div class="shop-item-info"><div class="shop-item-name">'+item.name+'</div><div class="shop-item-desc">'+item.desc+'</div><div class="shop-item-cost" style="color:#94a3b8">已拥有</div></div><button class="shop-btn" disabled>已拥有</button>';
+    }else{
+      div.innerHTML='<div style="font-size:1.8rem">'+item.icon+'</div><div class="shop-item-info"><div class="shop-item-name">'+item.name+'</div><div class="shop-item-desc">'+item.desc+'</div><div class="shop-item-cost">花费 '+item.cost+' '+(item.costType==="replies"?"📝回复数":"💬被引用数")+'（剩余 '+avail+'）</div></div><button class="shop-btn" '+(canBuy?"":"disabled")+' onclick="buyItemDirect(\''+item.id+'\')">购买</button>';
+    }
     list.appendChild(div);
   });
 }
-
+function buyItemDirect(itemId){
+  const item=SHOP_ITEMS_DEF.find(x=>x.id===itemId);
+  if(!item)return;
+  if(item.give&&item.give.bgSkin&&ownsBgSkin(item.give.bgSkin)){alert('您已拥有该皮肤');return;}
+  if(item.id&&String(item.id).indexOf('skin_')===0)return buyItem(itemId,1);
+  return buyItemPrompt(itemId);
+}
 function buyItemPrompt(itemId){
+  const item=SHOP_ITEMS_DEF.find(x=>x.id===itemId);
+  if(item&&item.give&&item.give.bgSkin)return buyItemDirect(itemId);
   const nRaw=prompt("请输入购买数量（1-99）","1");
   if(nRaw===null) return;
   const qty=Math.max(1,Math.min(99,parseInt(String(nRaw).trim(),10)||1));
@@ -1333,20 +1376,24 @@ function buyItemPrompt(itemId){
 function buyItem(itemId, qty){
   const item=SHOP_ITEMS_DEF.find(x=>x.id===itemId);
   if(!item) return;
-  qty=Math.max(1,parseInt(qty||1,10)||1);
+  if(item.give&&item.give.bgSkin&&ownsBgSkin(item.give.bgSkin)){alert('您已拥有该皮肤');return;}
+  const isSkin=String(itemId||'').indexOf('skin_')===0||(item.give&&item.give.bgSkin);
+  qty=isSkin?1:Math.max(1,parseInt(qty||1,10)||1);
   const availReplies=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
   const availCitations=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
   const avail=item.costType==="replies"?availReplies:availCitations;
   const totalCost=item.cost*qty;
   if(avail<totalCost){ alert("数量不足！"); return; }
-  if(!confirm("确认花费 "+totalCost+" "+( item.costType==="replies"?"回复数":"被引用数")+" 购买「"+item.name+" ×"+qty+"」？")) return;
+  if(!isSkin&&!confirm("确认花费 "+totalCost+" "+( item.costType==="replies"?"回复数":"被引用数")+" 购买「"+item.name+" ×"+qty+"」？")) return;
   if(item.costType==="replies") G.repliesSpent=(G.repliesSpent||0)+totalCost;
   else G.citationsSpent=(G.citationsSpent||0)+totalCost;
+  if(item.give&&item.give.bgSkin) grantBgSkin(item.give.bgSkin);
   if(item.give.undo) G.boosters.undo=(G.boosters.undo||0)+item.give.undo*qty;
   if(item.give.shuffle) G.boosters.shuffle=(G.boosters.shuffle||0)+item.give.shuffle*qty;
   if(item.give.hint) G.boosters.hint=(G.boosters.hint||0)+item.give.hint*qty;
   if(item.give.ticket) G.tickets=(G.tickets||0)+item.give.ticket*qty;
   saveState(); cloudSave();
+  if(item.give&&item.give.bgSkin) renderBgSkinPanel();
   updateMenuUI();
   openShop(); // 刷新商店
   gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId,cost:String(totalCost),costType:item.costType,date:todayISO()});
@@ -2183,6 +2230,108 @@ document.addEventListener('keydown',(e)=>{
 
 // 防止移动端双击缩放
 document.addEventListener('touchend',e=>{ e.preventDefault(); },{passive:false});
+
+
+window.__applyPortableSaveData=async function(data){
+  if(!data||typeof data!=='object') throw new Error('bad_save');
+  Object.assign(G,data);
+  try{ if(typeof normalize==='function') normalize(); }catch(e){}
+  try{ if(G.id) localStorage.setItem(KEY_ID,G.id); if(G.uid!=null) localStorage.setItem(KEY_UID,String(G.uid)); }catch(e){}
+  if(typeof saveState==='function') saveState(); else if(typeof save==='function') save();
+  try{ if(typeof cloudSave==='function') await cloudSave(); }catch(e){ console.warn('cloud save after import failed',e); }
+  try{ if(typeof updateMenuUI==='function') updateMenuUI(); }catch(e){}
+  try{ if(typeof updateMenuStat==='function') updateMenuStat(); }catch(e){}
+  try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
+  try{ if(typeof renderMenu==='function') renderMenu(); }catch(e){}
+};
+
+/* Portable save import/export support */
+(function(){
+  var MARK='__HTML_GAME_SAVE__';
+  window.__appendPortableSaveRows=function(rows,game,state){
+    try{
+      rows.push([MARK,'game',game||'']);
+      rows.push([MARK,'saved_at',new Date().toISOString()]);
+      rows.push([MARK,'state_json',JSON.stringify(state||{})]);
+    }catch(e){ console.warn('portable save export failed',e); }
+    return rows;
+  };
+  function parseCsv(text){
+    text=String(text||'').replace(/^\uFEFF/,'');
+    var rows=[],row=[],cell='',q=false;
+    for(var i=0;i<text.length;i++){
+      var ch=text[i],nx=text[i+1];
+      if(q){
+        if(ch==='"'&&nx==='"'){cell+='"';i++;}
+        else if(ch==='"'){q=false;}
+        else cell+=ch;
+      }else{
+        if(ch==='"') q=true;
+        else if(ch===','){row.push(cell);cell='';}
+        else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+        else if(ch!=='\r') cell+=ch;
+      }
+    }
+    row.push(cell); rows.push(row);
+    return rows;
+  }
+  function readPayload(text){
+    var raw=String(text||'').replace(/^\uFEFF/,'').trim();
+    if(raw.charAt(0)==='{') return JSON.parse(raw);
+    var rows=parseCsv(text);
+    for(var i=0;i<rows.length;i++){
+      if(rows[i][0]===MARK && rows[i][1]==='state_json'){
+        return JSON.parse(rows[i][2]||'{}');
+      }
+    }
+    throw new Error('save_json_not_found');
+  }
+  window.importGameSaveData_=function(){
+    var input=document.createElement('input');
+    input.type='file';
+    input.accept='.csv,.json,text/csv,application/json';
+    input.onchange=function(){
+      var file=input.files&&input.files[0];
+      if(!file) return;
+      var reader=new FileReader();
+      reader.onload=function(){
+        Promise.resolve().then(function(){
+          if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+          var data=readPayload(reader.result);
+          return window.__applyPortableSaveData(data);
+        }).then(function(){
+          alert('读档完成：本机记录已复原，并已尝试同步到云端。');
+        }).catch(function(e){
+          console.error(e);
+          alert('读档失败：请选择由本游戏「下载游玩数据/存档」导出的 CSV。');
+        });
+      };
+      reader.readAsText(file,'utf-8');
+    };
+    input.click();
+  };
+  window.__installPortableSaveImport=function(){
+    var found=false;
+    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
+      var oc=btn.getAttribute('onclick')||'';
+      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
+      btn.setAttribute('data-import-save-bound','1');
+      var b=document.createElement('button');
+      b.type='button';
+      b.className=btn.className||'';
+      b.style.cssText=btn.style.cssText||'';
+      b.textContent='📤 读取存档';
+      b.title='读取先前下载的存档 CSV';
+      b.onclick=window.importGameSaveData_;
+      btn.insertAdjacentElement('afterend',b);
+      found=true;
+    });
+    return found;
+  };
+  function boot(){ window.__installPortableSaveImport(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();
 </script>
 <!-- v1.1 2026-04-12 追加故事风封面图（covers_v3/cover_triple_match_v3.png） -->
 </body>

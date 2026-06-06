@@ -221,13 +221,16 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .login-overlay {
+.login-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background-image: linear-gradient(rgba(0,0,0,.58), rgba(0,0,0,.58)), url('https://s.sstmlt.com/img/2026/05/17/9bc8cbb7c2ae6927662b03a157fe87d9d01b378dfa7739b5.jpeg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -290,8 +293,7 @@
         <!-- 登录遮罩 -->
         <div class="login-overlay" id="loginOverlay">
             <div class="login-panel">
-                <div class="story-cover-banner"><img src="covers_v3/cover_tetris_v3.png" alt="俄罗斯方块封面"></div>
-                <h2>🎮 俄罗斯方块游戏</h2>
+<h2>🎮 俄罗斯方块游戏</h2>
                 <input type="text" id="userId" class="login-input" placeholder="请输入您的ID（必填）" maxlength="20">
                 <button class="login-btn" id="loginBtn" onclick="startGame()">开始游戏</button>
                 <small style="color: #666; font-size: 12px;">
@@ -320,6 +322,7 @@
                 <div class="lines-display">消除: <span id="lines">0</span> 行</div>
                 <div class="time-display">时间: <span id="gameTime">00:00</span></div>
                 <button class="pause-btn" id="pauseBtn" onclick="togglePause()">暂停</button>
+                <button class="pause-btn" onclick="downloadTetrisData_()" style="margin-top:8px">📥 存档</button>
             </div>
             
             <div class="info-panel">
@@ -1087,7 +1090,128 @@
 
         // 启动游戏
         init();
-    </script>
+    
+function downloadTetrisData_(){
+  var payload={userId:userId,board:board,currentPiece:currentPiece,nextPiece:nextPiece,score:score,lines:lines,level:level,gameRunning:gameRunning,gamePaused:gamePaused,gameElapsedTime:gameElapsedTime,moveCount:moveCount,piecesUsed:piecesUsed};
+  var rows=[['项目','数值'],['论坛ID',userId||''],['分数',score||0],['消除行数',lines||0],['等级',level||1],['移动次数',moveCount||0],['下载时间',new Date().toLocaleString('zh-TW')]];
+  __appendPortableSaveRows(rows,'tetris',payload);
+  var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download='tetris-'+(userId||'player')+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+
+
+
+window.__applyPortableSaveData=async function(data){
+  if(!data||typeof data!=='object') throw new Error('bad_save');
+  userId=String(data.userId||userId||'');
+  if(userId){ isLoggedIn=true; localStorage.setItem('tetris_user_id',userId); var ui=document.getElementById('userId'); if(ui) ui.value=userId; }
+  board=Array.isArray(data.board)?data.board:board;
+  function restorePiece_(p){ if(!p) return null; var q=new Piece(p.shape||[],p.color); q.x=Number(p.x)||0; q.y=Number(p.y)||0; return q; }
+  currentPiece=restorePiece_(data.currentPiece)||currentPiece;
+  nextPiece=restorePiece_(data.nextPiece)||nextPiece;
+  score=Number(data.score)||0; lines=Number(data.lines)||0; level=Number(data.level)||1;
+  gameElapsedTime=Number(data.gameElapsedTime)||0; moveCount=Number(data.moveCount)||0;
+  piecesUsed=Array.isArray(data.piecesUsed)?data.piecesUsed:[];
+  gameRunning=!!data.gameRunning; gamePaused=!!data.gamePaused;
+  gameStartTime=Date.now()-gameElapsedTime;
+  try{ document.getElementById('loginOverlay').style.display='none'; document.getElementById('gameOver').style.display='none'; }catch(e){}
+  updateDisplay(); drawBoard(); drawNextPiece();
+  try{ sendGameData({score:score,level:level,linesCleared:lines,gameTime:document.getElementById('gameTime').textContent,pieces:[...new Set(piecesUsed)].join(','),moves:moveCount}); }catch(e){ console.warn('cloud save after import failed',e); }
+  if(gameRunning&&!gamePaused) gameLoop();
+};
+
+/* Portable save import/export support */
+(function(){
+  var MARK='__HTML_GAME_SAVE__';
+  window.__appendPortableSaveRows=function(rows,game,state){
+    try{
+      rows.push([MARK,'game',game||'']);
+      rows.push([MARK,'saved_at',new Date().toISOString()]);
+      rows.push([MARK,'state_json',JSON.stringify(state||{})]);
+    }catch(e){ console.warn('portable save export failed',e); }
+    return rows;
+  };
+  function parseCsv(text){
+    text=String(text||'').replace(/^\uFEFF/,'');
+    var rows=[],row=[],cell='',q=false;
+    for(var i=0;i<text.length;i++){
+      var ch=text[i],nx=text[i+1];
+      if(q){
+        if(ch==='"'&&nx==='"'){cell+='"';i++;}
+        else if(ch==='"'){q=false;}
+        else cell+=ch;
+      }else{
+        if(ch==='"') q=true;
+        else if(ch===','){row.push(cell);cell='';}
+        else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+        else if(ch!=='\r') cell+=ch;
+      }
+    }
+    row.push(cell); rows.push(row);
+    return rows;
+  }
+  function readPayload(text){
+    var raw=String(text||'').replace(/^\uFEFF/,'').trim();
+    if(raw.charAt(0)==='{') return JSON.parse(raw);
+    var rows=parseCsv(text);
+    for(var i=0;i<rows.length;i++){
+      if(rows[i][0]===MARK && rows[i][1]==='state_json'){
+        return JSON.parse(rows[i][2]||'{}');
+      }
+    }
+    throw new Error('save_json_not_found');
+  }
+  window.importGameSaveData_=function(){
+    var input=document.createElement('input');
+    input.type='file';
+    input.accept='.csv,.json,text/csv,application/json';
+    input.onchange=function(){
+      var file=input.files&&input.files[0];
+      if(!file) return;
+      var reader=new FileReader();
+      reader.onload=function(){
+        Promise.resolve().then(function(){
+          if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+          var data=readPayload(reader.result);
+          return window.__applyPortableSaveData(data);
+        }).then(function(){
+          alert('读档完成：本机记录已复原，并已尝试同步到云端。');
+        }).catch(function(e){
+          console.error(e);
+          alert('读档失败：请选择由本游戏「下载游玩数据/存档」导出的 CSV。');
+        });
+      };
+      reader.readAsText(file,'utf-8');
+    };
+    input.click();
+  };
+  window.__installPortableSaveImport=function(){
+    var found=false;
+    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
+      var oc=btn.getAttribute('onclick')||'';
+      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
+      btn.setAttribute('data-import-save-bound','1');
+      var b=document.createElement('button');
+      b.type='button';
+      b.className=btn.className||'';
+      b.style.cssText=btn.style.cssText||'';
+      b.textContent='📤 读取存档';
+      b.title='读取先前下载的存档 CSV';
+      b.onclick=window.importGameSaveData_;
+      btn.insertAdjacentElement('afterend',b);
+      found=true;
+    });
+    return found;
+  };
+  function boot(){ window.__installPortableSaveImport(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();
+</script>
     <!-- v1.2.2 2026-04-12 追加故事风封面图（covers_v3/cover_tetris_v3.png） -->
 </body>
 </html>

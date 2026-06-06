@@ -104,6 +104,8 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#08172a;c
   #belt-wrap{height:42px}
   .belt-item{width:36px;height:26px}
 }
+/* sstm-login-cover */
+#login{background-image:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,.58)),url('https://s.sstmlt.com/img/2026/05/17/skewer_time2e76c4d378fb1620.jpeg');background-size:cover;background-position:center;background-repeat:no-repeat}
 </style>
 </head>
 <body>
@@ -125,6 +127,7 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#08172a;c
   <div style="display:flex;gap:8px;margin-bottom:10px">
     <button class="btn" onclick="startLatest()">开始</button>
     <button class="btn" onclick="openShop()">商店</button>
+    <button class="btn" onclick="downloadSkewerData_()">📥 存档</button>
     <button class="btn" onclick="openSkin()">皮肤</button>
   </div>
   <div class="card" style="width:min(860px,95vw)">
@@ -233,22 +236,42 @@ const SPECIALS=[
   {k:"glue",icon:"🧪",desc:"黏合：不可取出"},
   {k:"fire",icon:"🔥",desc:"奖励加成"}
 ];
+
+// ── 背景皮肤（IMG.xlsx）──
+const BG_SKINS={
+  default:{id:'default',name:'默认皮肤',url:'https://s.sstmlt.com/img/2026/05/18/skewer_time-041cdea50c0a7243.jpeg'},
+  bamboo:{id:'bamboo',name:'竹林炭烤亭',url:'https://s.sstmlt.com/img/2026/05/18/skewer_time-ec23214b4a70b812.jpeg'},
+  charcoal:{id:'charcoal',name:'老式炭火炉灶间',url:'https://s.sstmlt.com/img/2026/05/18/skewer_time-6b6d02c136dfcd47.jpeg'},
+  festival:{id:'festival',name:'夏日祭典',url:'https://s.sstmlt.com/img/2026/05/18/skewer_time-d23aa60d64849870.jpeg'},
+  beach_bbq:{id:'beach_bbq',name:'海边烧烤摊',url:'https://s.sstmlt.com/img/2026/05/18/skewer_time-6e14b8a49635278d.jpeg'},
+  teppan:{id:'teppan',name:'深夜铁板烧吧台',url:'https://s.sstmlt.com/img/2026/05/18/skewer_time-553d71a053d3b4a2.jpeg'},
+  izakaya:{id:'izakaya',name:'霓虹居酒屋',url:'https://s.sstmlt.com/img/2026/05/18/skewer_time-306a5dd5ee588deb.jpeg'}
+};
+function bgStyleFromUrl(url){return "linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)),url('"+url+"') center/cover no-repeat";}
+function ensureOwnedBgSkins(){if(!G.ownedBgSkins||!Array.isArray(G.ownedBgSkins))G.ownedBgSkins=['default'];if(!G.ownedBgSkins.includes('default'))G.ownedBgSkins.unshift('default');}
+function ownsBgSkin(id){ensureOwnedBgSkins();return id==='default'||(G.ownedBgSkins||[]).includes(id);}
+function grantBgSkin(id){ensureOwnedBgSkins();if(id&&!G.ownedBgSkins.includes(id))G.ownedBgSkins.push(id);}
+let curBgSkin='default';
+function getBgSkinDef(){return BG_SKINS[curBgSkin]||BG_SKINS.default;}
+function applyBgTheme(){var sk=getBgSkinDef(),bg=bgStyleFromUrl(sk.url);['game','menu','login'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.background=bg;});}
+
 const SKINS=[
-  {id:"default",name:"夜摊默认",req:0,bg:"radial-gradient(1200px 600px at 50% -10%,#114a73 0%,#071425 70%)",stick:""},
-  {id:"clay",name:"陶炉皮肤",req:8,bg:"radial-gradient(1000px 500px at 50% -10%,#7c2d12 0%,#111827 70%)",stick:"skin-clay"},
-  {id:"iron",name:"铁板皮肤",req:16,bg:"radial-gradient(1000px 500px at 50% -10%,#334155 0%,#0f172a 70%)",stick:"skin-iron"},
-  {id:"bamboo",name:"竹炭皮肤",req:24,bg:"radial-gradient(1000px 500px at 50% -10%,#3f6212 0%,#111827 70%)",stick:"skin-bamboo"},
-  {id:"wood",name:"木炭炉皮肤",req:32,bg:"radial-gradient(1000px 500px at 50% -10%,#7c4a2a 0%,#1b120b 70%)",stick:"skin-wood"},
-  {id:"pokemon",name:"宝可梦皮肤",req:0,bg:"radial-gradient(1000px 500px at 50% -10%,#14532d 0%,#0b1220 70%)",stick:"skin-pokemon"}
+  {id:"default",name:"默认皮肤"},
+  {id:"bamboo",name:"竹林炭烤亭"},
+  {id:"charcoal",name:"老式炭火炉灶间"},
+  {id:"festival",name:"夏日祭典"},
+  {id:"beach_bbq",name:"海边烧烤摊"},
+  {id:"teppan",name:"深夜铁板烧吧台"},
+  {id:"izakaya",name:"霓虹居酒屋"}
 ];
-const SHOP_ITEMS=[{id:"undo",name:"撤回x1",costType:"replies",cost:10,give:{undo:1}},{id:"hint",name:"提示x1",costType:"replies",cost:15,give:{hint:1}},{id:"add",name:"扩盘x1",costType:"replies",cost:20,give:{add:1}},{id:"reveal",name:"检视x1",costType:"replies",cost:20,give:{reveal:1}},{id:"ticket",name:"挑战卷x1",costType:"citations",cost:10,give:{ticket:1}}];
-let G={id:"",uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,coins:0,tickets:0,keys:0,unlocked:[1],cleared:[],skin:"default",boosters:{undo:3,hint:3,add:2,reveal:2}};
+const SHOP_ITEMS=[{id:"undo",name:"撤回x1",costType:"replies",cost:10,give:{undo:1}},{id:"hint",name:"提示x1",costType:"replies",cost:15,give:{hint:1}},{id:"add",name:"扩盘x1",costType:"replies",cost:20,give:{add:1}},{id:"reveal",name:"检视x1",costType:"replies",cost:20,give:{reveal:1}},{id:"ticket",name:"挑战卷x1",costType:"citations",cost:10,give:{ticket:1}},{id:"skin_bamboo",name:"背景：竹林炭烤亭",costType:"replies",cost:25,give:{bgSkin:"bamboo"}},{id:"skin_charcoal",name:"背景：老式炭火炉灶间",costType:"replies",cost:25,give:{bgSkin:"charcoal"}},{id:"skin_festival",name:"背景：夏日祭典",costType:"replies",cost:25,give:{bgSkin:"festival"}},{id:"skin_beach_bbq",name:"背景：海边烧烤摊",costType:"replies",cost:25,give:{bgSkin:"beach_bbq"}},{id:"skin_teppan",name:"背景：深夜铁板烧吧台",costType:"replies",cost:25,give:{bgSkin:"teppan"}},{id:"skin_izakaya",name:"背景：霓虹居酒屋",costType:"replies",cost:25,give:{bgSkin:"izakaya"}}];
+let G={id:"",uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,coins:0,tickets:0,keys:0,unlocked:[1],cleared:[],skin:"default",ownedBgSkins:["default"],bgSkin:"default",boosters:{undo:3,hint:3,add:2,reveal:2}};
 let level=1,sticks=[],tray=[],trayCap=7,targetNeed=18,targetDone=0,history=[];
 const qs=id=>document.getElementById(id),todayISO=()=>new Date().toISOString().slice(0,10);
 function gasBeacon(p){const u=GAS_URL+"?"+new URLSearchParams({...p,game:"skewer_time",_t:Date.now()});const i=new Image();i.referrerPolicy="no-referrer";i.src=u;}
 function gasJsonp(params,timeout=10000){return new Promise((res,rej)=>{const cb="st_cb_"+Math.random().toString(36).slice(2);const s=document.createElement("script");const t=setTimeout(()=>{cleanup();rej(new Error("timeout"));},timeout);function cleanup(){clearTimeout(t);delete window[cb];if(s.parentNode)s.remove();}window[cb]=(d)=>{cleanup();res(d||{});};s.src=GAS_URL+"?"+new URLSearchParams({...params,game:"skewer_time",callback:cb,_t:Date.now()});document.body.appendChild(s);});}
 function save(){localStorage.setItem(KEY_STATE,JSON.stringify(G));}
-function load(){try{Object.assign(G,JSON.parse(localStorage.getItem(KEY_STATE)||"{}"));}catch(e){}}
+function load(){try{Object.assign(G,JSON.parse(localStorage.getItem(KEY_STATE)||"{}"));}catch(e){}ensureOwnedBgSkins();if(G.bgSkin){curBgSkin=G.bgSkin;G.skin=G.bgSkin;}else if(G.skin)curBgSkin=G.skin;}
 function normalize(){if(!G.boosters)G.boosters={undo:0,hint:0,add:0,reveal:0};["undo","hint","add","reveal"].forEach(k=>G.boosters[k]=Math.max(0,Number(G.boosters[k]||0)));G.keys=Math.max(0,Number(G.keys||0));if(!G.unlocked||!G.unlocked.length)G.unlocked=[1];if(!G.cleared)G.cleared=[];}
 async function cloudSave(){if(!G.id)return;try{await gasJsonp({sheet:SHEET,action:"save",id:G.id,uid:String(G.uid),coins:String(G.coins||0),unlocked_count:String((G.unlocked||[]).length),cleared_count:String((G.cleared||[]).length),state_json:JSON.stringify(G),date:todayISO()},12000);}catch(e){}}
 async function cloudLoad(id){try{const d=await gasJsonp({sheet:SHEET,action:"load",id},16000);return d.data||null;}catch(e){return null;}}
@@ -280,27 +303,27 @@ async function doLogin(){
   }
 }
 function offlineMode(){load();normalize();enterMenu();}
-function enterMenu(){renderLvList();updateMenuStat();show("menu");}
+function enterMenu(){ensureOwnedBgSkins();if(G.bgSkin){curBgSkin=G.bgSkin;G.skin=G.bgSkin;}else curBgSkin=G.skin||"default";applyBgTheme();renderLvList();updateMenuStat();show("menu");}
 function backMenu(){qs("ov-win").classList.add("hidden");qs("ov-lose").classList.add("hidden");enterMenu();}
 function genLevelCfg(lv){
   const kinds=Math.min(10,4+Math.floor(lv/3));
   const perKind=3+Math.min(2,Math.floor(lv/12));
-  const stickCount=10,empty=1; // 固定 5x2，最多一个空烤盘
+  // 固定盘面：5x2，共10盘；关卡内最多1个空盘
+  const stickCount=10,empty=1;
   const spCount=Math.min(6,Math.floor(lv/3));
   return{id:lv,kinds,perKind,stickCount,empty,spCount};
 }
 function renderLvList(){const wrap=qs("lvlist");wrap.innerHTML="";const max=Math.max(...G.unlocked);for(let i=1;i<=Math.max(40,max+10);i++){const b=document.createElement("button");b.className="btn";b.style.padding="6px";b.textContent=G.cleared.includes(i)?"🏆"+i:i;if(i>max)b.disabled=true;b.onclick=()=>startGame(i);wrap.appendChild(b);}}
 function startLatest(){startGame(Math.max(...G.unlocked));}
-function pickSkin(){return SKINS.find(s=>s.id===G.skin)||SKINS[0]}
+function pickSkin(){var s=SKINS.find(x=>x.id===G.skin)||SKINS[0];var b=BG_SKINS[s.id]||BG_SKINS.default;return {id:s.id,name:s.name,bg:bgStyleFromUrl(b.url),stick:(s.id==="pokemon"?"skin-pokemon":"")};}
 function applySkin(id){
   const s=SKINS.find(x=>x.id===id);if(!s)return;
-  const req=Number(s.req||0);
-  if((G.cleared||[]).length<req){alert("需通关"+req+"关");return;}
+  if(!ownsBgSkin(id)){alert('请先在商店购买此背景皮肤');return;}
   G.skin=id;save();cloudSave();renderAll();
   // 立即刷新皮肤面板状态，不用重开
   if(!qs("ov-skin").classList.contains("hidden")) openSkin();
 }
-function openSkin(){const list=qs("skin-list");list.innerHTML="";SKINS.forEach(s=>{const req=Number(s.req||0),can=(G.cleared||[]).length>=req;const d=document.createElement("div");d.className="shop-item";d.innerHTML="<div style='flex:1'><b>"+s.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>通关"+req+"关解锁</div></div><button class='btn' "+(can?"":"disabled")+">"+(G.skin===s.id?"使用中":"使用")+"</button>";d.querySelector("button").onclick=()=>applySkin(s.id);list.appendChild(d);});qs("ov-skin").classList.remove("hidden");}
+function openSkin(){const list=qs("skin-list");list.innerHTML="";SKINS.forEach(s=>{const b=BG_SKINS[s.id]||BG_SKINS.default;const d=document.createElement("div");d.className="shop-item";d.innerHTML="<img src='"+b.url+"' style='width:48px;height:34px;object-fit:cover;border-radius:6px;margin-right:8px'>"+"<div style='flex:1'><b>"+s.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>"+(ownsBgSkin(s.id)?(G.skin===s.id?"使用中":"点击使用"):"🛒 商店购买")+"</div></div>"+"<button class='btn'>"+(G.skin===s.id?"使用中":"使用")+"</button>";d.querySelector("button").onclick=()=>{if(!ownsBgSkin(s.id)){alert("请前往商店购买此背景皮肤");return;}applySkin(s.id);};d.onclick=()=>{if(!ownsBgSkin(s.id)){alert("请前往商店购买此背景皮肤");return;}applySkin(s.id);};list.appendChild(d);});qs("ov-skin").classList.remove("hidden");}
 function closeSkin(){qs("ov-skin").classList.add("hidden");}
 function generateLevelData(cfg){const pool=[];for(let i=0;i<cfg.kinds;i++)for(let k=0;k<cfg.perKind;k++)pool.push(i);for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}const arr=[];let p=0;for(let s=0;s<cfg.stickCount-cfg.empty;s++){const st=[];const len=Math.min(4,Math.max(1,Math.round((pool.length-p)/(cfg.stickCount-s-cfg.empty))));for(let m=0;m<len&&p<pool.length;m++)st.push(pool[p++]);arr.push({items:st,special:null,saux:0});}while(p<pool.length){arr[Math.floor(Math.random()*arr.length)].items.push(pool[p++]);}for(let e=0;e<cfg.empty;e++)arr.push({items:[],special:null,saux:0});for(let c=0;c<cfg.spCount;c++){const idx=Math.floor(Math.random()*arr.length);if(arr[idx].special||!arr[idx].items.length)continue;const sp=SPECIALS[(cfg.id+c)%SPECIALS.length];arr[idx].special=sp.k;arr[idx].saux=(sp.k==="stone"?2:sp.k==="lock"||sp.k==="ice"?1:0);}return arr;}
 function startGame(lv){qs("ov-win").classList.add("hidden");qs("ov-lose").classList.add("hidden");level=lv;const cfg=genLevelCfg(lv);sticks=generateLevelData(cfg);tray=[];history=[];targetDone=0;targetNeed=cfg.kinds*cfg.perKind;if(!G.unlocked.includes(lv))G.unlocked.push(lv);qs("lvl").textContent="第 "+lv+" 关 · 串烧挑战";qs("coins").textContent=G.coins||0;hint("点串烧格，将最上层放入托盘；3个相同自动消除。");gasBeacon({sheet:SHEET,action:"game_start",id:G.id,uid:String(G.uid),level:String(lv),date:todayISO()});show("game");renderAll();}
@@ -445,9 +468,8 @@ async function fetchForumDataCustom(show,opt){
 function openShop(){renderShop();updateShopCurrency();qs("ov-shop").classList.remove("hidden");}
 function closeShop(){qs("ov-shop").classList.add("hidden");}
 function updateShopCurrency(){qs("sh-replies").textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));qs("sh-cites").textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));}
-function renderShop(){const list=qs("shop-list");list.innerHTML="";const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));SHOP_ITEMS.forEach(it=>{const av=it.costType==="replies"?ar:ac,can=av>=it.cost;const d=document.createElement("div");d.className="shop-item";d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>花费 "+it.cost+" "+(it.costType==="replies"?"回复":"被引用")+"</div></div><button class='btn' "+(can?"":"disabled")+">购买</button>";d.querySelector("button").onclick=()=>buyItemPrompt(it.id);list.appendChild(d);});}
-function buyItemPrompt(id){const q=prompt("数量","1");if(q===null)return;buyItem(id,Math.max(1,Math.min(99,parseInt(q,10)||1)));}
-function buyItem(id,qty){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0)),av=it.costType==="replies"?ar:ac,cost=it.cost*qty;if(av<cost){alert("数量不足");return;}if(it.costType==="replies")G.repliesSpent=(G.repliesSpent||0)+cost;else G.citationsSpent=(G.citationsSpent||0)+cost;if(it.give.undo)G.boosters.undo+=it.give.undo*qty;if(it.give.hint)G.boosters.hint+=it.give.hint*qty;if(it.give.add)G.boosters.add+=it.give.add*qty;if(it.give.reveal)G.boosters.reveal+=it.give.reveal*qty;if(it.give.ticket)G.tickets=(G.tickets||0)+it.give.ticket*qty;save();cloudSave();renderShop();updateShopCurrency();updateMenuStat();if(!qs("game").classList.contains("hidden"))renderAll();gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId:id,cost:String(cost),costType:it.costType,date:todayISO()});}
+function renderShop(){const list=qs("shop-list");list.innerHTML="";const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));SHOP_ITEMS.forEach(it=>{const av=it.costType==="replies"?ar:ac;const owned=it.give&&it.give.bgSkin&&ownsBgSkin(it.give.bgSkin);const can=av>=it.cost&&!owned;const d=document.createElement("div");d.className="shop-item"+(owned?" owned":"");if(owned){d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:#94a3b8'>已拥有</div></div><button class='btn' disabled>已拥有</button>";}else{d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>花费 "+it.cost+" "+(it.costType==="replies"?"回复":"被引用")+"</div></div><button class='btn' "+(can?"":"disabled")+">购买</button>";d.querySelector("button").onclick=()=>buyItemDirect(it.id);}list.appendChild(d);});}function buyItemDirect(id){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;if(it.give&&it.give.bgSkin){if(ownsBgSkin(it.give.bgSkin)){alert("您已拥有该皮肤");return;}return buyItem(id,1);}return buyItemPrompt(id);}function buyItemPrompt(id){const it=SHOP_ITEMS.find(x=>x.id===id);if(it&&it.give&&it.give.bgSkin)return buyItemDirect(id);const q=prompt("数量","1");if(q===null)return;buyItem(id,Math.max(1,Math.min(99,parseInt(q,10)||1)));}
+function buyItem(id,qty){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0)),av=it.costType==="replies"?ar:ac,cost=it.cost*qty;if(av<cost){alert("数量不足");return;}if(it.costType==="replies")G.repliesSpent=(G.repliesSpent||0)+cost;else G.citationsSpent=(G.citationsSpent||0)+cost;if(it.give.undo)G.boosters.undo+=it.give.undo*qty;if(it.give.hint)G.boosters.hint+=it.give.hint*qty;if(it.give.add)G.boosters.add+=it.give.add*qty;if(it.give.reveal)G.boosters.reveal+=it.give.reveal*qty;if(it.give.ticket)G.tickets=(G.tickets||0)+it.give.ticket*qty;if(it.give.bgSkin){for(var _bi=0;_bi<qty;_bi++)grantBgSkin(it.give.bgSkin);if(!qs("ov-skin").classList.contains("hidden"))openSkin();}save();cloudSave();renderShop();updateShopCurrency();updateMenuStat();if(!qs("game").classList.contains("hidden"))renderAll();gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId:id,cost:String(cost),costType:it.costType,date:todayISO()});}
 window.addEventListener("DOMContentLoaded",()=>{load();normalize();const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;});
 </script>
 <script>
@@ -509,7 +531,11 @@ function miniSkewerHtml(type){
   const f=foodFor_(type);
   return '<span class="mini-sk"><span class="mini-p">'+f+'</span><span class="mini-p">'+f+'</span><span class="mini-p">'+f+'</span></span>';
 }
-function itemKey(v){return v===null?null:foodFor_(v);}
+function itemKey(v){
+  if(v===null) return null;
+  if((pickSkin()||{}).id==="pokemon" && v!==WILD_ITEM) return "pokemon:"+v;
+  return foodFor_(v);
+}
 function buildFoodPool(kinds,lv){
   let arr=[];
   if(lv%3===1) arr=FOOD_GROUPS.meat.slice();
@@ -532,6 +558,14 @@ function revealNextLayer(st){
   if(!st||filledCount(st.items)>0||!st.hiddenLayers.length) return false;
   st.items=normalizeLayer_(st.hiddenLayers.shift());
   return true;
+}
+function clearEmptyFog_(st){
+  if(st&&st.special==="fog"&&filledCount(st.items)===0&&(!st.hiddenLayers||!st.hiddenLayers.length)){
+    st.special=null;
+    st.saux=0;
+    return true;
+  }
+  return false;
 }
 function explainSpecial(st){if(!st||!st.special)return;const m=SPECIALS.find(x=>x.k===st.special);if(m){qs("mods").textContent="特效说明："+m.icon+" "+m.desc;hint(m.icon+" "+m.desc);}}
 function isBlocked_(st){
@@ -673,7 +707,8 @@ function renderBelt(){
 function generateLevelData(cfg){
   activeFoodPool=buildFoodPool(cfg.kinds,cfg.id);
   pokemonPoolByType=buildPokemonPool(cfg.kinds,cfg.id);
-  const layerDepth=Math.min(7,1+Math.floor(cfg.id/6)); // 随关卡增加层数
+  // 难度通过“层数”增加，而非增加烤盘数量
+  const layerDepth=Math.min(7,1+Math.floor(cfg.id/6));
   const pool=[];for(let i=0;i<cfg.kinds;i++)for(let k=0;k<STICK_CAP*layerDepth;k++)pool.push(i);
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
   const all=[];let p=0;const nonEmpty=Math.max(3,Math.min(9,cfg.stickCount-cfg.empty));
@@ -682,8 +717,9 @@ function generateLevelData(cfg){
     for(let d=0;d<localDepth;d++){const layer=pool.slice(p,p+STICK_CAP);p+=STICK_CAP;if(layer.length===STICK_CAP){if(d===0)st.items=normalizeLayer_(layer);else st.hiddenLayers.push(normalizeLayer_(layer));}}
     all.push(st);
   }
-  while(p<pool.length){const idx=Math.floor(Math.random()*all.length);if(all[idx].hiddenLayers.length<7){const c=pool.slice(p,p+STICK_CAP);p+=STICK_CAP;if(c.length===STICK_CAP)all[idx].hiddenLayers.push(normalizeLayer_(c));}else break;}
-  all.push(emptyStick()); // 固定只有一个空盘
+  while(p<pool.length){const idx=Math.floor(Math.random()*all.length);if(all[idx].hiddenLayers.length<3){const c=pool.slice(p,p+STICK_CAP);p+=STICK_CAP;if(c.length===STICK_CAP)all[idx].hiddenLayers.push(normalizeLayer_(c));}else break;}
+  // 固定只有一个空烤盘
+  all.push(emptyStick());
   let lockN=0,keyN=0;
   for(let c=0;c<cfg.spCount;c++){
     const idx=Math.floor(Math.random()*all.length);
@@ -700,6 +736,7 @@ function generateLevelData(cfg){
     const idx=all.findIndex(x=>!x.special && filledCount(x.items)>0);
     if(idx>=0){ all[idx].special="key"; all[idx].saux=0; }
   }
+  // 确保总盘数固定为 10（5x2）
   while(all.length<10) all.push(emptyStick());
   if(all.length>10) all.length=10;
   return all;
@@ -708,11 +745,12 @@ function renderLvList(){const wrap=qs("lvlist");wrap.innerHTML="";const max=Math
 function applyStickSpecialOnTap(st){if(st.special==="lock"&&st.saux>0){st.saux--;hint("🔒 已解锁");return true;}if(st.special==="ice"&&st.saux>0){st.saux--;hint("🧊 已解冻");return true;}if(st.special==="stone"&&st.saux>0){st.saux--;hint("🪨 石层剩余 "+st.saux);return true;}return false;}
 function canDropToSlot(st,item,slotIdx){
   if(!st||st.resolving) return false;
+  clearEmptyFog_(st);
   if(st.items[slotIdx]!==null) return false;
   return true;
 }
 function tapSlot(stickIdx,slotIdx){
-  const st=sticks[stickIdx];if(!st||st.resolving)return;revealNextLayer(st);
+  const st=sticks[stickIdx];if(!st||st.resolving)return;revealNextLayer(st);clearEmptyFog_(st);
   if(st.special) explainSpecial(st);
   if(st.special==="lock" && st.saux>0){
     if((G.keys||0)>0){
@@ -741,7 +779,10 @@ function tapSlot(stickIdx,slotIdx){
       if(src.special==="fire"){G.coins=(G.coins||0)+2;}
       if(src.special==="bomb"){const filled=st.items.map((x,i)=>x!==null?i:-1).filter(i=>i>=0);if(filled.length>1){const ri=filled[Math.floor(Math.random()*filled.length)];st.items[ri]=null;hint("💣 炸掉目标盘一串");}}
       if(src.special==="portal"){const em=[];sticks.forEach((x,si)=>{if(si!==stickIdx){x.items.forEach((iv,ii)=>{if(iv===null&&!x.resolving)em.push([si,ii]);});}});if(em.length){const pick=em[Math.floor(Math.random()*em.length)];sticks[pick[0]].items[pick[1]]=st.items[slotIdx];st.items[slotIdx]=null;hint("🌀 传送到其他烤盘空位");}}
-      if(filledCount(src.items)===0&&revealNextLayer(src)) hint("来源下一层已显现");
+      if(filledCount(src.items)===0){
+        if(revealNextLayer(src)) hint("来源下一层已显现");
+        else clearEmptyFog_(src);
+      }
     }else if(selectedPick.from==="belt"){
       st.items[slotIdx]=selectedPick.item;
       if(selectedPick.beltNode){
@@ -773,7 +814,7 @@ function closeStickFlow(st,multi){
   setTimeout(()=>{
     st.items=[null,null,null];
     st.closed=false;st.justClosed=false;st.resolving=false;
-    revealNextLayer(st);
+    if(!revealNextLayer(st)) clearEmptyFog_(st);
     renderAll();
     checkWinByClearing_();
   },420);
@@ -820,12 +861,13 @@ function doHint(){if(!(G.boosters.hint>0)){openShop();return;}G.boosters.hint--;
 function doAddSlot(){
   if(!(G.boosters.add>0)){openShop();return;}
   G.boosters.add--;
+  // 改为“加层”道具：随机给一个有内容的烤盘追加一层串烧
   const candidates=sticks.filter(s=>!s.resolving && (filledCount(s.items)>0 || (s.hiddenLayers&&s.hiddenLayers.length)));
   if(!candidates.length){hint("当前无可加层烤盘");save();renderAll();return;}
   const st=candidates[Math.floor(Math.random()*candidates.length)];
-  const kindMax=Math.max(1,activeFoodPool.length||beltKinds||1)-1;
+  const layer=[rInt(0,Math.max(0,beltKinds||activeFoodPool.length||1)-1),rInt(0,Math.max(0,beltKinds||activeFoodPool.length||1)-1),rInt(0,Math.max(0,beltKinds||activeFoodPool.length||1)-1)];
   st.hiddenLayers=st.hiddenLayers||[];
-  st.hiddenLayers.push([rInt(0,kindMax),rInt(0,kindMax),rInt(0,kindMax)]);
+  st.hiddenLayers.push(layer);
   save();
   hint("已为一个烤盘增加一层串烧");
   renderAll();
@@ -905,6 +947,121 @@ window.addEventListener("resize",()=>{
     if(!qs("game").classList.contains("hidden")) renderAll();
   },80);
 });
+
+function downloadSkewerData_(){
+  save();
+  var rows=[['项目','数值'],['论坛ID',G.id],['UID',G.uid],['金币',G.coins||0],['今日回复数',G.replies||0],['被引用数',G.citations||0],['重复挑战卷',G.tickets||0],['已解锁关卡',(G.unlocked||[]).join(' ')],['已通关关卡',(G.cleared||[]).join(' ')],['皮肤',G.skin||'default'],['下载时间',new Date().toLocaleString('zh-TW')]];
+  __appendPortableSaveRows(rows,'skewer_time',G);
+  var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download='skewer-time-'+(G.id||'player')+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+
+
+
+window.__applyPortableSaveData=async function(data){
+  if(!data||typeof data!=='object') throw new Error('bad_save');
+  Object.assign(G,data);
+  try{ if(typeof normalize==='function') normalize(); }catch(e){}
+  try{ if(G.id) localStorage.setItem(KEY_ID,G.id); if(G.uid!=null) localStorage.setItem(KEY_UID,String(G.uid)); }catch(e){}
+  if(typeof saveState==='function') saveState(); else if(typeof save==='function') save();
+  try{ if(typeof cloudSave==='function') await cloudSave(); }catch(e){ console.warn('cloud save after import failed',e); }
+  try{ if(typeof updateMenuUI==='function') updateMenuUI(); }catch(e){}
+  try{ if(typeof updateMenuStat==='function') updateMenuStat(); }catch(e){}
+  try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
+  try{ if(typeof renderMenu==='function') renderMenu(); }catch(e){}
+};
+
+/* Portable save import/export support */
+(function(){
+  var MARK='__HTML_GAME_SAVE__';
+  window.__appendPortableSaveRows=function(rows,game,state){
+    try{
+      rows.push([MARK,'game',game||'']);
+      rows.push([MARK,'saved_at',new Date().toISOString()]);
+      rows.push([MARK,'state_json',JSON.stringify(state||{})]);
+    }catch(e){ console.warn('portable save export failed',e); }
+    return rows;
+  };
+  function parseCsv(text){
+    text=String(text||'').replace(/^\uFEFF/,'');
+    var rows=[],row=[],cell='',q=false;
+    for(var i=0;i<text.length;i++){
+      var ch=text[i],nx=text[i+1];
+      if(q){
+        if(ch==='"'&&nx==='"'){cell+='"';i++;}
+        else if(ch==='"'){q=false;}
+        else cell+=ch;
+      }else{
+        if(ch==='"') q=true;
+        else if(ch===','){row.push(cell);cell='';}
+        else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+        else if(ch!=='\r') cell+=ch;
+      }
+    }
+    row.push(cell); rows.push(row);
+    return rows;
+  }
+  function readPayload(text){
+    var raw=String(text||'').replace(/^\uFEFF/,'').trim();
+    if(raw.charAt(0)==='{') return JSON.parse(raw);
+    var rows=parseCsv(text);
+    for(var i=0;i<rows.length;i++){
+      if(rows[i][0]===MARK && rows[i][1]==='state_json'){
+        return JSON.parse(rows[i][2]||'{}');
+      }
+    }
+    throw new Error('save_json_not_found');
+  }
+  window.importGameSaveData_=function(){
+    var input=document.createElement('input');
+    input.type='file';
+    input.accept='.csv,.json,text/csv,application/json';
+    input.onchange=function(){
+      var file=input.files&&input.files[0];
+      if(!file) return;
+      var reader=new FileReader();
+      reader.onload=function(){
+        Promise.resolve().then(function(){
+          if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+          var data=readPayload(reader.result);
+          return window.__applyPortableSaveData(data);
+        }).then(function(){
+          alert('读档完成：本机记录已复原，并已尝试同步到云端。');
+        }).catch(function(e){
+          console.error(e);
+          alert('读档失败：请选择由本游戏「下载游玩数据/存档」导出的 CSV。');
+        });
+      };
+      reader.readAsText(file,'utf-8');
+    };
+    input.click();
+  };
+  window.__installPortableSaveImport=function(){
+    var found=false;
+    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
+      var oc=btn.getAttribute('onclick')||'';
+      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
+      btn.setAttribute('data-import-save-bound','1');
+      var b=document.createElement('button');
+      b.type='button';
+      b.className=btn.className||'';
+      b.style.cssText=btn.style.cssText||'';
+      b.textContent='📤 读取存档';
+      b.title='读取先前下载的存档 CSV';
+      b.onclick=window.importGameSaveData_;
+      btn.insertAdjacentElement('afterend',b);
+      found=true;
+    });
+    return found;
+  };
+  function boot(){ window.__installPortableSaveImport(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();
 </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -896,6 +896,8 @@ input[type="text"]:focus, input[type="number"]:focus {
   background:rgba(255,160,40,0.05);
 }
 .mix-panel-title{font-size:0.82rem;color:#ffb347;text-align:center;margin-bottom:10px}
+/* sstm-login-cover */
+#screen1{background-image:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,.58)),url('https://s.sstmlt.com/img/2026/05/17/dice-story-v2e81a1036cbadeef4.jpeg');background-size:cover;background-position:center;background-repeat:no-repeat}
 </style>
 </head>
 <body>
@@ -1780,29 +1782,6 @@ function fffGetImp(uid) {
 function fffSaveImp(uid, key, r, c) {
   try { localStorage.setItem(FFF_IMP + '_' + uid, JSON.stringify({ key, r, c })); } catch (e) {}
 }
-function fetchForumFetchRanges_(uid) {
-  return new Promise(resolve => {
-    if (!GAS_URL || !uid) return resolve([]);
-    const cb = '_diceFetchRangeCb' + Date.now();
-    const s = document.createElement('script');
-    const clean = () => { try { delete window[cb]; } catch (e) {} if (s.parentNode) s.parentNode.removeChild(s); };
-    const timer = setTimeout(() => { clean(); resolve([]); }, 6000);
-    window[cb] = function(data) {
-      clearTimeout(timer);
-      clean();
-      resolve((data && data.ok && Array.isArray(data.rows)) ? data.rows : []);
-    };
-    s.src = GAS_URL + '?action=fetch_log_ranges&sheet=' + encodeURIComponent('论坛抓取记录_骰子故事') + '&id=' + encodeURIComponent(uid) + '&callback=' + cb;
-    document.head.appendChild(s);
-  });
-}
-function hasFetchOverlap_(startA, endA, startB, endB) {
-  const a1 = startA ? new Date(startA).getTime() : 0;
-  const a2 = endA ? new Date(endA + 'T23:59:59').getTime() : Date.now();
-  const b1 = startB ? new Date(startB).getTime() : 0;
-  const b2 = endB ? new Date(endB + 'T23:59:59').getTime() : Date.now();
-  return a1 <= b2 && b1 <= a2;
-}
 
 async function fffProxyGet(url) {
   const sk = 'fff_' + url;
@@ -1943,15 +1922,6 @@ async function fffDoFetch() {
   const startDate = document.getElementById('fff-date-start').value;
   const endDate = document.getElementById('fff-date-end').value;
   const dateKey = (startDate || '') + '_' + (endDate || '');
-  const overlaps = await fetchForumFetchRanges_(uid);
-  const hit = overlaps.filter(row => hasFetchOverlap_(startDate, endDate, row.startDate, row.endDate));
-  if (hit.length) {
-    const msg = '云端已存在与这次日期重叠的骰子故事论坛抓取记录：\n'
-      + hit.slice(0, 3).map(r => (r.startDate || '未填') + ' ~ ' + (r.endDate || '未填') + '（' + r.replyCount + '/' + r.citationCount + '）').join('\n')
-      + '\n\n请改用正确日期范围再抓取。';
-    alert(msg);
-    return;
-  }
   fffCloseModal();
   fffOpenLoading();
   try {
@@ -3286,7 +3256,7 @@ function logActivityToGAS_(uid, date, replies, citations) {
     method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      sheet: '骰子故事返乡活跃度记录',
+      sheet: '返乡活跃度',
       type: 'activity_log',
       uid: String(uid),
       date: String(date),
@@ -3355,6 +3325,7 @@ function downloadDiceData_() {
     const choiceStr = Array.isArray(choices) ? choices.join('/') : String(choices);
     rows.push(['故事进度', title, choiceStr]);
   });
+  __appendPortableSaveRows(rows,'dice_story',{state:state,progress:getCachedProgress(state.id||'')});
   const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -3387,6 +3358,111 @@ function logDiceRewardToGAS_(reward) {
 (function init_() {
   renderIdHistory_();
 })();
+
+
+window.__applyPortableSaveData=async function(data){
+  if(!data||typeof data!=='object') throw new Error('bad_save');
+  var st=data.state||{};
+  var id=String(st.id||data.id||'').trim();
+  if(!id) throw new Error('missing_id');
+  Object.assign(state,st);
+  state.id=id;
+  if(data.progress) setCachedProgress(id,data.progress);
+  else if(data.cached) setCachedProgress(id,data.cached);
+  var prog=getCachedProgress(id)||{};
+  try{ saveIdHistory_(id); }catch(e){}
+  try{ pushDiceToGAS(prog.pos_dice_left||state.pos_dice||0, prog.pending_neg_dice||state.unassigned_dice||0, prog.stories_done||{}); }catch(e){ console.warn('cloud save after import failed',e); }
+  try{ document.getElementById('inputId').value=id; }catch(e){}
+  try{ showProgressScreen(prog); }catch(e){}
+};
+
+/* Portable save import/export support */
+(function(){
+  var MARK='__HTML_GAME_SAVE__';
+  window.__appendPortableSaveRows=function(rows,game,state){
+    try{
+      rows.push([MARK,'game',game||'']);
+      rows.push([MARK,'saved_at',new Date().toISOString()]);
+      rows.push([MARK,'state_json',JSON.stringify(state||{})]);
+    }catch(e){ console.warn('portable save export failed',e); }
+    return rows;
+  };
+  function parseCsv(text){
+    text=String(text||'').replace(/^\uFEFF/,'');
+    var rows=[],row=[],cell='',q=false;
+    for(var i=0;i<text.length;i++){
+      var ch=text[i],nx=text[i+1];
+      if(q){
+        if(ch==='"'&&nx==='"'){cell+='"';i++;}
+        else if(ch==='"'){q=false;}
+        else cell+=ch;
+      }else{
+        if(ch==='"') q=true;
+        else if(ch===','){row.push(cell);cell='';}
+        else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+        else if(ch!=='\r') cell+=ch;
+      }
+    }
+    row.push(cell); rows.push(row);
+    return rows;
+  }
+  function readPayload(text){
+    var raw=String(text||'').replace(/^\uFEFF/,'').trim();
+    if(raw.charAt(0)==='{') return JSON.parse(raw);
+    var rows=parseCsv(text);
+    for(var i=0;i<rows.length;i++){
+      if(rows[i][0]===MARK && rows[i][1]==='state_json'){
+        return JSON.parse(rows[i][2]||'{}');
+      }
+    }
+    throw new Error('save_json_not_found');
+  }
+  window.importGameSaveData_=function(){
+    var input=document.createElement('input');
+    input.type='file';
+    input.accept='.csv,.json,text/csv,application/json';
+    input.onchange=function(){
+      var file=input.files&&input.files[0];
+      if(!file) return;
+      var reader=new FileReader();
+      reader.onload=function(){
+        Promise.resolve().then(function(){
+          if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+          var data=readPayload(reader.result);
+          return window.__applyPortableSaveData(data);
+        }).then(function(){
+          alert('读档完成：本机记录已复原，并已尝试同步到云端。');
+        }).catch(function(e){
+          console.error(e);
+          alert('读档失败：请选择由本游戏「下载游玩数据/存档」导出的 CSV。');
+        });
+      };
+      reader.readAsText(file,'utf-8');
+    };
+    input.click();
+  };
+  window.__installPortableSaveImport=function(){
+    var found=false;
+    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
+      var oc=btn.getAttribute('onclick')||'';
+      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
+      btn.setAttribute('data-import-save-bound','1');
+      var b=document.createElement('button');
+      b.type='button';
+      b.className=btn.className||'';
+      b.style.cssText=btn.style.cssText||'';
+      b.textContent='📤 读取存档';
+      b.title='读取先前下载的存档 CSV';
+      b.onclick=window.importGameSaveData_;
+      btn.insertAdjacentElement('afterend',b);
+      found=true;
+    });
+    return found;
+  };
+  function boot(){ window.__installPortableSaveImport(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();
 </script>
 <!-- v1.3 2026-03-28 论坛抓取写入 GAS「论坛抓取记录_骰子故事」独立分页 -->
 <!-- v1.4 2026-04-04 离线模式浮动警告+下载游玩数据；骰子奖励写入 GAS「骰子故事奖励」分页（中文奖励名称） -->
@@ -3398,4 +3474,3 @@ function logDiceRewardToGAS_(reward) {
 <div id="dice-offline-warning" onclick="retryDiceCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 </body>
 </html>
-

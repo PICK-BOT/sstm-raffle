@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -5071,12 +5071,6 @@ async function startFetchForumData() {
   }
   const startDate = document.getElementById('fetch-start').value;
   const endDate   = document.getElementById('fetch-end').value;
-  const overlaps = await fetchForumFetchRanges_(uid, '论坛抓取记录');
-  const hit = overlaps.filter(row => hasFetchOverlap_(startDate, endDate, row.startDate, row.endDate));
-  if(hit.length){
-    showToast('云端已有重叠抓取区间，请改用正确日期范围后再读取');
-    return;
-  }
   _fetchIsUpdate = false;
   _fetchAborted = false;
   _fetchMeta = {uid,startDate,endDate,mode:'start_auto'};
@@ -5125,12 +5119,6 @@ async function startUpdateFetch() {
   if (!uid) { openUpdateStats(); return; }
   const startDate = String(opts.startDate || (G.lastFetchTime ? G.lastFetchTime.slice(0, 10) : ''));
   const endDate   = String(opts.endDate || new Date().toISOString().slice(0, 10));
-  const overlaps = await fetchForumFetchRanges_(uid, '论坛抓取记录');
-  const hit = overlaps.filter(row => hasFetchOverlap_(startDate, endDate, row.startDate, row.endDate));
-  if(hit.length){
-    showToast('云端已有重叠抓取区间，请改用正确日期范围后再读取');
-    return;
-  }
   closeMenu();
   _fetchIsUpdate = true;
   _fetchAborted = false;
@@ -5996,29 +5984,6 @@ async function logForumFetchToGAS_(opts){
     });
   } catch(e){ console.warn('GAS forum fetch log failed', e); }
 }
-function fetchForumFetchRanges_(uid, sheetName){
-  return new Promise(resolve=>{
-    if(!GAS_URL || !uid) return resolve([]);
-    const cb='_galFetchRangeCb'+Date.now();
-    const s=document.createElement('script');
-    const clean=()=>{try{delete window[cb]}catch(e){} if(s.parentNode)s.parentNode.removeChild(s);};
-    const timer=setTimeout(()=>{clean();resolve([]);},6000);
-    window[cb]=function(data){
-      clearTimeout(timer);
-      clean();
-      resolve((data&&data.ok&&Array.isArray(data.rows))?data.rows:[]);
-    };
-    s.src=GAS_URL+'?action=fetch_log_ranges&sheet='+encodeURIComponent(sheetName||'论坛抓取记录')+'&id='+encodeURIComponent(uid)+'&callback='+cb;
-    document.head.appendChild(s);
-  });
-}
-function hasFetchOverlap_(startA,endA,startB,endB){
-  const a1=startA?new Date(startA).getTime():0;
-  const a2=endA?new Date(endA+'T23:59:59').getTime():Date.now();
-  const b1=startB?new Date(startB).getTime():0;
-  const b2=endB?new Date(endB+'T23:59:59').getTime():Date.now();
-  return a1<=b2 && b1<=a2;
-}
 
 function logGalActivityToGAS_(uid, date, replies, citations){
   if (!GAS_URL || !uid || !date) return;
@@ -6027,7 +5992,7 @@ function logGalActivityToGAS_(uid, date, replies, citations){
     mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      sheet: 'GAL返乡活跃度记录',
+      sheet: '返乡活跃度',
       type: 'activity_log',
       uid: String(uid),
       date: String(date),
@@ -6106,6 +6071,7 @@ function downloadGameData_(){
     rows.push(['奖励记录','#'+(i+1)+' '+lab,'数量：'+(r.amount||1)+'　时间：'+(r.at||'')]);
   });
   rows.push(['导出信息','导出时间', now]);
+  __appendPortableSaveRows(rows,'gal_story',{saveData:buildSaveData()});
   const csv = '\uFEFF' + rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
@@ -6209,6 +6175,110 @@ initStars();
 // Patch it at runtime is already correct above - re-check
 // ══════════════════════════════════════════════
 
+
+
+window.__applyPortableSaveData=async function(data){
+  if(!data||typeof data!=='object') throw new Error('bad_save');
+  var saveData=data.saveData||data;
+  loadSaveData(saveData);
+  try{ SCENES=buildScenes(); }catch(e){}
+  try{ saveProfileNow_(); }catch(e){ console.warn('cloud profile save after import failed',e); }
+  try{
+    var slot=1;
+    while(typeof getLocalSlot==='function' && getLocalSlot(slot)) slot++;
+    if(typeof setLocalSlot==='function') setLocalSlot(slot,saveData);
+    saveToGAS(slot,buildSaveData());
+  }catch(e){ console.warn('cloud slot save after import failed',e); }
+  try{ renderMenuSaveSlots(); }catch(e){}
+};
+
+/* Portable save import/export support */
+(function(){
+  var MARK='__HTML_GAME_SAVE__';
+  window.__appendPortableSaveRows=function(rows,game,state){
+    try{
+      rows.push([MARK,'game',game||'']);
+      rows.push([MARK,'saved_at',new Date().toISOString()]);
+      rows.push([MARK,'state_json',JSON.stringify(state||{})]);
+    }catch(e){ console.warn('portable save export failed',e); }
+    return rows;
+  };
+  function parseCsv(text){
+    text=String(text||'').replace(/^\uFEFF/,'');
+    var rows=[],row=[],cell='',q=false;
+    for(var i=0;i<text.length;i++){
+      var ch=text[i],nx=text[i+1];
+      if(q){
+        if(ch==='"'&&nx==='"'){cell+='"';i++;}
+        else if(ch==='"'){q=false;}
+        else cell+=ch;
+      }else{
+        if(ch==='"') q=true;
+        else if(ch===','){row.push(cell);cell='';}
+        else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+        else if(ch!=='\r') cell+=ch;
+      }
+    }
+    row.push(cell); rows.push(row);
+    return rows;
+  }
+  function readPayload(text){
+    var raw=String(text||'').replace(/^\uFEFF/,'').trim();
+    if(raw.charAt(0)==='{') return JSON.parse(raw);
+    var rows=parseCsv(text);
+    for(var i=0;i<rows.length;i++){
+      if(rows[i][0]===MARK && rows[i][1]==='state_json'){
+        return JSON.parse(rows[i][2]||'{}');
+      }
+    }
+    throw new Error('save_json_not_found');
+  }
+  window.importGameSaveData_=function(){
+    var input=document.createElement('input');
+    input.type='file';
+    input.accept='.csv,.json,text/csv,application/json';
+    input.onchange=function(){
+      var file=input.files&&input.files[0];
+      if(!file) return;
+      var reader=new FileReader();
+      reader.onload=function(){
+        Promise.resolve().then(function(){
+          if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+          var data=readPayload(reader.result);
+          return window.__applyPortableSaveData(data);
+        }).then(function(){
+          alert('读档完成：本机记录已复原，并已尝试同步到云端。');
+        }).catch(function(e){
+          console.error(e);
+          alert('读档失败：请选择由本游戏「下载游玩数据/存档」导出的 CSV。');
+        });
+      };
+      reader.readAsText(file,'utf-8');
+    };
+    input.click();
+  };
+  window.__installPortableSaveImport=function(){
+    var found=false;
+    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
+      var oc=btn.getAttribute('onclick')||'';
+      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
+      btn.setAttribute('data-import-save-bound','1');
+      var b=document.createElement('button');
+      b.type='button';
+      b.className=btn.className||'';
+      b.style.cssText=btn.style.cssText||'';
+      b.textContent='📤 读取存档';
+      b.title='读取先前下载的存档 CSV';
+      b.onclick=window.importGameSaveData_;
+      btn.insertAdjacentElement('afterend',b);
+      found=true;
+    });
+    return found;
+  };
+  function boot(){ window.__installPortableSaveImport(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();
 </script>
 
 <!--
@@ -6323,4 +6393,3 @@ function doPost(e) {
 <!-- v3.2 2026-04-04 GAL奖励云端记录道具类型改为中文（节操/羽毛/30天字母勋章） -->
 </body>
 </html>
-

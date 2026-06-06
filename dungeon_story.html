@@ -117,6 +117,9 @@
 .dg-ih-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
 .dg-ih-chip{padding:4px 12px;border-radius:16px;font-size:0.78rem;cursor:pointer;background:rgba(74,153,153,0.2);border:1px solid #4a9;color:#c9daf6;font-family:inherit}
 .dg-ih-chip:hover{background:rgba(74,153,153,0.45);color:#fff}
+/* sstm-login-cover */
+body:has(#loginCard:not(.hidden)){min-height:100vh}
+body:has(#loginCard:not(.hidden))::before{content:"";position:fixed;inset:0;z-index:-1;background-image:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,.58)),url('https://s.sstmlt.com/img/2026/05/17/dungeon_story09a8564b3393d020.jpeg');background-size:cover;background-position:center;background-repeat:no-repeat}
 </style>
 </head>
 <body>
@@ -4528,24 +4531,6 @@ function fffLoadPI(slug){try{return JSON.parse(localStorage.getItem('fff_pi_'+sl
 function fffSavePI(slug,idx){try{localStorage.setItem('fff_pi_'+slug,JSON.stringify(idx));}catch(e){}}
 function fffGetImp(uid){try{return JSON.parse(localStorage.getItem(FFF_IMP+'_'+uid)||'null');}catch(e){return null;}}
 function fffSaveImp(uid,key,r,c){try{localStorage.setItem(FFF_IMP+'_'+uid,JSON.stringify({key,r,c}));}catch(e){}}
-function fetchForumFetchRanges_(uid){
-  return new Promise(resolve=>{
-    const u=gasUrl();
-    if(!u||!uid) return resolve([]);
-    const cb='dungeonFetchRangeCb_'+Date.now();
-    const s=document.createElement('script');
-    const clean=()=>{try{delete window[cb]}catch(e){} if(s.parentNode)s.parentNode.removeChild(s);};
-    const timer=setTimeout(()=>{clean();resolve([]);},6000);
-    window[cb]=function(data){clearTimeout(timer);clean();resolve((data&&data.ok&&Array.isArray(data.rows))?data.rows:[]);};
-    s.src=u+(u.includes('?')?'&':'?')+'action=fetch_log_ranges&sheet='+encodeURIComponent('论坛抓取记录_地下城')+'&id='+encodeURIComponent(uid)+'&callback='+cb+'&t='+Date.now();
-    document.head.appendChild(s);
-  });
-}
-function hasFetchOverlap_(startA,endA,startB,endB){
-  const a1=startA?new Date(startA).getTime():0, a2=endA?new Date(endA+'T23:59:59').getTime():Date.now();
-  const b1=startB?new Date(startB).getTime():0, b2=endB?new Date(endB+'T23:59:59').getTime():Date.now();
-  return a1<=b2 && b1<=a2;
-}
 
 async function fffProxyGet(url){
   const sk='fff_'+url,hit=sessionStorage.getItem(sk);
@@ -4660,15 +4645,6 @@ async function fffDoFetch(){
   const startDate=document.getElementById('fff-date-start').value;
   const endDate=document.getElementById('fff-date-end').value;
   const dateKey=(startDate||'')+'_'+(endDate||'');
-  const overlaps=await fetchForumFetchRanges_(uid);
-  const hit=overlaps.filter(row=>hasFetchOverlap_(startDate,endDate,row.startDate,row.endDate));
-  if(hit.length){
-    const msg='云端已存在与这次日期重叠的地下城论坛抓取记录：\n'
-      +hit.slice(0,3).map(r=>(r.startDate||'未填')+' ~ '+(r.endDate||'未填')+'（'+r.replyCount+'/'+r.citationCount+'）').join('\n')
-      +'\n\n请改用正确日期范围再抓取。';
-    alert(msg);
-    return;
-  }
   fffCloseModal();fffOpenLoading();
   try{
     fffSetStatus('正在获取用户资料...');
@@ -4771,6 +4747,7 @@ function downloadDGData_() {
   } else {
     rows.push(['提示','无游戏进度','（尚未开始冒险或未能读取）']);
   }
+  __appendPortableSaveRows(rows,'dungeon_story',{uid:G.uid,state:G.state});
   var csv = rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\r\n');
   var blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
   var url = URL.createObjectURL(blob);
@@ -4781,6 +4758,104 @@ function downloadDGData_() {
   setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
 }
 
+
+
+window.__applyPortableSaveData=async function(data){
+  if(!data||typeof data!=='object') throw new Error('bad_save');
+  G.uid=String(data.uid||G.uid||'');
+  G.state=normalizeState(data.state||data);
+  try{ if(G.uid) saveDGIdHistory_(G.uid); }catch(e){}
+  try{ await saveStateCloud('import_save',false); }catch(e){ console.warn('cloud save after import failed',e); }
+  try{ show('menuCard',false); show('recordCard',false); show('gameCard',true); renderMap(); renderHUD(); }catch(e){}
+};
+
+/* Portable save import/export support */
+(function(){
+  var MARK='__HTML_GAME_SAVE__';
+  window.__appendPortableSaveRows=function(rows,game,state){
+    try{
+      rows.push([MARK,'game',game||'']);
+      rows.push([MARK,'saved_at',new Date().toISOString()]);
+      rows.push([MARK,'state_json',JSON.stringify(state||{})]);
+    }catch(e){ console.warn('portable save export failed',e); }
+    return rows;
+  };
+  function parseCsv(text){
+    text=String(text||'').replace(/^\uFEFF/,'');
+    var rows=[],row=[],cell='',q=false;
+    for(var i=0;i<text.length;i++){
+      var ch=text[i],nx=text[i+1];
+      if(q){
+        if(ch==='"'&&nx==='"'){cell+='"';i++;}
+        else if(ch==='"'){q=false;}
+        else cell+=ch;
+      }else{
+        if(ch==='"') q=true;
+        else if(ch===','){row.push(cell);cell='';}
+        else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+        else if(ch!=='\r') cell+=ch;
+      }
+    }
+    row.push(cell); rows.push(row);
+    return rows;
+  }
+  function readPayload(text){
+    var raw=String(text||'').replace(/^\uFEFF/,'').trim();
+    if(raw.charAt(0)==='{') return JSON.parse(raw);
+    var rows=parseCsv(text);
+    for(var i=0;i<rows.length;i++){
+      if(rows[i][0]===MARK && rows[i][1]==='state_json'){
+        return JSON.parse(rows[i][2]||'{}');
+      }
+    }
+    throw new Error('save_json_not_found');
+  }
+  window.importGameSaveData_=function(){
+    var input=document.createElement('input');
+    input.type='file';
+    input.accept='.csv,.json,text/csv,application/json';
+    input.onchange=function(){
+      var file=input.files&&input.files[0];
+      if(!file) return;
+      var reader=new FileReader();
+      reader.onload=function(){
+        Promise.resolve().then(function(){
+          if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+          var data=readPayload(reader.result);
+          return window.__applyPortableSaveData(data);
+        }).then(function(){
+          alert('读档完成：本机记录已复原，并已尝试同步到云端。');
+        }).catch(function(e){
+          console.error(e);
+          alert('读档失败：请选择由本游戏「下载游玩数据/存档」导出的 CSV。');
+        });
+      };
+      reader.readAsText(file,'utf-8');
+    };
+    input.click();
+  };
+  window.__installPortableSaveImport=function(){
+    var found=false;
+    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
+      var oc=btn.getAttribute('onclick')||'';
+      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
+      btn.setAttribute('data-import-save-bound','1');
+      var b=document.createElement('button');
+      b.type='button';
+      b.className=btn.className||'';
+      b.style.cssText=btn.style.cssText||'';
+      b.textContent='📤 读取存档';
+      b.title='读取先前下载的存档 CSV';
+      b.onclick=window.importGameSaveData_;
+      btn.insertAdjacentElement('afterend',b);
+      found=true;
+    });
+    return found;
+  };
+  function boot(){ window.__installPortableSaveImport(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();
 </script>
 
 <!-- ===== FORUM FETCH OVERLAYS ===== -->
@@ -4815,3 +4890,4 @@ function downloadDGData_() {
 <div id="dg-offline-warning" onclick="retryDGCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 </body>
 </html>
+
