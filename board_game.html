@@ -1435,11 +1435,11 @@ function setMsg(m){
 }
 
 // ===== FORUM AUTO-FETCH (board v1.5) =====
-const FFF_PROXY='https://ssbot.vercel.app/candy-proxy?url='; // 保留旧变量供兼容
+const FFF_PROXY='https://ssbot.vercel.app/board-proxy?url='; // 保留旧变量供兼容
 
 // ── 多中转站池 ──
 const FFF_PROXY_POOL=[
-  {url:'https://ssbot.vercel.app/candy-proxy?url=', type:'prefix', rpm:8,  nullOrigin:true },
+  {url:'https://ssbot.vercel.app/board-proxy?url=', type:'prefix', rpm:8,  nullOrigin:true },
 ];
 const _bgIsFileOrigin=(location.protocol==='file:');
 const _bgProxyState={};
