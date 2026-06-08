@@ -12,6 +12,54 @@
       "source": "/checkin-game-proxy",
       "destination": "https://script.google.com/macros/s/AKfycbzbR0_yhUphjOQRKH5Bpskj8yRdjpXwVRD_CmouHBApHGzPav80ofvmE-jbEBT92gbA/exec?action=fetch_url"
     },
+     {
+      "source": "/puzzle-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbzvoAl4oeBq4uldtddEND26VnEOuWXPdXmy_szXBI6IMXrp7LAOC1BTmPWz1pLohwnQWA/exec?action=fetch_url"
+    },
+     {
+      "source": "/ACG-quiz-exam-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbzkmaFhQhnSC2I0hN7fI4enRbg72a7rDKdnwiQGtYD3HpaTabsXGqgs9pnQ4WZugWGj5Q/exec?action=fetch_url"
+    },
+    {
+      "source": "/Skewer-Time-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbxtzW4wVTgHoVQ31DvqJdom0nNum7QEYHtXeDjeHt7QGGoi3Fq3PYz9GkiRfFQlTd8J/exec?action=fetch_url"
+    },
+    {
+      "source": "/tower-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbxg1Z0dc4XhjTUz4ZGgbZ369TOTHcGpgLejHgL9WZsKcFsuZPiTNH5SSYe_0K_JYgYU/exec?action=fetch_url"
+    },
+        {
+      "source": "/Domino-style-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbzib3VRCqMgtN34xdslFcvzYMR1alQsBN7KJHF_htnjPruot9wy6dwrJtCfecQbNuOr/exec?action=fetch_url"
+    },
+     {
+      "source": "/Triple-Match-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbyALPUSV8ulvM4X8pMwWJBXnslFuv6lYUxq0NOAcE7S-x73vOOrWADC6mGsU8vjZ3m7/exec?action=fetch_url"
+    },
+    {
+      "source": "/Water-Sort-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbxbNA8K3cV8J-e8SR9QXoix-aKFyqvs2-EI4s6JHhssphBqI3Xw6JA3_EVTz4Ex2pF94g/exec?action=fetch_url"
+    },
+     {
+      "source": "/timewar-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbxZ21KaeHwaV3oBO8fJmA1TnMRqRS8PPJWiNWhQqwBw1eGyCihiBaZObA-ryaqixQK5/exec?action=fetch_url"
+    },
+     {
+      "source": "/Hexa-Master-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbz7hsNRy2zpEGn4n1MT11Aw09j4ZXpOMzfZYoHCMWDWzqlfgu77WU-OrEO67bdZ9V2w/exec?action=fetch_url"
+    },
+    {
+      "source": "/Skewer-Time-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbxtzW4wVTgHoVQ31DvqJdom0nNum7QEYHtXeDjeHt7QGGoi3Fq3PYz9GkiRfFQlTd8J/exec?action=fetch_url"
+    },
+    {
+      "source": "/Hello-Town-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbyb6YsB6DHWKFHtQ1_hx6QrIIBEBHWT3lx6oykctIrlbijZD8Yjf4RamDp2bLKSzSxNwg/exec?action=fetch_url"
+    },
+    {
+      "source": "/Frost-Survival-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbyb6YsB6DHWKFHtQ1_hx6QrIIBEBHWT3lx6oykctIrlbijZD8Yjf4RamDp2bLKSzSxNwg/exec?action=fetch_url"
+    },
     {
       "source": "/gal-proxy",
       "destination": "https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec?action=fetch_url"
