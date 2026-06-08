@@ -1435,36 +1435,43 @@ function setMsg(m){
 }
 
 // ===== FORUM AUTO-FETCH (board v1.5) =====
-const FFF_PROXY='https://ssbot.vercel.app/board-proxy?url='; // 保留旧变量供兼容
-
-// ── 多中转站池 ──
-const FFF_PROXY_POOL=[
-  {url:'https://ssbot.vercel.app/board-proxy?url=', type:'prefix', rpm:8,  nullOrigin:true },
-];
+// 中转站：优先 GAS 云端代理（Google试算表后台），备用 Vercel /board-proxy
+const FFF_PROXY='https://ssbot.vercel.app/board-proxy?url=';
+const FORUM_FETCH_MS_BG=35000;
 const _bgIsFileOrigin=(location.protocol==='file:');
-const _bgProxyState={};
-FFF_PROXY_POOL.forEach(p=>{_bgProxyState[p.url]={count:0,windowStart:Date.now(),banUntil:0};});
-function _bgPickProxy(){
-  const now=Date.now();
-  const pool=_bgIsFileOrigin?FFF_PROXY_POOL.filter(p=>p.nullOrigin):FFF_PROXY_POOL;
-  for(const p of pool){
-    const st=_bgProxyState[p.url];
-    if(st.banUntil>now)continue;
-    if(now-st.windowStart>60000){st.count=0;st.windowStart=now;}
-    if(st.count<p.rpm)return p;
-  }
-  return pool.reduce((a,b)=>(_bgProxyState[a.url].banUntil||0)<=(_bgProxyState[b.url].banUntil||0)?a:b);
+
+// GAS JSONP helper（对齐 candy_crush.html）
+function _bgGasJsonp_(params,timeout){
+  return new Promise(function(resolve,reject){
+    const cb='bg_cb_'+Date.now()+'_'+Math.floor(Math.random()*9999);
+    const tid=setTimeout(function(){
+      try{delete window[cb];}catch(e){}
+      const sc=document.getElementById(cb+'_s');if(sc)sc.remove();
+      reject(new Error('timeout'));
+    },timeout||FORUM_FETCH_MS_BG);
+    window[cb]=function(data){
+      clearTimeout(tid);
+      try{delete window[cb];}catch(e){}
+      const sc=document.getElementById(cb+'_s');if(sc)sc.remove();
+      if(data&&data.ok)resolve(data);
+      else reject(new Error((data&&data.error)||'err'));
+    };
+    const qs=Object.keys(params).map(k=>encodeURIComponent(k)+'='+encodeURIComponent(params[k])).join('&');
+    const s=document.createElement('script');
+    s.id=cb+'_s';
+    s.src=GAS_URL+'?'+qs+'&callback='+cb+'&_t='+Date.now();
+    s.onerror=function(){clearTimeout(tid);try{delete window[cb];}catch(e){}s.remove();reject(new Error('load_fail'));};
+    document.head.appendChild(s);
+  });
 }
-function _bgBanProxy(url){
-  const st=_bgProxyState[url];
-  if(st)st.banUntil=Date.now()+60000;
-  console.warn('[proxy] 中转站限速 60s:',url);
+function _bgProxyOkText_(text){
+  return text&&text.length>80&&(text.indexOf('<')>=0||/profile|ipsQuote|cProfileContent/i.test(text));
 }
-async function _bgParseResp(proxy,resp){
-  const text=await resp.text();
-  if(proxy.type==='json')   {try{const j=JSON.parse(text);return j.contents||text;}catch(e){return text;}}
-  if(proxy.type==='jsonget'){try{const j=JSON.parse(text);return j.body||text;}    catch(e){return text;}}
-  return text;
+async function _bgGasProxyGet_(url){
+  const data=await _bgGasJsonp_({action:'fetch_url',url:url},FORUM_FETCH_MS_BG);
+  const text=(data&&(data.html||data.contents))||'';
+  if(_bgProxyOkText_(text))return text;
+  throw new Error((data&&data.error)||'gas_proxy_empty');
 }
 const FFF_IMP='fff_imp_board';
 /** 与 GAS 写入的「大富翁返乡活跃度」同表；须「档案 → 共用→ 知道连结的使用者均可检视」后 export=csv 才读得到。用于跨日/换浏览器仍以表上已登记数为卡关。 */
@@ -1558,39 +1565,36 @@ async function fffFetchSheetBaseline(uid,startDate,endDate){
 }
 
 async function fffProxyGet(url){
-  const sk='fff_'+url,hit=sessionStorage.getItem(sk);
-  if(hit)return hit;
-  const maxTry=4;
-  let lastErr=null;
-  const tried=new Set();
-  for(let attempt=0;attempt<maxTry;attempt++){
-    const proxy=_bgPickProxy();
-    if(tried.has(proxy.url))break;
-    tried.add(proxy.url);
-    const st=_bgProxyState[proxy.url];
-    if(Date.now()-st.windowStart>60000){st.count=0;st.windowStart=Date.now();}
-    st.count++;
-    if(st.count>=proxy.rpm)await new Promise(r=>setTimeout(r,1500));
-    try{
-      const resp=await fetch(proxy.url+encodeURIComponent(url),{signal:AbortSignal.timeout(30000)});
-      if(resp.status===403||resp.status===429){
-        _bgBanProxy(proxy.url);
-        lastErr=new Error('中转站 '+resp.status);
-        await new Promise(r=>setTimeout(r,400));
-        continue;
-      }
-      if(!resp.ok){lastErr=new Error('网络错误 '+resp.status);continue;}
-      const text=await _bgParseResp(proxy,resp);
-      try{sessionStorage.setItem(sk,text);}catch(e){}
-      return text;
-    }catch(e){
-      lastErr=e;
-      if(e.name==='TimeoutError'||/403|429/.test(e.message))_bgBanProxy(proxy.url);
-      if(attempt<maxTry-1)await new Promise(r=>setTimeout(r,600));
-    }
+  // sessionStorage 页面缓存
+  const sk='fff_'+url;
+  try{const hit=sessionStorage.getItem(sk);if(hit)return hit;}catch(e){}
+
+  // ① 优先：GAS 云端代理（Google试算表后台转发，完美抓取）
+  try{
+    const text=await _bgGasProxyGet_(url);
+    try{sessionStorage.setItem(sk,text);}catch(e){}
+    return text;
+  }catch(e){
+    console.warn('[board-proxy] GAS FAIL:',e.message||e);
   }
-  const hint=_bgIsFileOrigin?'（本地 file:// 打开受 CORS 限制，建议用 GitHub Pages 或 localhost）':'';
-  throw lastErr||new Error('所有中转站均不可用'+hint);
+
+  // ② 备用：Vercel /board-proxy 中转站
+  try{
+    const resp=await fetch(FFF_PROXY+encodeURIComponent(url),{
+      referrerPolicy:'no-referrer',credentials:'omit',
+      signal:AbortSignal.timeout(FORUM_FETCH_MS_BG)
+    });
+    if(!resp.ok)throw new Error('HTTP_'+resp.status);
+    const text=await resp.text();
+    if(!_bgProxyOkText_(text))throw new Error('empty_response');
+    try{sessionStorage.setItem(sk,text);}catch(e){}
+    return text;
+  }catch(e){
+    console.warn('[board-proxy] Vercel FAIL:',e.message||e);
+  }
+
+  const hint=_bgIsFileOrigin?'（本地 file:// 建议改用 GitHub Pages）':'';
+  throw new Error('所有中转站均不可用（GAS + Vercel 均失败）'+hint);
 }
 async function fffGetUsername(uid){
   const html=await fffProxyGet('https://sstm.moe/?app=core&module=members&controller=profile&id='+uid);
