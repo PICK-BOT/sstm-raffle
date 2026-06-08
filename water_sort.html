@@ -473,7 +473,7 @@ const LEVELS=Array.from({length:MAX_LEVELS},function(_,i){return genLevelCfg(i+1
 // ══════════════════════════════════════════
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxbNA8K3cV8J-e8SR9QXoix-aKFyqvs2-EI4s6JHhssphBqI3Xw6JA3_EVTz4Ex2pF94g/exec";
 const SHEET = "倒水排序";
-const FORUM_PROXY = "https://psstm-raffle.vercel.app/Water-Sort-proxy?url="; // 保留旧变量供兼容
+const FORUM_PROXY = "https://sstm-raffle.vercel.app/Water-Sort-proxy?url="; // 保留旧变量供兼容
 
 // ── 多中转站池 ──
 // type: 'prefix'  → 直接拼接，回传 HTML
@@ -481,14 +481,7 @@ const FORUM_PROXY = "https://psstm-raffle.vercel.app/Water-Sort-proxy?url="; // 
 // type: 'jsonget' → jsonp.su，回传 JSON { body }
 // nullOrigin: true → 支援 file:// 本地打开（origin=null）
 const FORUM_PROXY_POOL_ = [
-  { url: "https://pack-robot-ss.gamefishhero001.workers.dev/?url=", type:"prefix", rpm:2,  nullOrigin:true  },
-  { url: "https://corsproxy.io/?url=",                              type:"prefix", rpm:8,  nullOrigin:true  },
-  { url: "https://api.allorigins.win/get?url=",                     type:"json",   rpm:8,  nullOrigin:true  },
-  { url: "https://api.codetabs.com/v1/proxy?quest=",                type:"prefix", rpm:5,  nullOrigin:true  },
-  { url: "https://jsonp.su/api/proxy?url=",                         type:"jsonget",rpm:5,  nullOrigin:true  },
-  { url: "https://proxy.cors.sh/",                                  type:"prefix", rpm:5,  nullOrigin:true  },
-  { url: "https://thingproxy.freeboard.io/fetch/",                  type:"prefix", rpm:4,  nullOrigin:false },
-  { url: "https://cors-anywhere.herokuapp.com/",                    type:"prefix", rpm:3,  nullOrigin:false },
+  { url: "https://sstm-raffle.vercel.app/Water-Sort-proxy?url="", type:"prefix", rpm:2,  nullOrigin:true  },
 ];
 const _isFileOrigin_ = (location.protocol === "file:");
 const _proxyState_   = {};
