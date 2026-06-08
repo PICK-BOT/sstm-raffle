@@ -505,14 +505,14 @@ function getMenuLevelMax(){
 // ══ CONFIG 常量 ══
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwtg97eIbxTMTAf2vx0hzOaJbD9DCwKJeCUibt20dsmMpXTgNzwsRRoo5U-UHgx8xM8eg/exec";
 const SHEET = "糖果小镇";
-const GAME_VERSION = "v2.2.0";
-const FORUM_PROXY = "https://pack-robot-ss.gamefishhero001.workers.dev/?url="; // 保留旧变量供兼容
+const GAME_VERSION = "v2.2.1";
+const FORUM_PROXY = "https://api.codetabs.com/v1/proxy?quest="; // 保留旧变量供兼容
 
-// ── fetch 备用池（主路径用 allorigins JSONP 绕过 CORS）──
+// ── fetch 备用池（优先 GAS 云端代理，其次 codetabs 等）──
 const FORUM_PROXY_POOL = [
+  { url: "https://api.codetabs.com/v1/proxy?quest=",                type:"prefix", rpm:10, nullOrigin:true },
   { url: "https://pack-robot-ss.gamefishhero001.workers.dev/?url=", type:"prefix", rpm:4,  nullOrigin:true },
   { url: "https://corsproxy.io/?url=",                              type:"prefix", rpm:8,  nullOrigin:true },
-  { url: "https://api.codetabs.com/v1/proxy?quest=",                type:"prefix", rpm:6,  nullOrigin:true },
   { url: "https://proxy.cors.sh/",                                  type:"prefix", rpm:5,  nullOrigin:true },
   { url: "https://thingproxy.freeboard.io/fetch/",                  type:"prefix", rpm:4,  nullOrigin:false },
 ];
@@ -797,7 +797,16 @@ function updateMenuUI(){
 // ══════════════════════════════════════════
 // FORUM SCRAPE（完整复制自 checkin_game.html）
 // ══════════════════════════════════════════
-function _proxyJsonpGet(url, timeout){
+function _proxyOkText_(text){
+  return text && text.length > 80 && (text.indexOf("<") >= 0 || /profile|ipsQuote|cProfileContent/i.test(text));
+}
+async function _gasProxyGet(url){
+  const data = await gasJsonp({ action: "fetch_url", url: url }, FORUM_FETCH_MS);
+  const text = (data && (data.html || data.contents)) || "";
+  if(_proxyOkText_(text)) return text;
+  throw new Error((data && data.error) || "gas_proxy_empty");
+}
+async function _proxyJsonpGet(url, timeout){
   return new Promise((resolve,reject)=>{
     const bustUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
     const cb="ao_cb_"+Date.now()+"_"+Math.floor(Math.random()*9999);
@@ -810,11 +819,12 @@ function _proxyJsonpGet(url, timeout){
     window[cb]=(data)=>{
       cleanup();
       const text=data&&data.contents;
-      if(text&&text.length>50) resolve(text);
+      if(_proxyOkText_(text)) resolve(text);
       else reject(new Error("empty_jsonp"));
     };
     const s=document.createElement("script");
     s.id=cb+"_s";
+    s.referrerPolicy="no-referrer";
     s.src="https://api.allorigins.win/get?url="+encodeURIComponent(bustUrl)+"&callback="+cb;
     s.onerror=()=>{cleanup();reject(new Error("jsonp_load_fail"));};
     document.head.appendChild(s);
@@ -827,15 +837,28 @@ async function fffProxyGet(url, noCache){
     if(hit) return hit;
   }
   let lastErr=null;
-  try{
-    const jsonpText=await _proxyJsonpGet(url);
-    if(!noCache&&url.includes("controller=profile")){
-      try{sessionStorage.setItem("ctfff_"+url,jsonpText);}catch(e){}
+  const ways=[
+    ["GAS", ()=>_gasProxyGet(url)],
+    ["codetabs", async()=>{
+      const resp=await fetch(FORUM_PROXY+encodeURIComponent(url),{referrerPolicy:"no-referrer",credentials:"omit",signal:AbortSignal.timeout(FORUM_FETCH_MS)});
+      if(!resp.ok) throw new Error("HTTP_"+resp.status);
+      const text=await resp.text();
+      if(_proxyOkText_(text)) return text;
+      throw new Error("empty_response");
+    }],
+    ["allorigins-jsonp", ()=>_proxyJsonpGet(url)],
+  ];
+  for(const [name, fn] of ways){
+    try{
+      const text=await fn();
+      if(!noCache&&url.includes("controller=profile")){
+        try{sessionStorage.setItem("ctfff_"+url,text);}catch(e){}
+      }
+      return text;
+    }catch(e){
+      lastErr=e;
+      console.warn("[proxy] "+name+" FAIL:",e.message||e);
     }
-    return jsonpText;
-  }catch(e){
-    lastErr=e;
-    console.warn("[proxy] allorigins JSONP FAIL:",e.message||e);
   }
   const pool=_ctIsFileOrigin?FORUM_PROXY_POOL.filter(p=>p.nullOrigin):FORUM_PROXY_POOL;
   const targetUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
@@ -857,7 +880,7 @@ async function fffProxyGet(url, noCache){
       if(resp.status===403||resp.status===429){_ctBanProxy(proxy.url,20000);lastErr=new Error("HTTP_"+resp.status);continue;}
       if(!resp.ok){lastErr=new Error("HTTP_"+resp.status);continue;}
       const text=await _ctParseResp(proxy,resp);
-      if(text&&text.length>80&&(text.indexOf("<")>=0||text.indexOf("profile")>=0)){
+      if(_proxyOkText_(text)){
         const idx=pool.findIndex(p=>p.url===proxy.url);
         if(idx>=0) _bestProxyIdx=idx;
         if(!noCache&&url.includes("controller=profile")){
@@ -873,7 +896,7 @@ async function fffProxyGet(url, noCache){
       console.warn("[proxy] "+proxy.url.slice(8,36)+" FAIL:",e.message||e);
     }
   }
-  const hint=_ctIsFileOrigin?"（本地 file:// 建议改用 GitHub Pages）":(_ctIsGithubOrigin?"（GitHub Pages 中转站繁忙，请稍后再试）":"");
+  const hint=_ctIsFileOrigin?"（本地 file:// 建议改用 GitHub Pages）":(_ctIsGithubOrigin?"（中转站均失败；请在 GAS 部署 fetch_url 代理，见 candy_town_gas.gs）":"");
   throw lastErr||new Error("所有中转站均不可用"+hint);
 }
 async function fffGetSlug(uid){
@@ -910,8 +933,8 @@ async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
   if(opts.maxCitationChecks===0) citeBudget=0;
   else if(opts.maxCitationChecks==null) citeBudget=Number.POSITIVE_INFINITY;
   else citeBudget=Number.isFinite(Number(opts.maxCitationChecks))?Number(opts.maxCitationChecks):16;
-  const sTs=startDate?new Date(startDate).getTime():0;
-  const eTs=endDate?new Date(endDate+"T23:59:59Z").getTime():Date.now();
+  const sTs=startDate?new Date(startDate+"T00:00:00").getTime():0;
+  const eTs=endDate?new Date(endDate+"T23:59:59").getTime():Date.now();
   const prev=loadInc_(uid,startDate,keySuffix);
   const lastTs=prev?(prev.lastTs||0):0;
   let replies=prev?(prev.replies||0):0;
@@ -936,7 +959,7 @@ async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
   while(!done){
     if(page>maxPages){ onProgress("达到本轮页数上限 "+maxPages+" 页"); break; }
     pageCount=page;
-    onProgress("正在抓取论坛数据...第 "+page+" 页");
+    onProgress("正在抓取论坛数据...第 "+page+" 页（区间 "+startDate+" ~ "+endDate+"）");
     const url=page===1
       ?"https://sstm.moe/profile/"+slug+"/content/?type=forums_topic_post&change_section=1"
       :"https://sstm.moe/profile/"+slug+"/content/page/"+page+"/?type=forums_topic_post";
@@ -949,17 +972,18 @@ async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
       const dt=ft?ft.getAttribute("datetime"):"";
       if(dt){ pageIdx[page]=dt; savePageIdx_(slug,pageIdx); }
     }catch(e){}
-    let foundNew=false; const toCheck=[];
+    let foundInRange=false; const toCheck=[];
     for(const item of items){
       const te=item.querySelector("time[datetime]"); if(!te) continue;
       const ts=new Date(te.getAttribute("datetime")).getTime();
-      if(ts>eTs) continue;
-      if(ts<sTs){done=true;break;}
+      if(!Number.isFinite(ts)) continue;
+      if(ts>eTs) continue; // 比结束日晚：跳过，继续翻页找区间内帖子
+      if(ts<sTs){done=true;break;} // 比开始日早：后面更旧，停止
       if(lastTs>0&&ts<=lastTs){done=true;break;}
       const day=(new Date(ts)).toISOString().slice(0,10);
       if(!pageDayMap[page]) pageDayMap[page]=[];
       if(!pageDayMap[page].includes(day)) pageDayMap[page].push(day);
-      foundNew=true;
+      foundInRange=true;
       if(ts>newLastTs) newLastTs=ts;
       const fa=item.querySelector("p.ipsType_light a[href]");
       if(!fa||!NOVICE_FORUM_RE.test(fa.getAttribute("href")||"")) continue;
@@ -974,18 +998,19 @@ async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
       const t2=bq.getAttribute("data-ipsquote-contentid");
       if(c2&&t2) toCheck.push({cid:c2,tid:t2});
     }
-    if(toCheck.length && citeBudget>0){
+    if(toCheck.length){
       const need=[];
       for(const x of toCheck){
         if(citeBudget<=0) break;
         if(citedIds.has(x.cid)) continue;
         if(cache.has(x.cid)){ if(cache.get(x.cid)) citedIds.add(x.cid); continue; }
-        citeBudget-=1;
+        if(citeBudget!==Number.POSITIVE_INFINITY) citeBudget-=1;
         need.push(x);
       }
       const CITE_CONC=5;
       for(let i=0;i<need.length;i+=CITE_CONC){
         const chunk=need.slice(i,i+CITE_CONC);
+        onProgress("第 "+page+" 页验证被引用 "+Math.min(i+CITE_CONC,need.length)+"/"+need.length+"...");
         await Promise.all(chunk.map(async (x)=>{
           try{
             const qUrl="https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid;
@@ -999,10 +1024,11 @@ async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
             cache.set(x.cid,ok); if(ok)citedIds.add(x.cid);
           }catch(e){cache.set(x.cid,false);}
         }));
+        if(i+CITE_CONC<need.length) await new Promise(r=>setTimeout(r,120));
       }
     }
     if(done) break;
-    if(!foundNew) break;
+    // 不因本页暂无数区间内帖子而停止（会继续翻到第 2、3…页）
     const next=doc.querySelector("li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel='next']");
     if(!next) break;
     page++;
@@ -1017,7 +1043,7 @@ async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
 }
 
 async function fetchForumData(showAlert=true, startDate, endDate){
-  return fetchForumDataCustom(showAlert,startDate,endDate,{maxPages:60,maxCitationChecks:24});
+  return fetchForumDataCustom(showAlert,startDate,endDate,{maxPages:60,maxCitationChecks:Number.POSITIVE_INFINITY});
 }
 async function refreshForumData(){
   const sd=(document.getElementById('forum-start-date')||{}).value||'';
@@ -1078,7 +1104,7 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
       startDate:sd,endDate:ed,date:todayISO()
     });
     updateMenuUI();
-    if(showAlert) alert("✅ 抓取完成！\n区间: "+sd+" ~ "+ed+"\n页数: "+(result.pageCount||1)+" 页\n回复: "+G.replies+" · 被引用: "+G.citations);
+    if(showAlert) alert("✅ 抓取完成！\n区间: "+sd+" ~ "+ed+"\n翻阅: "+(result.pageCount||1)+" 页\n回复: "+G.replies+" · 被引用: "+G.citations+"\n（仅统计区间内、新手区 forum/32 的帖子）");
     return true;
   }catch(e){
     if(showAlert) alert("⚠️ 抓取失败："+e.message);
