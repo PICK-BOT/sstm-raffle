@@ -10,7 +10,7 @@
     },
     {
       "source": "/gal-proxy",
-      "destination": "https://script.google.com/macros/s/AKfycybOFF3vJ3kXcITjeZ0LL14BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec?action=fetch_url"
+      "destination": "https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec?action=fetch_url"
     }
   ]
 }
