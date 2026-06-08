@@ -33,7 +33,7 @@ body{background:var(--bg);font-family:'Nunito',sans-serif;color:#fff;overflow:hi
 .level-btn:hover,.level-btn.active{background:rgba(244,114,182,.25);border-color:#f472b6;color:#fde68a}
 .level-btn.locked{opacity:.4;cursor:not-allowed}
 #menu-top-bar{width:100%;max-width:460px;display:flex;align-items:center;justify-content:space-between;padding:10px 14px 0}
-#menu-version{position:absolute;left:10px;bottom:8px;font-size:.62rem;color:rgba(255,255,255,.32);z-index:3;pointer-events:none;letter-spacing:.02em}
+#menu-version{position:fixed;left:12px;bottom:12px;font-size:.74rem;font-weight:800;color:rgba(255,255,255,.62);z-index:12;pointer-events:none;letter-spacing:.03em;text-shadow:0 1px 6px rgba(0,0,0,.75);display:none}
 .menu-btn-row{display:flex;gap:6px;flex-wrap:wrap}
 .menu-btn-sm{padding:5px 10px;border-radius:18px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;font-size:.72rem;font-weight:700;font-family:'Nunito',sans-serif}
 
@@ -195,7 +195,6 @@ body.skin-retro    #game{background:radial-gradient(ellipse at 50% 30%,#3a2000 0
     <button class="btn-play" id="btn-login" style="margin-top:8px;width:100%" onclick="doLogin()">▶ 进入游戏</button>
     <div id="id-history-row"><div class="ih-label">最近使用</div><div class="ih-chips" id="id-history-chips"></div></div>
     <button class="btn-play" style="margin-top:8px;width:100%;background:rgba(255,255,255,.08);box-shadow:none;font-size:.83rem;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.18)" onclick="doOfflineMode()">离线模式</button>
-    <button class="btn-play" style="margin-top:8px;width:100%;background:rgba(34,211,238,.12);box-shadow:none;font-size:.8rem;color:#67e8f9;border:1px solid rgba(34,211,238,.35)" onclick="fetchForumFromLogin()">🔄 抓取论坛数据（无需进入游戏）</button>
   </div>
 </div>
 
@@ -464,20 +463,47 @@ const LEVELS=Array.from({length:MAX_LEVELS},(_,i)=>genLevelCfg(i+1));
 // ══ CONFIG 常量 ══
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwtg97eIbxTMTAf2vx0hzOaJbD9DCwKJeCUibt20dsmMpXTgNzwsRRoo5U-UHgx8xM8eg/exec";
 const SHEET = "糖果小镇";
-const GAME_VERSION = "v2.1.0";
-const FORUM_PROXY = "https://pack-robot-ss.gamefishhero001.workers.dev/?url="; // 保留旧变量供兼容
+const GAME_VERSION = "v2.1.1";
+const FORUM_PROXY = "https://api.allorigins.win/get?url="; // 保留旧变量供兼容
 
-// ── 多中转站池（对齐 timewar_sstm；移除 jsonp.su 等失效节点）──
-const FORUM_PROXIES_DEF = [
-  { url:"https://pack-robot-ss.gamefishhero001.workers.dev/?url=", mode:"workers" },
-  { url:"https://api.corsfix.com/?", mode:"prefix" },
-  { url:"https://cors.x2u.in/", mode:"prefix" },
-  { url:"https://api.allorigins.win/raw?url=", mode:"allorigins" },
-  { url:"https://corsproxy.io/?url=", mode:"allorigins" },
-  { url:"https://api.codetabs.com/v1/proxy?quest=", mode:"allorigins" },
-  { url:"https://r.jina.ai/http://", mode:"jina" },
+// ── 多中转站池（比照 checkin_game；allorigins /get 优先，浏览器 CORS 最稳）──
+const FORUM_PROXY_POOL = [
+  { url: "https://api.allorigins.win/get?url=",                     type:"json",   rpm:10, nullOrigin:true },
+  { url: "https://pack-robot-ss.gamefishhero001.workers.dev/?url=", type:"prefix", rpm:3,  nullOrigin:true },
+  { url: "https://corsproxy.io/?url=",                              type:"prefix", rpm:8,  nullOrigin:true },
+  { url: "https://api.codetabs.com/v1/proxy?quest=",                type:"prefix", rpm:6,  nullOrigin:true },
+  { url: "https://proxy.cors.sh/",                                  type:"prefix", rpm:5,  nullOrigin:true },
+  { url: "https://thingproxy.freeboard.io/fetch/",                  type:"prefix", rpm:4,  nullOrigin:false },
+  { url: "https://api.allorigins.win/raw?url=",                     type:"prefix", rpm:4,  nullOrigin:true },
 ];
+const _ctProxyState = {};
+FORUM_PROXY_POOL.forEach(p => { _ctProxyState[p.url] = { count:0, windowStart:Date.now(), banUntil:0 }; });
 let _bestProxyIdx = 0;
+function _ctPickProxy() {
+  const now = Date.now();
+  const pool = _ctIsFileOrigin ? FORUM_PROXY_POOL.filter(p => p.nullOrigin) : FORUM_PROXY_POOL;
+  const order = [];
+  for (let i = 0; i < pool.length; i++) order.push(pool[(_bestProxyIdx + i) % pool.length]);
+  for (const p of order) {
+    const st = _ctProxyState[p.url];
+    if (st.banUntil > now) continue;
+    if (now - st.windowStart > 60000) { st.count = 0; st.windowStart = now; }
+    if (st.count < p.rpm) return p;
+  }
+  return order[0] || pool[0];
+}
+function _ctBanProxy(url, sec) {
+  const st = _ctProxyState[url];
+  if (st) st.banUntil = Date.now() + (sec || 15000);
+}
+function _ctBuildProxyTarget(proxy, targetUrl) {
+  return proxy.url + encodeURIComponent(targetUrl);
+}
+async function _ctParseResp(proxy, resp) {
+  const text = await resp.text();
+  if (proxy.type === "json") { try { const j = JSON.parse(text); return j.contents || text; } catch(e) { return text; } }
+  return text;
+}
 const LOGIN_COVER_URL = "https://s.sstmlt.com/img/2026/05/17/candy_crush4a1e13083738fa1d.jpeg";
 const _ctIsFileOrigin = (location.protocol === "file:");
 const _ctIsGithubOrigin = /\.github\.io$/i.test(location.hostname || "");
@@ -530,7 +556,7 @@ function patchSkinPreviewImgs_(){
   });
 }
 const NOVICE_FORUM_RE = /forum\/32[-\/]/;
-const FORUM_FETCH_MS = 25000;
+const FORUM_FETCH_MS = 35000;
 const KEY_HISTORY = "ct_id_history";
 const KEY_STATE   = "ct_state";
 const KEY_ID      = "ct_login_id";
@@ -635,6 +661,8 @@ function showScreen(id){
       el.style.display="none";
     }
   });
+  const mv=document.getElementById("menu-version");
+  if(mv) mv.style.display=(id==="menu")?"block":"none";
 }
 
 // ══════════════════════════════════════════
@@ -716,6 +744,7 @@ function enterMenu(){
   if(G.skin) curSkin=G.skin;
   updateSkinUI();
   showScreen("menu");
+  if(!_offline&&!_forumFetched&&!_forumFetching&&G.uid>0) fetchForumData(false);
 }
 
 function updateMenuUI(){
@@ -735,59 +764,75 @@ async function fffProxyGet(url, noCache){
     const hit=sessionStorage.getItem(sk);
     if(hit) return hit;
   }
-  const bustUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
-  let lastErr = new Error("所有中转站均不可用");
-  const order = [];
-  for(let i=0;i<FORUM_PROXIES_DEF.length;i++) order.push((_bestProxyIdx+i)%FORUM_PROXIES_DEF.length);
-  for(let oi=0;oi<order.length;oi++){
-    const idx = order[oi];
-    const pd = FORUM_PROXIES_DEF[idx];
-    const ctrl = new AbortController();
-    const tid = setTimeout(()=>ctrl.abort(), FORUM_FETCH_MS);
-    try{
-      let proxyTarget;
-      if(pd.mode === "jina" || pd.mode === "strip"){
-        proxyTarget = pd.url + bustUrl.replace(/^https?:\/\//, "");
-      } else {
-        proxyTarget = pd.url + encodeURIComponent(bustUrl);
-      }
-      const resp = await fetch(proxyTarget, { signal:ctrl.signal, referrerPolicy:"no-referrer" });
-      if(!resp.ok) throw new Error("HTTP_"+resp.status);
-      let text = await resp.text();
-      if(text && text.trimStart().startsWith("{")){
-        try{
-          const j = JSON.parse(text);
-          if(j.contents) text = j.contents;
-          else if(j.body) text = j.body;
-        }catch(e){}
-      }
-      if(text && text.length > 50){
-        _bestProxyIdx = idx;
-        if(!noCache && url.includes("controller=profile")){
-          try{ sessionStorage.setItem("ctfff_"+url, text); }catch(e){}
+  const pool = _ctIsFileOrigin ? FORUM_PROXY_POOL.filter(p => p.nullOrigin) : FORUM_PROXY_POOL;
+  const targets = [url + (url.includes("?") ? "&" : "?") + "_bust=" + Date.now(), url];
+  let lastErr = null;
+  const tried = new Set();
+  for (let ti = 0; ti < targets.length; ti++) {
+    const targetUrl = targets[ti];
+    for (let attempt = 0; attempt < pool.length; attempt++) {
+      const proxy = _ctPickProxy();
+      const key = proxy.url + "|" + targetUrl;
+      if (tried.has(key)) continue;
+      tried.add(key);
+      const st = _ctProxyState[proxy.url];
+      if (Date.now() - st.windowStart > 60000) { st.count = 0; st.windowStart = Date.now(); }
+      st.count++;
+      if (st.count >= proxy.rpm) await new Promise(r => setTimeout(r, 800));
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), FORUM_FETCH_MS);
+      try {
+        const resp = await fetch(_ctBuildProxyTarget(proxy, targetUrl), {
+          signal: ctrl.signal,
+          referrerPolicy: "no-referrer",
+          credentials: "omit"
+        });
+        clearTimeout(tid);
+        if (resp.status === 403 || resp.status === 429) {
+          _ctBanProxy(proxy.url, 20000);
+          lastErr = new Error("HTTP_" + resp.status);
+          continue;
         }
-        return text;
+        if (!resp.ok) { lastErr = new Error("HTTP_" + resp.status); continue; }
+        const text = await _ctParseResp(proxy, resp);
+        if (text && text.length > 80 && (text.indexOf("<") >= 0 || text.indexOf("profile") >= 0)) {
+          const idx = pool.findIndex(p => p.url === proxy.url);
+          if (idx >= 0) _bestProxyIdx = idx;
+          if (!noCache && url.includes("controller=profile")) {
+            try { sessionStorage.setItem("ctfff_" + url, text); } catch(e) {}
+          }
+          return text;
+        }
+        lastErr = new Error("empty_response");
+      } catch(e) {
+        clearTimeout(tid);
+        lastErr = e;
+        if (e.name === "AbortError" || /403|429|408/.test(String(e.message))) _ctBanProxy(proxy.url, 20000);
+        console.warn("[proxy] " + proxy.url.slice(8, 36) + " FAIL:", e.message || e);
       }
-      throw new Error("empty_response");
-    }catch(e){
-      lastErr = e;
-      console.warn("[proxy"+(idx+1)+"] "+pd.url.slice(0,40)+" FAIL:", e.message);
-    }finally{
-      clearTimeout(tid);
     }
   }
   const hint = _ctIsFileOrigin ? "（本地 file:// 建议改用 GitHub Pages）" : (_ctIsGithubOrigin ? "（GitHub Pages 中转站繁忙，请稍后再试）" : "");
-  throw new Error("所有中转站均不可用" + hint + ": " + String(lastErr&&lastErr.message||lastErr));
+  throw lastErr || new Error("所有中转站均不可用" + hint);
 }
 async function fffGetSlug(uid){
-  const html=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+uid);
-  const doc=new DOMParser().parseFromString(html,"text/html");
-  for(const a of doc.querySelectorAll("a[href]")){
-    const href=a.getAttribute("href")||"";
-    const m=href.match(/\/profile\/([^/?#"]+)/);
-    if(m&&m[1].startsWith(uid+"-")) return m[1];
+  const ck = "ct_slug_" + uid;
+  try { const hit = localStorage.getItem(ck); if (hit) return hit; } catch(e) {}
+  const html = await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id=" + uid);
+  let slug = null;
+  const m0 = String(html).match(/\/profile\/(\d+-[^\/\"'?#\s<]+)/);
+  if (m0 && m0[1].startsWith(uid + "-")) slug = m0[1];
+  if (!slug) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    for (const a of doc.querySelectorAll("a[href]")) {
+      const href = a.getAttribute("href") || "";
+      const m = href.match(/\/profile\/(\d+-[^\/\?#"]+)/);
+      if (m && m[1].startsWith(uid + "-")) { slug = m[1]; break; }
+    }
   }
-  throw new Error("无法获取 slug");
+  if (!slug) throw new Error("无法获取 slug，请确认 UID 正确");
+  try { localStorage.setItem(ck, slug); } catch(e) {}
+  return slug;
 }
 function incKey_(uid,startDate,sfx){ return "ctInc_"+uid+"_"+startDate+(sfx||""); }
 function fetchRangeKey_(uid,startDate,endDate){ return String(uid||'')+'|'+String(startDate||'')+'|'+String(endDate||''); }
@@ -927,18 +972,6 @@ async function refreshForumDataFast(){
   const ok = await fetchForumDataCustom(true, sd||undefined, ed||undefined, {maxPages:30,maxCitationChecks:0});
   if(ok) closeShop();
 }
-async function fetchForumFromLogin(){
-  const err=document.getElementById("login-err");
-  const id=document.getElementById("inp-id").value.trim();
-  const uid=parseInt(document.getElementById("inp-uid").value.trim(),10);
-  if(!id){ if(err) err.textContent="请先输入论坛 ID"; return; }
-  if(!uid||uid<1){ if(err) err.textContent="请先输入有效 UID"; return; }
-  if(err) err.textContent="正在抓取论坛数据...";
-  _offline=false;
-  G.id=id; G.uid=uid;
-  const ok=await fetchForumData(true);
-  if(err) err.textContent=ok?"✅ 论坛数据已抓取，可进入游戏":"";
-}
 async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
   if(_forumFetching){
     if(showAlert) alert("正在抓取中，请稍候...");
@@ -946,7 +979,7 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
   }
   const ident=_applyForumIdentity_();
   if(!ident.uid){
-    if(showAlert) alert("请先输入有效 UID 后再抓取论坛数据。");
+    if(showAlert) alert("请先登入并输入有效 UID 后再抓取论坛数据。");
     return false;
   }
   if(G.id==="访客"||_offline){
@@ -1163,6 +1196,8 @@ function _applyForumIdentity_(){
 function updateMenuVersion_(){
   const el=document.getElementById("menu-version");
   if(el) el.textContent=GAME_VERSION;
+  const sub=document.querySelector("#menu .menu-sub");
+  if(sub) sub.textContent="交换糖果·三消消除·解锁关卡 · "+GAME_VERSION;
 }
 
 // ════ ID 历史记录 ════
@@ -2535,6 +2570,7 @@ function enterMenu(){
   if(G.skin)curSkin=G.skin;
   applyThemeNow();
   updateSkinUI();showScreen('menu');
+  if(!_offline&&!_forumFetched&&!_forumFetching&&G.uid>0)fetchForumData(false);
 }
 function updateMenuUI(){
   const el=document.getElementById('menu-id-label');
