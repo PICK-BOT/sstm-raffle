@@ -460,7 +460,44 @@ const LEVELS=Array.from({length:MAX_LEVELS},(_,i)=>genLevelCfg(i+1));
 // ══ CONFIG 常量 ══
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwtg97eIbxTMTAf2vx0hzOaJbD9DCwKJeCUibt20dsmMpXTgNzwsRRoo5U-UHgx8xM8eg/exec";
 const SHEET = "糖果小镇";
-const FORUM_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+const FORUM_PROXY = "https://pack-robot-ss.gamefishhero001.workers.dev/?url="; // 保留旧变量供兼容
+
+// ── 多中转站池 ──
+const FORUM_PROXY_POOL = [
+  { url: "https://pack-robot-ss.gamefishhero001.workers.dev/?url=", type:"prefix", rpm:2,  nullOrigin:true  },
+  { url: "https://corsproxy.io/?url=",                              type:"prefix", rpm:8,  nullOrigin:true  },
+  { url: "https://api.allorigins.win/get?url=",                     type:"json",   rpm:8,  nullOrigin:true  },
+  { url: "https://api.codetabs.com/v1/proxy?quest=",                type:"prefix", rpm:5,  nullOrigin:true  },
+  { url: "https://jsonp.su/api/proxy?url=",                         type:"jsonget",rpm:5,  nullOrigin:true  },
+  { url: "https://proxy.cors.sh/",                                  type:"prefix", rpm:5,  nullOrigin:true  },
+  { url: "https://thingproxy.freeboard.io/fetch/",                  type:"prefix", rpm:4,  nullOrigin:false },
+  { url: "https://cors-anywhere.herokuapp.com/",                    type:"prefix", rpm:3,  nullOrigin:false },
+];
+const _ctIsFileOrigin = (location.protocol === "file:");
+const _ctProxyState = {};
+FORUM_PROXY_POOL.forEach(p => { _ctProxyState[p.url] = { count:0, windowStart:Date.now(), banUntil:0 }; });
+function _ctPickProxy() {
+  const now = Date.now();
+  const pool = _ctIsFileOrigin ? FORUM_PROXY_POOL.filter(p => p.nullOrigin) : FORUM_PROXY_POOL;
+  for (const p of pool) {
+    const st = _ctProxyState[p.url];
+    if (st.banUntil > now) continue;
+    if (now - st.windowStart > 60000) { st.count = 0; st.windowStart = now; }
+    if (st.count < p.rpm) return p;
+  }
+  return pool.reduce((a, b) => (_ctProxyState[a.url].banUntil||0) <= (_ctProxyState[b.url].banUntil||0) ? a : b);
+}
+function _ctBanProxy(url) {
+  const st = _ctProxyState[url];
+  if (st) st.banUntil = Date.now() + 60000;
+  console.warn("[proxy] 中转站限速 60s:", url);
+}
+async function _ctParseResp(proxy, resp) {
+  const text = await resp.text();
+  if (proxy.type === "json")    { try { const j = JSON.parse(text); return j.contents || text; } catch(e) { return text; } }
+  if (proxy.type === "jsonget") { try { const j = JSON.parse(text); return j.body     || text; } catch(e) { return text; } }
+  return text;
+}
 const NOVICE_FORUM_RE = /forum\/32[-\/]/;
 const FORUM_FETCH_MS = 14000;
 const KEY_HISTORY = "ct_id_history";
@@ -658,20 +695,43 @@ async function fffProxyGet(url, noCache){
     if(hit) return hit;
   }
   const bustUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
-  const ctrl=new AbortController();
-  const tid=setTimeout(()=>ctrl.abort(),FORUM_FETCH_MS);
-  let resp;
-  try{
-    resp=await fetch(FORUM_PROXY+encodeURIComponent(bustUrl),{signal:ctrl.signal});
-  }finally{
-    clearTimeout(tid);
+  const maxTry = 4;
+  let lastErr = null;
+  const tried = new Set();
+  for (let attempt = 0; attempt < maxTry; attempt++) {
+    const proxy = _ctPickProxy();
+    if (tried.has(proxy.url)) break;
+    tried.add(proxy.url);
+    const st = _ctProxyState[proxy.url];
+    if (Date.now() - st.windowStart > 60000) { st.count = 0; st.windowStart = Date.now(); }
+    st.count++;
+    if (st.count >= proxy.rpm) await new Promise(r => setTimeout(r, 1500));
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), FORUM_FETCH_MS);
+    try {
+      const resp = await fetch(proxy.url + encodeURIComponent(bustUrl), { signal: ctrl.signal });
+      clearTimeout(tid);
+      if (resp.status === 403 || resp.status === 429) {
+        _ctBanProxy(proxy.url);
+        lastErr = new Error("中转站 " + resp.status);
+        await new Promise(r => setTimeout(r, 400));
+        continue;
+      }
+      if (!resp.ok) { lastErr = new Error("网络错误 " + resp.status); continue; }
+      const text = await _ctParseResp(proxy, resp);
+      if (!noCache && url.includes("controller=profile")) {
+        try { sessionStorage.setItem("ctfff_" + url, text); } catch(e) {}
+      }
+      return text;
+    } catch(e) {
+      clearTimeout(tid);
+      lastErr = e;
+      if (e.name === "AbortError" || /403|429/.test(e.message)) _ctBanProxy(proxy.url);
+      if (attempt < maxTry - 1) await new Promise(r => setTimeout(r, 600));
+    }
   }
-  if(!resp.ok) throw new Error("网络错误 "+resp.status);
-  const text=await resp.text();
-  if(!noCache&&url.includes("controller=profile")){
-    try{sessionStorage.setItem("ctfff_"+url,text);}catch(e){}
-  }
-  return text;
+  const hint = _ctIsFileOrigin ? "（本地 file:// 打开受 CORS 限制，建议用 GitHub Pages 或 localhost）" : "";
+  throw lastErr || new Error("所有中转站均不可用" + hint);
 }
 async function fffGetSlug(uid){
   const html=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+uid);

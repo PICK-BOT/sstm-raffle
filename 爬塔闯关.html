@@ -1553,7 +1553,133 @@ window.addEventListener("DOMContentLoaded",()=>{
 });
 
 // ===== FORUM AUTO-FETCH（与 gal-story 同抓取逻辑；云端写入 GAS「论坛抓取记录_爬塔」） =====
-const FFF_PROXY='https://api.codetabs.com/v1/proxy?quest=';
+
+// ── 多中转站池 ──
+// type: 'prefix'  → fetch(url + encodeURIComponent(target))，回传 HTML 纯文字
+// type: 'json'    → fetch(url + encodeURIComponent(target))，回传 JSON { contents }
+// type: 'jsonget' → fetch(url + encodeURIComponent(target))，回传 JSON { body } (jsonp.su)
+// nullOrigin: true → 该代理可接受 file:// 的 null origin（重要！）
+const FFF_PROXY_POOL = [
+  // ① 你自己的 Cloudflare Worker — 最优先，但 SSTM 可能 ban CF IP
+  { url: 'https://pack-robot-ss.gamefishhero001.workers.dev/?url=', type:'prefix', rpm:2, nullOrigin:true },
+  // ② corsproxy.io — 支援 null origin，稳定
+  { url: 'https://corsproxy.io/?url=', type:'prefix', rpm:8, nullOrigin:true },
+  // ③ allorigins get（JSON 模式，/get?url=）— 支援 null origin
+  { url: 'https://api.allorigins.win/get?url=', type:'json', rpm:8, nullOrigin:true },
+  // ④ htmlcodify（专门代理 HTML，支援 null origin）
+  { url: 'https://api.codetabs.com/v1/proxy?quest=', type:'prefix', rpm:5, nullOrigin:true },
+  // ⑤ jsonp.su — 回传 JSON {body}, 支援 null origin
+  { url: 'https://jsonp.su/api/proxy?url=', type:'jsonget', rpm:5, nullOrigin:true },
+  // ⑥ cors.sh（需 header，但本站开放，支援 null origin）
+  { url: 'https://proxy.cors.sh/', type:'prefix', rpm:5, nullOrigin:true },
+  // ⑦ thingproxy — Glitch 托管，较稳
+  { url: 'https://thingproxy.freeboard.io/fetch/', type:'prefix', rpm:4, nullOrigin:false },
+  // ⑧ cors-anywhere heroku（常被滥用，列最末）
+  { url: 'https://cors-anywhere.herokuapp.com/', type:'prefix', rpm:3, nullOrigin:false },
+];
+
+// 检测是否为 file:// 本地运行（此时 origin 为 null，很多代理会封）
+const _isFileOrigin = (location.protocol === 'file:');
+
+// 限速状态追踪
+const _proxyState = {};
+FFF_PROXY_POOL.forEach(p => {
+  _proxyState[p.url] = { count: 0, windowStart: Date.now(), banUntil: 0 };
+});
+
+let FFF_PROXY = FFF_PROXY_POOL[0].url;
+
+function _pickProxy() {
+  const now = Date.now();
+  // file:// 环境只选 nullOrigin:true 的代理
+  const pool = _isFileOrigin ? FFF_PROXY_POOL.filter(p => p.nullOrigin) : FFF_PROXY_POOL;
+  for (const p of pool) {
+    const st = _proxyState[p.url];
+    if (st.banUntil > now) continue;
+    if (now - st.windowStart > 60000) { st.count = 0; st.windowStart = now; }
+    if (st.count < p.rpm) return p;
+  }
+  // 全部超限：选冷却最短的
+  return pool.reduce((a, b) =>
+    (_proxyState[a.url].banUntil || 0) <= (_proxyState[b.url].banUntil || 0) ? a : b
+  );
+}
+
+function _banProxy(proxyUrl) {
+  const st = _proxyState[proxyUrl];
+  if (st) st.banUntil = Date.now() + 60000;
+  console.warn('[proxy] 中转站被限速，暂停 60 秒:', proxyUrl);
+}
+
+// 解析各中转站的响应体 → 纯 HTML 字符串
+async function _parseProxyResp(proxy, resp) {
+  const text = await resp.text();
+  if (proxy.type === 'json') {
+    // allorigins /get 返回 { contents: "...", status:{...} }
+    try { const j = JSON.parse(text); return j.contents || text; } catch(e) { return text; }
+  }
+  if (proxy.type === 'jsonget') {
+    // jsonp.su 返回 { body: "..." }
+    try { const j = JSON.parse(text); return j.body || text; } catch(e) { return text; }
+  }
+  return text; // prefix 模式直接是 HTML
+}
+
+// 核心请求：自动选站 + 失败切换重试（最多尝试 4 个站）
+async function fffProxyGet(targetUrl) {
+  const sk = 'fff_' + targetUrl;
+  const hit = sessionStorage.getItem(sk);
+  if (hit) return hit;
+
+  const maxTry = 4;
+  let lastErr = null;
+  const tried = new Set();
+
+  for (let attempt = 0; attempt < maxTry; attempt++) {
+    const proxy = _pickProxy();
+    if (tried.has(proxy.url)) break; // 没有新的可用站了
+    tried.add(proxy.url);
+
+    const st = _proxyState[proxy.url];
+    if (Date.now() - st.windowStart > 60000) { st.count = 0; st.windowStart = Date.now(); }
+    st.count++;
+    FFF_PROXY = proxy.url;
+
+    if (st.count >= proxy.rpm) await new Promise(r => setTimeout(r, 1500));
+
+    try {
+      const fetchUrl = proxy.url + encodeURIComponent(targetUrl);
+      const headers = {};
+      // cors.sh 需要 origin header 声明
+      if (proxy.url.includes('cors.sh')) headers['x-cors-api-key'] = 'temp_' + Date.now();
+      const resp = await fetch(fetchUrl, {
+        headers,
+        signal: AbortSignal.timeout(30000)
+      });
+      if (resp.status === 403 || resp.status === 429) {
+        _banProxy(proxy.url);
+        lastErr = new Error('中转站 ' + resp.status);
+        await new Promise(r => setTimeout(r, 400));
+        continue;
+      }
+      if (!resp.ok) {
+        lastErr = new Error('网络错误 ' + resp.status);
+        await new Promise(r => setTimeout(r, 400));
+        continue;
+      }
+      const text = await _parseProxyResp(proxy, resp);
+      try { sessionStorage.setItem(sk, text); } catch(e) {}
+      return text;
+    } catch(e) {
+      lastErr = e;
+      if (e.name === 'TimeoutError' || /403|429/.test(e.message)) _banProxy(proxy.url);
+      if (attempt < maxTry - 1) await new Promise(r => setTimeout(r, 600));
+    }
+  }
+  const hint = _isFileOrigin ? '（提示：本地 file:// 打开会受浏览器 CORS 限制，建议用 Edge/Chrome 并停用 web security，或用 localhost 打开）' : '';
+  throw lastErr || new Error('所有中转站均不可用' + hint);
+}
+
 const FFF_IMP='fff_imp_tower';
 let _fffResult=null,_fffIsUpdate=false,_fffPendingR=0,_fffPendingQ=0;
 
@@ -1637,15 +1763,6 @@ function fffSavePI(slug,idx){try{localStorage.setItem('fff_pi_'+slug,JSON.string
 function fffGetImp(uid){try{return JSON.parse(localStorage.getItem(FFF_IMP+'_'+uid)||'null');}catch(e){return null;}}
 function fffSaveImp(uid,key,r,c){try{localStorage.setItem(FFF_IMP+'_'+uid,JSON.stringify({key,r,c}));}catch(e){}}
 
-async function fffProxyGet(url){
-  const sk='fff_'+url,hit=sessionStorage.getItem(sk);
-  if(hit)return hit;
-  const resp=await fetch(FFF_PROXY+encodeURIComponent(url),{signal:AbortSignal.timeout(30000)});
-  if(!resp.ok)throw new Error('网络错误 '+resp.status);
-  const text=await resp.text();
-  try{sessionStorage.setItem(sk,text);}catch(e){}
-  return text;
-}
 async function fffGetUsername(uid){
   const html=await fffProxyGet('https://sstm.moe/?app=core&module=members&controller=profile&id='+uid);
   const doc=new DOMParser().parseFromString(html,'text/html');
@@ -1732,15 +1849,34 @@ function fffOpenModal(isUpdate){
   _fffIsUpdate=isUpdate;
   const modal=document.getElementById('fff-modal');
   if(!modal)return;
-  const uid=isUpdate?String(fffGetCurrentUid()||''):'';
+
+  // 自动带入已登录的 UID（主菜单与游戏中均适用）
+  const currentUid=String(fffGetCurrentUid()||'');
   const el=document.getElementById('fff-uid');
   if(el){
-    el.value=uid;
+    el.value=currentUid;
     el.disabled=false;
     el.readOnly=false;
   }
+
+  // 自动带入今天日期为结束日期，开始日期预设当月 1 日（玩家可手动修改）
+  const today=new Date();
+  const yyyy=today.getFullYear();
+  const mm=String(today.getMonth()+1).padStart(2,'0');
+  const dd=String(today.getDate()).padStart(2,'0');
+  const todayStr=yyyy+'-'+mm+'-'+dd;
+  const monthStartStr=yyyy+'-'+mm+'-01';
+  const ds=document.getElementById('fff-date-start');
+  const de=document.getElementById('fff-date-end');
+  if(ds) ds.value=monthStartStr;
+  if(de) de.value=todayStr;
+
   const tit=document.getElementById('fff-modal-title');
   if(tit) tit.textContent=isUpdate?'📡 论坛更新（游戏中）':'📡 论坛自动读取';
+  // file:// 打开时显示提示
+  const fw = document.getElementById('fff-filewarning');
+  if (fw) fw.style.display = (location.protocol === 'file:') ? 'block' : 'none';
+
   modal.style.display='flex';
 }
 function fffCloseModal(){const m=document.getElementById('fff-modal');if(m)m.style.display='none';}
@@ -1975,6 +2111,11 @@ window.__applyPortableSaveData=async function(data){
     <div class="fff-row"><label>UID</label><input id="fff-uid" class="fff-inp" type="number" placeholder="论坛数字 UID" inputmode="numeric"></div>
     <div class="fff-row"><label>开始日期</label><input id="fff-date-start" class="fff-inp" type="date" value="2026-03-01"></div>
     <div class="fff-row"><label>结束日期</label><input id="fff-date-end" class="fff-inp" type="date" value="2026-03-20"></div>
+    <div id="fff-filewarning" style="display:none;margin:10px 0 0;padding:8px 10px;background:#5a3010;border-radius:6px;color:#fdb;font-size:.78rem;line-height:1.6">
+      ⚠️ 检测到你是用 <b>file://</b> 直接打开的 HTML。<br>
+      建议改用浏览器「<b>拖入</b>」或用 VS Code Live Server / 任意本地服务器打开，<br>
+      或在 Chrome/Edge 启动参数加 <code style="background:#333;padding:1px 4px;border-radius:3px">--disable-web-security</code>，否则部分代理无法使用。
+    </div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:16px">
       <button type="button" class="fff-btn-ok" onclick="fffDoFetch()">🔍 开始读取</button>
       <button type="button" class="fff-btn-cancel" onclick="fffCloseModal()">取消</button>

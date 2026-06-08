@@ -473,7 +473,48 @@ const LEVELS=Array.from({length:MAX_LEVELS},function(_,i){return genLevelCfg(i+1
 // ══════════════════════════════════════════
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxbNA8K3cV8J-e8SR9QXoix-aKFyqvs2-EI4s6JHhssphBqI3Xw6JA3_EVTz4Ex2pF94g/exec";
 const SHEET = "倒水排序";
-const FORUM_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+const FORUM_PROXY = "https://pack-robot-ss.gamefishhero001.workers.dev/?url="; // 保留旧变量供兼容
+
+// ── 多中转站池 ──
+// type: 'prefix'  → 直接拼接，回传 HTML
+// type: 'json'    → allorigins /get，回传 JSON { contents }
+// type: 'jsonget' → jsonp.su，回传 JSON { body }
+// nullOrigin: true → 支援 file:// 本地打开（origin=null）
+const FORUM_PROXY_POOL_ = [
+  { url: "https://pack-robot-ss.gamefishhero001.workers.dev/?url=", type:"prefix", rpm:2,  nullOrigin:true  },
+  { url: "https://corsproxy.io/?url=",                              type:"prefix", rpm:8,  nullOrigin:true  },
+  { url: "https://api.allorigins.win/get?url=",                     type:"json",   rpm:8,  nullOrigin:true  },
+  { url: "https://api.codetabs.com/v1/proxy?quest=",                type:"prefix", rpm:5,  nullOrigin:true  },
+  { url: "https://jsonp.su/api/proxy?url=",                         type:"jsonget",rpm:5,  nullOrigin:true  },
+  { url: "https://proxy.cors.sh/",                                  type:"prefix", rpm:5,  nullOrigin:true  },
+  { url: "https://thingproxy.freeboard.io/fetch/",                  type:"prefix", rpm:4,  nullOrigin:false },
+  { url: "https://cors-anywhere.herokuapp.com/",                    type:"prefix", rpm:3,  nullOrigin:false },
+];
+const _isFileOrigin_ = (location.protocol === "file:");
+const _proxyState_   = {};
+FORUM_PROXY_POOL_.forEach(p => { _proxyState_[p.url] = { count:0, windowStart:Date.now(), banUntil:0 }; });
+function _pickProxy_(){
+  const now = Date.now();
+  const pool = _isFileOrigin_ ? FORUM_PROXY_POOL_.filter(p=>p.nullOrigin) : FORUM_PROXY_POOL_;
+  for(const p of pool){
+    const st = _proxyState_[p.url];
+    if(st.banUntil > now) continue;
+    if(now - st.windowStart > 60000){ st.count=0; st.windowStart=now; }
+    if(st.count < p.rpm) return p;
+  }
+  return pool.reduce((a,b)=>(_proxyState_[a.url].banUntil||0)<=(_proxyState_[b.url].banUntil||0)?a:b);
+}
+function _banProxy_(url){
+  const st=_proxyState_[url];
+  if(st) st.banUntil=Date.now()+60000;
+  console.warn("[proxy] 中转站限速 60s:", url);
+}
+async function _parseProxyResp_(proxy, resp){
+  const text = await resp.text();
+  if(proxy.type==="json"){   try{ const j=JSON.parse(text); return j.contents||text; }catch(e){ return text; } }
+  if(proxy.type==="jsonget"){ try{ const j=JSON.parse(text); return j.body||text;     }catch(e){ return text; } }
+  return text;
+}
 const NOVICE_FORUM_RE = /forum\/32[-\/]/;
 const FORUM_FETCH_MS = 22000;
 const KEY_HISTORY = "ws_id_history";
@@ -637,20 +678,42 @@ async function fffProxyGet(url, noCache){
     if(hit) return hit;
   }
   const bustUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
-  const ctrl=new AbortController();
-  const tid=setTimeout(()=>ctrl.abort(),FORUM_FETCH_MS);
-  let resp;
-  try{
-    resp=await fetch(FORUM_PROXY+encodeURIComponent(bustUrl),{signal:ctrl.signal});
-  }finally{
-    clearTimeout(tid);
+  const maxTry=4;
+  let lastErr=null;
+  const tried=new Set();
+  for(let attempt=0; attempt<maxTry; attempt++){
+    const proxy=_pickProxy_();
+    if(tried.has(proxy.url)) break;
+    tried.add(proxy.url);
+    const st=_proxyState_[proxy.url];
+    if(Date.now()-st.windowStart>60000){ st.count=0; st.windowStart=Date.now(); }
+    st.count++;
+    if(st.count>=proxy.rpm) await new Promise(r=>setTimeout(r,1500));
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(), FORUM_FETCH_MS);
+    try{
+      const resp=await fetch(proxy.url+encodeURIComponent(bustUrl),{signal:ctrl.signal});
+      clearTimeout(tid);
+      if(resp.status===403||resp.status===429){
+        _banProxy_(proxy.url);
+        lastErr=new Error("中转站 "+resp.status);
+        await new Promise(r=>setTimeout(r,400));
+        continue;
+      }
+      if(!resp.ok){ lastErr=new Error("网络错误 "+resp.status); continue; }
+      const text=await _parseProxyResp_(proxy, resp);
+      if(!noCache&&url.includes("controller=profile")){
+        try{sessionStorage.setItem("tmfff_"+url,text);}catch(e){}
+      }
+      return text;
+    }catch(e){
+      clearTimeout(tid);
+      lastErr=e;
+      if(e.name==="AbortError"||/403|429/.test(e.message)) _banProxy_(proxy.url);
+      if(attempt<maxTry-1) await new Promise(r=>setTimeout(r,600));
+    }
   }
-  if(!resp.ok) throw new Error("网络错误 "+resp.status);
-  const text=await resp.text();
-  if(!noCache&&url.includes("controller=profile")){
-    try{sessionStorage.setItem("tmfff_"+url,text);}catch(e){}
-  }
-  return text;
+  throw lastErr||new Error("所有中转站均不可用");
 }
 async function fffGetSlug(uid){
   const html=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+uid);
@@ -2081,9 +2144,7 @@ function enterMenu(){ensureOwnedBgSkins();if(G.bgSkin)curBgSkin=G.bgSkin;applyBg
   updateSkinUI();
   if(typeof updateShapeUI==='function') updateShapeUI();
   showScreen('menu');
-  if(!_offline&&!_forumFetched&&G.uid>0){
-    setTimeout(function(){ fetchForumData(false).catch(function(){}); },100);
-  }
+  // 登入时不自动抓取论坛，请玩家手动点击「论坛读取」按钮
 }
 
 function generateWaterLevel(cfg) {

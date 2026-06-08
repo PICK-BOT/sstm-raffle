@@ -378,7 +378,48 @@ const VER = "v1.0";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzbR0_yhUphjOQRKH5Bpskj8yRdjpXwVRD_CmouHBApHGzPav80ofvmE-jbEBT92gbA/exec";
 // 替换为你的 GAS URL（打卡游戏专用，可与爬塔共用同一 GAS，需在 GAS 中加对应 sheet 处理逻辑）
 const SHEET = "新手村打卡";
-const FORUM_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+const FORUM_PROXY = "https://pack-robot-ss.gamefishhero001.workers.dev/?url="; // 保留旧变量供兼容
+
+// ── 多中转站池 ──
+// type: 'prefix'  → 直接拼接，回传 HTML
+// type: 'json'    → allorigins /get，回传 JSON { contents }
+// type: 'jsonget' → jsonp.su，回传 JSON { body }
+// nullOrigin: true → 支援 file:// 本地打开（origin=null）
+const FORUM_PROXY_POOL = [
+  { url: "https://pack-robot-ss.gamefishhero001.workers.dev/?url=", type:"prefix", rpm:2,  nullOrigin:true  },
+  { url: "https://corsproxy.io/?url=",                              type:"prefix", rpm:8,  nullOrigin:true  },
+  { url: "https://api.allorigins.win/get?url=",                     type:"json",   rpm:8,  nullOrigin:true  },
+  { url: "https://api.codetabs.com/v1/proxy?quest=",                type:"prefix", rpm:5,  nullOrigin:true  },
+  { url: "https://jsonp.su/api/proxy?url=",                         type:"jsonget",rpm:5,  nullOrigin:true  },
+  { url: "https://proxy.cors.sh/",                                  type:"prefix", rpm:5,  nullOrigin:true  },
+  { url: "https://thingproxy.freeboard.io/fetch/",                  type:"prefix", rpm:4,  nullOrigin:false },
+  { url: "https://cors-anywhere.herokuapp.com/",                    type:"prefix", rpm:3,  nullOrigin:false },
+];
+const _cgIsFileOrigin = (location.protocol === "file:");
+const _cgProxyState = {};
+FORUM_PROXY_POOL.forEach(p => { _cgProxyState[p.url] = { count:0, windowStart:Date.now(), banUntil:0 }; });
+function _cgPickProxy() {
+  const now = Date.now();
+  const pool = _cgIsFileOrigin ? FORUM_PROXY_POOL.filter(p => p.nullOrigin) : FORUM_PROXY_POOL;
+  for (const p of pool) {
+    const st = _cgProxyState[p.url];
+    if (st.banUntil > now) continue;
+    if (now - st.windowStart > 60000) { st.count = 0; st.windowStart = now; }
+    if (st.count < p.rpm) return p;
+  }
+  return pool.reduce((a, b) => (_cgProxyState[a.url].banUntil||0) <= (_cgProxyState[b.url].banUntil||0) ? a : b);
+}
+function _cgBanProxy(url) {
+  const st = _cgProxyState[url];
+  if (st) st.banUntil = Date.now() + 60000;
+  console.warn("[proxy] 中转站限速 60s:", url);
+}
+async function _cgParseResp(proxy, resp) {
+  const text = await resp.text();
+  if (proxy.type === "json")    { try { const j = JSON.parse(text); return j.contents || text; } catch(e) { return text; } }
+  if (proxy.type === "jsonget") { try { const j = JSON.parse(text); return j.body     || text; } catch(e) { return text; } }
+  return text;
+}
 const NOVICE_FORUM_RE = /forum\/32[-\/]/;  // 新手保护区 forum/32
 const SEISO_CAP = 5000, FEATHER_CAP = 2000;
 
@@ -1431,14 +1472,40 @@ async function fffProxyGet(url, noCache){
   }
   // 加时间戳避免 proxy 本身缓存
   const bustUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
-  const resp=await fetch(FORUM_PROXY+encodeURIComponent(bustUrl),{signal:AbortSignal.timeout(30000)});
-  if(!resp.ok) throw new Error("网络错误 "+resp.status);
-  const text=await resp.text();
-  // 只缓存 profile slug 页（url 含 controller=profile），其余不缓存
-  if(!noCache && url.includes("controller=profile")){
-    try{ sessionStorage.setItem("cgfff_"+url, text); }catch(e){}
+  const maxTry = 4;
+  let lastErr = null;
+  const tried = new Set();
+  for (let attempt = 0; attempt < maxTry; attempt++) {
+    const proxy = _cgPickProxy();
+    if (tried.has(proxy.url)) break;
+    tried.add(proxy.url);
+    const st = _cgProxyState[proxy.url];
+    if (Date.now() - st.windowStart > 60000) { st.count = 0; st.windowStart = Date.now(); }
+    st.count++;
+    if (st.count >= proxy.rpm) await new Promise(r => setTimeout(r, 1500));
+    try {
+      const resp = await fetch(proxy.url + encodeURIComponent(bustUrl), { signal: AbortSignal.timeout(30000) });
+      if (resp.status === 403 || resp.status === 429) {
+        _cgBanProxy(proxy.url);
+        lastErr = new Error("中转站 " + resp.status);
+        await new Promise(r => setTimeout(r, 400));
+        continue;
+      }
+      if (!resp.ok) { lastErr = new Error("网络错误 " + resp.status); continue; }
+      const text = await _cgParseResp(proxy, resp);
+      // 只缓存 profile slug 页
+      if (!noCache && url.includes("controller=profile")) {
+        try { sessionStorage.setItem("cgfff_" + url, text); } catch(e) {}
+      }
+      return text;
+    } catch(e) {
+      lastErr = e;
+      if (e.name === "TimeoutError" || /403|429/.test(e.message)) _cgBanProxy(proxy.url);
+      if (attempt < maxTry - 1) await new Promise(r => setTimeout(r, 600));
+    }
   }
-  return text;
+  const hint = _cgIsFileOrigin ? "（本地 file:// 打开受 CORS 限制，建议用 GitHub Pages 或 localhost）" : "";
+  throw lastErr || new Error("所有中转站均不可用" + hint);
 }
 
 async function fffGetSlug(uid){
@@ -1591,10 +1658,20 @@ async function countGameSheetRecords_(sheetUrl, startDate, endDate, uid){
     // 强制不缓存，加时间戳
     const csvUrl="https://docs.google.com/spreadsheets/d/"+m1[1]
       +"/export?format=csv&gid="+m2[1]+"&_t="+Date.now();
-    const resp=await fetch(FORUM_PROXY+encodeURIComponent(csvUrl),
-      {signal:AbortSignal.timeout(25000)});
-    if(!resp.ok) return 0;
-    const text=await resp.text();
+    // CSV 抓取也走代理池
+    let text = null;
+    { const _p = _cgPickProxy();
+      const _st = _cgProxyState[_p.url];
+      if (Date.now() - _st.windowStart > 60000) { _st.count = 0; _st.windowStart = Date.now(); }
+      _st.count++;
+      try {
+        const _r = await fetch(_p.url + encodeURIComponent(csvUrl), { signal: AbortSignal.timeout(25000) });
+        if (_r.status === 403 || _r.status === 429) _cgBanProxy(_p.url);
+        if (!_r.ok) return 0;
+        text = await _cgParseResp(_p, _r);
+      } catch(e) { _cgBanProxy(_p.url); return 0; }
+    }
+    if (!text) return 0;
     if(!text||text.startsWith("<!DOCTYPE")||text.startsWith("<html")) return 0;
     const uidStr=String(uid||"").trim();
     const idStr=String((G&&G.id)||"").trim();
