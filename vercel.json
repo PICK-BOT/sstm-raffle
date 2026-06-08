@@ -2,15 +2,15 @@
   "rewrites": [
     {
       "source": "/candy-proxy",
-      "destination": "https://script.google.com/macros/s/AKfycbwtg97eIbxTMTAf2vx0hzOaJbD9DCwKJeCUibt20dsmMpXTgNzwsRRoo5U-UHgx8xM8eg/exec"
+      "destination": "https://script.google.com/macros/s/AKfycbwtg97eIbxTMTAf2vx0hzOaJbD9DCwKJeCUibt20dsmMpXTgNzwsRRoo5U-UHgx8xM8eg/exec?action=fetch_url"
     },
     {
       "source": "/board-proxy",
-      "https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsiAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec"
+      "destination": "https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsIAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec?action=fetch_url"
     },
     {
       "source": "/gal-proxy",
-      "destination": "https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec"
+      "destination": "https://script.google.com/macros/s/AKfycybOFF3vJ3kXcITjeZ0LL14BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec?action=fetch_url"
     }
   ]
 }
