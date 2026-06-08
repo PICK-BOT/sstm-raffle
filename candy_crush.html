@@ -38,7 +38,7 @@ body{background:var(--bg);font-family:'Nunito',sans-serif;color:#fff;overflow:hi
 .menu-btn-sm{padding:5px 10px;border-radius:18px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;font-size:.72rem;font-weight:700;font-family:'Nunito',sans-serif}
 
 /* ── GAME ── */
-#game{background:radial-gradient(ellipse at 50% 30%,#2d0a5e 0%,#1a0533 60%);flex-direction:column;padding:0;overflow:hidden;background-size:cover;background-position:center}
+#game{background:radial-gradient(ellipse at 50% 30%,#2d0a5e 0%,#1a0533 60%);flex-direction:column;padding:0;overflow:hidden;background-size:cover;background-position:center;height:100dvh;max-height:100dvh}
 body.skin-forest #game{background:radial-gradient(ellipse at 50% 30%,#0a3a1a 0%,#061810 60%)}
 body.skin-ocean  #game{background:radial-gradient(ellipse at 50% 30%,#0a1a4a 0%,#040d28 60%)}
 body.skin-sunset #game{background:radial-gradient(ellipse at 50% 30%,#4a1a0a 0%,#280a04 60%)}
@@ -64,7 +64,7 @@ body.skin-retro    #game{background:radial-gradient(ellipse at 50% 30%,#3a2000 0
 #progress-bar{height:100%;background:linear-gradient(90deg,#f472b6,#fde68a);border-radius:3px;transition:width .4s}
 
 /* BOARD */
-#board-wrap{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:4px;position:relative}
+#board-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:4px;position:relative}
 #board{position:relative;background:rgba(0,0,0,.2);border-radius:12px;border:1.5px solid rgba(255,255,255,.07)}
 
 /* 格子底层（障碍/果冻视觉） */
@@ -98,7 +98,9 @@ body.skin-retro    #game{background:radial-gradient(ellipse at 50% 30%,#3a2000 0
 .candy.selected{outline:3px solid #fde68a !important;outline-offset:1px;z-index:9 !important;animation:selPulse .4s ease-in-out infinite alternate}
 
 /* 暗格样式 */
-.candy.dark-unrevealed{background:linear-gradient(135deg,#1a1040,#0d0826)!important;color:rgba(147,197,253,.5)!important;border-color:rgba(147,197,253,.3)!important}
+.candy.dark-unrevealed{background:radial-gradient(circle at 50% 35%,#3b2a7a 0%,#12082a 72%)!important;color:#a5b4fc!important;border:2px solid rgba(129,140,248,.65)!important;box-shadow:inset 0 0 16px rgba(99,102,241,.55),0 4px 0 rgba(0,0,0,.5)!important;animation:darkPulse 1.4s ease-in-out infinite alternate}
+@keyframes darkPulse{from{filter:brightness(.85)}to{filter:brightness(1.15)}}
+.bg-cell.dark-hint{background:rgba(26,16,64,.82);box-shadow:inset 0 0 0 2px rgba(129,140,248,.4)}
 /* 消除动画 */
 .candy.popping{animation:candyPop .22s ease-out forwards;pointer-events:none}
 @keyframes candyPop{0%{transform:scale(1)}60%{transform:scale(1.3)}100%{transform:scale(0);opacity:0}}
@@ -206,7 +208,9 @@ body.skin-retro    #game{background:radial-gradient(ellipse at 50% 30%,#3a2000 0
     <div class="menu-btn-row">
       <button class="menu-btn-sm" onclick="openShop()">🛒 商店</button>
       <button class="menu-btn-sm" onclick="openSkinPanel()">🎨 皮肤</button>
-      <button class="menu-btn-sm" onclick="downloadGameData()">📥</button>
+      <button class="menu-btn-sm" onclick="downloadGameData()">📥 存档</button>
+      <button class="menu-btn-sm" onclick="importGameSaveData_()">📤 读档</button>
+      <button class="menu-btn-sm" onclick="openHowToPlay()">❓ 玩法</button>
       <button class="menu-btn-sm" onclick="doLogout()">🚪</button>
       <button class="menu-btn-sm" onclick="openCandyGuide()">📖 图鉴</button>
     </div>
@@ -262,6 +266,30 @@ body.skin-retro    #game{background:radial-gradient(ellipse at 50% 30%,#3a2000 0
 </div>
 
 <div id="tm-offline-bar" onclick="retryCloud()">🔴 离线游玩中<br><span style="font-size:.68rem;opacity:.8">点击重新连线</span></div>
+
+<!-- 玩法介绍 -->
+<div id="howto-overlay" class="overlay" style="z-index:90">
+  <div class="ov-card" style="max-width:400px;max-height:88vh;overflow-y:auto;text-align:left">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="ov-title" style="margin:0;color:#fde68a">❓ 玩法介绍</div>
+      <button onclick="closeHowToPlay()" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:1rem">×</button>
+    </div>
+    <div style="font-size:.8rem;color:rgba(255,255,255,.78);line-height:1.85">
+      <b style="color:#f472b6">基本操作</b><br>
+      点击选中一颗糖果，再点相邻糖果交换。三连以上同色即可消除。<br><br>
+      <b style="color:#f472b6">关卡类型</b><br>
+      得分关、果冻关、收集关、冰块关、食材关、混合关、彩虹关、订单关、暗格关、冲分关——每 10 关循环一次，难度逐步提升。<br><br>
+      <b style="color:#f472b6">暗格关</b><br>
+      暗格显示为 🌑，看不见里面颜色；在暗格旁边消除可揭开。<br><br>
+      <b style="color:#f472b6">道具</b><br>
+      🔨 锤子：直接消除一格 · 🍭 棒棒糖：变条纹糖 · 🐟 鱼鱼：随机消除<br><br>
+      <b style="color:#f472b6">商店</b><br>
+      用论坛回复数/被引用数购买道具与皮肤；可设定日期区间后手动抓取论坛数据。<br><br>
+      <b style="color:#f472b6">存档</b><br>
+      主画面「📥 存档」下载 CSV，「📤 读档」可读取先前下载的存档。
+    </div>
+  </div>
+</div>
 
 <!-- 糖果图鉴弹窗 -->
 <div id="guide-overlay" class="overlay" style="z-index:90">
@@ -457,24 +485,36 @@ function genLevelCfg(id){
     tier,pos,
   };
 }
-const MAX_LEVELS=40;
-const LEVELS=Array.from({length:MAX_LEVELS},(_,i)=>genLevelCfg(i+1));
+const LEVELS_BATCH=20;
+const LEVELS=Array.from({length:LEVELS_BATCH},(_,i)=>genLevelCfg(i+1));
+function ensureLevelExists(id){
+  const n=parseInt(id,10);
+  if(!n||n<1) return null;
+  let lv=LEVELS.find(l=>l.id===n);
+  if(!lv){ lv=genLevelCfg(n); LEVELS.push(lv); LEVELS.sort((a,b)=>a.id-b.id); }
+  return lv;
+}
+function getMenuLevelMax(){
+  const unlocked=getUnlocked();
+  const maxU=Math.max(...unlocked,1);
+  const cleared=G.cleared||[];
+  const maxC=cleared.length?Math.max(...cleared):0;
+  return Math.max(maxU,maxC)+8;
+}
 
 // ══ CONFIG 常量 ══
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwtg97eIbxTMTAf2vx0hzOaJbD9DCwKJeCUibt20dsmMpXTgNzwsRRoo5U-UHgx8xM8eg/exec";
 const SHEET = "糖果小镇";
-const GAME_VERSION = "v2.1.1";
-const FORUM_PROXY = "https://api.allorigins.win/get?url="; // 保留旧变量供兼容
+const GAME_VERSION = "v2.2.0";
+const FORUM_PROXY = "https://pack-robot-ss.gamefishhero001.workers.dev/?url="; // 保留旧变量供兼容
 
-// ── 多中转站池（比照 checkin_game；allorigins /get 优先，浏览器 CORS 最稳）──
+// ── fetch 备用池（主路径用 allorigins JSONP 绕过 CORS）──
 const FORUM_PROXY_POOL = [
-  { url: "https://api.allorigins.win/get?url=",                     type:"json",   rpm:10, nullOrigin:true },
-  { url: "https://pack-robot-ss.gamefishhero001.workers.dev/?url=", type:"prefix", rpm:3,  nullOrigin:true },
+  { url: "https://pack-robot-ss.gamefishhero001.workers.dev/?url=", type:"prefix", rpm:4,  nullOrigin:true },
   { url: "https://corsproxy.io/?url=",                              type:"prefix", rpm:8,  nullOrigin:true },
   { url: "https://api.codetabs.com/v1/proxy?quest=",                type:"prefix", rpm:6,  nullOrigin:true },
   { url: "https://proxy.cors.sh/",                                  type:"prefix", rpm:5,  nullOrigin:true },
   { url: "https://thingproxy.freeboard.io/fetch/",                  type:"prefix", rpm:4,  nullOrigin:false },
-  { url: "https://api.allorigins.win/raw?url=",                     type:"prefix", rpm:4,  nullOrigin:true },
 ];
 const _ctProxyState = {};
 FORUM_PROXY_POOL.forEach(p => { _ctProxyState[p.url] = { count:0, windowStart:Date.now(), banUntil:0 }; });
@@ -744,7 +784,6 @@ function enterMenu(){
   if(G.skin) curSkin=G.skin;
   updateSkinUI();
   showScreen("menu");
-  if(!_offline&&!_forumFetched&&!_forumFetching&&G.uid>0) fetchForumData(false);
 }
 
 function updateMenuUI(){
@@ -758,62 +797,84 @@ function updateMenuUI(){
 // ══════════════════════════════════════════
 // FORUM SCRAPE（完整复制自 checkin_game.html）
 // ══════════════════════════════════════════
+function _proxyJsonpGet(url, timeout){
+  return new Promise((resolve,reject)=>{
+    const bustUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
+    const cb="ao_cb_"+Date.now()+"_"+Math.floor(Math.random()*9999);
+    const tid=setTimeout(()=>{cleanup();reject(new Error("jsonp_timeout"));},timeout||FORUM_FETCH_MS);
+    function cleanup(){
+      clearTimeout(tid);
+      try{delete window[cb];}catch(e){}
+      const sc=document.getElementById(cb+"_s");if(sc)sc.remove();
+    }
+    window[cb]=(data)=>{
+      cleanup();
+      const text=data&&data.contents;
+      if(text&&text.length>50) resolve(text);
+      else reject(new Error("empty_jsonp"));
+    };
+    const s=document.createElement("script");
+    s.id=cb+"_s";
+    s.src="https://api.allorigins.win/get?url="+encodeURIComponent(bustUrl)+"&callback="+cb;
+    s.onerror=()=>{cleanup();reject(new Error("jsonp_load_fail"));};
+    document.head.appendChild(s);
+  });
+}
 async function fffProxyGet(url, noCache){
   if(!noCache){
     const sk="ctfff_"+url;
     const hit=sessionStorage.getItem(sk);
     if(hit) return hit;
   }
-  const pool = _ctIsFileOrigin ? FORUM_PROXY_POOL.filter(p => p.nullOrigin) : FORUM_PROXY_POOL;
-  const targets = [url + (url.includes("?") ? "&" : "?") + "_bust=" + Date.now(), url];
-  let lastErr = null;
-  const tried = new Set();
-  for (let ti = 0; ti < targets.length; ti++) {
-    const targetUrl = targets[ti];
-    for (let attempt = 0; attempt < pool.length; attempt++) {
-      const proxy = _ctPickProxy();
-      const key = proxy.url + "|" + targetUrl;
-      if (tried.has(key)) continue;
-      tried.add(key);
-      const st = _ctProxyState[proxy.url];
-      if (Date.now() - st.windowStart > 60000) { st.count = 0; st.windowStart = Date.now(); }
-      st.count++;
-      if (st.count >= proxy.rpm) await new Promise(r => setTimeout(r, 800));
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), FORUM_FETCH_MS);
-      try {
-        const resp = await fetch(_ctBuildProxyTarget(proxy, targetUrl), {
-          signal: ctrl.signal,
-          referrerPolicy: "no-referrer",
-          credentials: "omit"
-        });
-        clearTimeout(tid);
-        if (resp.status === 403 || resp.status === 429) {
-          _ctBanProxy(proxy.url, 20000);
-          lastErr = new Error("HTTP_" + resp.status);
-          continue;
+  let lastErr=null;
+  try{
+    const jsonpText=await _proxyJsonpGet(url);
+    if(!noCache&&url.includes("controller=profile")){
+      try{sessionStorage.setItem("ctfff_"+url,jsonpText);}catch(e){}
+    }
+    return jsonpText;
+  }catch(e){
+    lastErr=e;
+    console.warn("[proxy] allorigins JSONP FAIL:",e.message||e);
+  }
+  const pool=_ctIsFileOrigin?FORUM_PROXY_POOL.filter(p=>p.nullOrigin):FORUM_PROXY_POOL;
+  const targetUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
+  const tried=new Set();
+  for(let attempt=0;attempt<pool.length*2;attempt++){
+    const proxy=_ctPickProxy();
+    const key=proxy.url+"|"+targetUrl;
+    if(tried.has(key)) continue;
+    tried.add(key);
+    const st=_ctProxyState[proxy.url];
+    if(Date.now()-st.windowStart>60000){st.count=0;st.windowStart=Date.now();}
+    st.count++;
+    if(st.count>=proxy.rpm) await new Promise(r=>setTimeout(r,800));
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),FORUM_FETCH_MS);
+    try{
+      const resp=await fetch(_ctBuildProxyTarget(proxy,targetUrl),{signal:ctrl.signal,referrerPolicy:"no-referrer",credentials:"omit"});
+      clearTimeout(tid);
+      if(resp.status===403||resp.status===429){_ctBanProxy(proxy.url,20000);lastErr=new Error("HTTP_"+resp.status);continue;}
+      if(!resp.ok){lastErr=new Error("HTTP_"+resp.status);continue;}
+      const text=await _ctParseResp(proxy,resp);
+      if(text&&text.length>80&&(text.indexOf("<")>=0||text.indexOf("profile")>=0)){
+        const idx=pool.findIndex(p=>p.url===proxy.url);
+        if(idx>=0) _bestProxyIdx=idx;
+        if(!noCache&&url.includes("controller=profile")){
+          try{sessionStorage.setItem("ctfff_"+url,text);}catch(e){}
         }
-        if (!resp.ok) { lastErr = new Error("HTTP_" + resp.status); continue; }
-        const text = await _ctParseResp(proxy, resp);
-        if (text && text.length > 80 && (text.indexOf("<") >= 0 || text.indexOf("profile") >= 0)) {
-          const idx = pool.findIndex(p => p.url === proxy.url);
-          if (idx >= 0) _bestProxyIdx = idx;
-          if (!noCache && url.includes("controller=profile")) {
-            try { sessionStorage.setItem("ctfff_" + url, text); } catch(e) {}
-          }
-          return text;
-        }
-        lastErr = new Error("empty_response");
-      } catch(e) {
-        clearTimeout(tid);
-        lastErr = e;
-        if (e.name === "AbortError" || /403|429|408/.test(String(e.message))) _ctBanProxy(proxy.url, 20000);
-        console.warn("[proxy] " + proxy.url.slice(8, 36) + " FAIL:", e.message || e);
+        return text;
       }
+      lastErr=new Error("empty_response");
+    }catch(e){
+      clearTimeout(tid);
+      lastErr=e;
+      if(e.name==="AbortError"||/403|429|408/.test(String(e.message))) _ctBanProxy(proxy.url,20000);
+      console.warn("[proxy] "+proxy.url.slice(8,36)+" FAIL:",e.message||e);
     }
   }
-  const hint = _ctIsFileOrigin ? "（本地 file:// 建议改用 GitHub Pages）" : (_ctIsGithubOrigin ? "（GitHub Pages 中转站繁忙，请稍后再试）" : "");
-  throw lastErr || new Error("所有中转站均不可用" + hint);
+  const hint=_ctIsFileOrigin?"（本地 file:// 建议改用 GitHub Pages）":(_ctIsGithubOrigin?"（GitHub Pages 中转站繁忙，请稍后再试）":"");
+  throw lastErr||new Error("所有中转站均不可用"+hint);
 }
 async function fffGetSlug(uid){
   const ck = "ct_slug_" + uid;
@@ -1264,6 +1325,14 @@ function applySkin(s){
 }
 function openCandyGuide(){showOverlay('guide-overlay');}
 function closeGuide(){hideOverlay('guide-overlay');}
+function openHowToPlay(){
+  const ov=document.getElementById('howto-overlay');
+  if(ov){ov.classList.add('show');ov.style.display='flex';}
+}
+function closeHowToPlay(){
+  const ov=document.getElementById('howto-overlay');
+  if(ov){ov.classList.remove('show');ov.style.display='none';}
+}
 
 // 皮肤图片映射（关卡解锁 + 商店购买）
 const SKIN_IMAGES={
@@ -1419,8 +1488,17 @@ function generateBoard(cfg){
       b[0][c].color=randColor(colors);
     }
   }
-  // 暗关（DARK）：不使用暗格，改为正常棋盘（避免卡关BUG）
-  // 暗关的挑战性通过更少步数+更多颜色体现（在 genLevelCfg 里设定）
+  if(type===LEVEL_TYPES.DARK){
+    const tot=rows*cols;
+    const darkCount=Math.min(Math.max(4,Math.floor(tot*0.22)),Math.floor(tot*0.38));
+    const pool=positions.filter(([r,cv])=>!b[r][cv].ingredient);
+    shuffleArr(pool);
+    for(let i=0;i<Math.min(darkCount,pool.length);i++){
+      const [r,cv]=pool[i];
+      b[r][cv].dark=true;
+      b[r][cv]._revealed=false;
+    }
+  }
   return b;
 }
 
@@ -1440,7 +1518,7 @@ function calcCellSize(){
   const W=wrap.clientWidth-12,H=wrap.clientHeight-12;
   const {cols,rows}=levelCfg||{cols:6,rows:7};
   cellSize=Math.floor(Math.min(W/cols,H/rows));
-  cellSize=Math.max(36,Math.min(58,cellSize));
+  cellSize=Math.max(26,Math.min(58,cellSize));
 }
 
 function renderBoard(){
@@ -1493,7 +1571,7 @@ function renderCell(r,c){
   // 表情
   const cd=CANDY_COLORS[cell.color]||CANDY_COLORS[0];
   let mainEmoji=cell.special===SP.BOMB?'🌈':(cell.special===SP.FISH?'🐟':(cell.ingredient?'🍰':cd.emoji));
-  // 暗格已移除，不再使用 mainEmoji='🌑'
+  if(cell.dark&&!cell._revealed) mainEmoji='🌑';
   el.textContent=mainEmoji;
   // 特殊糖果标记层
   const mark=document.createElement('div');mark.className='special-mark';
@@ -1930,9 +2008,9 @@ async function doRemove(cells,newSp=SP.NONE,spawnR=0,spawnC=0){
     }
     if(cell.dark&&!cell._revealed){
       cell._revealed=true;
-      // 揭示暗格：显示真实颜色和emoji
       if(cell.el){
         const rcd=CANDY_COLORS[cell.color]||CANDY_COLORS[0];
+        cell.el.classList.remove('dark-unrevealed');
         cell.el.style.background='linear-gradient(135deg,'+rcd.grad[0]+','+rcd.grad[1]+')';
         cell.el.textContent=rcd.emoji;
         const m=document.createElement('div');m.className='special-mark';cell.el.appendChild(m);
@@ -2399,7 +2477,7 @@ const LEVEL_TUTORIALS={
   mixed:  {icon:'🎭',title:'混合关',desc:'双重目标：消除所有果冻 AND 达到目标分数，两者同时完成才通关！'},
   rainbow:{icon:'🌈',title:'彩虹关',desc:'制造指定数量的彩色炸弹即可通关！\n5个同色糖果直线连消即可生成彩色炸弹。'},
   order:  {icon:'⭐',title:'订单关',desc:'制造指定数量特殊糖果即可通关！\n4连→条纹糖果，L/T形→包装糖，5连→彩色炸弹，鱼鱼糖果均可计入。'},
-  dark:   {icon:'💜',title:'挑战关',desc:'在建议步数内尽量积累高分！步数用完可继续但影响星级。'},
+  dark:   {icon:'🌑',title:'暗格关',desc:'棋盘上有暗格（🌑），看不见里面糖果颜色。在暗格旁边消除可揭开暗格！在限制步数内达到目标分数即可通关。'},
   timed:  {icon:'⏱',title:'冲分关',desc:'消除糖果积累分数，步数用完后仍可继续，但影响最终星级。'},
 };
 
@@ -2470,7 +2548,7 @@ function nextLevel(){
   hideOverlay('ov-win');
   isRepeatChallenge=false;
   const next=curLevel+1;
-  if(!LEVELS.find(l=>l.id===next))LEVELS.push(genLevelCfg(next));
+  ensureLevelExists(next);
   startGame(next);
 }
 function restartLevel(){
@@ -2496,7 +2574,7 @@ function startGame(id){
   curLevel=id;
   // 每次都从原始配置重新生成，避免上次游戏修改的 jellyCount 等被复用
   levelCfg=Object.assign({},genLevelCfg(id));
-  if(!LEVELS.find(l=>l.id===id))LEVELS.push(genLevelCfg(id)); // LEVELS 存原始版
+  ensureLevelExists(id);
   gasBeacon({sheet:SHEET,action:'game_start',id:G.id,uid:String(G.uid),level:String(id),date:todayISO()});
   // ── 全部计数器重置（只重置一次，不在后面重复）──
   score=0;comboCount=0;movesLeft=levelCfg.moves;movesOvertime=false;
@@ -2537,9 +2615,12 @@ function startLatestLevel(){isRepeatChallenge=false;const u=getUnlocked();curLev
 function buildMenu(){
   const wrap=document.getElementById('level-select');
   const unlocked=getUnlocked(),cleared=G.cleared||[];
-  wrap.innerHTML='<div style="font-size:.76rem;color:rgba(255,255,255,.38);margin-bottom:5px">选择关卡（🏆=已通关）</div>';
+  const showMax=getMenuLevelMax();
+  for(let i=1;i<=showMax;i++) ensureLevelExists(i);
+  const menuLevels=LEVELS.filter(lv=>lv.id<=showMax);
+  wrap.innerHTML='<div style="font-size:.76rem;color:rgba(255,255,255,.38);margin-bottom:5px">选择关卡（🏆=已通关 · 关卡无限生成）</div>';
   let row=null;
-  LEVELS.forEach((lv,i)=>{
+  menuLevels.forEach((lv,i)=>{
     if(i%5===0){row=document.createElement('div');row.className='level-row';wrap.appendChild(row);}
     const isU=unlocked.includes(lv.id),isC=cleared.includes(lv.id);
     const btn=document.createElement('button');
@@ -2563,14 +2644,13 @@ function buildMenu(){
     row.appendChild(btn);
   });
   const maxU=Math.max(...unlocked);
-  if(!unlocked.includes(curLevel))curLevel=Math.min(maxU,LEVELS.length);
+  if(!unlocked.includes(curLevel)) curLevel=maxU;
 }
 function enterMenu(){
   buildMenu();updateMenuUI();updateMenuVersion_();
   if(G.skin)curSkin=G.skin;
   applyThemeNow();
   updateSkinUI();showScreen('menu');
-  if(!_offline&&!_forumFetched&&!_forumFetching&&G.uid>0)fetchForumData(false);
 }
 function updateMenuUI(){
   const el=document.getElementById('menu-id-label');
@@ -2659,11 +2739,81 @@ function downloadGameData(){
     ['',''],
     ['── 已观看关卡教程类型 ──',''],
     ['已见类型',(G.seenLevelTypes||[]).join(' ')||'无'],
+    ['',''],
+    ['__HTML_GAME_SAVE__','game','candy_crush'],
+    ['__HTML_GAME_SAVE__','version',GAME_VERSION],
+    ['__HTML_GAME_SAVE__','saved_at',new Date().toISOString()],
+    ['__HTML_GAME_SAVE__','state_json',JSON.stringify(G)],
   ];
   const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='candy-town-'+G.id+'-'+todayISO()+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
+
+window.__applyPortableSaveData=async function(data){
+  if(!data||typeof data!=='object') throw new Error('bad_save');
+  const keepId=G.id, keepUid=G.uid;
+  Object.assign(G,data);
+  if(keepId) G.id=keepId;
+  if(keepUid) G.uid=keepUid;
+  if(!Array.isArray(G.purchasedSkins)) G.purchasedSkins=[];
+  if(!Array.isArray(G.unlocked)||!G.unlocked.length) G.unlocked=[1];
+  if(!Array.isArray(G.cleared)) G.cleared=[];
+  saveState();
+  try{await cloudSave();}catch(e){console.warn('cloud save after import',e);}
+  if(G.skin) curSkin=G.skin;
+  updateMenuUI();buildMenu();updateSkinUI();applyThemeNow();
+};
+(function(){
+  const MARK='__HTML_GAME_SAVE__';
+  function parseCsv(text){
+    text=String(text||'').replace(/^\uFEFF/,'');
+    const rows=[], row=[], cell=''; let q=false;
+    for(let i=0;i<text.length;i++){
+      const ch=text[i], nx=text[i+1];
+      if(q){
+        if(ch==='"'&&nx==='"'){cell+='"';i++;}
+        else if(ch==='"') q=false;
+        else cell+=ch;
+      }else{
+        if(ch==='"') q=true;
+        else if(ch===','){row.push(cell);cell='';}
+        else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+        else if(ch!=='\r') cell+=ch;
+      }
+    }
+    row.push(cell); rows.push(row);
+    return rows;
+  }
+  function readPayload(text){
+    const raw=String(text||'').replace(/^\uFEFF/,'').trim();
+    if(raw.charAt(0)==='{') return JSON.parse(raw);
+    const rows=parseCsv(text);
+    for(let i=0;i<rows.length;i++){
+      if(rows[i][0]===MARK&&rows[i][1]==='state_json') return JSON.parse(rows[i][2]||'{}');
+    }
+    throw new Error('save_json_not_found');
+  }
+  window.importGameSaveData_=function(){
+    const input=document.createElement('input');
+    input.type='file';
+    input.accept='.csv,.json,text/csv,application/json';
+    input.onchange=function(){
+      const file=input.files&&input.files[0];
+      if(!file) return;
+      const reader=new FileReader();
+      reader.onload=function(){
+        Promise.resolve().then(()=>{
+          if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+          return window.__applyPortableSaveData(readPayload(reader.result));
+        }).then(()=>alert('读档完成！本机记录已复原。'))
+          .catch(e=>{console.error(e);alert('读档失败：请选择本游戏「📥 存档」导出的 CSV。');});
+      };
+      reader.readAsText(file,'utf-8');
+    };
+    input.click();
+  };
+})();
 
 // ════ INIT ════
 window.addEventListener('DOMContentLoaded',()=>{
@@ -2685,7 +2835,16 @@ window.addEventListener('DOMContentLoaded',()=>{
   updateMenuVersion_();
 });
 document.addEventListener('keydown',e=>{
-  if((e.key||'').toLowerCase()==='x'){const s=document.getElementById('shop-overlay');if(s&&s.classList.contains('show'))closeShop();}
+  if((e.key||'').toLowerCase()==='x'){
+    const s=document.getElementById('shop-overlay');if(s&&s.classList.contains('show'))closeShop();
+    const h=document.getElementById('howto-overlay');if(h&&h.classList.contains('show'))closeHowToPlay();
+  }
+});
+window.addEventListener('resize',()=>{
+  const game=document.getElementById('game');
+  if(game&&game.style.display==='flex'&&board&&board.length&&levelCfg){
+    renderBoard();
+  }
 });
 document.addEventListener('touchend',function(e){
   const game=document.getElementById('game');
