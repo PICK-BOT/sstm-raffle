@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="referrer" content="no-referrer">
 <title>糖果小镇 · Candy Town</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
@@ -137,7 +138,7 @@ body.skin-retro    #game{background:radial-gradient(ellipse at 50% 30%,#3a2000 0
 .skin-check{font-size:1rem;color:#f472b6;opacity:0;min-width:18px;text-align:center}
 .skin-btn.active .skin-check{opacity:1}
 /* 登录封面图 */
-#login-cover-bg{position:absolute;inset:0;z-index:0;background:url('https://s.sstmlt.com/img/2026/05/17/candy_crush4a1e13083738fa1d.jpeg') center/cover no-repeat;filter:brightness(.55) saturate(1.2)}
+#login-cover-bg{position:absolute;inset:0;z-index:0;background:radial-gradient(ellipse at 50% 0%,#5b0f8a 0%,#1a0533 70%);background-size:cover;background-position:center;filter:brightness(.55) saturate(1.2)}
 #screen-login{position:fixed;overflow:hidden}
 #screen-login > *:not(#login-cover-bg){position:relative;z-index:2}
 /* 登录 */
@@ -462,44 +463,70 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwtg97eIbxTMTAf2vx0hzOa
 const SHEET = "糖果小镇";
 const FORUM_PROXY = "https://pack-robot-ss.gamefishhero001.workers.dev/?url="; // 保留旧变量供兼容
 
-// ── 多中转站池 ──
-const FORUM_PROXY_POOL = [
-  { url: "https://pack-robot-ss.gamefishhero001.workers.dev/?url=", type:"prefix", rpm:2,  nullOrigin:true  },
-  { url: "https://corsproxy.io/?url=",                              type:"prefix", rpm:8,  nullOrigin:true  },
-  { url: "https://api.allorigins.win/get?url=",                     type:"json",   rpm:8,  nullOrigin:true  },
-  { url: "https://api.codetabs.com/v1/proxy?quest=",                type:"prefix", rpm:5,  nullOrigin:true  },
-  { url: "https://jsonp.su/api/proxy?url=",                         type:"jsonget",rpm:5,  nullOrigin:true  },
-  { url: "https://proxy.cors.sh/",                                  type:"prefix", rpm:5,  nullOrigin:true  },
-  { url: "https://thingproxy.freeboard.io/fetch/",                  type:"prefix", rpm:4,  nullOrigin:false },
-  { url: "https://cors-anywhere.herokuapp.com/",                    type:"prefix", rpm:3,  nullOrigin:false },
+// ── 多中转站池（对齐 timewar_sstm；移除 jsonp.su 等失效节点）──
+const FORUM_PROXIES_DEF = [
+  { url:"https://pack-robot-ss.gamefishhero001.workers.dev/?url=", mode:"workers" },
+  { url:"https://api.corsfix.com/?", mode:"prefix" },
+  { url:"https://cors.x2u.in/", mode:"prefix" },
+  { url:"https://api.allorigins.win/raw?url=", mode:"allorigins" },
+  { url:"https://corsproxy.io/?url=", mode:"allorigins" },
+  { url:"https://api.codetabs.com/v1/proxy?quest=", mode:"allorigins" },
+  { url:"https://r.jina.ai/http://", mode:"jina" },
 ];
+let _bestProxyIdx = 0;
+const LOGIN_COVER_URL = "https://s.sstmlt.com/img/2026/05/17/candy_crush4a1e13083738fa1d.jpeg";
 const _ctIsFileOrigin = (location.protocol === "file:");
-const _ctProxyState = {};
-FORUM_PROXY_POOL.forEach(p => { _ctProxyState[p.url] = { count:0, windowStart:Date.now(), banUntil:0 }; });
-function _ctPickProxy() {
-  const now = Date.now();
-  const pool = _ctIsFileOrigin ? FORUM_PROXY_POOL.filter(p => p.nullOrigin) : FORUM_PROXY_POOL;
-  for (const p of pool) {
-    const st = _ctProxyState[p.url];
-    if (st.banUntil > now) continue;
-    if (now - st.windowStart > 60000) { st.count = 0; st.windowStart = now; }
-    if (st.count < p.rpm) return p;
-  }
-  return pool.reduce((a, b) => (_ctProxyState[a.url].banUntil||0) <= (_ctProxyState[b.url].banUntil||0) ? a : b);
+const _ctIsGithubOrigin = /\.github\.io$/i.test(location.hostname || "");
+
+function _ctImgCandidates(rawUrl){
+  if(!rawUrl) return [];
+  const bare = String(rawUrl).replace(/^https?:\/\//, "");
+  return [rawUrl, "https://images.weserv.nl/?url=" + encodeURIComponent(bare) + "&n=-1"];
 }
-function _ctBanProxy(url) {
-  const st = _ctProxyState[url];
-  if (st) st.banUntil = Date.now() + 60000;
-  console.warn("[proxy] 中转站限速 60s:", url);
+function _ctApplyBgImage(el, rawUrl, overlay, gradientFallback){
+  if(!el) return;
+  const overlayCss = overlay || "rgba(0,0,0,.45)";
+  const fb = gradientFallback || "radial-gradient(ellipse at 50% 0%,#5b0f8a 0%,#1a0533 70%)";
+  const urls = _ctImgCandidates(rawUrl);
+  if(!urls.length){ el.style.background = fb; el.style.backgroundImage = ""; return; }
+  let idx = 0;
+  (function tryNext(){
+    if(idx >= urls.length){
+      el.style.background = fb;
+      el.style.backgroundImage = "";
+      return;
+    }
+    const img = new Image();
+    img.referrerPolicy = "no-referrer";
+    img.onload = function(){
+      el.style.background = "linear-gradient(" + overlayCss + "," + overlayCss + "),url(" + urls[idx] + ") center/cover no-repeat";
+      el.style.backgroundSize = "cover";
+      el.style.backgroundPosition = "center";
+    };
+    img.onerror = function(){ idx++; tryNext(); };
+    img.src = urls[idx];
+  })();
 }
-async function _ctParseResp(proxy, resp) {
-  const text = await resp.text();
-  if (proxy.type === "json")    { try { const j = JSON.parse(text); return j.contents || text; } catch(e) { return text; } }
-  if (proxy.type === "jsonget") { try { const j = JSON.parse(text); return j.body     || text; } catch(e) { return text; } }
-  return text;
+function applyLoginCover(){
+  _ctApplyBgImage(document.getElementById("login-cover-bg"), LOGIN_COVER_URL, "rgba(0,0,0,.45)", "radial-gradient(ellipse at 50% 0%,#5b0f8a 0%,#1a0533 70%)");
+}
+function patchSkinPreviewImgs_(){
+  document.querySelectorAll("#skin-overlay img, #shop-overlay img").forEach(function(img){
+    if(!img || img.dataset.ctPatched) return;
+    img.dataset.ctPatched = "1";
+    img.referrerPolicy = "no-referrer";
+    img.onerror = function(){
+      if(img.dataset.ctFallback) return;
+      const src = img.getAttribute("src") || "";
+      const bare = src.replace(/^https?:\/\//, "");
+      if(!bare) return;
+      img.dataset.ctFallback = "1";
+      img.src = "https://images.weserv.nl/?url=" + encodeURIComponent(bare) + "&w=88&h=88&fit=cover";
+    };
+  });
 }
 const NOVICE_FORUM_RE = /forum\/32[-\/]/;
-const FORUM_FETCH_MS = 14000;
+const FORUM_FETCH_MS = 25000;
 const KEY_HISTORY = "ct_id_history";
 const KEY_STATE   = "ct_state";
 const KEY_ID      = "ct_login_id";
@@ -508,18 +535,28 @@ const KEY_UID     = "ct_login_uid";
 function gasBeacon(params){
   try{
     const qs=Object.keys(params).map(k=>encodeURIComponent(k)+"="+encodeURIComponent(params[k])).join("&");
-    new Image().src=GAS_URL+"?"+qs;
+    const img=new Image();
+    img.referrerPolicy="no-referrer";
+    img.src=GAS_URL+"?"+qs+"&_t="+Date.now();
   }catch(e){}
 }
 function gasJsonp(params,timeout=10000){
   return new Promise((resolve,reject)=>{
     const cb="ct_cb_"+Date.now()+"_"+Math.floor(Math.random()*9999);
-    const tid=setTimeout(()=>{ try{delete window[cb];}catch(e){} reject(new Error("timeout")); },timeout);
-    window[cb]=(data)=>{ clearTimeout(tid); try{delete window[cb];}catch(e){} data&&data.ok?resolve(data):reject(new Error(data&&data.error||"err")); };
+    const tid=setTimeout(()=>{ try{delete window[cb];}catch(e){} const sc=document.getElementById(cb+"_s");if(sc)sc.remove(); reject(new Error("timeout")); },timeout);
+    window[cb]=(data)=>{
+      clearTimeout(tid);
+      try{delete window[cb];}catch(e){}
+      const sc=document.getElementById(cb+"_s");if(sc)sc.remove();
+      if(data&&(data.ok||data.data!==undefined||data.status==="ok")) resolve(data);
+      else if(data) resolve(data);
+      else reject(new Error((data&&data.error)||"err"));
+    };
     const qs=Object.keys(params).map(k=>encodeURIComponent(k)+"="+encodeURIComponent(params[k])).join("&");
     const s=document.createElement("script");
+    s.id=cb+"_s";
     s.src=GAS_URL+"?"+qs+"&callback="+cb+"&_t="+Date.now();
-    s.onerror=()=>{ clearTimeout(tid); try{delete window[cb];}catch(e){} reject(new Error("load_fail")); };
+    s.onerror=()=>{ clearTimeout(tid); try{delete window[cb];}catch(e){} s.remove(); reject(new Error("load_fail")); };
     document.head.appendChild(s);
   });
 }
@@ -624,17 +661,20 @@ async function doLogin(){
     if(cloud&&cloud.state_json){
       try{
         const cs=JSON.parse(cloud.state_json);
-        // 云端优先合并
         Object.assign(G,cs);
         G.id=id; G.uid=uid;
       }catch(e){}
     }
-  }catch(e){ _offline=true; setOffline(true); }
+    try{ await gasJsonp({sheet:SHEET,action:"ping"},5000); setOffline(false); }
+    catch(e){ _offline=true; setOffline(true); }
+  }catch(e){
+    console.warn("[login]", e);
+  }
   saveState();
   saveIdHistory();
   gasBeacon({sheet:SHEET,action:"login_log",id:G.id,uid:String(G.uid),date:todayISO(),info:"candy_town_v2.0"});
   hideLoading();
-  if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent="▶ 登入游戏"; }
+  if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent="▶ 进入游戏"; }
   enterMenu();
 }
 
@@ -695,43 +735,48 @@ async function fffProxyGet(url, noCache){
     if(hit) return hit;
   }
   const bustUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
-  const maxTry = 4;
-  let lastErr = null;
-  const tried = new Set();
-  for (let attempt = 0; attempt < maxTry; attempt++) {
-    const proxy = _ctPickProxy();
-    if (tried.has(proxy.url)) break;
-    tried.add(proxy.url);
-    const st = _ctProxyState[proxy.url];
-    if (Date.now() - st.windowStart > 60000) { st.count = 0; st.windowStart = Date.now(); }
-    st.count++;
-    if (st.count >= proxy.rpm) await new Promise(r => setTimeout(r, 1500));
+  let lastErr = new Error("所有中转站均不可用");
+  const order = [];
+  for(let i=0;i<FORUM_PROXIES_DEF.length;i++) order.push((_bestProxyIdx+i)%FORUM_PROXIES_DEF.length);
+  for(let oi=0;oi<order.length;oi++){
+    const idx = order[oi];
+    const pd = FORUM_PROXIES_DEF[idx];
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), FORUM_FETCH_MS);
-    try {
-      const resp = await fetch(proxy.url + encodeURIComponent(bustUrl), { signal: ctrl.signal });
-      clearTimeout(tid);
-      if (resp.status === 403 || resp.status === 429) {
-        _ctBanProxy(proxy.url);
-        lastErr = new Error("中转站 " + resp.status);
-        await new Promise(r => setTimeout(r, 400));
-        continue;
+    const tid = setTimeout(()=>ctrl.abort(), FORUM_FETCH_MS);
+    try{
+      let proxyTarget;
+      if(pd.mode === "jina" || pd.mode === "strip"){
+        proxyTarget = pd.url + bustUrl.replace(/^https?:\/\//, "");
+      } else {
+        proxyTarget = pd.url + encodeURIComponent(bustUrl);
       }
-      if (!resp.ok) { lastErr = new Error("网络错误 " + resp.status); continue; }
-      const text = await _ctParseResp(proxy, resp);
-      if (!noCache && url.includes("controller=profile")) {
-        try { sessionStorage.setItem("ctfff_" + url, text); } catch(e) {}
+      const resp = await fetch(proxyTarget, { signal:ctrl.signal, referrerPolicy:"no-referrer" });
+      if(!resp.ok) throw new Error("HTTP_"+resp.status);
+      let text = await resp.text();
+      if(text && text.trimStart().startsWith("{")){
+        try{
+          const j = JSON.parse(text);
+          if(j.contents) text = j.contents;
+          else if(j.body) text = j.body;
+        }catch(e){}
       }
-      return text;
-    } catch(e) {
-      clearTimeout(tid);
+      if(text && text.length > 50){
+        _bestProxyIdx = idx;
+        if(!noCache && url.includes("controller=profile")){
+          try{ sessionStorage.setItem("ctfff_"+url, text); }catch(e){}
+        }
+        return text;
+      }
+      throw new Error("empty_response");
+    }catch(e){
       lastErr = e;
-      if (e.name === "AbortError" || /403|429/.test(e.message)) _ctBanProxy(proxy.url);
-      if (attempt < maxTry - 1) await new Promise(r => setTimeout(r, 600));
+      console.warn("[proxy"+(idx+1)+"] "+pd.url.slice(0,40)+" FAIL:", e.message);
+    }finally{
+      clearTimeout(tid);
     }
   }
-  const hint = _ctIsFileOrigin ? "（本地 file:// 打开受 CORS 限制，建议用 GitHub Pages 或 localhost）" : "";
-  throw lastErr || new Error("所有中转站均不可用" + hint);
+  const hint = _ctIsFileOrigin ? "（本地 file:// 建议改用 GitHub Pages）" : (_ctIsGithubOrigin ? "（GitHub Pages 中转站繁忙，请稍后再试）" : "");
+  throw new Error("所有中转站均不可用" + hint + ": " + String(lastErr&&lastErr.message||lastErr));
 }
 async function fffGetSlug(uid){
   const html=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+uid);
@@ -1178,25 +1223,13 @@ function applyThemeNow(){
     'skin-retro':   'radial-gradient(ellipse at 50% 30%,#3a2000 0%,#1a0e00 60%)',
   };
   const fb=fallbacks[sk.cls||'']||fallbacks[''];
-  if(imgUrl){
-    [gameEl,menuEl].forEach(el=>{
-      if(!el) return;
-      el.style.background='';
-      el.style.backgroundImage='linear-gradient(rgba(0,0,0,.42),rgba(0,0,0,.42)),url('+imgUrl+')';
-      el.style.backgroundSize='cover';
-      el.style.backgroundPosition='center';
-      el.style.backgroundRepeat='no-repeat';
-    });
-  } else {
-    [gameEl,menuEl].forEach(el=>{
-      if(!el) return;
-      el.style.backgroundImage='';
-      el.style.backgroundSize='';
-      el.style.backgroundPosition='';
-      el.style.backgroundRepeat='';
-      el.style.background=fb;
-    });
-  }
+  applyLoginCover();
+  [gameEl,menuEl].forEach(function(el){
+    if(!el) return;
+    if(imgUrl) _ctApplyBgImage(el, imgUrl, 'rgba(0,0,0,.42)', fb);
+    else { el.style.backgroundImage=''; el.style.background=fb; }
+  });
+  patchSkinPreviewImgs_();
 }
 function updateSkinUI(){
   document.querySelectorAll('.skin-btn').forEach(b=>{
@@ -1208,7 +1241,7 @@ function updateSkinUI(){
     if(lbl) lbl.textContent=canUseSkin(sk.id)?'✅ 已购买':'🔒 需购买（前往商店）';
   });
 }
-function openSkinPanel(){updateSkinUI();showOverlay('skin-overlay');}
+function openSkinPanel(){updateSkinUI();patchSkinPreviewImgs_();showOverlay('skin-overlay');}
 function closeSkinPanel(){hideOverlay('skin-overlay');}
 function showOverlay(id){const e=document.getElementById(id);if(e){e.classList.add('show');e.style.display='flex';}}
 function hideOverlay(id){const e=document.getElementById(id);if(e){e.classList.remove('show');e.style.display='none';}}
@@ -2479,7 +2512,9 @@ async function doLogin(){
     showLoading('系统：正在登录中（读取云端）...');
     const cloud=await cloudLoad(id);
     if(cloud&&cloud.state_json){try{const cs=JSON.parse(cloud.state_json);Object.assign(G,cs);G.id=id;G.uid=uid;}catch(e){}}
-  }catch(e){_offline=true;setOffline(true);}
+    try{await gasJsonp({sheet:SHEET,action:'ping'},5000);setOffline(false);}
+    catch(e){_offline=true;setOffline(true);}
+  }catch(e){console.warn('[login]',e);}
   saveState();saveIdHistory();
   gasBeacon({sheet:SHEET,action:'login_log',id:G.id,uid:String(G.uid),date:todayISO(),info:'candy_town_v2.0'});
   hideLoading();
@@ -2546,13 +2581,14 @@ function downloadGameData(){
 
 // ════ INIT ════
 window.addEventListener('DOMContentLoaded',()=>{
-  // CSS keyframes for bomb spin
   const s=document.createElement('style');
   s.textContent='@keyframes bombSpin{to{filter:hue-rotate(360deg)}}';
   document.head.appendChild(s);
   loadState();
   if(G.skin)curSkin=G.skin;
+  applyLoginCover();
   applyThemeNow();
+  patchSkinPreviewImgs_();
   showScreen('screen-login');
   const savedId=localStorage.getItem(KEY_ID)||'';
   const savedUid=localStorage.getItem(KEY_UID)||'';
@@ -2564,7 +2600,10 @@ window.addEventListener('DOMContentLoaded',()=>{
 document.addEventListener('keydown',e=>{
   if((e.key||'').toLowerCase()==='x'){const s=document.getElementById('shop-overlay');if(s&&s.classList.contains('show'))closeShop();}
 });
-document.addEventListener('touchend',e=>e.preventDefault(),{passive:false});
+document.addEventListener('touchend',function(e){
+  const game=document.getElementById('game');
+  if(game&&!game.classList.contains('hidden')&&e.target.closest&&e.target.closest('#board-wrap')) e.preventDefault();
+},{passive:false});
 </script>
 </body>
 </html>
