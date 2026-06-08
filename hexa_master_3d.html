@@ -304,7 +304,7 @@ function openGuide(){qs("ov-guide").classList.remove("hidden");}
 // ============================================================
 const GAS_URL="https://script.google.com/macros/s/AKfycbz7hsNRy2zpEGn4n1MT11Aw09j4ZXpOMzfZYoHCMWDWzqlfgu77WU-OrEO67bdZ9V2w/exec";
 const SHEET="六色合璧HTML";
-const FORUM_PROXIES=["https://api.codetabs.com/v1/proxy?quest=","https://r.jina.ai/http://","https://cors.isomorphic-git.org/"];
+const FORUM_PROXIES=["https://sstm-raffle.vercel.app/Hexa-Master-proxy?url="];
 const FORUM_FETCH_MS=22000;
 const KEY_STATE="hx_state",KEY_ID="hx_id",KEY_UID="hx_uid";
 
@@ -329,7 +329,7 @@ const BG_SKINS={
   beach_bbq:{id:"beach_bbq",name:"复古波普方块",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-3a84b648531e70f6.jpeg"},
   teppan:{id:"teppan",name:"极简纸艺叠层",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-5a07f9a51a31a2e7.jpeg"},
   izakaya:{id:"izakaya",name:"低多边形极光",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-05724281868a03d4.jpeg"},
-  steampunk:{id:"steampunk",name:"无尽层叠星空",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-520aba589500950a.jpeg"}
+  steampunk:{id:"steampunk",name:"无尽层叠星空",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-520aba589500950a.jpeg"},
   tepsd:{id:"tepsd",name:"无尽层叠星空",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-520aba589500950a.jpeg"},
   izakaaf:{id:"izakaaf",name:"万花筒几何",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-f3d853ac44dc32ca.jpeg"},
   steampsf:{id:"steampsf",name:"六色风暴漩涡",url:"https://s.sstmlt.com/img/2026/06/06/hexa_master_3d-5b9820dd59473080.jpeg"}
@@ -347,10 +347,10 @@ const SHOP_ITEMS=[
   {id:"skin_beach_bbq",name:"背景：复古波普方块",costType:"replies",cost:25,give:{bgSkin:"beach_bbq"}},
   {id:"skin_teppan",name:"背景：极简纸艺叠层",costType:"replies",cost:25,give:{bgSkin:"teppan"}},
   {id:"skin_izakaya",name:"背景：低多边形极光",costType:"replies",cost:25,give:{bgSkin:"izakaya"}},
-  {id:"skin_steampunk",name:"背景：无尽层叠星空",costType:"replies",cost:35,give:{bgSkin:"steampunk"}}
-  {id:"skin_tepsd",name:"背景：无尽层叠星空",costType:"replies",cost:25,give:{bgSkin:"teppan"}},
-  {id:"skin_izakaaf",name:"背景：万花筒几何",costType:"replies",cost:25,give:{bgSkin:"izakaya"}},
-  {id:"skin_steampsf",name:"背景：六色风暴漩涡",costType:"replies",cost:35,give:{bgSkin:"steampunk"}}
+  {id:"skin_steampunk",name:"背景：无尽层叠星空",costType:"replies",cost:35,give:{bgSkin:"steampunk"}},
+  {id:"skin_tepsd",name:"背景：无尽层叠星空",costType:"replies",cost:25,give:{bgSkin:"tepsd"}},
+  {id:"skin_izakaaf",name:"背景：万花筒几何",costType:"replies",cost:25,give:{bgSkin:"izakaaf"}},
+  {id:"skin_steampsf",name:"背景：六色风暴漩涡",costType:"replies",cost:35,give:{bgSkin:"steampsf"}}
 ];
 
 let G={id:"",uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,coins:0,tickets:0,stars:0,chapter:1,chapterItems:0,wheel:0,multiplier:1,unlocked:[1],cleared:[],skin:"default",ownedBgSkins:["default"],bgSkin:"default",boosters:{undo:3,shuffle:2,hammer:2,bomb:1},lootBoxes:0,jieCao:0,feather:0,medal30:0,letterMedal30:0,lootBoxesTotal:0};
