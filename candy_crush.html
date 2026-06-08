@@ -33,6 +33,7 @@ body{background:var(--bg);font-family:'Nunito',sans-serif;color:#fff;overflow:hi
 .level-btn:hover,.level-btn.active{background:rgba(244,114,182,.25);border-color:#f472b6;color:#fde68a}
 .level-btn.locked{opacity:.4;cursor:not-allowed}
 #menu-top-bar{width:100%;max-width:460px;display:flex;align-items:center;justify-content:space-between;padding:10px 14px 0}
+#menu-version{position:absolute;left:10px;bottom:8px;font-size:.62rem;color:rgba(255,255,255,.32);z-index:3;pointer-events:none;letter-spacing:.02em}
 .menu-btn-row{display:flex;gap:6px;flex-wrap:wrap}
 .menu-btn-sm{padding:5px 10px;border-radius:18px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;font-size:.72rem;font-weight:700;font-family:'Nunito',sans-serif}
 
@@ -194,6 +195,7 @@ body.skin-retro    #game{background:radial-gradient(ellipse at 50% 30%,#3a2000 0
     <button class="btn-play" id="btn-login" style="margin-top:8px;width:100%" onclick="doLogin()">▶ 进入游戏</button>
     <div id="id-history-row"><div class="ih-label">最近使用</div><div class="ih-chips" id="id-history-chips"></div></div>
     <button class="btn-play" style="margin-top:8px;width:100%;background:rgba(255,255,255,.08);box-shadow:none;font-size:.83rem;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.18)" onclick="doOfflineMode()">离线模式</button>
+    <button class="btn-play" style="margin-top:8px;width:100%;background:rgba(34,211,238,.12);box-shadow:none;font-size:.8rem;color:#67e8f9;border:1px solid rgba(34,211,238,.35)" onclick="fetchForumFromLogin()">🔄 抓取论坛数据（无需进入游戏）</button>
   </div>
 </div>
 
@@ -214,6 +216,7 @@ body.skin-retro    #game{background:radial-gradient(ellipse at 50% 30%,#3a2000 0
   <div class="menu-sub">交换糖果·三消消除·解锁关卡</div>
   <button class="btn-play" onclick="startLatestLevel()">▶ 继续游戏</button>
   <div class="menu-levels" id="level-select"></div>
+  <div id="menu-version"></div>
 </div>
 
 <!-- SHOP -->
@@ -461,6 +464,7 @@ const LEVELS=Array.from({length:MAX_LEVELS},(_,i)=>genLevelCfg(i+1));
 // ══ CONFIG 常量 ══
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwtg97eIbxTMTAf2vx0hzOaJbD9DCwKJeCUibt20dsmMpXTgNzwsRRoo5U-UHgx8xM8eg/exec";
 const SHEET = "糖果小镇";
+const GAME_VERSION = "v2.1.0";
 const FORUM_PROXY = "https://pack-robot-ss.gamefishhero001.workers.dev/?url="; // 保留旧变量供兼容
 
 // ── 多中转站池（对齐 timewar_sstm；移除 jsonp.su 等失效节点）──
@@ -672,7 +676,7 @@ async function doLogin(){
   }
   saveState();
   saveIdHistory();
-  gasBeacon({sheet:SHEET,action:"login_log",id:G.id,uid:String(G.uid),date:todayISO(),info:"candy_town_v2.0"});
+  gasBeacon({sheet:SHEET,action:"login_log",id:G.id,uid:String(G.uid),date:todayISO(),info:"candy_town_"+GAME_VERSION});
   hideLoading();
   if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent="▶ 进入游戏"; }
   enterMenu();
@@ -708,13 +712,10 @@ function doLogout(){
 function enterMenu(){
   buildMenu();
   updateMenuUI();
+  updateMenuVersion_();
   if(G.skin) curSkin=G.skin;
   updateSkinUI();
   showScreen("menu");
-  // 登入后自动抓取论坛数据（如果没抓过）
-  if(!_offline && !_forumFetched && G.uid>0){
-    fetchForumData(false);
-  }
 }
 
 function updateMenuUI(){
@@ -926,28 +927,47 @@ async function refreshForumDataFast(){
   const ok = await fetchForumDataCustom(true, sd||undefined, ed||undefined, {maxPages:30,maxCitationChecks:0});
   if(ok) closeShop();
 }
+async function fetchForumFromLogin(){
+  const err=document.getElementById("login-err");
+  const id=document.getElementById("inp-id").value.trim();
+  const uid=parseInt(document.getElementById("inp-uid").value.trim(),10);
+  if(!id){ if(err) err.textContent="请先输入论坛 ID"; return; }
+  if(!uid||uid<1){ if(err) err.textContent="请先输入有效 UID"; return; }
+  if(err) err.textContent="正在抓取论坛数据...";
+  _offline=false;
+  G.id=id; G.uid=uid;
+  const ok=await fetchForumData(true);
+  if(err) err.textContent=ok?"✅ 论坛数据已抓取，可进入游戏":"";
+}
 async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
-  if(!G.uid){
-    if(showAlert) alert('请先用有效 UID 登入后再抓取论坛数据。');
+  if(_forumFetching){
+    if(showAlert) alert("正在抓取中，请稍候...");
     return false;
   }
-  if(_offline){
-    if(showAlert) alert('当前为离线状态，无法抓取论坛数据。请先重新连线。');
+  const ident=_applyForumIdentity_();
+  if(!ident.uid){
+    if(showAlert) alert("请先输入有效 UID 后再抓取论坛数据。");
     return false;
   }
+  if(G.id==="访客"||_offline){
+    if(showAlert) alert("当前为离线模式，无法抓取论坛数据。");
+    return false;
+  }
+  _forumFetching=true;
   showLoading("正在抓取论坛数据...");
   try{
-    const slug=await fffGetSlug(G.uid);
+    const uid=ident.uid;
+    const slug=await fffGetSlug(uid);
     const sd = startDate || todayISO();
     const ed = endDate || sd;
-    const rk = fetchRangeKey_(G.uid, sd, ed);
+    const rk = fetchRangeKey_(uid, sd, ed);
     if(!G.fetchRangeHistory || typeof G.fetchRangeHistory!=='object') G.fetchRangeHistory={};
     if(G.fetchRangeHistory[rk]){
       if(showAlert) alert('检测到重复抓取区间，本次更新无效（不增加）');
       hideLoading();
       return false;
     }
-    const result=await fffScrapeRange_(G.uid,slug,sd,ed,"_tm_"+sd+"_"+ed,{
+    const result=await fffScrapeRange_(uid,slug,sd,ed,"_tm_"+sd+"_"+ed,{
       onProgress:(msg)=>showLoading(msg),
       maxPages:Number(opt&&opt.maxPages)||60,
       maxCitationChecks:(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:16
@@ -957,9 +977,9 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
     G.fetchRangeHistory[rk]=new Date().toISOString();
     _forumFetched=true;
     saveState();
-    cloudSave();
+    if(ident.id) cloudSave();
     gasBeacon({
-      sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(G.uid),
+      sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(uid),
       replies:String(G.replies||0),citations:String(G.citations||0),
       startDate:sd,endDate:ed,date:todayISO()
     });
@@ -970,6 +990,7 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
     if(showAlert) alert("⚠️ 抓取失败："+e.message);
     return false;
   }finally{
+    _forumFetching=false;
     hideLoading();
   }
 }
@@ -1112,7 +1133,37 @@ let G={
   totalStarsEarned:0,
   purchasedSkins:[],
 };
-let _offline=false,_forumFetched=false;
+let _offline=false,_forumFetched=false,_forumFetching=false;
+
+function _resolveForumId_(){
+  const gid=String(G.id||"").trim();
+  if(gid&&gid!=="访客") return gid;
+  const inp=document.getElementById("inp-id");
+  const v=inp?inp.value.trim():"";
+  if(v) return v;
+  try{return localStorage.getItem(KEY_ID)||"";}catch(e){return "";}
+}
+function _resolveForumUid_(){
+  const gu=parseInt(G.uid,10);
+  if(gu>0) return gu;
+  const inp=document.getElementById("inp-uid");
+  const iu=inp?parseInt(inp.value.trim(),10):0;
+  if(iu>0) return iu;
+  try{const su=parseInt(localStorage.getItem(KEY_UID)||"0",10);if(su>0)return su;}catch(e){}
+  const h=loadIdHistory();
+  if(h.length&&h[0].uid) return parseInt(h[0].uid,10)||0;
+  return 0;
+}
+function _applyForumIdentity_(){
+  const fid=_resolveForumId_(), uid=_resolveForumUid_();
+  if(fid) G.id=fid;
+  if(uid>0) G.uid=uid;
+  return {id:fid,uid};
+}
+function updateMenuVersion_(){
+  const el=document.getElementById("menu-version");
+  if(el) el.textContent=GAME_VERSION;
+}
 
 // ════ ID 历史记录 ════
 function loadIdHistory(){ try{return JSON.parse(localStorage.getItem(KEY_HISTORY)||'[]');}catch(e){return[];} }
@@ -2480,11 +2531,10 @@ function buildMenu(){
   if(!unlocked.includes(curLevel))curLevel=Math.min(maxU,LEVELS.length);
 }
 function enterMenu(){
-  buildMenu();updateMenuUI();
+  buildMenu();updateMenuUI();updateMenuVersion_();
   if(G.skin)curSkin=G.skin;
   applyThemeNow();
   updateSkinUI();showScreen('menu');
-  if(!_offline&&!_forumFetched&&G.uid>0)fetchForumData(false);
 }
 function updateMenuUI(){
   const el=document.getElementById('menu-id-label');
@@ -2516,7 +2566,7 @@ async function doLogin(){
     catch(e){_offline=true;setOffline(true);}
   }catch(e){console.warn('[login]',e);}
   saveState();saveIdHistory();
-  gasBeacon({sheet:SHEET,action:'login_log',id:G.id,uid:String(G.uid),date:todayISO(),info:'candy_town_v2.0'});
+  gasBeacon({sheet:SHEET,action:'login_log',id:G.id,uid:String(G.uid),date:todayISO(),info:'candy_town_'+GAME_VERSION});
   hideLoading();
   if(loginBtn){loginBtn.disabled=false;loginBtn.textContent='▶ 进入游戏';}
   enterMenu();
@@ -2596,6 +2646,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(savedUid)document.getElementById('inp-uid').value=savedUid;
   if(!savedId){const h=loadIdHistory();if(h.length){document.getElementById('inp-id').value=h[0].id;document.getElementById('inp-uid').value=h[0].uid||'';}}
   renderIdHistory();
+  updateMenuVersion_();
 });
 document.addEventListener('keydown',e=>{
   if((e.key||'').toLowerCase()==='x'){const s=document.getElementById('shop-overlay');if(s&&s.classList.contains('show'))closeShop();}
