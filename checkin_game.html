@@ -378,7 +378,7 @@ const VER = "v1.0";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzbR0_yhUphjOQRKH5Bpskj8yRdjpXwVRD_CmouHBApHGzPav80ofvmE-jbEBT92gbA/exec";
 // 替换为你的 GAS URL（打卡游戏专用，可与爬塔共用同一 GAS，需在 GAS 中加对应 sheet 处理逻辑）
 const SHEET = "新手村打卡";
-const FORUM_PROXY = "https://pack-robot-ss.gamefishhero001.workers.dev/?url="; // 保留旧变量供兼容
+const FORUM_PROXY = "https://ssbot.vercel.app/candy-proxy?url="; // 保留旧变量供兼容
 
 // ── 多中转站池 ──
 // type: 'prefix'  → 直接拼接，回传 HTML
@@ -386,14 +386,7 @@ const FORUM_PROXY = "https://pack-robot-ss.gamefishhero001.workers.dev/?url="; /
 // type: 'jsonget' → jsonp.su，回传 JSON { body }
 // nullOrigin: true → 支援 file:// 本地打开（origin=null）
 const FORUM_PROXY_POOL = [
-  { url: "https://pack-robot-ss.gamefishhero001.workers.dev/?url=", type:"prefix", rpm:2,  nullOrigin:true  },
-  { url: "https://corsproxy.io/?url=",                              type:"prefix", rpm:8,  nullOrigin:true  },
-  { url: "https://api.allorigins.win/get?url=",                     type:"json",   rpm:8,  nullOrigin:true  },
-  { url: "https://api.codetabs.com/v1/proxy?quest=",                type:"prefix", rpm:5,  nullOrigin:true  },
-  { url: "https://jsonp.su/api/proxy?url=",                         type:"jsonget",rpm:5,  nullOrigin:true  },
-  { url: "https://proxy.cors.sh/",                                  type:"prefix", rpm:5,  nullOrigin:true  },
-  { url: "https://thingproxy.freeboard.io/fetch/",                  type:"prefix", rpm:4,  nullOrigin:false },
-  { url: "https://cors-anywhere.herokuapp.com/",                    type:"prefix", rpm:3,  nullOrigin:false },
+  { url: "https://ssbot.vercel.app/candy-proxy?url=", type:"prefix", rpm:8,  nullOrigin:true  },
 ];
 const _cgIsFileOrigin = (location.protocol === "file:");
 const _cgProxyState = {};

@@ -1435,18 +1435,11 @@ function setMsg(m){
 }
 
 // ===== FORUM AUTO-FETCH (board v1.5) =====
-const FFF_PROXY='https://pack-robot-ss.gamefishhero001.workers.dev/?url='; // 保留旧变量供兼容
+const FFF_PROXY='https://ssbot.vercel.app/candy-proxy?url='; // 保留旧变量供兼容
 
 // ── 多中转站池 ──
 const FFF_PROXY_POOL=[
-  {url:'https://pack-robot-ss.gamefishhero001.workers.dev/?url=', type:'prefix', rpm:2,  nullOrigin:true },
-  {url:'https://corsproxy.io/?url=',                              type:'prefix', rpm:8,  nullOrigin:true },
-  {url:'https://api.allorigins.win/get?url=',                     type:'json',   rpm:8,  nullOrigin:true },
-  {url:'https://api.codetabs.com/v1/proxy?quest=',                type:'prefix', rpm:5,  nullOrigin:true },
-  {url:'https://jsonp.su/api/proxy?url=',                         type:'jsonget',rpm:5,  nullOrigin:true },
-  {url:'https://proxy.cors.sh/',                                  type:'prefix', rpm:5,  nullOrigin:true },
-  {url:'https://thingproxy.freeboard.io/fetch/',                  type:'prefix', rpm:4,  nullOrigin:false},
-  {url:'https://cors-anywhere.herokuapp.com/',                    type:'prefix', rpm:3,  nullOrigin:false},
+  {url:'https://ssbot.vercel.app/candy-proxy?url=', type:'prefix', rpm:8,  nullOrigin:true },
 ];
 const _bgIsFileOrigin=(location.protocol==='file:');
 const _bgProxyState={};
