@@ -897,11 +897,6 @@ input[type="text"]:focus, input[type="number"]:focus {
   background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);
   color:rgba(201,168,76,0.85);transition:all .15s}
 .ih-chip:hover{background:rgba(201,168,76,0.22);border-color:rgba(201,168,76,0.6);color:var(--gold)}
-.ih-chip{position:relative;padding-right:26px}
-.ih-chip-del{position:absolute;right:6px;top:50%;transform:translateY(-50%);
-  background:none;border:none;color:rgba(201,168,76,0.5);font-size:0.75rem;
-  cursor:pointer;padding:0 2px;line-height:1;transition:color .15s}
-.ih-chip-del:hover{color:#e88}
 
 /* ── MILESTONE POPUP ── */
 #milestoneOverlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(5,2,16,0.88);align-items:center;justify-content:center}
@@ -1914,44 +1909,9 @@ async function logForumFetchToGAS_(opts) {
 }
 
 // ===== FORUM AUTO-FETCH（论坛32 新手区；逻辑对齐 board_game） =====
-const FFF_PROXY = 'https://api.codetabs.com/v1/proxy?quest='; // 保留旧变量供兼容
-
-// ── 多中转站池 ──
-const FFF_PROXY_POOL = [
-  { url: 'https://pack-robot-ss.gamefishhero001.workers.dev/?url=', type:'prefix', rpm:2,  nullOrigin:true  },
-  { url: 'https://corsproxy.io/?url=',                              type:'prefix', rpm:8,  nullOrigin:true  },
-  { url: 'https://api.allorigins.win/get?url=',                     type:'json',   rpm:8,  nullOrigin:true  },
-  { url: 'https://api.codetabs.com/v1/proxy?quest=',                type:'prefix', rpm:5,  nullOrigin:true  },
-  { url: 'https://jsonp.su/api/proxy?url=',                         type:'jsonget',rpm:5,  nullOrigin:true  },
-  { url: 'https://proxy.cors.sh/',                                  type:'prefix', rpm:5,  nullOrigin:true  },
-  { url: 'https://thingproxy.freeboard.io/fetch/',                  type:'prefix', rpm:4,  nullOrigin:false },
-  { url: 'https://cors-anywhere.herokuapp.com/',                    type:'prefix', rpm:3,  nullOrigin:false },
-];
-const _isFileOrigin = (location.protocol === 'file:');
-const _proxyState = {};
-FFF_PROXY_POOL.forEach(p => { _proxyState[p.url] = { count:0, windowStart:Date.now(), banUntil:0 }; });
-function _pickProxy() {
-  const now = Date.now();
-  const pool = _isFileOrigin ? FFF_PROXY_POOL.filter(p => p.nullOrigin) : FFF_PROXY_POOL;
-  for (const p of pool) {
-    const st = _proxyState[p.url];
-    if (st.banUntil > now) continue;
-    if (now - st.windowStart > 60000) { st.count = 0; st.windowStart = now; }
-    if (st.count < p.rpm) return p;
-  }
-  return pool.reduce((a, b) => (_proxyState[a.url].banUntil||0) <= (_proxyState[b.url].banUntil||0) ? a : b);
-}
-function _banProxy(url) {
-  const st = _proxyState[url];
-  if (st) st.banUntil = Date.now() + 60000;
-  console.warn('[proxy] 中转站限速 60s:', url);
-}
-async function _parseProxyResp(proxy, resp) {
-  const text = await resp.text();
-  if (proxy.type === 'json')    { try { const j = JSON.parse(text); return j.contents || text; } catch(e) { return text; } }
-  if (proxy.type === 'jsonget') { try { const j = JSON.parse(text); return j.body     || text; } catch(e) { return text; } }
-  return text;
-}
+// 中转站：优先 GAS 云端代理（Google试算表后台），备用 Vercel 中转
+const FFF_PROXY = 'https://ssbot.vercel.app/candy-proxy?url=';
+const FORUM_FETCH_MS = 35000;
 const FFF_IMP = 'fff_imp_dicestory_v2';
 let _fffResult = null;
 let _fffIsUpdate = false;
@@ -2018,41 +1978,70 @@ function fffSaveImp(uid, key, r, c) {
   try { localStorage.setItem(FFF_IMP + '_' + uid, JSON.stringify({ key, r, c })); } catch (e) {}
 }
 
+// GAS JSONP helper（与 candy_crush.html 对齐）
+function _diceGasJsonp_(params, timeout) {
+  return new Promise(function(resolve, reject) {
+    const cb = 'dc_cb_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
+    const tid = setTimeout(function() {
+      try { delete window[cb]; } catch(e) {}
+      const sc = document.getElementById(cb + '_s'); if (sc) sc.remove();
+      reject(new Error('timeout'));
+    }, timeout || FORUM_FETCH_MS);
+    window[cb] = function(data) {
+      clearTimeout(tid);
+      try { delete window[cb]; } catch(e) {}
+      const sc = document.getElementById(cb + '_s'); if (sc) sc.remove();
+      if (data && data.ok) resolve(data);
+      else reject(new Error((data && data.error) || 'err'));
+    };
+    const qs = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+    const s = document.createElement('script');
+    s.id = cb + '_s';
+    s.src = GAS_URL + '?' + qs + '&callback=' + cb + '&_t=' + Date.now();
+    s.onerror = function() { clearTimeout(tid); try { delete window[cb]; } catch(e) {} s.remove(); reject(new Error('load_fail')); };
+    document.head.appendChild(s);
+  });
+}
+function _diceProxyOkText_(text) {
+  return text && text.length > 80 && (text.indexOf('<') >= 0 || /profile|ipsQuote|cProfileContent/i.test(text));
+}
+async function _diceGasProxyGet_(url) {
+  const data = await _diceGasJsonp_({ action: 'fetch_url', url: url }, FORUM_FETCH_MS);
+  const text = (data && (data.html || data.contents)) || '';
+  if (_diceProxyOkText_(text)) return text;
+  throw new Error((data && data.error) || 'gas_proxy_empty');
+}
+
 async function fffProxyGet(url) {
   const sk = 'fff_' + url;
-  const hit = sessionStorage.getItem(sk);
-  if (hit) return hit;
-  const maxTry = 4;
-  let lastErr = null;
-  const tried = new Set();
-  for (let attempt = 0; attempt < maxTry; attempt++) {
-    const proxy = _pickProxy();
-    if (tried.has(proxy.url)) break;
-    tried.add(proxy.url);
-    const st = _proxyState[proxy.url];
-    if (Date.now() - st.windowStart > 60000) { st.count = 0; st.windowStart = Date.now(); }
-    st.count++;
-    if (st.count >= proxy.rpm) await new Promise(r => setTimeout(r, 1500));
-    try {
-      const resp = await fetch(proxy.url + encodeURIComponent(url), { signal: AbortSignal.timeout(30000) });
-      if (resp.status === 403 || resp.status === 429) {
-        _banProxy(proxy.url);
-        lastErr = new Error('中转站 ' + resp.status);
-        await new Promise(r => setTimeout(r, 400));
-        continue;
-      }
-      if (!resp.ok) { lastErr = new Error('网络错误 ' + resp.status); continue; }
-      const text = await _parseProxyResp(proxy, resp);
-      try { sessionStorage.setItem(sk, text); } catch (e) {}
-      return text;
-    } catch (e) {
-      lastErr = e;
-      if (e.name === 'TimeoutError' || /403|429/.test(e.message)) _banProxy(proxy.url);
-      if (attempt < maxTry - 1) await new Promise(r => setTimeout(r, 600));
-    }
+  // sessionStorage 页面缓存
+  try { const hit = sessionStorage.getItem(sk); if (hit) return hit; } catch(e) {}
+
+  // 优先：GAS 云端代理（Google试算表后台转发）
+  try {
+    const text = await _diceGasProxyGet_(url);
+    try { sessionStorage.setItem(sk, text); } catch(e) {}
+    return text;
+  } catch(e) {
+    console.warn('[dice-proxy] GAS FAIL:', e.message || e);
   }
-  const hint = _isFileOrigin ? '（本地 file:// 打开受 CORS 限制，建议用 GitHub Pages 或 localhost）' : '';
-  throw lastErr || new Error('所有中转站均不可用' + hint);
+
+  // 备用：Vercel 中转站
+  try {
+    const resp = await fetch(FFF_PROXY + encodeURIComponent(url), {
+      referrerPolicy: 'no-referrer', credentials: 'omit',
+      signal: AbortSignal.timeout(FORUM_FETCH_MS)
+    });
+    if (!resp.ok) throw new Error('HTTP_' + resp.status);
+    const text = await resp.text();
+    if (!_diceProxyOkText_(text)) throw new Error('empty_response');
+    try { sessionStorage.setItem(sk, text); } catch(e) {}
+    return text;
+  } catch(e) {
+    console.warn('[dice-proxy] Vercel FAIL:', e.message || e);
+  }
+
+  throw new Error('所有中转站均不可用（GAS + Vercel 均失败）');
 }
 
 async function fffGetUsername(uid) {
@@ -2176,18 +2165,8 @@ function fffOpenModal(isUpdate) {
   const s2e = document.getElementById('s2-date-end');
   const fs = document.getElementById('fff-date-start');
   const fe = document.getElementById('fff-date-end');
-  // 论坛更新（游戏中）：结束日期自动带入今天，开始日期带入当月 1 日
-  if (isUpdate) {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    if (fs) fs.value = yyyy + '-' + mm + '-01';
-    if (fe) fe.value = yyyy + '-' + mm + '-' + dd;
-  } else {
-    if (s2s && s2s.value && fs) fs.value = s2s.value;
-    if (s2e && s2e.value && fe) fe.value = s2e.value;
-  }
+  if (s2s && s2s.value && fs) fs.value = s2s.value;
+  if (s2e && s2e.value && fe) fe.value = s2e.value;
   const tit = document.getElementById('fff-modal-title');
   if (tit) tit.textContent = isUpdate ? '📡 论坛更新（游戏中）' : '📡 论坛自动读取';
   modal.style.display = 'flex';
@@ -3562,13 +3541,6 @@ function saveIdHistory_(id, uid) {
   try { localStorage.setItem(ID_HISTORY_KEY, JSON.stringify(hist)); } catch(e) {}
   renderIdHistory_();
 }
-function deleteIdHistory_(id) {
-  try {
-    let hist = loadIdHistory_().filter(x => (typeof x === 'string' ? x : x.id) !== id);
-    localStorage.setItem(ID_HISTORY_KEY, JSON.stringify(hist));
-  } catch(e) {}
-  renderIdHistory_();
-}
 function renderIdHistory_() {
   const hist = loadIdHistory_();
   const row = document.getElementById('idHistoryRow');
@@ -3591,13 +3563,6 @@ function renderIdHistory_() {
       state.uid = parseInt(uid, 10) || 0;
       doDiceLogin();
     };
-    // X 删除按钮
-    const del = document.createElement('button');
-    del.className = 'ih-chip-del';
-    del.textContent = '✕';
-    del.title = '删除此 ID';
-    del.onclick = (e) => { e.stopPropagation(); deleteIdHistory_(id); };
-    btn.appendChild(del);
     chips.appendChild(btn);
   });
 }

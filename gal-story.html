@@ -4899,8 +4899,9 @@ function confirmUpdateStats(){
 // ══════════════════════════════════════════════
 //  FORUM SCRAPER
 // ══════════════════════════════════════════════
-// codetabs: 免费 CORS 代理，返回纯 HTML 文本
-const CORS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
+// 中转站：优先 GAS 云端代理（Google试算表后台），备用 Vercel 中转
+const CORS_PROXY = 'https://ssbot.vercel.app/candy-proxy?url=';
+const FORUM_FETCH_MS_GAL = 35000;
 let _fetchResult = null;
 let _fetchIsUpdate = false;
 let _fetchMeta = null;
@@ -4914,16 +4915,70 @@ function pushFetchAudit_(entry){
   if(G.fetchAudit.length>120) G.fetchAudit=G.fetchAudit.slice(-120);
 }
 
+// GAS JSONP helper（对齐 candy_crush.html）
+function _galGasJsonp_(params, timeout) {
+  return new Promise(function(resolve, reject) {
+    const cb = 'gl_cb_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
+    const tid = setTimeout(function() {
+      try { delete window[cb]; } catch(e) {}
+      const sc = document.getElementById(cb + '_s'); if (sc) sc.remove();
+      reject(new Error('timeout'));
+    }, timeout || FORUM_FETCH_MS_GAL);
+    window[cb] = function(data) {
+      clearTimeout(tid);
+      try { delete window[cb]; } catch(e) {}
+      const sc = document.getElementById(cb + '_s'); if (sc) sc.remove();
+      if (data && data.ok) resolve(data);
+      else reject(new Error((data && data.error) || 'err'));
+    };
+    const qs = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+    const s = document.createElement('script');
+    s.id = cb + '_s';
+    s.src = GAS_URL + '?' + qs + '&callback=' + cb + '&_t=' + Date.now();
+    s.onerror = function() { clearTimeout(tid); try { delete window[cb]; } catch(e) {} s.remove(); reject(new Error('load_fail')); };
+    document.head.appendChild(s);
+  });
+}
+function _galProxyOkText_(text) {
+  return text && text.length > 80 && (text.indexOf('<') >= 0 || /profile|ipsQuote|cProfileContent/i.test(text));
+}
+async function _galGasProxyGet_(url) {
+  const data = await _galGasJsonp_({ action: 'fetch_url', url: url }, FORUM_FETCH_MS_GAL);
+  const text = (data && (data.html || data.contents)) || '';
+  if (_galProxyOkText_(text)) return text;
+  throw new Error((data && data.error) || 'gas_proxy_empty');
+}
+
 async function proxyGet(url) {
   // sessionStorage 页面缓存（同一 session 内重跑直接用缓存）
   const sk = 'sc_' + url;
-  const hit = sessionStorage.getItem(sk);
-  if (hit) return hit;
-  const r = await fetch(CORS_PROXY + encodeURIComponent(url), {signal: AbortSignal.timeout(30000)});
-  if (!r.ok) throw new Error('网络错误 ' + r.status);
-  const text = await r.text();
-  try { sessionStorage.setItem(sk, text); } catch {}
-  return text;
+  try { const hit = sessionStorage.getItem(sk); if (hit) return hit; } catch(e) {}
+
+  // 优先：GAS 云端代理（Google试算表后台转发，完美抓取）
+  try {
+    const text = await _galGasProxyGet_(url);
+    try { sessionStorage.setItem(sk, text); } catch(e) {}
+    return text;
+  } catch(e) {
+    console.warn('[gal-proxy] GAS FAIL:', e.message || e);
+  }
+
+  // 备用：Vercel 中转站
+  try {
+    const r = await fetch(CORS_PROXY + encodeURIComponent(url), {
+      referrerPolicy: 'no-referrer', credentials: 'omit',
+      signal: AbortSignal.timeout(FORUM_FETCH_MS_GAL)
+    });
+    if (!r.ok) throw new Error('网络错误 ' + r.status);
+    const text = await r.text();
+    if (!_galProxyOkText_(text)) throw new Error('empty_response');
+    try { sessionStorage.setItem(sk, text); } catch(e) {}
+    return text;
+  } catch(e) {
+    console.warn('[gal-proxy] Vercel FAIL:', e.message || e);
+  }
+
+  throw new Error('所有中转站均不可用（GAS + Vercel 均失败）');
 }
 
 function setFetchStatus(msg) {
