@@ -4,9 +4,13 @@
       "source": "/candy-proxy",
       "destination": "https://script.google.com/macros/s/AKfycbwtg97eIbxTMTAf2vx0hzOaJbD9DCwKJeCUibt20dsmMpXTgNzwsRRoo5U-UHgx8xM8eg/exec?action=fetch_url"
     },
-    {
+     {
       "source": "/board-proxy",
-      "destination": "https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsIAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec?action=fetch_url"
+      "destination": "https://script.google.com/macros/s/AKfycbx3qni9t1_ZEdNxJ56Hse1PIZWSta2mYHsiAR69j1a1y_UfyU3hUZ73dSambK7AyKON/exec?action=fetch_url"
+    },
+    {
+      "source": "/checkin-game-proxy",
+      "destination": "https://script.google.com/macros/s/AKfycbzbR0_yhUphjOQRKH5Bpskj8yRdjpXwVRD_CmouHBApHGzPav80ofvmE-jbEBT92gbA/exec?action=fetch_url"
     },
     {
       "source": "/gal-proxy",
