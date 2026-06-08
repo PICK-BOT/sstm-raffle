@@ -240,9 +240,13 @@ body{background:var(--bg);font-family:'Nunito',sans-serif;color:#fff;overflow:hi
 
 <div id="shop-overlay" class="overlay">
   <div class="panel-popup">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <div style="font-size:1.4rem;font-weight:900">🏪 小镇主题商店</div>
       <div style="font-size:0.9rem;color:#fbbf24;font-weight:700">🪙 <span id="shop-coins">0</span></div>
+    </div>
+    <div style="display:flex;justify-content:space-around;font-size:0.8rem;background:rgba(0,0,0,0.2);padding:6px;border-radius:10px;margin-bottom:12px;color:#cbd5e1">
+      <span>💬 累计回复: <b id="shop-forum-replies" style="color:#22d3ee">0</b></span>
+      <span>📌 累计引用: <b id="shop-forum-quotes" style="color:#22d3ee">0</b></span>
     </div>
     
     <div class="shop-tabs">
@@ -334,7 +338,7 @@ const KEY_ID = "candytown_id";
 const KEY_UID = "candytown_uid";
 const KEY_HISTORY = "candytown_history_v2";
 
-// 遊戲全局變項
+// 游戏全局变项
 let G = {
   id: "",
   uid: "",
@@ -342,7 +346,9 @@ let G = {
   level: 1,
   cleared_count: 0,
   skin: "classic",
-  inventory: []
+  inventory: [],
+  forum_replies: 0,  // 新增：累计记录论坛回复数
+  forum_quotes: 0    // 新增：累计记录论坛被引用数
 };
 
 // 商店資料庫項目
@@ -511,6 +517,11 @@ function updateHud() {
   document.getElementById('hud-level').textContent = G.level;
   document.getElementById('hud-coins').textContent = G.coins;
   document.getElementById('shop-coins').textContent = G.coins;
+  // 新增：刷新商店中的论坛计数显示
+  const shopReplies = document.getElementById('shop-forum-replies');
+  const shopQuotes = document.getElementById('shop-forum-quotes');
+  if(shopReplies) shopReplies.textContent = G.forum_replies;
+  if(shopQuotes) shopQuotes.textContent = G.forum_quotes;
 }
 
 function showScreen(id) {
@@ -1164,7 +1175,13 @@ function executeForumFetch() {
 
         rEl.textContent = reply;
         qEl.textContent = quote;
-        statusEl.textContent = "✅ 论坛数据抓取成功！正在异步存入云端试算表...";
+        
+        // 新增：将本次抓取到的数量记录并累加到全局数据中
+        G.forum_replies += reply;
+        G.forum_quotes += quote;
+        updateHud(); // 新增：刷新商店等界面的数据显示
+
+        statusEl.textContent = "✅ 论坛数据抓取成功！已记录至商店并正在异步存入云端...";
         statusEl.style.color = "#10b981";
 
         // 🌟【精準修正點】將打包給 GAS 的參數名修改為對應的 replies 和 citations 🌟
