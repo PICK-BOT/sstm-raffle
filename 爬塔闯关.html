@@ -65,8 +65,9 @@
 @keyframes fffSpin{to{transform:rotate(360deg)}}
 
 /* ── OFFLINE MODE ── */
-#tower-offline-warning{display:none;position:fixed;bottom:14px;right:14px;background:rgba(180,40,40,0.92);border:1px solid #e55;color:#fdd;padding:8px 14px;border-radius:8px;font-size:0.8rem;cursor:pointer;z-index:200;transition:all .2s;line-height:1.4;text-align:center}
-#tower-offline-warning:hover{background:rgba(200,60,60,0.95);box-shadow:0 0 10px rgba(220,60,60,.4)}
+#tower-offline-warning{display:block;position:fixed;bottom:14px;right:14px;background:rgba(20,140,60,0.92);border:1px solid #4e8;color:#dfd;padding:8px 14px;border-radius:8px;font-size:0.8rem;cursor:pointer;z-index:200;transition:all .2s;line-height:1.4;text-align:center}
+#tower-offline-warning.offline{background:rgba(180,40,40,0.92);border-color:#e55;color:#fdd}
+#tower-offline-warning:hover{opacity:.9;box-shadow:0 0 10px rgba(0,0,0,.4)}
 #tower-id-history-row{margin-top:10px;text-align:center;display:none}
 #tower-id-history-row .t-ih-label{font-size:0.72rem;color:#c9daf6;margin-bottom:6px}
 .t-ih-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
@@ -76,6 +77,7 @@
 body:has(#loginCard:not(.hidden)){min-height:100vh}
 body:has(#loginCard:not(.hidden))::before{content:"";position:fixed;inset:0;z-index:-1;background-image:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,.58)),url('https://s.sstmlt.com/img/2026/05/17/0fc253895e0f3d21d8e78a354c175749e8796fe008c02163.jpeg');background-size:cover;background-position:center;background-repeat:no-repeat}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -83,7 +85,10 @@ body:has(#loginCard:not(.hidden))::before{content:"";position:fixed;inset:0;z-in
 
   <div id="loginCard" class="card">
     <div class="row">
-      <input id="uid" maxlength="30" placeholder="请输入论坛ID（必填）">
+      <input id="uid" maxlength="40" placeholder="论坛 ID（帐号名，必填）" autocomplete="username">
+    </div>
+    <div class="row">
+      <input id="forum-uid-num" type="number" inputmode="numeric" min="1" placeholder="论坛数字 UID（必填，用于论坛抓取）">
       <button class="primary" onclick="enterGame()">进入游戏</button>
     </div>
     <div style="font-size:13px;color:#c9daf6;margin-top:8px" id="loginNotice"></div>
@@ -496,6 +501,8 @@ function handleFloorMilestones(clearedFloor){
   }
 }
 
+const TW_VERSION='v1.1.0';
+const TW_SAVE_XLSX_PASSWORD='sstm';
 const FIXED_GAS_URL="https://script.google.com/macros/s/AKfycbxg1Z0dc4XhjTUz4ZGgbZ369TOTHcGpgLejHgL9WZsKcFsuZPiTNH5SSYe_0K_JYgYU/exec";
 function gasUrl(){
   const q=new URLSearchParams(location.search).get("record");
@@ -732,16 +739,25 @@ function clearMenuAddStock_(){
 
 async function enterGame(){
   const uid=document.getElementById("uid").value.trim();
+  const forumUidStr=(document.getElementById("forum-uid-num").value||"").trim();
+  const forumUid=parseInt(forumUidStr,10);
   if(!uid){
     const el=document.getElementById("loginNotice");
-    if(el) el.textContent="请先输入论坛ID。";
+    if(el) el.textContent="请先输入论坛 ID（帐号名）。";
+    return;
+  }
+  if(!forumUid||isNaN(forumUid)){
+    const el=document.getElementById("loginNotice");
+    if(el) el.textContent="请先输入论坛数字 UID（用于论坛抓取）。";
     return;
   }
   const aliasFrom = G.pendingAliasFrom || '';
   G.pendingAliasFrom = '';
-  G.uid=uid; localStorage.setItem(KID,uid);
+  G.uid=uid; G.forumUid=forumUid;
+  localStorage.setItem(KID,uid);
+  localStorage.setItem(KID+"_forumUid",String(forumUid));
   saveTowerIdHistory_(uid);
-  show("loginCard",false); show("menuCard",true); document.getElementById("hello").textContent="玩家："+uid;
+  show("loginCard",false); show("menuCard",true); document.getElementById("hello").textContent="玩家："+uid+" (UID:"+forumUid+")";
   // 严格模式：战利品/里程碑展示前先等待云端确认
   G.strict.confirmed=false;
   G.strict.loading=false;
@@ -1525,7 +1541,17 @@ window.addEventListener("DOMContentLoaded",()=>{
   saveLootTotal(loadLootTotal());
   // 严格模式下：进入游戏后由云端确认成功再展示战利品/里程碑状态
   if(!STRICT_CLOUD_CONFIRM) renderLootTotal();
-  const uid=localStorage.getItem(KID)||""; if(uid){document.getElementById("uid").value=uid; G.uid=uid; enterGame();}
+  const uid=localStorage.getItem(KID)||"";
+  const savedFUid=localStorage.getItem(KID+"_forumUid")||"";
+  if(uid&&savedFUid){
+    document.getElementById("uid").value=uid;
+    document.getElementById("forum-uid-num").value=savedFUid;
+    G.uid=uid; G.forumUid=parseInt(savedFUid,10);
+    enterGame();
+  } else if(uid) {
+    document.getElementById("uid").value=uid;
+    G.uid=uid;
+  }
   renderTowerIdHistory_();
   const av=document.getElementById("sysAvatar");
   av.src=SYS_AVATAR;
@@ -1533,6 +1559,24 @@ window.addEventListener("DOMContentLoaded",()=>{
   sys("准备就绪。");
 
   // 网络恢复后立刻补一次快照；同时周期性刷新快照（离线时跳过）
+  // 初始连线状态探测
+  (function(){
+    var _el=document.getElementById('tower-offline-warning');
+    if(_el){_el.classList.remove('offline');_el.innerHTML='🟢 连线中';}
+    if(!navigator.onLine){
+      if(_el){_el.classList.add('offline');_el.innerHTML='🔴 离线中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span>';}
+    } else {
+      fetch(gasUrl()+'?ping=1',{mode:'no-cors',signal:AbortSignal.timeout(4000)}).then(function(){
+        if(_el){_el.classList.remove('offline');_el.innerHTML='🟢 连线中';}
+      }).catch(function(){
+        if(_el){_el.classList.add('offline');_el.innerHTML='🔴 离线中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span>';}
+      });
+    }
+  })();
+  window.addEventListener("offline",()=>{
+    var _el=document.getElementById('tower-offline-warning');
+    if(_el){_el.classList.add('offline');_el.innerHTML='🔴 离线中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span>';}
+  });
   window.addEventListener("online",()=>{
     try{cloudMaybeSaveRunSnapshot_(true);}catch(e){}
     try{ensureCloudConfirmed_().catch(()=>{});}catch(e){}
@@ -1555,129 +1599,78 @@ window.addEventListener("DOMContentLoaded",()=>{
 // ===== FORUM AUTO-FETCH（与 gal-story 同抓取逻辑；云端写入 GAS「论坛抓取记录_爬塔」） =====
 
 // ── 多中转站池 ──
-// type: 'prefix'  → fetch(url + encodeURIComponent(target))，回传 HTML 纯文字
-// type: 'json'    → fetch(url + encodeURIComponent(target))，回传 JSON { contents }
-// type: 'jsonget' → fetch(url + encodeURIComponent(target))，回传 JSON { body } (jsonp.su)
-// nullOrigin: true → 该代理可接受 file:// 的 null origin（重要！）
-const FFF_PROXY_POOL = [
-  // ① 你自己的 Cloudflare Worker — 最优先，但 SSTM 可能 ban CF IP
-  { url: 'https://pack-robot-ss.gamefishhero001.workers.dev/?url=', type:'prefix', rpm:2, nullOrigin:true },
-  // ② corsproxy.io — 支援 null origin，稳定
-  { url: 'https://corsproxy.io/?url=', type:'prefix', rpm:8, nullOrigin:true },
-  // ③ allorigins get（JSON 模式，/get?url=）— 支援 null origin
-  { url: 'https://api.allorigins.win/get?url=', type:'json', rpm:8, nullOrigin:true },
-  // ④ htmlcodify（专门代理 HTML，支援 null origin）
-  { url: 'https://api.codetabs.com/v1/proxy?quest=', type:'prefix', rpm:5, nullOrigin:true },
-  // ⑤ jsonp.su — 回传 JSON {body}, 支援 null origin
-  { url: 'https://jsonp.su/api/proxy?url=', type:'jsonget', rpm:5, nullOrigin:true },
-  // ⑥ cors.sh（需 header，但本站开放，支援 null origin）
-  { url: 'https://proxy.cors.sh/', type:'prefix', rpm:5, nullOrigin:true },
-  // ⑦ thingproxy — Glitch 托管，较稳
-  { url: 'https://thingproxy.freeboard.io/fetch/', type:'prefix', rpm:4, nullOrigin:false },
-  // ⑧ cors-anywhere heroku（常被滥用，列最末）
-  { url: 'https://cors-anywhere.herokuapp.com/', type:'prefix', rpm:3, nullOrigin:false },
-];
-
-// 检测是否为 file:// 本地运行（此时 origin 为 null，很多代理会封）
+// 中转站：优先 GAS 云端代理（Google试算表后台），备用 Vercel https://sstm-raffle.vercel.app/tower-proxy
+const FFF_PROXY = 'https://sstm-raffle.vercel.app/tower-proxy?url=';
+const FORUM_FETCH_MS_TW = 35000;
 const _isFileOrigin = (location.protocol === 'file:');
 
-// 限速状态追踪
-const _proxyState = {};
-FFF_PROXY_POOL.forEach(p => {
-  _proxyState[p.url] = { count: 0, windowStart: Date.now(), banUntil: 0 };
-});
-
-let FFF_PROXY = FFF_PROXY_POOL[0].url;
-
-function _pickProxy() {
-  const now = Date.now();
-  // file:// 环境只选 nullOrigin:true 的代理
-  const pool = _isFileOrigin ? FFF_PROXY_POOL.filter(p => p.nullOrigin) : FFF_PROXY_POOL;
-  for (const p of pool) {
-    const st = _proxyState[p.url];
-    if (st.banUntil > now) continue;
-    if (now - st.windowStart > 60000) { st.count = 0; st.windowStart = now; }
-    if (st.count < p.rpm) return p;
-  }
-  // 全部超限：选冷却最短的
-  return pool.reduce((a, b) =>
-    (_proxyState[a.url].banUntil || 0) <= (_proxyState[b.url].banUntil || 0) ? a : b
-  );
+// GAS proxy helper（透过已有的 gasUrl() 取 GAS 端点）
+function _twProxyOkText_(text) {
+  return text && text.length > 80 && (text.indexOf('<') >= 0 || /profile|ipsQuote|cProfileContent/i.test(text));
+}
+function _twGasJsonp_(params, timeout) {
+  return new Promise(function(resolve, reject) {
+    const u = gasUrl();
+    if (!u) return reject(new Error('no_gas_url'));
+    const cb = 'tw_cb_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
+    const tid = setTimeout(function() {
+      try { delete window[cb]; } catch(e) {}
+      const sc = document.getElementById(cb + '_s'); if (sc) sc.remove();
+      reject(new Error('timeout'));
+    }, timeout || FORUM_FETCH_MS_TW);
+    window[cb] = function(data) {
+      clearTimeout(tid);
+      try { delete window[cb]; } catch(e) {}
+      const sc = document.getElementById(cb + '_s'); if (sc) sc.remove();
+      if (data && data.ok) resolve(data);
+      else reject(new Error((data && data.error) || 'err'));
+    };
+    const qs = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+    const s = document.createElement('script');
+    s.id = cb + '_s';
+    s.src = u + (u.includes('?') ? '&' : '?') + qs + '&callback=' + cb + '&_t=' + Date.now();
+    s.onerror = function() { clearTimeout(tid); try { delete window[cb]; } catch(e) {} s.remove(); reject(new Error('load_fail')); };
+    document.head.appendChild(s);
+  });
+}
+async function _twGasProxyGet_(url) {
+  const data = await _twGasJsonp_({ action: 'fetch_url', url: url }, FORUM_FETCH_MS_TW);
+  const text = (data && (data.html || data.contents)) || '';
+  if (_twProxyOkText_(text)) return text;
+  throw new Error((data && data.error) || 'gas_proxy_empty');
 }
 
-function _banProxy(proxyUrl) {
-  const st = _proxyState[proxyUrl];
-  if (st) st.banUntil = Date.now() + 60000;
-  console.warn('[proxy] 中转站被限速，暂停 60 秒:', proxyUrl);
-}
-
-// 解析各中转站的响应体 → 纯 HTML 字符串
-async function _parseProxyResp(proxy, resp) {
-  const text = await resp.text();
-  if (proxy.type === 'json') {
-    // allorigins /get 返回 { contents: "...", status:{...} }
-    try { const j = JSON.parse(text); return j.contents || text; } catch(e) { return text; }
-  }
-  if (proxy.type === 'jsonget') {
-    // jsonp.su 返回 { body: "..." }
-    try { const j = JSON.parse(text); return j.body || text; } catch(e) { return text; }
-  }
-  return text; // prefix 模式直接是 HTML
-}
-
-// 核心请求：自动选站 + 失败切换重试（最多尝试 4 个站）
+// 核心请求：① GAS 云端代理优先 → ② Vercel /tower-proxy 备用
 async function fffProxyGet(targetUrl) {
   const sk = 'fff_' + targetUrl;
-  const hit = sessionStorage.getItem(sk);
-  if (hit) return hit;
+  try { const hit = sessionStorage.getItem(sk); if (hit) return hit; } catch(e) {}
 
-  const maxTry = 4;
-  let lastErr = null;
-  const tried = new Set();
-
-  for (let attempt = 0; attempt < maxTry; attempt++) {
-    const proxy = _pickProxy();
-    if (tried.has(proxy.url)) break; // 没有新的可用站了
-    tried.add(proxy.url);
-
-    const st = _proxyState[proxy.url];
-    if (Date.now() - st.windowStart > 60000) { st.count = 0; st.windowStart = Date.now(); }
-    st.count++;
-    FFF_PROXY = proxy.url;
-
-    if (st.count >= proxy.rpm) await new Promise(r => setTimeout(r, 1500));
-
-    try {
-      const fetchUrl = proxy.url + encodeURIComponent(targetUrl);
-      const headers = {};
-      // cors.sh 需要 origin header 声明
-      if (proxy.url.includes('cors.sh')) headers['x-cors-api-key'] = 'temp_' + Date.now();
-      const resp = await fetch(fetchUrl, {
-        headers,
-        signal: AbortSignal.timeout(30000)
-      });
-      if (resp.status === 403 || resp.status === 429) {
-        _banProxy(proxy.url);
-        lastErr = new Error('中转站 ' + resp.status);
-        await new Promise(r => setTimeout(r, 400));
-        continue;
-      }
-      if (!resp.ok) {
-        lastErr = new Error('网络错误 ' + resp.status);
-        await new Promise(r => setTimeout(r, 400));
-        continue;
-      }
-      const text = await _parseProxyResp(proxy, resp);
-      try { sessionStorage.setItem(sk, text); } catch(e) {}
-      return text;
-    } catch(e) {
-      lastErr = e;
-      if (e.name === 'TimeoutError' || /403|429/.test(e.message)) _banProxy(proxy.url);
-      if (attempt < maxTry - 1) await new Promise(r => setTimeout(r, 600));
-    }
+  // ① 优先：GAS 云端代理（Google试算表后台转发，完美抓取）
+  try {
+    const text = await _twGasProxyGet_(targetUrl);
+    try { sessionStorage.setItem(sk, text); } catch(e) {}
+    return text;
+  } catch(e) {
+    console.warn('[tower-proxy] GAS FAIL:', e.message || e);
   }
-  const hint = _isFileOrigin ? '（提示：本地 file:// 打开会受浏览器 CORS 限制，建议用 Edge/Chrome 并停用 web security，或用 localhost 打开）' : '';
-  throw lastErr || new Error('所有中转站均不可用' + hint);
+
+  // ② 备用：Vercel /tower-proxy 中转站
+  try {
+    const resp = await fetch(FFF_PROXY + encodeURIComponent(targetUrl), {
+      referrerPolicy: 'no-referrer', credentials: 'omit',
+      signal: AbortSignal.timeout(FORUM_FETCH_MS_TW)
+    });
+    if (!resp.ok) throw new Error('HTTP_' + resp.status);
+    const text = await resp.text();
+    if (!_twProxyOkText_(text)) throw new Error('empty_response');
+    try { sessionStorage.setItem(sk, text); } catch(e) {}
+    return text;
+  } catch(e) {
+    console.warn('[tower-proxy] Vercel FAIL:', e.message || e);
+  }
+
+  const hint = _isFileOrigin ? '（本地 file:// 建议改用 GitHub Pages）' : '';
+  throw new Error('所有中转站均不可用（GAS + Vercel 均失败）' + hint);
 }
 
 const FFF_IMP='fff_imp_tower';
@@ -1744,7 +1737,7 @@ function logTowerActivityToGAS_(uid,date,replies,citations){
       replies:parseInt(replies,10)||0,citations:parseInt(citations,10)||0})}).catch(e=>console.warn('GAS activity log failed',e));
 }
 
-function fffGetCurrentUid(){return (G&&G.uid)||'';}
+function fffGetCurrentUid(){return (G&&G.forumUid)||parseInt(localStorage.getItem(KID+'_forumUid')||'0',10)||0;}
 function fffSetStatus(m){const e=document.getElementById('fff-status');if(e)e.textContent=m;}
 function fffOpenLoading(){const el=document.getElementById('fff-loading');if(el)el.style.display='flex';}
 function fffCloseLoading(){const el=document.getElementById('fff-loading');if(el)el.style.display='none';}
@@ -1845,6 +1838,54 @@ async function fffScrape(uid,slug,startDate,endDate){
   fffSaveCC(uid,cache);
   return{replies,citations:citedIds.size,byDay};
 }
+
+// ── 云端逐日去重（与 dice-story v2 逻辑一致）──────────────────────────────
+function _normDate_(v){
+  if(!v) return '';
+  var s=String(v).trim();
+  var m=s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if(m) return m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2);
+  var d=new Date(s);if(!isNaN(d.getTime()))return d.toISOString().slice(0,10);
+  return s;
+}
+function _dateRange_(sd,ed){
+  var days=[],cur=new Date(sd+'T12:00:00'),end=new Date(ed+'T12:00:00');
+  while(cur<=end){days.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}
+  return days;
+}
+async function _fetchActivityCloud_(uid,sheet,startDate,endDate){
+  var u=gasUrl();if(!u||!uid)return[];
+  try{
+    return await new Promise(function(res,rej){
+      var cb='_gfac_'+Date.now();
+      var s=document.createElement('script'),done=false;
+      var t=setTimeout(function(){if(!done){done=true;delete window[cb];s.remove();res([]);}},10000);
+      window[cb]=function(d){clearTimeout(t);done=true;delete window[cb];s.remove();res((d&&d.ok&&d.rows)||[]);};
+      s.src=u+'?sheet='+encodeURIComponent(sheet)+'&action=activity_fetch&uid='+encodeURIComponent(uid)+
+        '&startDate='+encodeURIComponent(startDate||'')+'&endDate='+encodeURIComponent(endDate||'')+
+        '&callback='+cb+'&_='+Date.now();
+      document.head.appendChild(s);
+    });
+  }catch(e){console.warn('[fff] activity_fetch fail',e);return[];}
+}
+function _mergeByDayCloud_(fullByDay,cloudRows,sd,ed){
+  var existing={};
+  (cloudRows||[]).forEach(function(r){
+    var d=_normDate_(r.date);if(d)existing[d]={replies:r.replies||0,citations:r.citations||0};
+  });
+  var netByDay={},netR=0,netC=0,skipped=[],updated=[];
+  _dateRange_(sd,ed).forEach(function(d){
+    var sc=fullByDay[d]||{replies:0,citations:0};
+    var cl=existing[d];
+    if(!cl){netByDay[d]={replies:sc.replies,citations:sc.citations,action:'insert'};netR+=sc.replies;netC+=sc.citations;return;}
+    var dR=Math.max(0,sc.replies-cl.replies),dC=Math.max(0,sc.citations-cl.citations);
+    if(dR<=0&&dC<=0){skipped.push(d);return;}
+    netByDay[d]={replies:Math.max(sc.replies,cl.replies),citations:Math.max(sc.citations,cl.citations),action:'update'};
+    netR+=dR;netC+=dC;updated.push(d);
+  });
+  return{netByDay:netByDay,netR:netR,netC:netC,skipped:skipped,updated:updated};
+}
+
 function fffOpenModal(isUpdate){
   _fffIsUpdate=isUpdate;
   const modal=document.getElementById('fff-modal');
@@ -1855,8 +1896,11 @@ function fffOpenModal(isUpdate){
   const el=document.getElementById('fff-uid');
   if(el){
     el.value=currentUid;
-    el.disabled=false;
-    el.readOnly=false;
+    el.readOnly=true;
+    el.style.opacity='0.7';
+    el.style.cursor='not-allowed';
+    el.title='UID 已绑定登入帐号，如需更改请重新登入';
+    el.onclick=function(){alert('UID 已绑定为登入帐号的 UID。\n如需更改请返回并重新登入。');};
   }
 
   // 自动带入今天日期为结束日期，开始日期预设当月 1 日（玩家可手动修改）
@@ -1892,16 +1936,18 @@ async function fffDoFetch(){
     const slug=await fffGetUsername(uid);
     fffSetStatus('开始统计回复...');
     const raw=await fffScrape(uid,slug,startDate,endDate);
+    fffSetStatus('正在查询云端逐日记录…');
+    const cloudRows=await _fetchActivityCloud_(uid,'爬塔闯关返乡活跃度',startDate,endDate);
+    const deduped=_mergeByDayCloud_(raw.byDay||{},cloudRows,startDate,endDate);
     fffCloseLoading();
-    const prev=fffGetImp(uid);
-    const isSame=!!(prev&&prev.key===dateKey);
-    const netR=isSame?Math.max(0,raw.replies-prev.r):raw.replies;
-    const netC=isSame?Math.max(0,raw.citations-prev.c):raw.citations;
-    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,isSame,startDate,endDate,byDay:raw.byDay||{}};
-    const html=isSame
-      ?'同区间净增：<b style="color:#4eb">'+netR+'</b> 回复 / <b style="color:#4eb">'+netC+'</b> 被引用<br><small style="opacity:.6">（总计'+raw.replies+'/'+raw.citations+'，已记录'+prev.r+'/'+prev.c+'）</small>'
-      :'读取结果：<b style="color:#4eb">'+netR+'</b> 回复 / <b style="color:#4eb">'+netC+'</b> 被引用';
-    fffOpenResult(html,_fffIsUpdate?'确认添加':'确认填入');
+    fffSaveImp(uid,dateKey,raw.replies,raw.citations);
+    const netR=deduped.netR, netC=deduped.netC;
+    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,
+      startDate,endDate,byDay:raw.byDay||{},netByDay:deduped.netByDay,
+      skipped:deduped.skipped,updated:deduped.updated};
+    const skipTxt=deduped.skipped.length?'<br><small style="opacity:.6">跳过已记录：'+deduped.skipped.slice(0,4).map(d=>d.slice(5).replace('-','/')).join('、')+(deduped.skipped.length>4?' 等'+deduped.skipped.length+'天':'')+'</small>':'';
+    const htmlMsg='本次净增：<b style="color:#4eb">'+netR+'</b> 回复 / <b style="color:#4eb">'+netC+'</b> 被引用（共'+raw.replies+'/'+raw.citations+'）'+skipTxt;
+    fffOpenResult(htmlMsg,_fffIsUpdate?'确认添加':'确认填入');
   }catch(err){
     fffCloseLoading();fffOpenModal(_fffIsUpdate);
     alert('读取失败：'+err.message);
@@ -1920,8 +1966,8 @@ function fffConfirm(){
     startDate:String(startDate||''),
     endDate:String(endDate||''),
   });
-  const byDayT=_fffResult.byDay||{};
-  Object.entries(byDayT).forEach(([d,c])=>{logTowerActivityToGAS_(uid,d,c.replies,c.citations);});
+  const byDayT=_fffResult.netByDay||_fffResult.byDay||{};
+  Object.entries(byDayT).forEach(([d,c])=>{logTowerActivityToGAS_(uid,d,c.replies||0,c.citations||0);});
   if(_fffIsUpdate&&G&&G.run&&!G.run.done){
     G.run.stockReply=(G.run.stockReply||0)+netR;
     G.run.stockQuote=(G.run.stockQuote||0)+netC;
@@ -1952,7 +1998,16 @@ function setTowerOfflineMode_(isOffline) {
   if (_towerOfflineMode === isOffline) return;
   _towerOfflineMode = isOffline;
   var el = document.getElementById('tower-offline-warning');
-  if (el) el.style.display = isOffline ? 'block' : 'none';
+  if (el) {
+    el.style.display = 'block';
+    if (isOffline) {
+      el.classList.add('offline');
+      el.innerHTML = '🔴 离线中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span>';
+    } else {
+      el.classList.remove('offline');
+      el.innerHTML = '🟢 连线中';
+    }
+  }
 }
 async function retryTowerCloudConnection_() {
   var el = document.getElementById('tower-offline-warning');
@@ -1963,44 +2018,67 @@ async function retryTowerCloudConnection_() {
     await fetch(gasUrl() + '?ping=1', { signal: ctrl.signal, mode: 'no-cors' });
     clearTimeout(tid);
     setTowerOfflineMode_(false);
-    if (el) { el.innerHTML = '✅ 已连线'; setTimeout(function(){ el.style.display='none'; }, 2000); }
+    if (el) {
+      el.classList.remove('offline');
+      el.innerHTML = '🟢 连线中';
+    }
   } catch(e) {
     if (el) el.innerHTML = '🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span>';
   }
 }
-function downloadTowerData_() {
-  var now2 = new Date().toLocaleString('zh-TW');
-  var id = String((G && G.uid) || '未知');
-  var loot = loadLootTotal();
-  var run = G && G.run;
-  var rows = [
-    ['类别','项目','数值'],
-    ['基本','论坛ID', id],
-    ['基本','下载时间', now2],
-    ['战利品','节操', loot['节操'] || 0],
-    ['战利品','羽毛', loot['羽毛'] || 0],
-    ['战利品','本期勋章30天', loot['本期勋章30天'] || 0],
-    ['战利品','字母勋章30天', loot['字母勋章30天'] || 0],
-    ['永久奖励','永久本期勋章', (loot['永久本期勋章'] >= 1) ? '已获得' : '未获得'],
-    ['永久奖励','永久往期兑换机会', loot['永久往期兑换机会'] || 0],
-  ];
-  if (run) {
-    rows.push(['当前局','层数', run.floor || 0]);
-    rows.push(['当前局','积分', run.reward || 0]);
-    rows.push(['当前局','生命', (run.hp || 0) + '/' + (run.maxHp || 0)]);
-    rows.push(['当前局','通关数', run.kills || 0]);
+async function downloadTowerData_() {
+  if(typeof ExcelJS==='undefined'){
+    alert('Excel 组件未加载，请刷新页面后重试');
+    return;
   }
-  __appendPortableSaveRows(rows,'tower',{uid:G.uid,run:G.run,loot:loadLootTotal(),log:JSON.parse(localStorage.getItem(KLOG)||'[]')});
-  var csv = rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\r\n');
-  var blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url; a.download = 'tower-'+id+'.csv';
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  try{
+    var id=String((G&&G.uid)||'未知');
+    var now=new Date().toLocaleString('zh-TW');
+    var rows=[
+      ['类别','项目','数值'],
+      ['基本','UID',id],
+      ['基本','导出时间',now],
+    ];
+    var loot=loadLootTotal();
+    rows.push(['战利品','节操',loot['节操']||0]);
+    rows.push(['战利品','羽毛',loot['羽毛']||0]);
+    rows.push(['战利品','本期勋章30天',loot['本期勋章30天']||0]);
+    rows.push(['战利品','字母勋章30天',loot['字母勋章30天']||0]);
+    var run=G&&G.run;
+    if(run){
+      rows.push(['当前局','层数',run.floor||0]);
+      rows.push(['当前局','积分',run.reward||0]);
+      rows.push(['当前局','生命',(run.hp||0)+'/'+(run.maxHp||0)]);
+    }
+    rows.push(['导出信息','游戏版本',TW_VERSION]);
+    rows.push(['__HTML_GAME_SAVE__','game','tower']);
+    rows.push(['__HTML_GAME_SAVE__','version',TW_VERSION]);
+    rows.push(['__HTML_GAME_SAVE__','saved_at',new Date().toISOString()]);
+    rows.push(['__HTML_GAME_SAVE__','state_json',JSON.stringify({uid:G&&G.uid,run:G&&G.run,loot:loadLootTotal(),log:JSON.parse(localStorage.getItem(KLOG)||'[]')})]);
+    var wb=new ExcelJS.Workbook();
+    wb.creator='爬塔闯关';
+    var ws=wb.addWorksheet('游玩存档');
+    rows.forEach(function(r){ws.addRow(r);});
+    ws.getColumn(1).width=16;ws.getColumn(2).width=24;ws.getColumn(3).width=52;
+    ws.eachRow(function(row){row.eachCell(function(cell){cell.protection={locked:true};});});
+    await ws.protect(TW_SAVE_XLSX_PASSWORD,{
+      selectLockedCells:true,selectUnlockedCells:false,
+      formatCells:false,formatColumns:false,formatRows:false,
+      insertColumns:false,insertRows:false,insertHyperlinks:false,
+      deleteColumns:false,deleteRows:false,sort:false,autoFilter:false,pivotTables:false
+    });
+    var buf=await wb.xlsx.writeBuffer();
+    var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;a.download='tower-'+id+'.xlsx';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);},1000);
+  }catch(e){
+    console.error(e);
+    alert('存档导出失败：'+(e.message||e));
+  }
 }
-
 
 
 window.__applyPortableSaveData=async function(data){
@@ -2023,7 +2101,7 @@ window.__applyPortableSaveData=async function(data){
       rows.push([MARK,'game',game||'']);
       rows.push([MARK,'saved_at',new Date().toISOString()]);
       rows.push([MARK,'state_json',JSON.stringify(state||{})]);
-    }catch(e){ console.warn('portable save export failed',e); }
+    }catch(e){console.warn('portable save export failed',e);}
     return rows;
   };
   function parseCsv(text){
@@ -2042,7 +2120,7 @@ window.__applyPortableSaveData=async function(data){
         else if(ch!=='\r') cell+=ch;
       }
     }
-    row.push(cell); rows.push(row);
+    row.push(cell);rows.push(row);
     return rows;
   }
   function readPayload(text){
@@ -2050,30 +2128,56 @@ window.__applyPortableSaveData=async function(data){
     if(raw.charAt(0)==='{') return JSON.parse(raw);
     var rows=parseCsv(text);
     for(var i=0;i<rows.length;i++){
-      if(rows[i][0]===MARK && rows[i][1]==='state_json'){
-        return JSON.parse(rows[i][2]||'{}');
-      }
+      if(rows[i][0]===MARK&&rows[i][1]==='state_json') return JSON.parse(rows[i][2]||'{}');
     }
     throw new Error('save_json_not_found');
   }
   window.importGameSaveData_=function(){
     var input=document.createElement('input');
     input.type='file';
-    input.accept='.csv,.json,text/csv,application/json';
+    input.accept='.xlsx,.csv,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/json';
     input.onchange=function(){
       var file=input.files&&input.files[0];
       if(!file) return;
+      var name=String(file.name||'').toLowerCase();
+      if(name.endsWith('.xlsx')){
+        if(typeof ExcelJS==='undefined'){alert('Excel 组件未加载，请刷新页面后重试');return;}
+        var reader=new FileReader();
+        reader.onload=function(){
+          Promise.resolve().then(async function(){
+            if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+            var wb=new ExcelJS.Workbook();
+            await wb.xlsx.load(reader.result);
+            var ws=wb.worksheets[0];
+            if(!ws) throw new Error('xlsx_empty');
+            var data=null;
+            ws.eachRow(function(row){
+              if(row.getCell(1).value===MARK&&row.getCell(2).value==='state_json'){
+                data=JSON.parse(String(row.getCell(3).value||'{}'));
+              }
+            });
+            if(!data) throw new Error('save_json_not_found');
+            return window.__applyPortableSaveData(data);
+          }).then(function(){
+            alert('读档完成：本机记录已复原，并已尝试同步到云端。');
+          }).catch(function(e){
+            console.error(e);
+            alert('读档失败：请选择由本游戏「下载游玩数据」导出的 Excel 文件。');
+          });
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+      }
       var reader=new FileReader();
       reader.onload=function(){
         Promise.resolve().then(function(){
           if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
-          var data=readPayload(reader.result);
-          return window.__applyPortableSaveData(data);
+          return window.__applyPortableSaveData(readPayload(reader.result));
         }).then(function(){
           alert('读档完成：本机记录已复原，并已尝试同步到云端。');
         }).catch(function(e){
           console.error(e);
-          alert('读档失败：请选择由本游戏「下载游玩数据/存档」导出的 CSV。');
+          alert('读档失败：请选择由本游戏「下载游玩数据」导出的 Excel 文件。');
         });
       };
       reader.readAsText(file,'utf-8');
@@ -2081,24 +2185,18 @@ window.__applyPortableSaveData=async function(data){
     input.click();
   };
   window.__installPortableSaveImport=function(){
-    var found=false;
     Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
       var oc=btn.getAttribute('onclick')||'';
-      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
+      if(oc.indexOf('download')<0||btn.getAttribute('data-import-save-bound')) return;
       btn.setAttribute('data-import-save-bound','1');
       var b=document.createElement('button');
-      b.type='button';
-      b.className=btn.className||'';
-      b.style.cssText=btn.style.cssText||'';
-      b.textContent='📤 读取存档';
-      b.title='读取先前下载的存档 CSV';
+      b.type='button';b.className=btn.className||'';b.style.cssText=btn.style.cssText||'';
+      b.textContent='📤 读取存档';b.title='读取先前下载的存档 Excel/CSV';
       b.onclick=window.importGameSaveData_;
       btn.insertAdjacentElement('afterend',b);
-      found=true;
     });
-    return found;
   };
-  function boot(){ window.__installPortableSaveImport(); }
+  function boot(){window.__installPortableSaveImport();}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
   else boot();
 })();
@@ -2109,8 +2207,8 @@ window.__applyPortableSaveData=async function(data){
   <div class="fff-box">
     <h3 id="fff-modal-title">📡 论坛自动读取</h3>
     <div class="fff-row"><label>UID</label><input id="fff-uid" class="fff-inp" type="number" placeholder="论坛数字 UID" inputmode="numeric"></div>
-    <div class="fff-row"><label>开始日期</label><input id="fff-date-start" class="fff-inp" type="date" value="2026-03-01"></div>
-    <div class="fff-row"><label>结束日期</label><input id="fff-date-end" class="fff-inp" type="date" value="2026-03-20"></div>
+    <div class="fff-row"><label>开始日期</label><input id="fff-date-start" class="fff-inp" type="date"></div>
+    <div class="fff-row"><label>结束日期</label><input id="fff-date-end" class="fff-inp" type="date"></div>
     <div id="fff-filewarning" style="display:none;margin:10px 0 0;padding:8px 10px;background:#5a3010;border-radius:6px;color:#fdb;font-size:.78rem;line-height:1.6">
       ⚠️ 检测到你是用 <b>file://</b> 直接打开的 HTML。<br>
       建议改用浏览器「<b>拖入</b>」或用 VS Code Live Server / 任意本地服务器打开，<br>
@@ -2138,6 +2236,6 @@ window.__applyPortableSaveData=async function(data){
   </div>
 </div>
 <!-- 2026-04-04 离线模式浮动警告+重新连线；主画面与游玩画面加「下载游玩数据」按钮 -->
-<div id="tower-offline-warning" onclick="retryTowerCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
+<div id="tower-offline-warning" onclick="retryTowerCloudConnection_()">🟢 连线中</div>
 </body>
 </html>

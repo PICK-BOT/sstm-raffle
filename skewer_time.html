@@ -104,6 +104,9 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#08172a;c
   #belt-wrap{height:42px}
   .belt-item{width:36px;height:26px}
 }
+.ih-chip-wrap{display:inline-flex;align-items:center;background:rgba(255,255,255,.12);border-radius:16px;font-size:.78rem}
+.ih-chip{background:transparent;border:none;color:#fff;padding:4px 10px;cursor:pointer;border-radius:16px;white-space:nowrap}
+.ih-x{background:transparent;border:none;color:#fca5a5;padding:4px 8px;cursor:pointer;font-weight:900;border-radius:16px;font-size:.82rem}
 /* sstm-login-cover */
 #login{background-image:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,.58)),url('https://s.sstmlt.com/img/2026/05/17/skewer_time2e76c4d378fb1620.jpeg');background-size:cover;background-position:center;background-repeat:no-repeat}
 </style>
@@ -115,6 +118,9 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#08172a;c
   <div class="card" style="width:min(360px,92vw)">
     <input id="inp-id" class="inp" placeholder="论坛ID" style="margin-bottom:8px">
     <input id="inp-uid" class="inp" placeholder="UID" type="number" style="margin-bottom:8px">
+    <div id="id-history-row" style="margin:6px 0;display:none">
+      <div id="id-history-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
     <button id="btn-login" class="btn" style="width:100%" onclick="doLogin()">登入</button>
     <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="offlineMode()">离线模式</button>
     <div id="login-err" style="min-height:18px;color:#fda4af;margin-top:8px;font-size:.8rem"></div>
@@ -201,13 +207,9 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#08172a;c
 <script>
 const GAS_URL="https://script.google.com/macros/s/AKfycbxtzW4wVTgHoVQ31DvqJdom0nNum7QEYHtXeDjeHt7QGGoi3Fq3PYz9GkiRfFQlTd8J/exec";
 const SHEET="串烧时光HTML";
-const FORUM_PROXY="https://api.codetabs.com/v1/proxy?quest=";
-const FORUM_PROXIES=[
-  "https://api.codetabs.com/v1/proxy?quest=",
-  "https://r.jina.ai/http://",
-  "https://cors.isomorphic-git.org/"
-];
+const FORUM_PROXY="https://sstm-raffle.vercel.app/Skewer-Time-proxy?url=";
 const FORUM_FETCH_MS=22000;
+const HM_HTML_VERSION="skewer‑v1.2‑2026‑06‑11";
 const POKE_BULBASAUR_URL="https://play.pokemonshowdown.com/sprites/gen5/bulbasaur.png";
 const POKE_NAMES=[
   "bulbasaur","ivysaur","venusaur","charmander","charmeleon","charizard","squirtle","wartortle","blastoise",
@@ -249,6 +251,31 @@ const BG_SKINS={
 };
 function bgStyleFromUrl(url){return "linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)),url('"+url+"') center/cover no-repeat";}
 function ensureOwnedBgSkins(){if(!G.ownedBgSkins||!Array.isArray(G.ownedBgSkins))G.ownedBgSkins=['default'];if(!G.ownedBgSkins.includes('default'))G.ownedBgSkins.unshift('default');}
+var KEY_HISTORY="st_id_history";
+function loadIdHistory(){try{return JSON.parse(localStorage.getItem(KEY_HISTORY)||'[]');}catch(e){return[];}}
+function saveIdHistory(){
+  if(!G.id)return;var h=loadIdHistory().filter(function(x){return x.id!==G.id;});
+  h.unshift({id:G.id,uid:G.uid});if(h.length>5)h=h.slice(0,5);
+  try{localStorage.setItem(KEY_HISTORY,JSON.stringify(h));}catch(e){}
+}
+function removeFromHistory(id){
+  var h=loadIdHistory().filter(function(x){return x.id!==id;});
+  try{localStorage.setItem(KEY_HISTORY,JSON.stringify(h));}catch(e){}
+  renderIdHistory();
+}
+function renderIdHistory(){
+  var hist=loadIdHistory();var row=document.getElementById('id-history-row');var chips=document.getElementById('id-history-chips');
+  if(!row||!chips)return;row.style.display=hist.length?'block':'none';chips.innerHTML='';
+  hist.forEach(function(item){
+    var wrap=document.createElement('div');wrap.className='ih-chip-wrap';
+    var btn=document.createElement('button');btn.className='ih-chip';
+    btn.textContent=item.id+(item.uid?' ('+item.uid+')':'');
+    btn.onclick=function(){document.getElementById('inp-id').value=item.id;document.getElementById('inp-uid').value=item.uid||'';};
+    var bx=document.createElement('button');bx.className='ih-x';bx.textContent='×';
+    bx.onclick=function(ev){ev.stopPropagation();removeFromHistory(item.id);};
+    wrap.appendChild(btn);wrap.appendChild(bx);chips.appendChild(wrap);
+  });
+}
 function ownsBgSkin(id){ensureOwnedBgSkins();return id==='default'||(G.ownedBgSkins||[]).includes(id);}
 function grantBgSkin(id){ensureOwnedBgSkins();if(id&&!G.ownedBgSkins.includes(id))G.ownedBgSkins.push(id);}
 let curBgSkin='default';
@@ -296,6 +323,7 @@ async function doLogin(){
     const c=await cloudLoad(id);
     if(c&&c.state_json){try{Object.assign(G,JSON.parse(c.state_json));G.id=id;G.uid=uid;normalize();}catch(e){}}
     save();cloudSave();
+    saveIdHistory();renderIdHistory();
     gasBeacon({sheet:SHEET,action:"login_log",id:G.id,uid:String(G.uid),date:todayISO(),info:"skewer_time_v1"});
     enterMenu();
   }finally{
@@ -376,23 +404,29 @@ function doReveal(){if(!(G.boosters.reveal>0)){openShop();return;}G.boosters.rev
 function renderAll(){const sk=pickSkin();qs("game").style.background=sk.bg;qs("menu").style.background=sk.bg;qs("target").textContent="目标：消除 "+targetNeed+" 组（已完成 "+targetDone+"） · 无时间限制";qs("mods").textContent="特殊格≥10种｜道具即时生效｜无限关卡";qs("uval").textContent=G.boosters.undo||0;qs("hval").textContent=G.boosters.hint||0;qs("aval").textContent=G.boosters.add||0;qs("rval").textContent=G.boosters.reveal||0;qs("progress").style.width=Math.min(100,Math.round(targetDone/Math.max(1,targetNeed)*100))+"%";const wrap=qs("sticks");wrap.innerHTML="";const cols=sticks.length>=14?7:6;wrap.style.gridTemplateColumns="repeat("+cols+",minmax(90px,1fr))";sticks.forEach((s,idx)=>{const d=document.createElement("div");d.className="stick "+(sk.stick||"");d.onclick=()=>tapStick(idx);if(s.special){const m=SPECIALS.find(x=>x.k===s.special);if(m)d.innerHTML+="<div class='sp'>"+m.icon+(s.saux>0?(" "+s.saux):"")+"</div>";}for(let i=0;i<4;i++){const row=document.createElement("div");if(i<s.items.length){const item=s.items[i];const fog=s.special==="fog"&&i<s.items.length-1;row.className="slot "+(fog?"fog":"real");row.textContent=fog?"?":(item===-1?"🌀":ITEM_POOL[item%ITEM_POOL.length]);}else row.className="slot";d.appendChild(row);}wrap.appendChild(d);});const tr=qs("tray");tr.innerHTML="";tray.forEach(v=>{const e=document.createElement("div");e.className="tray-item";e.textContent=v===-1?"🌀":ITEM_POOL[v%ITEM_POOL.length];tr.appendChild(e);});qs("coins").textContent=G.coins||0;}
 function showWin(){if(!G.cleared.includes(level))G.cleared.push(level);if(!G.unlocked.includes(level+1))G.unlocked.push(level+1);G.coins=(G.coins||0)+10;save();cloudSave();gasBeacon({sheet:SHEET,action:"level_clear",id:G.id,uid:String(G.uid),level:String(level),coin_reward:"10",date:todayISO()});qs("win-body").textContent="第 "+level+" 关完成！奖励 +10 金币";qs("ov-win").classList.remove("hidden");renderAll();}
 function showLose(msg){qs("lose-body").textContent=msg||"托盘已满";qs("ov-lose").classList.remove("hidden");}
-async function fffProxyGet(url){
-  const b=url+(url.includes("?")?"&":"?")+"_b="+Date.now();
-  let lastErr=new Error("网络错误");
-  for(let i=0;i<FORUM_PROXIES.length;i++){
-    const px=FORUM_PROXIES[i];
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),FORUM_FETCH_MS);
-    try{
-      const target=px.includes("codetabs")?px+encodeURIComponent(b):px+b.replace(/^https?:\/\//,"");
-      const r=await fetch(target,{signal:ctrl.signal});
-      if(!r.ok) throw new Error("proxy_"+(i+1)+"_"+r.status);
-      const text=await r.text();
-      if(text&&text.length>30) return text;
-    }catch(e){ lastErr=e; }
-    finally{ clearTimeout(tid); }
-  }
-  throw new Error("网络错误(代理不可用): "+String(lastErr&&lastErr.message||lastErr));
+function _stProxyOkText_(text){return text&&text.length>80&&(text.indexOf('<')>=0||/profile|ipsQuote|cProfileContent/i.test(text));}
+async function _stGasProxyGet_(url){
+  var data=await gasJsonp({action:'fetch_url',url:url},FORUM_FETCH_MS);
+  var text=(data&&(data.html||data.contents))||'';
+  if(_stProxyOkText_(text))return text;
+  throw new Error((data&&data.error)||'gas_proxy_empty');
+}
+async function fffProxyGet(url,noCache){
+  if(!noCache){try{var sk="st_fff_"+url;var hit=sessionStorage.getItem(sk);if(hit)return hit;}catch(e){}}
+  try{
+    var text=await _stGasProxyGet_(url);
+    try{sessionStorage.setItem("st_fff_"+url,text);}catch(e){}
+    return text;
+  }catch(e){console.warn('[st-proxy] GAS FAIL:',e.message||e);}
+  try{
+    var resp=await fetch(FORUM_PROXY+encodeURIComponent(url),{referrerPolicy:'no-referrer',credentials:'omit',signal:AbortSignal.timeout(FORUM_FETCH_MS)});
+    if(!resp.ok)throw new Error('HTTP_'+resp.status);
+    var text=await resp.text();
+    if(!_stProxyOkText_(text))throw new Error('empty_response');
+    try{sessionStorage.setItem("st_fff_"+url,text);}catch(e){}
+    return text;
+  }catch(e){console.warn('[st-proxy] Vercel FAIL:',e.message||e);}
+  throw new Error('所有中转站均不可用（GAS + Vercel 均失败）');
 }
 async function refreshForumData(){setForumStatus("正在抓取中...");return fetchForumDataCustom(true);}
 async function refreshForumDataFast(){setForumStatus("正在快速抓取中...");return fetchForumDataCustom(true,{maxPages:25,maxCitationChecks:0});}
@@ -451,9 +485,22 @@ async function fetchForumDataCustom(show,opt){
       page++;
       await new Promise(r=>setTimeout(r,24));
     }
-    G.replies=(Number(G.replies)||0)+replies;
-    G.citations=(Number(G.citations)||0)+cites;
+    // 从云端获取全部记录，修正历史膨胀
+    try{
+      var _fit=await fetchActivityFromGAS_(G.uid,'','');
+      var _csR=0,_csC=0;
+      (_fit||[]).forEach(function(r){_csR+=parseInt(r.replies,10)||0;_csC+=parseInt(r.citations,10)||0;});
+      if(_csR>0||_csC>0){G.replies=_csR+replies;G.citations=_csC+cites;}
+      else{G.replies=(Number(G.replies)||0)+replies;G.citations=(Number(G.citations)||0)+cites;}
+    }catch(e){
+      G.replies=(Number(G.replies)||0)+replies;
+      G.citations=(Number(G.citations)||0)+cites;
+    }
     save();cloudSave();updateShopCurrency();updateMenuStat();
+    // 活跃度打点
+    var _netByDay={};_netByDay[sd]=_netByDay[ed]=1;
+    logActivityByDayToGAS_(G.uid,_netByDay);
+    logForumFetchToGAS_({mode:'fast_fetch',forum_uid:String(G.uid),reply_count:replies,citation_count:cites,startDate:sd,endDate:ed});
     // 打点记录本次增量（避免与累计值混淆）
     gasBeacon({sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(G.uid),replies:String(replies),citations:String(cites),startDate:sd,endDate:ed,date:todayISO()});
     setForumStatus("抓取完成：回复 "+replies+" / 被引用 "+cites);
@@ -465,12 +512,42 @@ async function fetchForumDataCustom(show,opt){
     return false;
   }
 }
+// ── 论坛活跃度纪录 ──
+async function fetchActivityFromGAS_(uid,startDate,endDate){
+  try{var d=await gasJsonp({sheet:SHEET,action:"activity_fetch",uid:String(uid),startDate:String(startDate||''),endDate:String(endDate||'')},15000);return d&&d.rows;}catch(e){return null;}
+}
+function logActivityByDayToGAS_(uid,netByDay){
+  if(!uid||!netByDay||typeof netByDay!=='object')return;
+  Object.keys(netByDay).forEach(function(d){
+    gasBeacon({sheet:SHEET,action:"activity_log",uid:String(uid),date:d,replies:String(netByDay[d]||0),citations:'0'});
+  });
+}
+function logForumFetchToGAS_(info){
+  if(!info||!info.forum_uid)return;
+  gasBeacon({sheet:SHEET,action:"forum_fetch_log",uid:info.forum_uid,replies:String(info.reply_count||0),citations:String(info.citation_count||0),startDate:String(info.startDate||''),endDate:String(info.endDate||''),date:todayISO()});
+}
 function openShop(){renderShop();updateShopCurrency();qs("ov-shop").classList.remove("hidden");}
 function closeShop(){qs("ov-shop").classList.add("hidden");}
 function updateShopCurrency(){qs("sh-replies").textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));qs("sh-cites").textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));}
+// --- Override openShop: preserve local replies/citations ---
+var _stOpenShopOrig=openShop;
+openShop=async function(){
+  var _sr=(G.replies||0),_sc=(G.citations||0),_rsp=(G.repliesSpent||0),_csp=(G.citationsSpent||0);
+  if(G.id){
+    try{
+      var cloud=await cloudLoad(G.id);
+      if(cloud&&typeof cloud==="object"){
+        Object.assign(G,cloud);
+        if(G.replies<_sr){G.replies=_sr;G.citations=_sc;G.repliesSpent=_rsp;G.citationsSpent=_csp;}
+        normalize();save();
+      }
+    }catch(e){}
+  }
+  _stOpenShopOrig();
+};
 function renderShop(){const list=qs("shop-list");list.innerHTML="";const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));SHOP_ITEMS.forEach(it=>{const av=it.costType==="replies"?ar:ac;const owned=it.give&&it.give.bgSkin&&ownsBgSkin(it.give.bgSkin);const can=av>=it.cost&&!owned;const d=document.createElement("div");d.className="shop-item"+(owned?" owned":"");if(owned){d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:#94a3b8'>已拥有</div></div><button class='btn' disabled>已拥有</button>";}else{d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>花费 "+it.cost+" "+(it.costType==="replies"?"回复":"被引用")+"</div></div><button class='btn' "+(can?"":"disabled")+">购买</button>";d.querySelector("button").onclick=()=>buyItemDirect(it.id);}list.appendChild(d);});}function buyItemDirect(id){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;if(it.give&&it.give.bgSkin){if(ownsBgSkin(it.give.bgSkin)){alert("您已拥有该皮肤");return;}return buyItem(id,1);}return buyItemPrompt(id);}function buyItemPrompt(id){const it=SHOP_ITEMS.find(x=>x.id===id);if(it&&it.give&&it.give.bgSkin)return buyItemDirect(id);const q=prompt("数量","1");if(q===null)return;buyItem(id,Math.max(1,Math.min(99,parseInt(q,10)||1)));}
 function buyItem(id,qty){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0)),av=it.costType==="replies"?ar:ac,cost=it.cost*qty;if(av<cost){alert("数量不足");return;}if(it.costType==="replies")G.repliesSpent=(G.repliesSpent||0)+cost;else G.citationsSpent=(G.citationsSpent||0)+cost;if(it.give.undo)G.boosters.undo+=it.give.undo*qty;if(it.give.hint)G.boosters.hint+=it.give.hint*qty;if(it.give.add)G.boosters.add+=it.give.add*qty;if(it.give.reveal)G.boosters.reveal+=it.give.reveal*qty;if(it.give.ticket)G.tickets=(G.tickets||0)+it.give.ticket*qty;if(it.give.bgSkin){for(var _bi=0;_bi<qty;_bi++)grantBgSkin(it.give.bgSkin);if(!qs("ov-skin").classList.contains("hidden"))openSkin();}save();cloudSave();renderShop();updateShopCurrency();updateMenuStat();if(!qs("game").classList.contains("hidden"))renderAll();gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId:id,cost:String(cost),costType:it.costType,date:todayISO()});}
-window.addEventListener("DOMContentLoaded",()=>{load();normalize();const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;});
+window.addEventListener("DOMContentLoaded",()=>{load();normalize();const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;renderIdHistory();const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;});
 </script>
 <script>
 // ===== Skewer mode override (container-to-container) =====
@@ -948,16 +1025,52 @@ window.addEventListener("resize",()=>{
   },80);
 });
 
-function downloadSkewerData_(){
+async function downloadSkewerData_(){
   save();
-  var rows=[['项目','数值'],['论坛ID',G.id],['UID',G.uid],['金币',G.coins||0],['今日回复数',G.replies||0],['被引用数',G.citations||0],['重复挑战卷',G.tickets||0],['已解锁关卡',(G.unlocked||[]).join(' ')],['已通关关卡',(G.cleared||[]).join(' ')],['皮肤',G.skin||'default'],['下载时间',new Date().toLocaleString('zh-TW')]];
-  __appendPortableSaveRows(rows,'skewer_time',G);
-  var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
-  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a'); a.href=url; a.download='skewer-time-'+(G.id||'player')+'.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+  try{
+    if(typeof XLSX==='undefined'){
+      try{await loadScript('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js');}catch(e){}
+    }
+    if(typeof ExcelJS==='undefined'&&typeof XLSX==='undefined')throw new Error('ExcelJS not loaded');
+    var wb=new ExcelJS.Workbook();wb.creator='SkewerTime';wb.created=new Date();
+    var ws=wb.addWorksheet('SaveData');
+    var ts=new Date().toLocaleString('zh-TW');
+    var rows=[
+      ['Key','Value'],
+      ['game','skewer_time'],
+      ['论坛ID',G.id],['UID',G.uid],
+      ['金币',G.coins||0],
+      ['今日回复数',G.replies||0],['被引用数',G.citations||0],
+      ['重复挑战卷',G.tickets||0],['钥匙',G.keys||0],
+      ['已解锁关卡',(G.unlocked||[]).join(' ')],
+      ['已通关关卡',(G.cleared||[]).join(' ')],
+      ['皮肤',G.skin||'default'],['背景皮肤',G.bgSkin||'default'],
+      ['撤回道具',G.boosters.undo||0],
+      ['提示道具',G.boosters.hint||0],
+      ['扩盘道具',G.boosters.add||0],
+      ['检视道具',G.boosters.reveal||0],
+      ['savedAt',ts],
+    ];
+    __appendPortableSaveRows(rows,'skewer_time',G);
+    ws.addTable({name:'SaveTable',ref:'A1',columns:[{name:'Key',filterButton:false},{name:'Value',filterButton:false}],rows:rows.slice(1)});
+    ws.getColumn('A').width=20;ws.getColumn('B').width=50;
+    ws.protect("sstm_skewer_readonly_2026",{selectLockedCells:true,selectUnlockedCells:true});
+    var buf=await wb.xlsx.writeBuffer();
+    var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='skewer-time-'+(G.id||'player')+'.xlsx';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(blob);},1000);
+  }catch(e){
+    console.warn('xlsx fallback to csv',e);
+    var rows=[['项目','数值'],['论坛ID',G.id],['UID',G.uid],['金币',G.coins||0],['今日回复数',G.replies||0],['被引用数',G.citations||0],['重复挑战卷',G.tickets||0],['已解锁关卡',(G.unlocked||[]).join(' ')],['已通关关卡',(G.cleared||[]).join(' ')],['皮肤',G.skin||'default'],['撤回道具',G.boosters.undo||0],['提示道具',G.boosters.hint||0],['扩盘道具',G.boosters.add||0],['检视道具',G.boosters.reveal||0],['下载时间',new Date().toLocaleString('zh-TW')]];
+    __appendPortableSaveRows(rows,'skewer_time',G);
+    var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
+    var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');a.href=url;a.download='skewer-time-'+(G.id||'player')+'.csv';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);},1000);
+  }
 }
 
 
@@ -1040,28 +1153,28 @@ window.__applyPortableSaveData=async function(data){
     };
     input.click();
   };
-  window.__installPortableSaveImport=function(){
-    var found=false;
-    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
-      var oc=btn.getAttribute('onclick')||'';
-      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
-      btn.setAttribute('data-import-save-bound','1');
-      var b=document.createElement('button');
-      b.type='button';
-      b.className=btn.className||'';
-      b.style.cssText=btn.style.cssText||'';
-      b.textContent='📤 读取存档';
-      b.title='读取先前下载的存档 CSV';
-      b.onclick=window.importGameSaveData_;
-      btn.insertAdjacentElement('afterend',b);
-      found=true;
-    });
-    return found;
-  };
-  function boot(){ window.__installPortableSaveImport(); }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
-  else boot();
+  // import button already in HTML
+})();
+function gasReady(){return /^https?:\/\//.test(GAS_URL)&&GAS_URL.indexOf("__")<0&&GAS_URL.indexOf("PASTE")<0;}
+(function(){
+  var vb=document.getElementById('ds-version-badge');
+  if(vb)vb.textContent=typeof HM_HTML_VERSION!=='undefined'?HM_HTML_VERSION:'';
+  var dot=document.getElementById('ds-connection-status');
+  if(!dot)return;
+  function check(){
+    if(navigator.onLine===false){dot.innerHTML='<span style="color:#ff4444">● 离线</span>';return;}
+    var u=GAS_URL||'';
+    if(!u||!gasReady()){dot.innerHTML='<span style="color:#888">● 未连线</span>';return;}
+    var tmr=setTimeout(function(){dot.innerHTML='<span style="color:#FFA500">● 检查中</span>';},500);
+    fetch(u+'?action=ping&_='+Date.now(),{method:'GET',mode:'cors',cache:'no-store'})
+      .then(function(r){clearTimeout(tmr);return r.text();})
+      .then(function(t){dot.innerHTML='<span style="color:#4CAF50">● 连线中</span>';})
+      .catch(function(e){clearTimeout(tmr);dot.innerHTML='<span style="color:#ff4444">● 无连线</span>';});
+  }
+  check();setInterval(check,30000);
 })();
 </script>
+<div id="ds-version-badge" style="position:fixed;bottom:8px;right:10px;font-size:.7rem;opacity:.55;color:rgba(255,255,255,.5);z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)"></div>
+<div id="ds-connection-status" style="position:fixed;bottom:8px;left:10px;font-size:.7rem;z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)"></div>
 </body>
 </html>

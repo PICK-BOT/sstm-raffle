@@ -190,6 +190,10 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
 
 /* === VERSION === */
 .version{text-align:center;color:rgba(255,255,255,.3);font-size:.72rem;margin-top:16px;padding-bottom:20px}
+#checkin-footer{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;position:relative;z-index:10}
+.footer-status{font-size:.7rem;color:rgba(255,255,255,.35);display:flex;align-items:center;gap:4px}
+#conn-dot{transition:background .3s}
+#conn-text{transition:color .3s}
 
 /* === SCROLLABLE === */
 .scroll-area{max-height:60vh;overflow-y:auto;padding-right:4px}
@@ -203,6 +207,8 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
   display:flex;align-items:center;gap:6px}
 .divider{height:1px;background:rgba(255,255,255,.08);margin:12px 0}
 </style>
+<script>const HM_HTML_VERSION="checkin-v1.2-2026-06-11";</script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 </head>
 <body>
 
@@ -260,6 +266,8 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
     </div>
     <div id="top-actions">
       <button class="btn-sub" style="font-size:.75rem;padding:5px 12px" onclick="openPanel('panel-player')">👤 玩家面板</button>
+      <button class="btn-sub" style="font-size:.75rem;padding:5px 12px" onclick="window.importGameSaveData_()">📤 读取存档</button>
+      <button class="btn-sub" style="font-size:.75rem;padding:5px 12px" onclick="downloadXlsxData()">📥 下载存档(XLSX)</button>
       <button class="btn-sub" style="font-size:.75rem;padding:5px 12px" onclick="doLogout()">登出</button>
     </div>
   </div>
@@ -296,9 +304,6 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
       <button class="btn-sub" id="btn-monthly-draw" onclick="drawMonthlyPrize()" style="display:none">🎁 领取月礼包</button>
     </div>
     <div class="divider"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
-      <button class="btn-sub" style="font-size:.78rem" onclick="downloadData()">📥 下载游玩数据</button>
-    </div>
   </div>
 
   <!-- Panel: Daily Tasks -->
@@ -328,7 +333,14 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
     <div class="shop-grid" id="shop-list"></div>
   </div>
 
-  <div class="version" id="ver-txt">v1.0 新手村打卡游戏</div>
+  <div id="checkin-footer">
+    <div id="conn-status" class="footer-status" title="连线状态">
+      <span id="conn-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#888;margin-right:4px"></span>
+      <span id="conn-text">检查中…</span>
+    </div>
+    <div class="version" id="ver-txt">v1.1 新手村打卡游戏</div>
+    <div id="app-version" class="footer-status">Ⓥ <span id="ver-badge">1.1</span></div>
+  </div>
 </div>
 
 <!-- ===== LOADING MASK ===== -->
@@ -374,7 +386,7 @@ body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh
 // ================================================================
 // CONFIG
 // ================================================================
-const VER = "v1.0";
+const VER = "v1.2";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzbR0_yhUphjOQRKH5Bpskj8yRdjpXwVRD_CmouHBApHGzPav80ofvmE-jbEBT92gbA/exec";
 // 替换为你的 GAS URL（打卡游戏专用，可与爬塔共用同一 GAS，需在 GAS 中加对应 sheet 处理逻辑）
 const SHEET = "新手村打卡";
@@ -869,6 +881,9 @@ async function doCheckin(){
   }catch(e){
     console.warn("论坛抓取失败",e);
   }
+
+  // 无论是否达到 5 条，都将当日活跃度上报到云端
+  logActivityToCloud_(G.id, G.uid, today, repliesCount, 0);
 
   document.querySelector("#screen-checkin .loading-spinner").style.display="none";
 
@@ -1434,6 +1449,62 @@ function downloadData(){
 }
 
 // ================================================================
+// DOWNLOAD XLSX（唯读）
+// ================================================================
+async function downloadXlsxData(){
+  if(typeof ExcelJS==="undefined"){ alert("ExcelJS 尚未载入，请重试。"); return; }
+  const wb=new ExcelJS.Workbook();
+  wb.creator="新手村打卡游戏"; wb.created=new Date();
+  const ws=wb.addWorksheet("玩家资料",{views:[{state:"frozen",ySplit:1}]});
+  ws.columns=[
+    {header:"类别",key:"cat",width:12},
+    {header:"项目",key:"item",width:16},
+    {header:"内容",key:"val",width:60},
+    {header:"备注",key:"note",width:16}
+  ];
+  const hl={type:"pattern",pattern:"solid",fgColor:{argb:"FF1a1a2e"},font:{argb:"FFFFD93D",bold:true}};
+  const hdr=ws.getRow(1); hdr.eachCell(c=>{c.fill=hl;c.font={color:{argb:"FFFFD93D"},bold:true};});
+  const rows=[
+    {cat:"基本",item:"论坛 ID",val:String(G.id||""),note:""},
+    {cat:"基本",item:"UID",val:String(G.uid||""),note:""},
+    {cat:"基本",item:"下载时间",val:new Date().toLocaleString("zh-TW"),note:""},
+    {cat:"基本",item:"此资料仅供浏览",val:"无法直接贴上回存，唯读保护",note:"唯读"},
+    {cat:"签到",item:"总签到次数",val:String(G.checkinDates.length),note:""},
+    {cat:"签到",item:"签到日期",val:(G.checkinDates||[]).join(" | "),note:""},
+    {cat:"任务",item:"总完成次数",val:String(G.tasksDone||0),note:""},
+    {cat:"任务",item:"商店消耗次数",val:String(G.shopTasksSpent||0),note:""},
+    {cat:"奖励",item:"节操",val:String(G.rewards.seiso||0),note:""},
+    {cat:"奖励",item:"羽毛",val:String(G.rewards.feather||0),note:""},
+    {cat:"奖励",item:"本期勋章天数",val:String(G.rewards.badgeCurr||0),note:""},
+    {cat:"奖励",item:"永久本期勋章",val:G.rewards.badgePerm>=1?"已获得":"未获得",note:""},
+    {cat:"奖励",item:"字母勋章天数",val:String(G.rewards.badgeAlpha||0),note:""},
+    {cat:"奖励",item:"往期返乡机会",val:String(G.rewards.pastBadge||0),note:""},
+  ];
+  rows.forEach(r=>ws.addRow(r));
+  ["daily","weekly","monthly"].forEach(type=>{
+    const label={daily:"每日",weekly:"每周",monthly:"每月"}[type];
+    const pool={daily:DAILY_TASKS_POOL,weekly:WEEKLY_TASKS_POOL,monthly:MONTHLY_TASKS_POOL}[type];
+    const tasks={daily:G.dailyTasks,weekly:G.weeklyTasks,monthly:G.monthlyTasks}[type];
+    if(!tasks||!tasks.length) return;
+    ws.addRow({cat:label+"任务",item:"",val:"",note:""});
+    tasks.forEach(ts=>{
+      const def=pool.find(p=>p.id===ts.taskId);
+      if(!def) return;
+      ws.addRow({cat:label+"任务",item:ts.done?"✅ 已完成":"❌ 未完成",val:def.txt,note:ts.doneAt||""});
+    });
+  });
+  ws.addRow({});
+  ws.addRow({cat:"完整状态 JSON",item:"",val:JSON.stringify(G),note:"唯读"});
+  ws.protect("sstm_checkin_readonly_2026",{selectLockedCells:true,selectUnlockedCells:true});
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="checkin-game-"+G.id+".xlsx";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ================================================================
 // FORUM SCRAPE
 // ================================================================
 async function fffProxyGet(url, noCache){
@@ -1718,7 +1789,7 @@ window.addEventListener("DOMContentLoaded",()=>{
   if(savedId) document.getElementById("inp-id").value=savedId;
   if(savedUid) document.getElementById("inp-uid").value=savedUid;
   renderIdHistory();
-  document.getElementById("ver-txt").textContent=VER+" 新手村打卡游戏";
+  document.getElementById("ver-txt").textContent=VER+" 新手村打卡游戏 "+HM_HTML_VERSION;
 });
 
 
@@ -1800,31 +1871,38 @@ window.__applyPortableSaveData=async function(data){
     };
     input.click();
   };
-  window.__installPortableSaveImport=function(){
-    var found=false;
-    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
-      var oc=btn.getAttribute('onclick')||'';
-      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
-      btn.setAttribute('data-import-save-bound','1');
-      var b=document.createElement('button');
-      b.type='button';
-      b.className=btn.className||'';
-      b.style.cssText=btn.style.cssText||'';
-      b.textContent='📤 读取存档';
-      b.title='读取先前下载的存档 CSV';
-      b.onclick=window.importGameSaveData_;
-      btn.insertAdjacentElement('afterend',b);
-      found=true;
-    });
-    return found;
-  };
-  function boot(){ window.__installPortableSaveImport(); }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
-  else boot();
+  // import button already in HTML at line 269
 })();
+// ================================================================
+// 连线状态检测
+// ================================================================
+(function(){
+  var dot=document.getElementById("conn-dot");
+  var txt=document.getElementById("conn-text");
+  function check(){
+    if(!dot||!txt) return;
+    if(navigator.onLine===false){
+      dot.style.background="#ff4444";
+      txt.textContent="离线"; txt.style.color="#ff4444";
+      return;
+    }
+    var u=GAS_URL||"";
+    if(!u){ dot.style.background="#888"; txt.textContent="未连线"; txt.style.color=""; return; }
+    var tmr=setTimeout(function(){ dot.style.background="#FFA500"; txt.textContent="检查中…"; },500);
+    fetch(u+"?action=ping&_="+Date.now(),{method:"GET",mode:"cors",cache:"no-store"})
+      .then(function(r){ clearTimeout(tmr); return r.text(); })
+      .then(function(t){ dot.style.background="#4CAF50"; txt.textContent="连线中"; txt.style.color=""; })
+      .catch(function(e){ clearTimeout(tmr); dot.style.background="#ff4444"; txt.textContent="无连线"; txt.style.color="#ff4444"; });
+  }
+  check();
+  setInterval(check,30000);
+  window.addEventListener("online",check);
+  window.addEventListener("offline",check);
+})();
+document.getElementById("ver-badge").textContent=VER+" / "+HM_HTML_VERSION;
 </script>
 
 <!-- 版本注记 -->
-<!-- v1.0 2026-04 初版：登入/UID记忆/打卡判定(5回复)/7格盖章动画/周月礼包/每日周月任务/商店/云端GAS存档/离线模式/下载数据 -->
+<!-- v1.1 2026-06-11 新增：下载 XLSX（唯读保护）；连线状态左下角 + 版本号右下角；云端记录低于 5 条的回复；修正中继路由 -->
 </body>
 </html>

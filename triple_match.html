@@ -793,9 +793,10 @@ const LEVELS=Array.from({length:MAX_LEVELS},(_,i)=>genLevelCfg(i+1));
 // ══════════════════════════════════════════
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyALPUSV8ulvM4X8pMwWJBXnslFuv6lYUxq0NOAcE7S-x73vOOrWADC6mGsU8vjZ3m7/exec";
 const SHEET = "磁贴探索";
-const FORUM_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+const FORUM_PROXY = "https://sstm-raffle.vercel.app/Triple-Match-proxy?url=";
 const NOVICE_FORUM_RE = /forum\/32[-\/]/;
 const FORUM_FETCH_MS = 14000;
+const HM_HTML_VERSION = "triplematch‑v1.2‑2026‑06‑11";
 const KEY_HISTORY = "tm_id_history";
 const KEY_STATE   = "tm_state";
 const KEY_ID      = "tm_login_id";
@@ -908,6 +909,20 @@ async function cloudLoad(id){
   try{ const d=await gasJsonp({sheet:SHEET,action:"load",id}); return d.data||null; }catch(e){ return null; }
 }
 
+async function fetchActivityFromTripleMatch_(uid, startDate, endDate) {
+  try { var d = await gasJsonp({ sheet: SHEET, action: "activity_fetch", uid: String(uid), startDate: String(startDate || ''), endDate: String(endDate || '') }, 15000); return d && d.rows; } catch (e) { return null; }
+}
+function logActivityByDayToTripleMatch_(uid, netByDay) {
+  if (!uid || !netByDay || typeof netByDay !== 'object') return;
+  Object.keys(netByDay).forEach(function (d) {
+    gasBeacon({ sheet: SHEET, action: "activity_log", uid: String(uid), date: d, replies: String(netByDay[d] || 0), citations: '0' });
+  });
+}
+function logForumFetchToTripleMatch_(info) {
+  if (!info || !info.forum_uid) return;
+  gasBeacon({ sheet: SHEET, action: "forum_fetch_log", uid: info.forum_uid, replies: String(info.reply_count || 0), citations: String(info.citation_count || 0), startDate: String(info.startDate || ''), endDate: String(info.endDate || ''), date: todayISO() });
+}
+
 function openSkinPanel(){ensureOwnedBgSkins();if(G.bgSkin)curBgSkin=G.bgSkin;else curBgSkin='default';renderBgSkinPanel();applyBgTheme();updateSkinUI();var el=document.getElementById('skin-overlay');if(el){el.classList.remove('hidden');el.style.display='flex';}}
 function closeSkinPanel(){
   var el=document.getElementById('skin-overlay');
@@ -917,6 +932,22 @@ function openShopPanel(){
   var el=document.getElementById('shop-overlay');
   if(el){ el.classList.remove('hidden'); el.style.display='flex'; }
 }
+// --- Override openShopPanel: preserve local replies/citations ---
+var _tmOpenShopOrig = openShopPanel;
+openShopPanel = async function () {
+  var _sr = (G.replies || 0), _sc = (G.citations || 0), _rsp = (G.repliesSpent || 0), _csp = (G.citationsSpent || 0);
+  if (G.id) {
+    try {
+      var cloud = await cloudLoad(G.id);
+      if (cloud && typeof cloud === "object") {
+        Object.assign(G, cloud);
+        if (G.replies < _sr) { G.replies = _sr; G.citations = _sc; G.repliesSpent = _rsp; G.citationsSpent = _csp; }
+        saveState(); updateMenuUI();
+      }
+    } catch (e) { }
+  }
+  _tmOpenShopOrig();
+};
 function setOffline(v){
   _offline=v;
   var bar=document.getElementById('tm-offline-bar');
@@ -945,28 +976,49 @@ async function retryCloud(){
     if(bar) bar.innerHTML='🔴 离线游玩中<br><span style="font-size:.7rem;opacity:.8">点击重新连线</span>';
   }
 }
-function downloadGameData(){
-  var rows=[
-    ['项目','数值'],
-    ['论坛ID',G.id],['UID',G.uid],
-    ['金币',G.coins||0],
-    ['今日回复数',G.replies||0],['被引用数',G.citations||0],
-    ['重复挑战卷',G.tickets||0],
-    ['撤回道具',G.boosters.undo||0],
-    ['重排道具',G.boosters.shuffle||0],
-    ['提示道具',G.boosters.hint||0],
-    ['已解锁关卡',(G.unlocked||[]).join(' ')],
-    ['已通关关卡',(G.cleared||[]).join(' ')],
-    ['皮肤',G.skin||'default'],
-    ['下载时间',new Date().toLocaleString('zh-TW')],
-  ];
-  __appendPortableSaveRows(rows,'triple_match',G);
-  var csv=rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\r\n');
-  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a'); a.href=url; a.download='triple-match-'+G.id+'.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+async function downloadGameData() {
+  saveState();
+  try {
+    if (typeof XLSX === 'undefined') { try { await loadScript('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'); } catch (e) { } }
+    if (typeof ExcelJS === 'undefined' && typeof XLSX === 'undefined') throw new Error('ExcelJS not loaded');
+    var wb = new ExcelJS.Workbook(); wb.creator = 'TripleMatch'; wb.created = new Date();
+    var ws = wb.addWorksheet('SaveData');
+    var ts = new Date().toLocaleString('zh-TW');
+    var rows = [
+      ['Key', 'Value'],
+      ['game', 'triple_match'],
+      ['论坛ID', G.id], ['UID', G.uid],
+      ['金币', G.coins || 0],
+      ['今日回复数', G.replies || 0], ['被引用数', G.citations || 0],
+      ['重复挑战卷', G.tickets || 0],
+      ['撤回道具', G.boosters.undo || 0],
+      ['重排道具', G.boosters.shuffle || 0],
+      ['提示道具', G.boosters.hint || 0],
+      ['已解锁关卡', (G.unlocked || []).join(' ')],
+      ['已通关关卡', (G.cleared || []).join(' ')],
+      ['皮肤', G.skin || 'default'],
+      ['savedAt', ts],
+    ];
+    __appendPortableSaveRows(rows, 'triple_match', G);
+    ws.addTable({ name: 'SaveTable', ref: 'A1', columns: [{ name: 'Key', filterButton: false }, { name: 'Value', filterButton: false }], rows: rows.slice(1) });
+    ws.getColumn('A').width = 20; ws.getColumn('B').width = 50;
+    ws.protect("sstm_triplematch_readonly_2026", { selectLockedCells: true, selectUnlockedCells: true });
+    var buf = await wb.xlsx.writeBuffer();
+    var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'triple-match-' + (G.id || 'player') + '.xlsx';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(blob); }, 1000);
+  } catch (e) {
+    console.warn('xlsx fallback to csv', e);
+    var rows = [['项目', '数值'], ['论坛ID', G.id], ['UID', G.uid], ['金币', G.coins || 0], ['今日回复数', G.replies || 0], ['被引用数', G.citations || 0], ['重复挑战卷', G.tickets || 0], ['撤回道具', G.boosters.undo || 0], ['重排道具', G.boosters.shuffle || 0], ['提示道具', G.boosters.hint || 0], ['已解锁关卡', (G.unlocked || []).join(' ')], ['已通关关卡', (G.cleared || []).join(' ')], ['皮肤', G.skin || 'default'], ['下载时间', new Date().toLocaleString('zh-TW')]];
+    __appendPortableSaveRows(rows, 'triple_match', G);
+    var csv = rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'triple-match-' + G.id + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
 }
 
 // ══════════════════════════════════════════
@@ -1025,6 +1077,7 @@ async function doLogin(){
   }catch(e){ _offline=true; setOffline(true); }
   saveState();
   saveIdHistory();
+  renderIdHistory();
   gasBeacon({sheet:SHEET,action:"login_log",id:G.id,uid:String(G.uid),date:todayISO(),info:"triple_match_v1.4.0"});
   hideLoading();
   if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent="▶ 登入游戏"; }
@@ -1085,27 +1138,29 @@ function updateMenuUI(){
 // ══════════════════════════════════════════
 // FORUM SCRAPE（完整复制自 checkin_game.html）
 // ══════════════════════════════════════════
-async function fffProxyGet(url, noCache){
-  if(!noCache){
-    const sk="tmfff_"+url;
-    const hit=sessionStorage.getItem(sk);
-    if(hit) return hit;
-  }
-  const bustUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
-  const ctrl=new AbortController();
-  const tid=setTimeout(()=>ctrl.abort(),FORUM_FETCH_MS);
-  let resp;
-  try{
-    resp=await fetch(FORUM_PROXY+encodeURIComponent(bustUrl),{signal:ctrl.signal});
-  }finally{
-    clearTimeout(tid);
-  }
-  if(!resp.ok) throw new Error("网络错误 "+resp.status);
-  const text=await resp.text();
-  if(!noCache&&url.includes("controller=profile")){
-    try{sessionStorage.setItem("tmfff_"+url,text);}catch(e){}
-  }
-  return text;
+function _tmProxyOkText_(text){return text&&text.length>80&&(text.indexOf('<')>=0||/profile|ipsQuote|cProfileContent/i.test(text));}
+async function _tmGasProxyGet_(url){
+  var data=await gasJsonp({action:'fetch_url',url:url},FORUM_FETCH_MS);
+  var text=(data&&(data.html||data.contents))||'';
+  if(_tmProxyOkText_(text))return text;
+  throw new Error((data&&data.error)||'gas_proxy_empty');
+}
+async function fffProxyGet(url, noCache) {
+  if (!noCache) { try { var sk = "tmfff_" + url; var hit = sessionStorage.getItem(sk); if (hit) return hit; } catch (e) {} }
+  try {
+    var text = await _tmGasProxyGet_(url);
+    try { sessionStorage.setItem("tmfff_" + url, text); } catch (e) {}
+    return text;
+  } catch (e) { console.warn('[tm-proxy] GAS FAIL:', e.message || e); }
+  try {
+    var resp = await fetch(FORUM_PROXY + encodeURIComponent(url), { referrerPolicy: 'no-referrer', credentials: 'omit', signal: AbortSignal.timeout(FORUM_FETCH_MS) });
+    if (!resp.ok) throw new Error('HTTP_' + resp.status);
+    var text = await resp.text();
+    if (!_tmProxyOkText_(text)) throw new Error('empty_response');
+    try { sessionStorage.setItem("tmfff_" + url, text); } catch (e) {}
+    return text;
+  } catch (e) { console.warn('[tm-proxy] Vercel FAIL:', e.message || e); }
+  throw new Error('所有中转站均不可用（GAS + Vercel 均失败）');
 }
 async function fffGetSlug(uid){
   const html=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+uid);
@@ -1281,8 +1336,17 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
       maxPages:Number(opt&&opt.maxPages)||60,
       maxCitationChecks:(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:16
     });
-    G.replies=result.replies||0;
-    G.citations=result.citations||0;
+    // 从云端获取全部记录，修正历史膨胀
+    try {
+      var _fit = await fetchActivityFromTripleMatch_(G.uid, '', '');
+      var _csR = 0, _csC = 0;
+      (_fit || []).forEach(function (r) { _csR += parseInt(r.replies, 10) || 0; _csC += parseInt(r.citations, 10) || 0; });
+      if (_csR > 0 || _csC > 0) { G.replies = _csR + (result.replies || 0); G.citations = _csC + (result.citations || 0); }
+      else { G.replies = (Number(G.replies) || 0) + (result.replies || 0); G.citations = (Number(G.citations) || 0) + (result.citations || 0); }
+    } catch (e) {
+      G.replies = (Number(G.replies) || 0) + (result.replies || 0);
+      G.citations = (Number(G.citations) || 0) + (result.citations || 0);
+    }
     G.fetchRangeHistory[rk]=new Date().toISOString();
     _forumFetched=true;
     saveState();
@@ -1294,6 +1358,10 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
     });
     updateMenuUI();
     if(showAlert) alert("✅ 抓取完成！\n区间: "+sd+" ~ "+ed+"\n页数: "+(result.pageCount||1)+" 页\n回复: "+G.replies+" · 被引用: "+G.citations);
+    // 活跃度打点
+    var _nb = {}; _nb[sd] = _nb[ed] = 1;
+    logActivityByDayToTripleMatch_(G.uid, _nb);
+    logForumFetchToTripleMatch_({ mode: 'fetch', forum_uid: String(G.uid), reply_count: result.replies || 0, citation_count: result.citations || 0, startDate: sd, endDate: ed });
     return true;
   }catch(e){
     if(showAlert) alert("⚠️ 抓取失败："+e.message);
@@ -2310,29 +2378,28 @@ window.__applyPortableSaveData=async function(data){
     };
     input.click();
   };
-  window.__installPortableSaveImport=function(){
-    var found=false;
-    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
-      var oc=btn.getAttribute('onclick')||'';
-      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
-      btn.setAttribute('data-import-save-bound','1');
-      var b=document.createElement('button');
-      b.type='button';
-      b.className=btn.className||'';
-      b.style.cssText=btn.style.cssText||'';
-      b.textContent='📤 读取存档';
-      b.title='读取先前下载的存档 CSV';
-      b.onclick=window.importGameSaveData_;
-      btn.insertAdjacentElement('afterend',b);
-      found=true;
-    });
-    return found;
-  };
-  function boot(){ window.__installPortableSaveImport(); }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
-  else boot();
+  // import button already in HTML
+})();
+(function(){
+  var vb=document.getElementById('ds-version-badge');
+  if(vb)vb.textContent=typeof HM_HTML_VERSION!=='undefined'?HM_HTML_VERSION:'';
+  var dot=document.getElementById('ds-connection-status');
+  if(!dot)return;
+  function check(){
+    if(navigator.onLine===false){dot.innerHTML='<span style="color:#ff4444">● 离线</span>';return;}
+    var u=GAS_URL||'';
+    if(!u||!u.startsWith('https://')){dot.innerHTML='<span style="color:#888">● 未连线</span>';return;}
+    var tmr=setTimeout(function(){dot.innerHTML='<span style="color:#FFA500">● 检查中</span>';},500);
+    fetch(u+'?action=ping&_='+Date.now(),{method:'GET',mode:'cors',cache:'no-store'})
+      .then(function(r){clearTimeout(tmr);return r.text();})
+      .then(function(t){dot.innerHTML='<span style="color:#4CAF50">● 连线中</span>';})
+      .catch(function(e){clearTimeout(tmr);dot.innerHTML='<span style="color:#ff4444">● 无连线</span>';});
+  }
+  check();setInterval(check,30000);
 })();
 </script>
+<div id="ds-version-badge" style="position:fixed;bottom:8px;right:10px;font-size:.7rem;opacity:.55;color:rgba(255,255,255,.5);z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)"></div>
+<div id="ds-connection-status" style="position:fixed;bottom:8px;left:10px;font-size:.7rem;z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)"></div>
 <!-- v1.1 2026-04-12 追加故事风封面图（covers_v3/cover_triple_match_v3.png） -->
 </body>
 </html>

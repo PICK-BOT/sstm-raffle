@@ -29,7 +29,7 @@ body{font-family:"Nunito","Microsoft JhengHei",sans-serif;background:var(--bg);c
 #score-bar{display:flex;gap:12px;align-items:center;font-size:.8rem;color:rgba(255,255,255,.82);}
 #hint-line{font-size:.74rem;color:rgba(255,255,255,.7);min-height:16px;text-align:center;}
 /* Board canvas wrapper */
-#board-wrap{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+#board-wrap{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:rgba(0,0,0,.82);border-radius:12px;}
 #board-canvas{display:block;}
 /* Floating number popup */
 .num-pop{position:absolute;pointer-events:none;font-weight:900;font-size:1.1rem;color:#facc15;text-shadow:0 1px 6px rgba(0,0,0,.8);z-index:50;animation:numPop .7s ease-out forwards;}
@@ -54,9 +54,33 @@ body{font-family:"Nunito","Microsoft JhengHei",sans-serif;background:var(--bg);c
 .mults .btn{padding:7px 10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);}
 .mults .on{background:linear-gradient(135deg,#f59e0b,#e11d48);}
 .chapter{width:min(600px,98vw);margin-top:10px;display:flex;gap:10px;align-items:center;justify-content:space-between;}
+.ih-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}.ih-chip-wrap{display:inline-flex;align-items:center;gap:2px;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.35);border-radius:20px;padding:2px 2px 2px 7px}.ih-chip{border:none;padding:2px 5px;border-radius:14px;font-size:.72rem;cursor:pointer;background:transparent;color:#22d3ee;font-family:inherit;font-weight:700}.ih-chip:hover{background:rgba(34,211,238,.2)}.ih-x{width:16px;height:16px;padding:0;border:none;border-radius:50%;cursor:pointer;background:rgba(255,100,100,.3);color:#fff;font-size:.6rem;font-weight:700;line-height:1}
 .chapter .bar{height:7px;background:rgba(255,255,255,.13);border-radius:99px;overflow:hidden;flex:1;min-width:100px;}
 .chapter .fill{height:100%;background:linear-gradient(90deg,#facc15,#14b8a6);}
 @media(max-width:480px){.title{font-size:1.5rem;}#top{padding:4px;}.bbtn{font-size:.62rem;padding:5px 1px;}}
+/* ── DS FORUM FETCH / SAVE OVERLAYS ── */
+.fff-modal{display:none;position:fixed;inset:0;z-index:450;background:rgba(5,2,16,0.92);align-items:center;justify-content:center;}
+.fff-box{background:linear-gradient(145deg,#12082a,#1a1035);border:1px solid rgba(201,168,76,0.45);border-radius:14px;padding:22px;width:90%;max-width:380px;text-align:center;}
+.fff-box h3{color:#f0d080;margin:0 0 14px;font-size:1.05rem;}
+.fff-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.fff-row label{min-width:72px;font-size:.82rem;color:rgba(255,255,255,.72);text-align:left;flex-shrink:0;margin-bottom:0;}
+.fff-inp{flex:1;padding:8px 10px;background:rgba(255,255,255,.06);border:1px solid rgba(201,168,76,0.35);border-radius:8px;color:#fff;font-size:.9rem;outline:none;font-family:inherit;}
+.fff-inp:focus{border-color:#c9a84c;}
+.fff-btn-ok{padding:9px 20px;background:linear-gradient(135deg,#c9a84c,#8a6a20);color:#1a1200;border:none;border-radius:10px;cursor:pointer;font-weight:800;font-size:.88rem;font-family:inherit;}
+.fff-btn-cancel{padding:7px 18px;background:transparent;color:rgba(255,255,255,.72);border:1px solid rgba(201,168,76,0.35);border-radius:10px;cursor:pointer;font-size:.85rem;font-family:inherit;}
+.fff-spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.12);border-top-color:#c9a84c;border-radius:50%;animation:fffSpin .8s linear infinite;}
+@keyframes fffSpin{to{transform:rotate(360deg)}}
+.fff-loading-overlay{display:none;position:fixed;inset:0;z-index:460;background:rgba(5,2,16,0.92);align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+.fff-loading-overlay.show{display:flex;}
+#hx-loadingOverlay{display:none;position:fixed;inset:0;z-index:300;background:rgba(5,2,16,.82);align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+#hx-loadingOverlay.show{display:flex;}
+.loading-spinner{width:44px;height:44px;border:3px solid rgba(201,168,76,.2);border-top-color:#c9a84c;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:.92rem;color:rgba(255,255,255,.72);letter-spacing:.1em}
+.gas-offline-badge{font-size:.72rem;color:#ff8899;background:rgba(192,57,79,.15);border:1px solid rgba(192,57,79,.3);border-radius:20px;padding:4px 12px;margin-top:4px;display:none;}
+/* ── DS SAVE PROGRESS PANEL ── */
+.ds-progress-panel{font-size:.82rem;color:rgba(255,255,255,.85);line-height:1.7;}
+.ds-progress-panel b{color:#f0d080;}
 #right-panel{
   position:fixed;right:8px;top:50%;transform:translateY(-50%);
   width:168px;background:rgba(10,15,30,.93);
@@ -66,6 +90,8 @@ body{font-family:"Nunito","Microsoft JhengHei",sans-serif;background:var(--bg);c
 }
 @media(max-width:560px){#right-panel{width:130px;font-size:.8rem;padding:8px 9px;right:4px;}}
 </style>
+<script>var HM_HTML_VERSION="v1-2026-06-11";</script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 </head>
 <body>
 
@@ -76,6 +102,7 @@ body{font-family:"Nunito","Microsoft JhengHei",sans-serif;background:var(--bg);c
   <div class="card" style="width:min(360px,92vw)">
     <input id="inp-id" class="inp" placeholder="论坛ID" style="margin-bottom:8px">
     <input id="inp-uid" class="inp" placeholder="UID" type="number" style="margin-bottom:8px">
+    <div id="id-history-row"><div style="font-size:.72rem;color:rgba(255,255,255,.45);margin-top:6px;margin-bottom:4px">最近使用</div><div class="ih-chips" id="id-history-chips"></div></div>
     <button id="btn-login" class="btn" style="width:100%" onclick="doLogin()">登入</button>
     <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="offlineMode()">离线模式</button>
     <div id="login-err" style="min-height:18px;color:#fda4af;margin-top:8px;font-size:.8rem"></div>
@@ -353,7 +380,7 @@ const SHOP_ITEMS=[
   {id:"skin_steampsf",name:"背景：六色风暴漩涡",costType:"replies",cost:35,give:{bgSkin:"steampsf"}}
 ];
 
-let G={id:"",uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,coins:0,tickets:0,stars:0,chapter:1,chapterItems:0,wheel:0,multiplier:1,unlocked:[1],cleared:[],skin:"default",ownedBgSkins:["default"],bgSkin:"default",boosters:{undo:3,shuffle:2,hammer:2,bomb:1},lootBoxes:0,jieCao:0,feather:0,medal30:0,letterMedal30:0,lootBoxesTotal:0};
+let G={id:"",uid:0,replies:0,citations:0,repliesSpent:0,citationsSpent:0,coins:0,tickets:0,stars:0,chapter:1,chapterItems:0,wheel:0,multiplier:1,unlocked:[1],cleared:[],skin:"default",ownedBgSkins:["default"],bgSkin:"default",boosters:{undo:3,shuffle:2,hammer:2,bomb:1},lootBoxes:0,jieCao:0,feather:0,medal30:0,letterMedal30:0,lootBoxesTotal:0,fetchRangeHistory:{}};
 
 // Gameplay state
 let level=1,score=0,scoreNeed=100,numColors=4;
@@ -380,6 +407,7 @@ function normalize(){
   if(!G.chapter)G.chapter=1;if(!G.multiplier)G.multiplier=1;
   if(!G.unlocked||!G.unlocked.length)G.unlocked=[1];
   if(!G.cleared)G.cleared=[];
+  if(!G.fetchRangeHistory||typeof G.fetchRangeHistory!=="object")G.fetchRangeHistory={};
   ensureOwnedBgSkins();
   if(!G.hexaInit){G.coins=(G.coins||0)+600;G.hexaInit=true;}
 }
@@ -1945,28 +1973,76 @@ async function fetchForumDataCustom(show,opt){
   if(!G.id||!G.uid){alert("先登入论坛帐号才能抓取！");return false;}
   const sdEl=qs("forum-start-date"), edEl=qs("forum-end-date");
   const sd=(sdEl&&sdEl.value)||todayISO(), ed=(edEl&&edEl.value)||sd;
+
+  // ── 防重复：同一区间不允许再次抓取 ──
+  if(!G.fetchRangeHistory||typeof G.fetchRangeHistory!=="object")G.fetchRangeHistory={};
+  const rk=String(G.uid)+"|"+sd+"|"+ed;
+  if(G.fetchRangeHistory[rk]){
+    if(show)alert("⚠️ 此区间（"+sd+" ~ "+ed+"）已抓取过，不会重复累加。\n如需重新抓取请先清除存档或更换日期区间。");
+    return false;
+  }
+
   const startD=new Date(sd+"T00:00:00"),endD=new Date(ed+"T23:59:59");
   function inRange_(d){return d instanceof Date&&!isNaN(d)&&d>=startD&&d<=endD;}
   function parseItemDate_(it){const t=it.querySelector("time[datetime]")||it.querySelector("time");const dt=t&&(t.getAttribute("datetime")||t.textContent||"");const m=String(dt).match(/(\d{4})-(\d{2})-(\d{2})/);return m?new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00"):null;}
   try{
     const sh=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+G.uid);
     const slug=(sh.match(/\/profile\/([^\/\"?#]+)/)||[])[1];if(!slug)throw new Error("slug失败");
-    let page=1,replies=0,cites=0,budget=(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:20,maxPages=(opt&&opt.maxPages)||60;
+    let page=1,budget=(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:20,maxPages=(opt&&opt.maxPages)||60;
+    // ── 用 Set 去重：同一篇帖子不重复计回复、同一 cid 不重复计引用 ──
+    const seenPostIds=new Set();   // 以帖子链接 href 去重回复
+    const seenCids=new Set();      // 以 commentid 去重被引用
+    const citedIds=new Set();      // 验证通过的被引用 cid
+    const toCheckAll=[];           // 所有待验证的 {cid,tid}（全局去重后）
     while(page<=maxPages){
       setForumStatus("抓取第 "+page+" 页...");
       const u=page===1?"https://sstm.moe/profile/"+slug+"/content/?type=forums_topic_post&change_section=1":"https://sstm.moe/profile/"+slug+"/content/page/"+page+"/?type=forums_topic_post";
       const html=await fffProxyGet(u),doc=new DOMParser().parseFromString(html,"text/html"),items=[...doc.querySelectorAll("ol.cProfileContent>li")];
-      if(!items.length)break;let allOlder=true,anyIn=false,arr=[];
-      items.forEach(it=>{const d=parseItemDate_(it);if(d&&d>=startD)allOlder=false;if(!d||!inRange_(d))return;anyIn=true;const a=it.querySelector("p.ipsType_light a[href]");if(a&&/forum\/32[-\/]/.test(a.getAttribute("href")||""))replies++;const bq=it.querySelector(".ipsQuote");if(bq){const cid=bq.getAttribute("data-ipsquote-contentcommentid"),tid=bq.getAttribute("data-ipsquote-contentid");if(cid&&tid)arr.push({cid,tid});}});
+      if(!items.length)break;let allOlder=true,anyIn=false;
+      items.forEach(it=>{
+        const d=parseItemDate_(it);
+        if(d&&d>=startD)allOlder=false;
+        if(!d||!inRange_(d))return;
+        anyIn=true;
+        const a=it.querySelector("p.ipsType_light a[href]");
+        if(a&&/forum\/32[-\/]/.test(a.getAttribute("href")||"")){
+          // 以帖子链接去重，防止同一篇帖子出现在多页时重复计数
+          const href=a.getAttribute("href")||"";
+          if(!seenPostIds.has(href)){seenPostIds.add(href);}
+        }
+        const bq=it.querySelector(".ipsQuote");
+        if(bq){
+          const cid=bq.getAttribute("data-ipsquote-contentcommentid"),tid=bq.getAttribute("data-ipsquote-contentid");
+          // 以 cid 去重，防止同一引用出现在多页时重复验证
+          if(cid&&tid&&!seenCids.has(cid)){seenCids.add(cid);toCheckAll.push({cid,tid});}
+        }
+      });
       if(allOlder&&!anyIn)break;
-      const chk=arr.slice(0,Math.max(0,budget));budget-=chk.length;
-      for(let i=0;i<chk.length;i+=10){await Promise.all(chk.slice(i,i+10).map(async x=>{try{const q=await fffProxyGet("https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid);if(/forum\/32[-\/]/.test(q)&&new RegExp("data-ipsquote-userid=\\\""+G.uid+"\\\"").test(q))cites++;}catch(e){}}));}
       if(!doc.querySelector("li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel='next']"))break;
       page++;await new Promise(r=>setTimeout(r,24));
     }
-    G.replies=(Number(G.replies)||0)+replies;G.citations=(Number(G.citations)||0)+cites;save();cloudSave();updateShopCurrency();updateMenuStat();
+    // ── 验证被引用（全部去重后再验证，budget 控制最大验证数）──
+    const chk=toCheckAll.slice(0,Math.max(0,budget));
+    for(let i=0;i<chk.length;i+=10){
+      setForumStatus("验证被引用 "+Math.min(i+10,chk.length)+"/"+chk.length+"...");
+      await Promise.all(chk.slice(i,i+10).map(async x=>{
+        try{
+          const q=await fffProxyGet("https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid);
+          if(/forum\/32[-\/]/.test(q)&&new RegExp("data-ipsquote-userid=\\\""+G.uid+"\\\"").test(q))citedIds.add(x.cid);
+        }catch(e){}
+      }));
+    }
+    const replies=seenPostIds.size;
+    const cites=citedIds.size;
+    G.replies=(Number(G.replies)||0)+replies;
+    G.citations=(Number(G.citations)||0)+cites;
+    // ── 记录已抓取区间，防止下次重复 ──
+    G.fetchRangeHistory[rk]=new Date().toISOString();
+    save();cloudSave();updateShopCurrency();updateMenuStat();
     gasBeacon({sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(G.uid),replies:String(replies),citations:String(cites),date:todayISO()});
-    setForumStatus("完成：回复 "+replies+" / 被引用 "+cites);if(show)alert("抓取完成\n回复:"+replies+" 被引用:"+cites);return true;
+    setForumStatus("完成：本次 回复 "+replies+" / 被引用 "+cites+" · 累计 "+G.replies+"/"+G.citations);
+    if(show)alert("✅ 抓取完成（"+sd+" ~ "+ed+"）\n本次新增 回复: "+replies+" · 被引用: "+cites+"\n累计 回复: "+G.replies+" · 被引用: "+G.citations);
+    return true;
   }catch(e){setForumStatus("失败："+e.message);if(show)alert("失败:"+e.message);return false;}
 }
 
@@ -2005,6 +2081,991 @@ window.addEventListener("resize",()=>{
     computeLayout();drawBoard();
   }
 });
+</script>
+
+<!-- ===== DS‑STYLE OVERLAY STYLES ===== -->
+<style>
+.fff-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.fff-box{background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:22px 26px;min-width:300px;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.fff-box h3{font-size:1.1rem;font-weight:800;margin-bottom:14px;color:#f1f5f9;text-align:center;}
+.fff-row{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.fff-row label{font-size:.8rem;color:rgba(255,255,255,.7);font-weight:700;}
+.fff-inp{width:100%;padding:9px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-family:inherit;font-size:.9rem;}
+.fff-btn-ok,.fff-btn-cancel{border:none;border-radius:10px;padding:9px 18px;font-weight:800;cursor:pointer;font-family:inherit;font-size:.85rem;transition:transform .12s;}
+.fff-btn-ok{background:linear-gradient(135deg,#0f766e,#0891b2);color:#fff;}
+.fff-btn-cancel{background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);}
+.fff-btn-ok:active,.fff-btn-cancel:active{transform:scale(.94);}
+.fff-loading-overlay{display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.78);flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+.fff-loading-overlay.show{display:flex;}
+.fff-spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.15);border-top-color:#22d3ee;border-radius:50%;animation:fff-spin .75s linear infinite;margin-bottom:14px;}
+@keyframes fff-spin{to{transform:rotate(360deg);}}
+#hx-loadingOverlay{display:none;position:fixed;inset:0;z-index:9997;background:rgba(0,0,0,.8);flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+#hx-loadingOverlay .loading-spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.12);border-top-color:#facc15;border-radius:50%;animation:fff-spin .7s linear infinite;}
+#hx-loadingOverlay .loading-text{color:rgba(255,255,255,.8);font-size:.92rem;}
+#hx-loadingOverlay .gas-offline-badge{display:none;background:rgba(255,100,50,.18);color:#ffb347;font-size:.72rem;padding:4px 10px;border-radius:6px;}
+</style>
+
+<!-- ===== DS‑STYLE OVERLAY HTML ===== -->
+<div id="fff-modal" class="fff-modal">
+  <div class="fff-box">
+    <h3 id="fff-modal-title">📡 论坛读取</h3>
+    <div class="fff-row"><label>UID</label><input id="fff-uid" class="fff-inp" type="number" placeholder="论坛数字 UID" inputmode="numeric"></div>
+    <div style="font-size:.8rem;color:rgba(255,255,255,.6);text-align:center;margin:2px 0">日期区间使用商店上方设定</div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
+      <button type="button" class="fff-btn-ok" onclick="fffDoFetch()">🔍 开始读取</button>
+      <button type="button" class="fff-btn-cancel" onclick="fffCloseModal()">取消</button>
+    </div>
+  </div>
+</div>
+<div id="fff-loading" class="fff-loading-overlay">
+  <div class="fff-spinner"></div>
+  <div id="fff-status" style="color:rgba(255,255,255,.72);font-size:.88rem;text-align:center;max-width:300px;line-height:1.75">正在连接论坛…</div>
+  <div style="color:#555;font-size:.75rem">可能需要数十秒</div>
+</div>
+<div id="fff-result" class="fff-modal" style="flex-direction:column;">
+  <div class="fff-box">
+    <h3>📊 读取完成</h3>
+    <div id="fff-result-text" style="color:rgba(255,255,255,.72);font-size:.95rem;line-height:1.9;margin-bottom:18px"></div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button type="button" id="fff-confirm-btn" class="fff-btn-ok" onclick="fffConfirm()">确认</button>
+      <button type="button" class="fff-btn-cancel" onclick="fffCancelResult()">取消</button>
+    </div>
+  </div>
+</div>
+<div id="hx-loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="hx-loadingText">正在处理…</div>
+  <div class="gas-offline-badge" id="hx-offlineBadge">GAS 无响应，使用本地缓存</div>
+</div>
+
+<script>
+// ============================================================
+// DS‑STYLE FORUM FETCH — 覆盖原 fffProxyGet / fetchForumDataCustom
+// v1‑2026‑06‑11
+// ============================================================
+const DS_FETCH_MS=35000;
+const FFF_PROXY_DS='https://sstm-raffle.vercel.app/Hexa-Master-proxy?url=';
+const FFF_IMP_DS='fff_imp_hm_v2';
+const HM_ACTIVITY_SHEET='六色合璧返乡活跃度记录';
+
+let _fffResult=null;
+let _diceOnline_hm=false;
+
+// ── GAS JSONP ──
+function _hmGasJsonp_(params,timeout){
+  return new Promise(function(resolve,reject){
+    const cb='hm_cb_'+Date.now()+'_'+Math.floor(Math.random()*9999);
+    const tid=setTimeout(function(){
+      try{delete window[cb];}catch(e){}
+      const sc=document.getElementById(cb+'_s');if(sc)sc.remove();
+      reject(new Error('timeout'));
+    },timeout||DS_FETCH_MS);
+    window[cb]=function(data){
+      clearTimeout(tid);
+      try{delete window[cb];}catch(e){}
+      const sc=document.getElementById(cb+'_s');if(sc)sc.remove();
+      if(data&&data.ok)resolve(data);
+      else reject(new Error((data&&data.error)||'err'));
+    };
+    const qs=Object.keys(params).map(k=>encodeURIComponent(k)+'='+encodeURIComponent(params[k])).join('&');
+    const s=document.createElement('script');
+    s.id=cb+'_s';
+    s.src=GAS_URL+'?'+qs+'&callback='+cb+'&_t='+Date.now();
+    s.onerror=function(){clearTimeout(tid);try{delete window[cb];}catch(e){}s.remove();reject(new Error('load_fail'));};
+    document.head.appendChild(s);
+  });
+}
+function _hmProxyOkText_(text){
+  return text&&text.length>80&&(text.indexOf('<')>=0||/profile|ipsQuote|cProfileContent/i.test(text));
+}
+async function _hmGasProxyGet_(url){
+  const data=await _hmGasJsonp_({action:'fetch_url',url:url},DS_FETCH_MS);
+  const text=(data&&(data.html||data.contents))||'';
+  if(_hmProxyOkText_(text))return text;
+  throw new Error((data&&data.error)||'gas_proxy_empty');
+}
+
+// ── 覆盖原 fffProxyGet ──
+fffProxyGet=async function(url){
+  const sk='fff_'+url;
+  try{const hit=sessionStorage.getItem(sk);if(hit)return hit;}catch(e){}
+  try{
+    const text=await _hmGasProxyGet_(url);
+    try{sessionStorage.setItem(sk,text);}catch(e){}
+    return text;
+  }catch(e){console.warn('[hm-proxy] GAS FAIL:',e.message||e);}
+  try{
+    const resp=await fetch(FFF_PROXY_DS+encodeURIComponent(url),{
+      referrerPolicy:'no-referrer',credentials:'omit',
+      signal:AbortSignal.timeout(DS_FETCH_MS)
+    });
+    if(!resp.ok)throw new Error('HTTP_'+resp.status);
+    const text=await resp.text();
+    if(!_hmProxyOkText_(text))throw new Error('empty_response');
+    try{sessionStorage.setItem(sk,text);}catch(e){}
+    return text;
+  }catch(e){console.warn('[hm-proxy] Vercel FAIL:',e.message||e);}
+  // 3) CORS proxies fallback (reuse FORUM_PROXIES if available)
+  var _pxArr=typeof FORUM_PROXIES!=='undefined'&&Array.isArray(FORUM_PROXIES)?FORUM_PROXIES:[];
+  if(_pxArr.length){
+    var _lastErr=null;
+    for(var _pi=0;_pi<_pxArr.length;_pi++){
+      var _px=_pxArr[_pi];
+      try{
+        var _ctrl2=new AbortController(),_tid2=setTimeout(function(){_ctrl2.abort();},FORUM_FETCH_MS||22000);
+        var _target2=_px+encodeURIComponent(url);
+        var _r2=await fetch(_target2,{signal:_ctrl2.signal});
+        clearTimeout(_tid2);
+        if(!_r2.ok)throw new Error('HTTP_'+_r2.status);
+        var _t2=await _r2.text();
+        if(_t2&&_t2.length>30){try{sessionStorage.setItem(sk,_t2);}catch(e){}return _t2;}
+        _lastErr=new Error('empty');
+      }catch(e){clearTimeout(_tid2);_lastErr=e;}
+    }
+    console.warn('[hm-proxy] CORS fallback all failed:',_lastErr&&_lastErr.message);
+  }
+  throw new Error('所有中转站均不可用（GAS + Vercel + CORS 均失败）');
+};
+
+// ── 论坛抓取工具 ──
+async function fffGetUsername(uid){
+  const html=await fffProxyGet('https://sstm.moe/?app=core&module=members&controller=profile&id='+uid);
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  for(const a of doc.querySelectorAll('a[href]')){
+    const href=a.getAttribute('href')||'';
+    const m=href.match(/\/profile\/(\d+-[^\/\?#"]+)/);
+    if(m&&m[1].startsWith(uid+'-'))return m[1];
+  }
+  throw new Error('无法获取用户名，请确认 UID 是否正确');
+}
+
+function fffLoadCC(uid){
+  try{return new Map(Object.entries(JSON.parse(localStorage.getItem('fff_cc_'+uid)||'{}')));}catch(e){return new Map();}
+}
+function fffSaveCC(uid,map){
+  try{localStorage.setItem('fff_cc_'+uid,JSON.stringify(Object.fromEntries(map)));}catch(e){}
+}
+function fffLoadPI(slug){
+  try{return JSON.parse(localStorage.getItem('fff_pi_'+slug)||'{}');}catch(e){return {};}
+}
+function fffSavePI(slug,idx){
+  try{localStorage.setItem('fff_pi_'+slug,JSON.stringify(idx));}catch(e){}
+}
+
+async function fffCheckQuote(cid,tid,uid,cache){
+  if(cache.has(cid))return cache.get(cid);
+  const url='https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id='+tid+'&content_commentid='+cid;
+  try{
+    const html=await fffProxyGet(url);
+    if(!/forum\/32[-\/]/.test(html)){cache.set(cid,false);return false;}
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    const el=doc.querySelector('article#elComment_'+cid);
+    if(!el){cache.set(cid,false);return false;}
+    const qs=el.querySelectorAll('.ipsQuote[data-ipsquote-userid="'+uid+'"]');
+    const res=Array.from(qs).some(q=>!q.parentElement.closest('.ipsQuote'));
+    cache.set(cid,res);
+    return res;
+  }catch(e){cache.set(cid,false);return false;}
+}
+
+async function fffScrape(uid,slug,startDate,endDate){
+  const RE=/forum\/32[-\/]/;
+  let replies=0;
+  const citedIds=new Set();
+  const byDay={};
+  function addDay(dateStr,type){
+    if(!byDay[dateStr])byDay[dateStr]={replies:0,citations:0};
+    byDay[dateStr][type]++;
+  }
+  const sTs=startDate?new Date(startDate).getTime():0;
+  const eTs=endDate?new Date(endDate+'T23:59:59Z').getTime():Date.now();
+  let page=1,done=false;
+  const cache=fffLoadCC(uid);
+  const pi=fffLoadPI(slug);
+  const ips=Object.keys(pi).map(Number).sort((a,b)=>a-b);
+  for(const pp of ips){
+    if(new Date(pi[pp]).getTime()>eTs)page=pp;
+    else break;
+  }
+  while(!done){
+    setForumStatus('正在读取第 '+page+' 页（回复:'+replies+' 被引用:'+citedIds.size+'）...');
+    const url=page===1
+      ?'https://sstm.moe/profile/'+slug+'/content/?type=forums_topic_post&change_section=1'
+      :'https://sstm.moe/profile/'+slug+'/content/page/'+page+'/?type=forums_topic_post';
+    const html=await fffProxyGet(url);
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    const items=doc.querySelectorAll('ol.cProfileContent > li');
+    if(!items.length)break;
+    const ft=doc.querySelector('ol.cProfileContent > li time[datetime]');
+    if(ft){pi[page]=ft.getAttribute('datetime');fffSavePI(slug,pi);}
+    let foundInRange=false;
+    const toCheck=[];
+    for(const item of items){
+      const te=item.querySelector('time[datetime]');
+      if(!te)continue;
+      const ts=new Date(te.getAttribute('datetime')).getTime();
+      if(ts>eTs)continue;
+      if(ts<sTs){done=true;break;}
+      foundInRange=true;
+      const fa=item.querySelector('p.ipsType_light a[href]');
+      if(!fa||!RE.test(fa.getAttribute('href')||''))continue;
+      const dateStr=new Date(ts).toISOString().slice(0,10);
+      replies++;
+      addDay(dateStr,'replies');
+      const bq=item.querySelector('.ipsQuote');
+      if(!bq)continue;
+      const c2=bq.getAttribute('data-ipsquote-contentcommentid');
+      const t2=bq.getAttribute('data-ipsquote-contentid');
+      if(c2&&t2)toCheck.push({cid:c2,tid:t2,dateStr});
+    }
+    if(toCheck.length){
+      const BATCH=5;
+      for(let i=0;i<toCheck.length;i+=BATCH){
+        const batch=toCheck.slice(i,i+BATCH);
+        setForumStatus('第'+page+'页验证引用 '+(i+1)+'–'+Math.min(i+BATCH,toCheck.length)+'/'+toCheck.length+'（被引用:'+citedIds.size+'）...');
+        const results=await Promise.all(batch.map(x=>fffCheckQuote(x.cid,x.tid,uid,cache)));
+        batch.forEach((x,j)=>{if(results[j]){citedIds.add(x.cid);addDay(x.dateStr,'citations');}});
+        if(i+BATCH<toCheck.length)await new Promise(r=>setTimeout(r,150));
+      }
+    }
+    if(done)break;
+    const next=doc.querySelector('li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel="next"]');
+    if(!next)break;
+    page++;
+    await new Promise(r=>setTimeout(r,foundInRange?400:100));
+  }
+  fffSaveCC(uid,cache);
+  return {replies,citations:citedIds.size,byDay};
+}
+
+// ── 云上去重 ──
+function normalizeDateISO_(s){
+  const raw=String(s||'').trim();
+  if(!raw)return '';
+  const m=raw.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if(m)return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+  const d=new Date(raw);
+  if(!isNaN(d.getTime()))return d.toISOString().slice(0,10);
+  return raw;
+}
+function enumerateDates_(startDate,endDate){
+  const out=[];
+  if(!startDate||!endDate)return out;
+  const d=new Date(startDate+'T12:00:00'),end=new Date(endDate+'T12:00:00');
+  if(isNaN(d.getTime())||isNaN(end.getTime()))return out;
+  while(d<=end){out.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}
+  return out;
+}
+function expandByDayRange_(byDay,startDate,endDate){
+  const full={};
+  enumerateDates_(startDate,endDate).forEach(d=>{
+    const src=byDay&&byDay[d];
+    full[d]={replies:src?(parseInt(src.replies,10)||0):0,citations:src?(parseInt(src.citations,10)||0):0};
+  });
+  return full;
+}
+async function fetchActivityFromGAS_(uid,startDate,endDate){
+  if(!GAS_URL||!uid)return [];
+  try{
+    const data=await _hmGasJsonp_({
+      action:'activity_fetch',uid:String(uid),
+      startDate:String(startDate||''),endDate:String(endDate||''),
+      sheet:HM_ACTIVITY_SHEET
+    },12000);
+    return (data&&data.ok&&data.rows)?data.rows:[];
+  }catch(e){console.warn('fetchActivityFromGAS_',e);return [];}
+}
+function mergeByDayWithCloud_(fullByDay,cloudRows,startDate,endDate){
+  const existing={};
+  (cloudRows||[]).forEach(r=>{
+    const d=normalizeDateISO_(r.date);
+    if(d)existing[d]={replies:parseInt(r.replies,10)||0,citations:parseInt(r.citations,10)||0};
+  });
+  const netByDay={},skippedDates=[],updatedDates=[];
+  let netR=0,netC=0;
+  enumerateDates_(startDate,endDate).forEach(d=>{
+    const scraped=fullByDay[d]||{replies:0,citations:0};
+    const cloud=existing[d];
+    if(!cloud){
+      netByDay[d]={replies:scraped.replies,citations:scraped.citations,action:'insert'};
+      netR+=scraped.replies;netC+=scraped.citations;
+      return;
+    }
+    const dR=Math.max(0,scraped.replies-cloud.replies);
+    const dC=Math.max(0,scraped.citations-cloud.citations);
+    if(dR<=0&&dC<=0){skippedDates.push(d);return;}
+    netByDay[d]={replies:Math.max(scraped.replies,cloud.replies),citations:Math.max(scraped.citations,cloud.citations),action:'update'};
+    netR+=dR;netC+=dC;updatedDates.push(d);
+  });
+  return {netByDay,netR,netC,skippedDates,updatedDates};
+}
+function formatSkippedDatesMsg_(dates){
+  if(!dates||!dates.length)return '';
+  const shown=dates.slice(0,8).map(d=>d.slice(5).replace('-','/'));
+  const tail=dates.length>8?' 等 '+dates.length+' 天':'';
+  return shown.join('、')+tail;
+}
+async function resolveForumFetchDedup_(uid,byDay,startDate,endDate,onStatus){
+  const fullByDay=expandByDayRange_(byDay||{},startDate,endDate);
+  let cloudRows=[];
+  if(_diceOnline_hm&&GAS_URL){
+    if(typeof onStatus==='function')onStatus('正在查询云端逐日记录…');
+    cloudRows=await fetchActivityFromGAS_(uid,startDate,endDate);
+  }
+  return mergeByDayWithCloud_(fullByDay,cloudRows,startDate,endDate);
+}
+function logForumFetchToGAS_(opts){
+  try{
+    const o=opts||{};
+    if(!GAS_URL)return;
+    fetch(GAS_URL,{
+      method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        sheet:'论坛抓取记录_六色合璧',type:'fetch_log',
+        id:String(o.forum_uid||G.id||'').trim(),
+        forum_uid:String(o.forum_uid||G.id||'').trim(),
+        mode:String(o.mode||''),
+        reply_count:Number(o.reply_count||0),
+        citation_count:Number(o.citation_count||0),
+        timestamp:String(o.timestamp||new Date().toISOString()),
+        startDate:String(o.startDate||''),
+        endDate:String(o.endDate||''),
+        game:'六色合璧'
+      })
+    });
+  }catch(e){console.warn('GAS forum fetch log failed',e);}
+}
+function logActivityToGAS_(uid,date,replies,citations){
+  if(!GAS_URL||!uid||!date)return;
+  fetch(GAS_URL,{
+    method:'POST',mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      sheet:HM_ACTIVITY_SHEET,type:'activity_log',
+      uid:String(uid),date:normalizeDateISO_(date),
+      replies:parseInt(replies,10)||0,citations:parseInt(citations,10)||0
+    })
+  }).catch(e=>console.warn('GAS activity log failed',e));
+}
+function logActivityByDayToGAS_(uid,netByDay){
+  Object.entries(netByDay||{}).forEach(([date,counts])=>{
+    logActivityToGAS_(uid,date,counts.replies,counts.citations);
+  });
+}
+
+// ── MODAL 控制 ──
+const qs2=id=>document.getElementById(id);
+
+function fffSetStatus(m){
+  const e=qs2('fff-status');
+  if(e)e.textContent=m;
+}
+function fffOpenLoading(){
+  const el=qs2('fff-loading');
+  if(el)el.classList.add('show');
+}
+function fffCloseLoading(){
+  const el=qs2('fff-loading');
+  if(el)el.classList.remove('show');
+}
+function fffOpenResult(html,btnTxt){
+  const rt=qs2('fff-result-text');
+  const cb=qs2('fff-confirm-btn');
+  const fr=qs2('fff-result');
+  if(rt)rt.innerHTML=html;
+  if(cb)cb.textContent=btnTxt||'确认';
+  if(fr)fr.style.display='flex';
+}
+function fffCloseResult(){
+  const fr=qs2('fff-result');
+  if(fr)fr.style.display='none';
+}
+function fffCancelResult(){fffCloseResult();}
+
+function fffGetCurrentUid(){
+  if(G&&G.uid)return String(G.uid);
+  const id=(G&&G.id)?String(G.id).trim():'';
+  if(/^\d+$/.test(id))return id;
+  try{return (localStorage.getItem(KEY_UID)||'').trim();}catch(e){return '';}
+}
+
+function fffOpenModal(){
+  const modal=qs2('fff-modal');
+  if(!modal)return;
+  const uid=String(fffGetCurrentUid()||'');
+  const el=qs2('fff-uid');
+  if(el){
+    el.value=uid;
+    if(_diceOnline_hm&&uid){el.readOnly=true;el.disabled=false;}
+    else{el.readOnly=false;el.disabled=false;}
+  }
+  modal.style.display='flex';
+}
+function fffCloseModal(){
+  const modal=qs2('fff-modal');
+  if(modal)modal.style.display='none';
+}
+
+let _fffIsUpdate=false;
+
+// ── 核心抓取逻辑（UID 来自 G，不弹 modal）──
+async function fffExecuteFetch(uid,startDate,endDate){
+  if(!uid||isNaN(parseInt(uid,10)))throw new Error('UID 无效');
+  const sd=startDate||(typeof qs==='function'?qs('forum-start-date')?.value||'':'')||todayISO();
+  const ed=endDate||(typeof qs==='function'?qs('forum-end-date')?.value||'':'')||sd;
+  const dateKey=sd+'_'+ed;
+  fffOpenLoading();
+  try{
+    fffSetStatus('正在获取用户资料...');
+    const slug=await fffGetUsername(uid);
+    fffSetStatus('开始统计回复...');
+    const raw=await fffScrape(uid,slug,sd,ed);
+    fffSetStatus('正在查询云端逐日记录…');
+    const deduped=await resolveForumFetchDedup_(uid,raw.byDay,sd,ed,fffSetStatus);
+    fffCloseLoading();
+    const {netByDay,netR,netC,skippedDates,updatedDates}=deduped;
+    _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,startDate:sd,endDate:ed,netByDay,skippedDates,updatedDates};
+    let html='可新增：<b style="color:#f0d080">'+netR+'</b> 回复 / <b style="color:#f0d080">'+netC+'</b> 被引用';
+    html+='<br><small style="opacity:.65">论坛区间总计 '+raw.replies+' / '+raw.citations+'</small>';
+    if(updatedDates.length)html+='<br><small style="color:#7dd3fc">以下日期云端已更新：'+formatSkippedDatesMsg_(updatedDates)+'</small>';
+    if(skippedDates.length)html+='<br><small style="color:#ffb347">以下日期无新增：'+formatSkippedDatesMsg_(skippedDates)+'</small>';
+    if(netR<=0&&netC<=0&&(skippedDates.length||updatedDates.length))html+='<br><small style="opacity:.75">本次区间无新增。</small>';
+    fffOpenResult(html,'确认添加');
+    return deduped;
+  }catch(err){
+    fffCloseLoading();
+    throw err;
+  }
+}
+
+async function fffDoFetch(){
+  const uid=parseInt((qs2('fff-uid').value||'').trim(),10);
+  if(!uid||isNaN(uid)){alert('请输入有效的论坛 UID（数字）');return;}
+  fffCloseModal();
+  try{
+    await fffExecuteFetch(uid);
+  }catch(err){
+    fffOpenModal();
+    alert('读取失败：'+err.message);
+  }
+}
+
+function fffConfirm(){
+  fffCloseResult();
+  if(!_fffResult)return;
+  const {uid,dateKey,rawR,rawC,netR,netC,startDate,endDate,netByDay,skippedDates}=_fffResult;
+  if(!G.fetchRangeHistory||typeof G.fetchRangeHistory!=='object')G.fetchRangeHistory={};
+  const rk=String(uid)+"|"+startDate+"|"+endDate;
+  G.fetchRangeHistory[rk]=new Date().toISOString();
+  G.replies=(Number(G.replies)||0)+netR;
+  G.citations=(Number(G.citations)||0)+netC;
+  logActivityByDayToGAS_(uid,netByDay||{});
+  logForumFetchToGAS_({
+    mode:'hm_fetch_confirm',
+    forum_uid:String(uid),
+    reply_count:netR,citation_count:netC,
+    startDate:String(startDate||''),endDate:String(endDate||'')
+  });
+  save();cloudSave();
+  updateShopCurrency();updateMenuStat();
+  let msg='✅ 抓取完成（'+startDate+' ~ '+endDate+'）\n本次新增 回复: '+netR+' · 被引用: '+netC+'\n累计 回复: '+G.replies+' · 被引用: '+G.citations;
+  if(skippedDates&&skippedDates.length)msg+='\n（以下日期无新增：'+skippedDates.slice(0,5).join(', ')+'）';
+  setForumStatus('完成：本次 +'+netR+' 回复 / +'+netC+' 被引用 · 累计 '+G.replies+'/'+G.citations);
+  alert(msg);
+}
+
+// ── 覆盖原 fetchForumDataCustom（直接抓取，不弹 UID modal）──
+fetchForumDataCustom=async function(show,opt){
+  if(!G.id){
+    G.id=localStorage.getItem(KEY_ID)||'';
+    G.uid=parseInt(localStorage.getItem(KEY_UID)||'0',10);
+  }
+  if(!G.id||!G.uid){alert('先登入论坛帐号才能抓取！');return false;}
+  try{
+    setForumStatus('正在抓取论坛数据...');
+    await fffExecuteFetch(G.uid);
+    return true;
+  }catch(err){
+    setForumStatus('抓取失败：'+err.message);
+    if(show)alert('抓取失败：'+err.message);
+    return false;
+  }
+};
+
+// ── 覆盖原 refreshForumData / refreshForumDataFast ──
+refreshForumData=function(){fetchForumDataCustom(true);};
+refreshForumDataFast=function(){fetchForumDataCustom(true);};
+
+// ── 覆盖原 openShop：显示遮罩 → 云端拉取 → 开启 ──
+var _openShopOrig=openShop;
+openShop=async function(){
+  var overlay=qs('hx-loadingOverlay');
+  if(overlay){overlay.style.display='flex';overlay.querySelector('.loading-text').textContent='☁️ 正在读取云端数据…';}
+  try{
+    if(G&&G.id){
+      var cd=await cloudLoad(G.id);
+      if(cd&&cd.state_json){
+        var cs=JSON.parse(cd.state_json);
+        if(cs){
+          G.replies=Math.max(Number(G.replies)||0,Number(cs.replies)||0);
+          G.citations=Math.max(Number(G.citations)||0,Number(cs.citations)||0);
+          G.coins=Math.max(Number(G.coins)||0,Number(cs.coins)||0);
+          G.stars=Math.max(Number(G.stars)||0,Number(cs.stars)||0);
+          G.expandLeft=Math.min(5,Math.max(0,Number(cs.expandLeft)||0));
+          G.expandRight=Math.min(5,Math.max(0,Number(cs.expandRight)||0));
+        }
+      }
+    }
+  }catch(e){}
+  if(overlay)overlay.style.display='none';
+  if(typeof _openShopOrig==='function')_openShopOrig();
+};
+
+// ── 棋盘扩充商店项目 ──
+(function(){
+  if(!SHOP_ITEMS.some(function(x){return x.id==='expand_left';})){
+    SHOP_ITEMS.push({id:'expand_left',name:'棋盘向左增一行',costType:'replies',cost:50,give:{expandLeft:1}},
+      {id:'expand_right',name:'棋盘向右增一行',costType:'replies',cost:50,give:{expandRight:1}});
+  }
+})();
+
+// ── 覆盖 normalize：初始化 expandLeft / expandRight ──
+var _normalizeOrig=normalize;
+normalize=function(){
+  _normalizeOrig();
+  if(G.expandLeft===undefined)G.expandLeft=0;
+  if(G.expandRight===undefined)G.expandRight=0;
+  G.expandLeft=Math.min(5,Math.max(0,Number(G.expandLeft)||0));
+  G.expandRight=Math.min(5,Math.max(0,Number(G.expandRight)||0));
+};
+
+// ── 棋盘扩充 HEX_DEFS 生成 ──
+function getFullHexDefs_(){
+  var el=G.expandLeft||0,er=G.expandRight||0;
+  if(!el&&!er)return HEX_DEFS;
+  var defs=HEX_DEFS.slice();
+  for(var L=1;L<=el;L++){
+    var q=-(2+L);
+    for(var r=0;r<=(2+L);r++){
+      if(!defs.some(function(d){return d.q===q&&d.r===r;}))defs.push({q:q,r:r});
+    }
+  }
+  for(var L=1;L<=er;L++){
+    var q=2+L;
+    for(var r=-(2+L);r<=0;r++){
+      if(!defs.some(function(d){return d.q===q&&d.r===r;}))defs.push({q:q,r:r});
+    }
+  }
+  return defs;
+}
+
+// ── 覆盖 getNeighbors：支持扩充格子 ──
+var _getNeighborsOrig=getNeighbors;
+getNeighbors=function(idx){
+  var defs=getFullHexDefs_();
+  var cell=defs[idx];
+  if(!cell)return [];
+  var out=[];
+  HEX_DIRS.forEach(function(d){
+    var ni=defs.findIndex(function(h){return h.q===cell.q+d.q&&h.r===cell.r+d.r;});
+    if(ni>=0)out.push(ni);
+  });
+  return out;
+};
+
+// ── 覆盖 initCells：追加扩充格子 ──
+var _initCellsOrig=initCells;
+initCells=function(cfg){
+  _initCellsOrig(cfg);
+  var defs=getFullHexDefs_();
+  for(var i=HEX_DEFS.length;i<defs.length;i++){
+    cells.push({
+      id:i,q:defs[i].q,r:defs[i].r,layers:[],
+      special:null,frozenHits:0,frozenNeed:1,frozenDone:false,
+      chainColors:[],scoreMultiplier:1
+    });
+  }
+};
+
+// ── 覆盖 computeLayout：包含扩充格子尺寸计算 ──
+var _computeLayoutOrig=computeLayout;
+computeLayout=function(){
+  CVS=qs('board-canvas');
+  var wrap=qs('board-wrap');
+  var W=wrap.offsetWidth||300,H=wrap.offsetHeight||260;
+  CVS.width=W;CVS.height=H;
+  CTX=CVS.getContext('2d');
+  var defs=getFullHexDefs_();
+  var pts=defs.map(function(h){return {x:h.q*1.5,y:h.q*Math.sqrt(3)/2+h.r*Math.sqrt(3)};});
+  var xs=pts.map(function(p){return p.x;}),ys=pts.map(function(p){return p.y;});
+  var spanX=Math.max.apply(null,xs)-Math.min.apply(null,xs);
+  var spanY=Math.max.apply(null,ys)-Math.min.apply(null,ys);
+  var pad=2.4;
+  var rByW=W/((spanX+pad)*1.5),rByH=H/((spanY+pad)*Math.sqrt(3));
+  HEX_R=Math.max(20,Math.min(rByW,rByH,52));
+  var cx=W/2,cy=H/2;
+  var allX=defs.map(function(h){return h.q*HEX_R*1.5;});
+  var allY=defs.map(function(h){return (h.q*Math.sqrt(3)/2+h.r*Math.sqrt(3))*HEX_R;});
+  var midX=(Math.max.apply(null,allX)+Math.min.apply(null,allX))/2;
+  var midY=(Math.max.apply(null,allY)+Math.min.apply(null,allY))/2;
+  OFFSET_X=cx-midX;OFFSET_Y=cy-midY;
+};
+
+// ── 覆盖 buyItem：处理 expandLeft / expandRight ──
+var _buyItemOrig=buyItem;
+buyItem=function(id,qty){
+  var it=SHOP_ITEMS.find(function(x){return x.id===id;});
+  if(!it)return;
+  if(it.give.expandLeft){
+    if((G.expandLeft||0)>=5){alert('左边已扩充到上限（5行）');return;}
+    var ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+    var cost=it.cost*qty;
+    if(ar<cost){alert('回复数不足');return;}
+    G.repliesSpent=(G.repliesSpent||0)+cost;
+    G.expandLeft=Math.min(5,(G.expandLeft||0)+1);
+    save();cloudSave();renderShop();updateShopCurrency();updateMenuStat();
+    computeLayout();drawBoard();
+    gasBeacon({sheet:SHEET,action:'shop_buy',id:G.id,itemId:id,cost:String(cost),costType:it.costType,date:todayISO()});
+    return;
+  }
+  if(it.give.expandRight){
+    if((G.expandRight||0)>=5){alert('右边已扩充到上限（5行）');return;}
+    var ar2=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+    var cost2=it.cost*qty;
+    if(ar2<cost2){alert('回复数不足');return;}
+    G.repliesSpent=(G.repliesSpent||0)+cost2;
+    G.expandRight=Math.min(5,(G.expandRight||0)+1);
+    save();cloudSave();renderShop();updateShopCurrency();updateMenuStat();
+    computeLayout();drawBoard();
+    gasBeacon({sheet:SHEET,action:'shop_buy',id:G.id,itemId:id,cost:String(cost2),costType:it.costType,date:todayISO()});
+    return;
+  }
+  _buyItemOrig(id,qty);
+};
+
+// ── 覆盖 renderShop：扩充格子显示已满 / 可购买 ──
+var _renderShopOrig=renderShop;
+renderShop=function(){
+  _renderShopOrig();
+  // 修正扩充项目的状态（最末两项）
+  var list=qs('shop-list');
+  if(!list)return;
+  var items=list.querySelectorAll('.shop-item');
+  if(items.length<2)return;
+  for(var ri=items.length-2;ri<items.length;ri++){
+    (function(idx){
+      var el=items[idx],btn=el&&el.querySelector('button');
+      if(!btn)return;
+      var nameEl=el.querySelector('div:first-child b');
+      var name=(nameEl?nameEl.textContent||'':'');
+      if(name.indexOf('向左')>=0){
+        if((G.expandLeft||0)>=5){btn.disabled=true;btn.textContent='已满';}
+      }else if(name.indexOf('向右')>=0){
+        if((G.expandRight||0)>=5){btn.disabled=true;btn.textContent='已满';}
+      }
+    })(ri);
+  }
+};
+</script>
+
+<script>
+// ============================================================
+// DS‑STYLE SAVE/LOAD — 覆盖原 downloadSaveData / importGameSaveData_
+// ============================================================
+const HM_SAVE_PASSWORD='sstm';
+
+function buildExportRows_(){
+  const now=new Date().toLocaleString('zh-CN');
+  const rows=[
+    ['类别','项目','数值'],
+    ['基本','论坛ID',G.id||''],
+    ['基本','论坛UID',G.uid||''],
+    ['基本','导出时间',now],
+    ['资源','金币',G.coins||0],
+    ['资源','星星',G.stars||0],
+    ['资源','章节',G.chapter||1],
+    ['资源','章节项目',G.chapterItems||0],
+    ['资源','回复数',G.replies||0],
+    ['资源','已花回复',G.repliesSpent||0],
+    ['资源','被引用数',G.citations||0],
+    ['资源','已花引用',G.citationsSpent||0],
+    ['资源','挑战卷',G.tickets||0],
+    ['资源','乘数',G.multiplier||1],
+    ['进度','已解锁关卡',(G.unlocked||[]).join(',')],
+    ['进度','已通关',(G.cleared||[]).join(',')],
+    ['进度','皮肤',G.skin||'default'],
+    ['进度','背景皮肤',G.bgSkin||'default'],
+    ['进度的','已拥有皮肤',(G.ownedBgSkins||['default']).join(',')],
+    ['进度','宝箱数',G.lootBoxes||0],
+    ['进度','全开宝箱总数',G.lootBoxesTotal||0],
+    ['奖励','节操',G.jieCao||0],
+    ['奖励','羽毛',G.feather||0],
+    ['奖励','本期勋章(天)',G.medal30||0],
+    ['奖励','字母勋章(天)',G.letterMedal30||0],
+    ['道具','撤回',G.boosters.undo||0],
+    ['道具','换三堆',G.boosters.shuffle||0],
+    ['道具','锤碎',G.boosters.hammer||0],
+    ['道具','色爆',G.boosters.bomb||0],
+  ];
+  __appendPortableSaveRows_hm(rows,'hexa_master',G);
+  return rows;
+}
+
+// ── 覆盖原 downloadSaveData ──
+downloadSaveData=async function(){
+  if(typeof ExcelJS==='undefined'){
+    save();
+    const rows=[['项目','数值'],['论坛ID',G.id],['UID',G.uid],['金币',G.coins||0],['星星',G.stars||0],['章节',G.chapter||1],['回复数',G.replies||0],['被引用数',G.citations||0],['挑战卷',G.tickets||0],['已解锁',(G.unlocked||[]).join(' ')],['已通关',(G.cleared||[]).join(' ')],['皮肤',G.skin||'default'],['时间',new Date().toLocaleString('zh-TW')]];
+    __appendPortableSaveRows_hm(rows,'hexa_master',G);
+    const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+    const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='hexa-master-'+(G.id||'player')+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
+    return;
+  }
+  try{
+    const wb=new ExcelJS.Workbook();
+    wb.creator='六色合璧';
+    const ws=wb.addWorksheet('游玩存档');
+    const rows=buildExportRows_();
+    _appendPortableRows_hm(rows);
+    rows.forEach(r=>ws.addRow(r));
+    ws.getColumn(1).width=14;ws.getColumn(2).width=22;ws.getColumn(3).width=48;
+    ws.eachRow(row=>{row.eachCell(cell=>{cell.protection={locked:true};});});
+    await ws.protect(HM_SAVE_PASSWORD,{selectLockedCells:true,selectUnlockedCells:false,formatCells:false,formatColumns:false,formatRows:false,insertColumns:false,insertRows:false,insertHyperlinks:false,deleteColumns:false,deleteRows:false,sort:false,autoFilter:false,pivotTables:false});
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='hexa-master-存档_'+(G.id||'未知')+'_'+new Date().toISOString().slice(0,10)+'.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){
+    console.error(e);
+    alert('存档导出失败：'+(e.message||e));
+  }
+};
+
+var MARK='__HTML_GAME_SAVE__';
+function __appendPortableSaveRows_hm(rows,game,state){
+  try{
+    rows.push([MARK,'game',game||'']);
+    rows.push([MARK,'saved_at',new Date().toISOString()]);
+    rows.push([MARK,'state_json',JSON.stringify(state||{})]);
+  }catch(e){console.warn('portable save export failed',e);}
+  return rows;
+}
+function _appendPortableRows_hm(rows){
+  try{
+    rows.push([MARK,'game','hexa_master']);
+    rows.push([MARK,'saved_at',new Date().toISOString()]);
+    rows.push([MARK,'state_json',JSON.stringify(G)]);
+  }catch(e){console.warn('portable save export failed',e);}
+  return rows;
+}
+
+// ── 覆盖原 importGameSaveData_ ──
+importGameSaveData_=function(){
+  var input=document.createElement('input');
+  input.type='file';
+  input.accept='.csv,.json,.xlsx,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  input.onchange=function(){
+    var file=input.files&&input.files[0];
+    if(!file)return;
+    var name=String(file.name||'').toLowerCase();
+    if(name.endsWith('.xlsx')){
+      if(typeof ExcelJS==='undefined'){alert('Excel 组件未加载，无法读取存档');return;}
+      var reader=new FileReader();
+      reader.onload=function(){
+        Promise.resolve().then(async function(){
+          if(!window.__applyPortableSaveData_hm)throw new Error('import_adapter_missing');
+          var wb=new ExcelJS.Workbook();
+          await wb.xlsx.load(reader.result);
+          var ws=wb.worksheets[0];
+          if(!ws)throw new Error('xlsx_empty');
+          var data=null;
+          ws.eachRow(function(row){
+            if(row.getCell(1).value===MARK&&row.getCell(2).value==='state_json'){
+              data=JSON.parse(String(row.getCell(3).value||'{}'));
+            }
+          });
+          if(!data)throw new Error('save_json_not_found');
+          return window.__applyPortableSaveData_hm(data);
+        }).then(function(){
+          alert('读档完成！');
+        }).catch(function(e){
+          console.error(e);
+          alert('读档失败：请选择正确的存档文件。');
+        });
+      };
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+    var reader=new FileReader();
+    reader.onload=function(){
+      Promise.resolve().then(function(){
+        if(!window.__applyPortableSaveData_hm)throw new Error('import_adapter_missing');
+        var data=readPayload_hm(reader.result);
+        return window.__applyPortableSaveData_hm(data);
+      }).then(function(){
+        alert('读档完成！');
+      }).catch(function(e){
+        console.error(e);
+        alert('读档失败：请选择正确的存档文件。');
+      });
+    };
+    reader.readAsText(file,'utf-8');
+  };
+  input.click();
+};
+
+function parseCsv_hm(text){
+  text=String(text||'').replace(/^\uFEFF/,'');
+  var rows=[],row=[],cell='',q=false;
+  for(var i=0;i<text.length;i++){
+    var ch=text[i],nx=text[i+1];
+    if(q){
+      if(ch==='"'&&nx==='"'){cell+='"';i++;}
+      else if(ch==='"')q=false;
+      else cell+=ch;
+    }else{
+      if(ch==='"')q=true;
+      else if(ch===','){row.push(cell);cell='';}
+      else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+      else if(ch!=='\r')cell+=ch;
+    }
+  }
+  row.push(cell);rows.push(row);
+  return rows;
+}
+function readPayload_hm(text){
+  var raw=String(text||'').replace(/^\uFEFF/,'').trim();
+  if(raw.charAt(0)==='{')return JSON.parse(raw);
+  var rows=parseCsv_hm(text);
+  for(var i=0;i<rows.length;i++){
+    if(rows[i][0]===MARK&&rows[i][1]==='state_json'){
+      return JSON.parse(rows[i][2]||'{}');
+    }
+  }
+  throw new Error('save_json_not_found');
+}
+window.__applyPortableSaveData_hm=async function(data){
+  if(!data||typeof data!=='object')throw new Error('bad_save');
+  Object.assign(G,data);
+  try{normalize();}catch(e){}
+  try{if(G.id)localStorage.setItem(KEY_ID,G.id);if(G.uid!=null)localStorage.setItem(KEY_UID,String(G.uid));}catch(e){}
+  save();
+  try{await cloudSave();}catch(e){}
+  try{updateMenuStat();renderChapter();renderMultiplier();renderLvList();}catch(e){}
+};
+
+// ── 云端连线检测 ──
+async function gasFetchPing_(timeout){
+  timeout=timeout||7000;
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),timeout);
+    await fetch(GAS_URL+'?ping=1&_t='+Date.now(),{signal:ctrl.signal,mode:'no-cors'});
+    clearTimeout(tid);
+    return true;
+  }catch(e){return false;}
+}
+
+// ── 挂载初始化 ──
+(function(){
+  gasFetchPing_(5000).then(ok=>{_diceOnline_hm=ok;});
+  // 绑定读取存档按钮
+  Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
+    if(btn.textContent==='📤 读取存档'){
+      btn.onclick=importGameSaveData_;
+    }
+  });
+})();
+</script>
+
+<div id="ds-version-badge" style="position:fixed;bottom:8px;right:10px;font-size:.7rem;opacity:.55;color:rgba(255,255,255,.5);z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)"></div>
+<div id="ds-connection-status" style="position:fixed;bottom:8px;left:10px;font-size:.7rem;z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)"></div>
+
+<script>
+(function(){
+  var vb=document.getElementById('ds-version-badge');
+  if(vb)vb.textContent=typeof HM_HTML_VERSION!=='undefined'?HM_HTML_VERSION:'';
+  var cs=document.getElementById('ds-connection-status');
+  if(!cs)return;
+  async function checkConn(){
+    try{
+      var ctrl=new AbortController();
+      var tid=setTimeout(function(){ctrl.abort();},5000);
+      await fetch(GAS_URL+'?ping=1&_t='+Date.now(),{signal:ctrl.signal,mode:'no-cors'});
+      clearTimeout(tid);
+      cs.textContent='☁️ 连线';cs.style.color='rgba(52,211,153,.65)';
+    }catch(e){
+      cs.textContent='☁️ 离线';cs.style.color='rgba(248,113,113,.65)';
+    }
+  }
+  checkConn();
+  setInterval(checkConn,15000);
+})();
+</script>
+
+<script>
+// ── ID history (remembered login IDs) ──
+(function(){
+  var KEY_HISTORY='hm_id_history';
+  function loadIdHistory(){try{return JSON.parse(localStorage.getItem(KEY_HISTORY)||'[]');}catch(e){return[];}}
+  function saveIdHistory(){
+    if(!G.id)return;
+    var h=loadIdHistory().filter(function(x){return x.id!==G.id;});
+    h.unshift({id:G.id,uid:G.uid});
+    if(h.length>5)h=h.slice(0,5);
+    try{localStorage.setItem(KEY_HISTORY,JSON.stringify(h));}catch(e){}
+  }
+  function removeFromHistory(id){
+    var h=loadIdHistory().filter(function(x){return x.id!==id;});
+    try{localStorage.setItem(KEY_HISTORY,JSON.stringify(h));}catch(e){}
+    renderIdHistory_();
+  }
+  function renderIdHistory_(){
+    var hist=loadIdHistory();
+    var chips=document.getElementById('id-history-chips');
+    if(!chips)return;
+    var row=document.getElementById('id-history-row');
+    if(row)row.style.display=hist.length?'block':'none';
+    chips.innerHTML='';
+    hist.forEach(function(item){
+      var wrap=document.createElement('div');wrap.className='ih-chip-wrap';
+      var btn=document.createElement('button');btn.className='ih-chip';
+      btn.textContent=item.id+(item.uid?' ('+item.uid+')':'');
+      btn.onclick=function(){
+        document.getElementById('inp-id').value=item.id;
+        document.getElementById('inp-uid').value=item.uid||'';
+      };
+      var bx=document.createElement('button');bx.className='ih-x';bx.textContent='×';
+      bx.onclick=function(ev){ev.stopPropagation();removeFromHistory(item.id);};
+      wrap.appendChild(btn);wrap.appendChild(bx);chips.appendChild(wrap);
+    });
+  }
+  // Patch doLogin to save history
+  var _doLoginOrig=window.doLogin;
+  window.doLogin=async function(){
+    await _doLoginOrig();
+    saveIdHistory();
+    renderIdHistory_();
+  };
+  var _origDOM=window.addEventListener;
+  // Hook DOMContentLoaded to render history
+  function boot(){
+    var id=localStorage.getItem('hm_id')||'',uid=localStorage.getItem('hm_uid')||'';
+    if(id)document.getElementById('inp-id').value=id;
+    if(uid)document.getElementById('inp-uid').value=uid;
+    renderIdHistory_();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
+  else setTimeout(boot,0);
+})();
 </script>
 </body>
 </html>

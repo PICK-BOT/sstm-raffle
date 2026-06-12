@@ -176,6 +176,7 @@ body.skin-retro    #game{background:radial-gradient(ellipse at 50% 30%,#3a2000 0
 #loading-text{color:rgba(255,255,255,.65);font-size:.86rem}
 #tm-offline-bar{display:none;position:fixed;bottom:10px;right:10px;z-index:999;background:rgba(180,40,40,.9);border:1px solid #e55;color:#fdd;padding:7px 12px;border-radius:10px;font-size:.76rem;cursor:pointer;text-align:center;line-height:1.5}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 </head>
 <body>
 <!-- LOGIN -->
@@ -505,7 +506,8 @@ function getMenuLevelMax(){
 // ══ CONFIG 常量 ══
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwtg97eIbxTMTAf2vx0hzOaJbD9DCwKJeCUibt20dsmMpXTgNzwsRRoo5U-UHgx8xM8eg/exec";
 const SHEET = "糖果小镇";
-const GAME_VERSION = "v2.3.0";
+const GAME_VERSION = "v2.3.1";
+const CANDY_SAVE_XLSX_PASSWORD = "sstm";
 const FORUM_PROXY = "https://sstm-raffle.vercel.app/candy-proxy?url="; // 保留旧变量供兼容
 
 // ── fetch 备用池（优先 GAS 云端代理，其次 codetabs 等）──
@@ -1094,8 +1096,8 @@ function _calcForumAvail(){
   };
 }
 
-/** 更新商店面板数字 + 重绘商品列表 */
-function _refreshShopPanel(){
+/** 立即用本地数据刷新面板 */
+function _refreshShopPanelLocal_(){
   const av=_calcForumAvail();
   const sr=document.getElementById('sh-replies');
   const sc=document.getElementById('sh-citations');
@@ -1104,6 +1106,55 @@ function _refreshShopPanel(){
   if(sc) sc.textContent=av.citations;
   if(st) st.textContent=G.tickets||0;
   renderShopItems();
+}
+
+/**
+ * 更新商店面板：先显示本地数字，再从云端拉全量逐日记录合并后更新。
+ * 云端是权威来源——拉到的数据更新 G.forumDays，再重新计算显示。
+ */
+function _refreshShopPanel(){
+  _refreshShopPanelLocal_();  // 先即时显示本地
+  // 异步从云端拉最新数字
+  const uid=G.uid||parseInt(localStorage.getItem(KEY_UID)||'0',10);
+  if(!uid||_offline||!GAS_URL) return;
+  // 取今年全量（云端有的天都要拉回来）
+  const yearStart=(new Date().getFullYear()-1)+'-01-01';
+  const today=todayISO();
+  _fetchActivityFromCloud_(uid,yearStart,today).then(function(rows){
+    if(!rows||!rows.length) return;
+    if(!G.forumDays||typeof G.forumDays!=='object') G.forumDays={};
+    let changed=false;
+    rows.forEach(function(r){
+      const d=normDateISO_(r.date||''); if(!d) return;
+      const cloudR=parseInt(r.replies,10)||0;
+      const cloudC=parseInt(r.citations,10)||0;
+      const old=G.forumDays[d]||{replies:0,citedIds:[]};
+      const oldR=old.replies||0;
+      const oldC=(old.citedIds||[]).length;
+      if(cloudR>oldR||cloudC>oldC){
+        // 云端数字更大，以云端为准
+        const citedIds=Array.from({length:cloudC},(_,i)=>'cloud_'+d+'_'+i);
+        G.forumDays[d]={
+          replies:Math.max(cloudR,oldR),
+          citedIds:cloudC>oldC?citedIds:(old.citedIds||[]),
+          fetchedAt:(old.fetchedAt||new Date().toISOString()),
+          fromCloud:true
+        };
+        changed=true;
+      }
+    });
+    if(changed){
+      const av=_calcForumAvail();
+      G.replies=av.rawReplies; G.citations=av.rawCitations;
+      saveState();
+      // 更新面板
+      const sr=document.getElementById('sh-replies');
+      const sc=document.getElementById('sh-citations');
+      if(sr) sr.textContent=av.replies;
+      if(sc) sc.textContent=av.citations;
+      renderShopItems();
+    }
+  }).catch(function(e){ console.warn('[candy] cloud refresh fail',e); });
 }
 
 // ── 旧数据迁移（一次性：fetchRangeHistory → forumDays）─────────
@@ -3043,54 +3094,84 @@ function doLogout(){
   const hist=loadIdHistory();
   if(hist.length){document.getElementById('inp-id').value=hist[0].id||'';document.getElementById('inp-uid').value=hist[0].uid||'';}
 }
-function downloadGameData(){
-  // ── 完整存档：包含所有奖励、道具、通关记录、星级、已见类型等 ──
-  const cleared=G.cleared||[];
-  const stars=G.levelStars||{}; // 各关星级
-  const starRows=cleared.map(id=>['  第'+id+'关星级',stars[id]||'?'+'★']);
-  const rows=[
-    ['=== 糖果小镇 完整存档 ===',''],
-    ['下载时间',new Date().toLocaleString('zh-TW')],
-    ['',''],
-    ['── 玩家基本资料 ──',''],
-    ['论坛ID',G.id],['UID',G.uid],['皮肤',G.skin||'default'],
-    ['',''],
-    ['── 奖励记录 ──',''],
-    ['金币（当前）',G.coins||0],
-    ['总获得金币',G.totalCoinsEarned||0],
-    ['星星点数',G.starPoints||0],
-    ['总获得星星点数',G.totalStarsEarned||0],
-    ['',''],
-    ['── 论坛资源 ──',''],
-    ['今日回复数',G.replies||0],['被引用数',G.citations||0],
-    ['已花费回复数',G.repliesSpent||0],['已花费被引用数',G.citationsSpent||0],
-    ['',''],
-    ['── 道具库存 ──',''],
-    ['重复挑战卷',G.tickets||0],
-    ['锤子道具',G.boosters.hammer||0],
-    ['棒棒糖道具',G.boosters.lollipop||0],
-    ['鱼鱼道具',G.boosters.fish||0],
-    ['',''],
-    ['── 关卡进度 ──',''],
-    ['已解锁关卡数',(G.unlocked||[]).length],
-    ['已通关关卡数',cleared.length],
-    ['已解锁关卡列表',(G.unlocked||[]).join(' ')],
-    ['已通关关卡列表',cleared.join(' ')],
-    ['',''],
-    ['── 各关星级 ──',''],
-    ...starRows,
-    ['',''],
-    ['── 已观看关卡教程类型 ──',''],
-    ['已见类型',(G.seenLevelTypes||[]).join(' ')||'无'],
-    ['',''],
-    ['__HTML_GAME_SAVE__','game','candy_crush'],
-    ['__HTML_GAME_SAVE__','version',GAME_VERSION],
-    ['__HTML_GAME_SAVE__','saved_at',new Date().toISOString()],
-    ['__HTML_GAME_SAVE__','state_json',JSON.stringify(G)],
-  ];
-  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='candy-town-'+G.id+'-'+todayISO()+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
+async function downloadGameData(){
+  if(typeof ExcelJS==='undefined'){
+    alert('Excel 组件未加载，请刷新页面后重试');
+    return;
+  }
+  try{
+    const cleared=G.cleared||[];
+    const stars=G.levelStars||{};
+    const av=_calcForumAvail();
+    const rows=[
+      ['类别','项目','数值'],
+      ['基本','论坛ID',G.id],
+      ['基本','UID',String(G.uid||'')],
+      ['基本','皮肤',G.skin||'default'],
+      ['基本','导出时间',new Date().toLocaleString('zh-TW')],
+      ['奖励','金币（当前）',G.coins||0],
+      ['奖励','总获得金币',G.totalCoinsEarned||0],
+      ['奖励','总获得星星',G.totalStarsEarned||0],
+      ['论坛资源','回复数（累计）',G.replies||0],
+      ['论坛资源','被引用数（累计）',G.citations||0],
+      ['论坛资源','已花费回复数',G.repliesSpent||0],
+      ['论坛资源','已花费被引用数',G.citationsSpent||0],
+      ['论坛资源','可用回复数',av.replies],
+      ['论坛资源','可用被引用数',av.citations],
+      ['道具','重复挑战卷',G.tickets||0],
+      ['道具','锤子道具',(G.boosters&&G.boosters.hammer)||0],
+      ['道具','棒棒糖道具',(G.boosters&&G.boosters.lollipop)||0],
+      ['道具','鱼鱼道具',(G.boosters&&G.boosters.fish)||0],
+      ['关卡','已解锁关卡数',(G.unlocked||[]).length],
+      ['关卡','已通关关卡数',cleared.length],
+      ['关卡','已解锁列表',(G.unlocked||[]).join(' ')],
+      ['关卡','已通关列表',cleared.join(' ')],
+    ];
+    // 各关星级
+    cleared.forEach(id=>rows.push(['星级','第'+id+'关',(stars[id]||0)+'★']));
+    // 已购皮肤
+    (G.purchasedSkins||[]).forEach(s=>rows.push(['皮肤','已购',s]));
+    // 论坛逐日记录摘要
+    Object.keys(G.forumDays||{}).sort().forEach(day=>{
+      const d=G.forumDays[day];
+      rows.push(['论坛逐日',day,'回复:' +(d.replies||0)+' 被引用:'+(d.citedIds||[]).length]);
+    });
+    rows.push(['导出信息','游戏版本',GAME_VERSION]);
+    // portable save 行（读档用）
+    rows.push(['__HTML_GAME_SAVE__','game','candy_crush']);
+    rows.push(['__HTML_GAME_SAVE__','version',GAME_VERSION]);
+    rows.push(['__HTML_GAME_SAVE__','saved_at',new Date().toISOString()]);
+    rows.push(['__HTML_GAME_SAVE__','state_json',JSON.stringify(G)]);
+
+    const wb=new ExcelJS.Workbook();
+    wb.creator='糖果小镇';
+    const ws=wb.addWorksheet('游玩存档');
+    rows.forEach(r=>ws.addRow(r));
+    ws.getColumn(1).width=16;
+    ws.getColumn(2).width=24;
+    ws.getColumn(3).width=52;
+    // 全表锁定为只读
+    ws.eachRow(row=>{row.eachCell(cell=>{cell.protection={locked:true};});});
+    await ws.protect(CANDY_SAVE_XLSX_PASSWORD,{
+      selectLockedCells:true,
+      selectUnlockedCells:false,
+      formatCells:false,formatColumns:false,formatRows:false,
+      insertColumns:false,insertRows:false,insertHyperlinks:false,
+      deleteColumns:false,deleteRows:false,
+      sort:false,autoFilter:false,pivotTables:false
+    });
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='candy-town-'+G.id+'-'+todayISO()+'.xlsx';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){
+    console.error(e);
+    alert('存档导出失败：'+(e.message||e));
+  }
 }
 
 window.__applyPortableSaveData=async function(data){
@@ -3108,12 +3189,12 @@ window.__applyPortableSaveData=async function(data){
   updateMenuUI();buildMenu();updateSkinUI();applyThemeNow();
 };
 (function(){
-  const MARK='__HTML_GAME_SAVE__';
+  var MARK='__HTML_GAME_SAVE__';
   function parseCsv(text){
     text=String(text||'').replace(/^\uFEFF/,'');
-    const rows=[], row=[], cell=''; let q=false;
-    for(let i=0;i<text.length;i++){
-      const ch=text[i], nx=text[i+1];
+    var rows=[],row=[],cell='',q=false;
+    for(var i=0;i<text.length;i++){
+      var ch=text[i],nx=text[i+1];
       if(q){
         if(ch==='"'&&nx==='"'){cell+='"';i++;}
         else if(ch==='"') q=false;
@@ -3125,32 +3206,66 @@ window.__applyPortableSaveData=async function(data){
         else if(ch!=='\r') cell+=ch;
       }
     }
-    row.push(cell); rows.push(row);
+    row.push(cell);rows.push(row);
     return rows;
   }
   function readPayload(text){
-    const raw=String(text||'').replace(/^\uFEFF/,'').trim();
+    var raw=String(text||'').replace(/^\uFEFF/,'').trim();
     if(raw.charAt(0)==='{') return JSON.parse(raw);
-    const rows=parseCsv(text);
-    for(let i=0;i<rows.length;i++){
+    var rows=parseCsv(text);
+    for(var i=0;i<rows.length;i++){
       if(rows[i][0]===MARK&&rows[i][1]==='state_json') return JSON.parse(rows[i][2]||'{}');
     }
     throw new Error('save_json_not_found');
   }
   window.importGameSaveData_=function(){
-    const input=document.createElement('input');
+    var input=document.createElement('input');
     input.type='file';
-    input.accept='.csv,.json,text/csv,application/json';
+    input.accept='.xlsx,.csv,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/json';
     input.onchange=function(){
-      const file=input.files&&input.files[0];
+      var file=input.files&&input.files[0];
       if(!file) return;
-      const reader=new FileReader();
+      var name=String(file.name||'').toLowerCase();
+      if(name.endsWith('.xlsx')){
+        if(typeof ExcelJS==='undefined'){alert('Excel 组件未加载，请刷新页面后重试');return;}
+        var reader=new FileReader();
+        reader.onload=function(){
+          Promise.resolve().then(async function(){
+            if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+            var wb=new ExcelJS.Workbook();
+            await wb.xlsx.load(reader.result);
+            var ws=wb.worksheets[0];
+            if(!ws) throw new Error('xlsx_empty');
+            var data=null;
+            ws.eachRow(function(row){
+              if(row.getCell(1).value===MARK&&row.getCell(2).value==='state_json'){
+                data=JSON.parse(String(row.getCell(3).value||'{}'));
+              }
+            });
+            if(!data) throw new Error('save_json_not_found');
+            return window.__applyPortableSaveData(data);
+          }).then(function(){
+            alert('读档完成！本机记录已复原，并已尝试同步到云端。');
+          }).catch(function(e){
+            console.error(e);
+            alert('读档失败：请选择本游戏「📥 存档」导出的 Excel 文件。');
+          });
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+      }
+      // CSV / JSON fallback
+      var reader=new FileReader();
       reader.onload=function(){
-        Promise.resolve().then(()=>{
+        Promise.resolve().then(function(){
           if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
           return window.__applyPortableSaveData(readPayload(reader.result));
-        }).then(()=>alert('读档完成！本机记录已复原。'))
-          .catch(e=>{console.error(e);alert('读档失败：请选择本游戏「📥 存档」导出的 CSV。');});
+        }).then(function(){
+          alert('读档完成！本机记录已复原，并已尝试同步到云端。');
+        }).catch(function(e){
+          console.error(e);
+          alert('读档失败：请选择本游戏「📥 存档」导出的 Excel 文件。');
+        });
       };
       reader.readAsText(file,'utf-8');
     };

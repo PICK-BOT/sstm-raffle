@@ -165,6 +165,8 @@ body{background:var(--bg);font-family:'Nunito',sans-serif;color:#fff;min-height:
 /* sstm-login-cover */
 #screen-login{background-image:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,.58)),url('https://s.sstmlt.com/img/2026/05/17/water_sortb78f0e0fd9aae118.jpeg');background-size:cover;background-position:center;background-repeat:no-repeat}
 </style>
+<script>const HM_HTML_VERSION="ws-v2-2026-06-11-fix-proxy";</script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 </head>
 <body>
 
@@ -473,7 +475,7 @@ const LEVELS=Array.from({length:MAX_LEVELS},function(_,i){return genLevelCfg(i+1
 // ══════════════════════════════════════════
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxbNA8K3cV8J-e8SR9QXoix-aKFyqvs2-EI4s6JHhssphBqI3Xw6JA3_EVTz4Ex2pF94g/exec";
 const SHEET = "倒水排序";
-const FORUM_PROXY = "https://sstm-raffle.vercel.app/Water-Sort-proxy?url="; // 保留旧变量供兼容
+const FORUM_PROXY = "https://sstm-raffle.vercel.app/Domino-style-proxy?url="; // 保留旧变量供兼容
 
 // ── 多中转站池 ──
 // type: 'prefix'  → 直接拼接，回传 HTML
@@ -481,7 +483,8 @@ const FORUM_PROXY = "https://sstm-raffle.vercel.app/Water-Sort-proxy?url="; // �
 // type: 'jsonget' → jsonp.su，回传 JSON { body }
 // nullOrigin: true → 支援 file:// 本地打开（origin=null）
 const FORUM_PROXY_POOL_ = [
-  { url: "https://sstm-raffle.vercel.app/Water-Sort-proxy?url="", type:"prefix", rpm:2,  nullOrigin:true  },
+  { url: "https://sstm-raffle.vercel.app/Domino-style-proxy?url=", type:"prefix", rpm:2,  nullOrigin:true  },
+  { url: "https://sstm-raffle.vercel.app/Hexa-Master-proxy?url=", type:"prefix", rpm:2,  nullOrigin:true  },
 ];
 const _isFileOrigin_ = (location.protocol === "file:");
 const _proxyState_   = {};
@@ -517,19 +520,45 @@ const KEY_UID     = "ws_login_uid";
 function gasBeacon(params){
   try{
     const qs=Object.keys(params).map(k=>encodeURIComponent(k)+"="+encodeURIComponent(params[k])).join("&");
-    new Image().src=GAS_URL+"?"+qs;
+    const i=new Image();i.referrerPolicy="no-referrer";i.src=GAS_URL+"?"+qs+"&game=water_sort&_t="+Date.now();
   }catch(e){}
 }
-function gasJsonp(params,timeout=10000){
-  return new Promise((resolve,reject)=>{
-    const cb="tm_cb_"+Date.now()+"_"+Math.floor(Math.random()*9999);
-    const tid=setTimeout(()=>{ try{delete window[cb];}catch(e){} reject(new Error("timeout")); },timeout);
-    window[cb]=(data)=>{ clearTimeout(tid); try{delete window[cb];}catch(e){} data&&data.ok?resolve(data):reject(new Error(data&&data.error||"err")); };
-    const qs=Object.keys(params).map(k=>encodeURIComponent(k)+"="+encodeURIComponent(params[k])).join("&");
-    const s=document.createElement("script");
-    s.src=GAS_URL+"?"+qs+"&callback="+cb+"&_t="+Date.now();
-    s.onerror=()=>{ clearTimeout(tid); try{delete window[cb];}catch(e){} reject(new Error("load_fail")); };
-    document.head.appendChild(s);
+function gasJsonp(params,timeout) {
+  if (timeout == null) timeout = 25000;
+  return new Promise(function(resolve,reject){
+    var cb = "tm_cb_" + Date.now() + "_" + Math.floor(Math.random() * 9999);
+    var tid = setTimeout(function(){ reject(new Error("timeout")); }, timeout);
+    window[cb] = function(data){
+      clearTimeout(tid);
+      try{ delete window[cb]; }catch(e){}
+      if(data && data.ok) resolve(data);
+      else reject(new Error((data && data.error) || "err"));
+    };
+    var qs = Object.keys(params).map(function(k){ return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]); }).join("&");
+    // fetch: 纯 JSON（无 callback，回 JSON）
+    var fetchUrl = GAS_URL + "?" + qs + "&game=water_sort&_t=" + Date.now();
+    var ctrl = new AbortController();
+    var tid2 = setTimeout(function(){ ctrl.abort(); }, timeout);
+    fetch(fetchUrl,{signal:ctrl.signal})
+      .then(function(r){
+        if(!r.ok)throw new Error('HTTP_'+r.status);
+        return r.json();
+      })
+      .then(function(d){
+        clearTimeout(tid); clearTimeout(tid2);
+        try{ delete window[cb]; }catch(e){}
+        if(d && d.ok) resolve(d);
+        else reject(new Error((d && d.error) || "err_no_ok"));
+      })
+      .catch(function(e){
+        clearTimeout(tid); clearTimeout(tid2);
+        // fetch 失败，回退到 script 标签（含 callback，回 JSONP）
+        var scriptUrl = GAS_URL + "?" + qs + "&game=water_sort&callback=" + cb + "&_t=" + Date.now();
+        var s = document.createElement("script");
+        s.src = scriptUrl;
+        s.onerror = function(){ clearTimeout(tid); try{ delete window[cb]; }catch(e){} if(s.parentNode) s.remove(); reject(new Error("load_fail")); };
+        document.head.appendChild(s);
+      });
   });
 }
 function cloudSave(){
@@ -847,15 +876,13 @@ async function refreshForumData(){
   const sd=(document.getElementById('forum-start-date')||{}).value||'';
   const ed=(document.getElementById('forum-end-date')||{}).value||'';
   if(sd&&ed&&new Date(sd)>new Date(ed)){ alert('开始日期不能晚于结束日期'); return; }
-  const ok = await fetchForumData(true, sd||undefined, ed||undefined);
-  if(ok) closeShop();
+  await fetchForumData(true, sd||undefined, ed||undefined);
 }
 async function refreshForumDataFast(){
   const sd=(document.getElementById('forum-start-date')||{}).value||'';
   const ed=(document.getElementById('forum-end-date')||{}).value||'';
   if(sd&&ed&&new Date(sd)>new Date(ed)){ alert('开始日期不能晚于结束日期'); return; }
-  const ok = await fetchForumDataCustom(true, sd||undefined, ed||undefined, {maxPages:30,maxCitationChecks:0});
-  if(ok) closeShop();
+  await fetchForumDataCustom(true, sd||undefined, ed||undefined, {maxPages:30,maxCitationChecks:0});
 }
 async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
   if(!G.uid){
@@ -910,20 +937,21 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
 // ══════════════════════════════════════════
 
 
-function openShop(){
+openShop=async function(){
+  var overlay=document.getElementById("ws-loadingOverlay");
+  var loadingText=document.getElementById("ws-loadingOverlay-text");
+  if(loadingText)loadingText.textContent="☁️ 云端读取中…";
+  if(overlay)overlay.style.display="flex";
+  await _wsLoadActivityStats_().catch(function(){});
+  if(overlay)overlay.style.display="none";
   renderShopItems();
-  document.getElementById("sh-replies").textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
-  document.getElementById("sh-citations").textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
-  document.getElementById("sh-tickets").textContent=G.tickets||0;
-  const today=todayISO();
-  const st=document.getElementById('forum-start-date');
-  const en=document.getElementById('forum-end-date');
-  if(st&&!st.value) st.value=today;
-  if(en&&!en.value) en.value=today;
-  const ov=document.getElementById("shop-overlay");
+  var el=document.getElementById("sh-replies");if(el)el.textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  el=document.getElementById("sh-citations");if(el)el.textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  el=document.getElementById("sh-tickets");if(el)el.textContent=G.tickets||0;
+  var ov=document.getElementById("shop-overlay");
   ov.classList.remove("hidden");
-  ov.style.display='flex';
-}
+  ov.style.display="flex";
+};
 function closeShop(){
   const ov=document.getElementById("shop-overlay");
   ov.classList.add("hidden");
@@ -2123,9 +2151,10 @@ async function doLogin(){
     hideLoading();
     if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent='▶ 登入游戏'; }
   }
-  saveState();
   saveIdHistory();
   gasBeacon({sheet:SHEET,action:'login_log',id:G.id,uid:String(G.uid),date:todayISO(),info:'water_sort_v1.2.0'});
+  try{ await _wsLoadActivityStats_(); }catch(e){}
+  saveState();
   enterMenu();
 }
 
@@ -2847,7 +2876,10 @@ window.addEventListener('DOMContentLoaded', function(){
   try{ savedId=localStorage.getItem(KEY_ID)||''; savedUid=localStorage.getItem(KEY_UID)||''; }catch(e){}
   if(savedId) document.getElementById('inp-id').value=savedId;
   if(savedUid) document.getElementById('inp-uid').value=savedUid;
-  if(G.id){ showScreen('menu'); enterMenu(); }
+  if(G.id){
+    _wsLoadActivityStats_().catch(function(){}).then(function(){ updateMenuUI(); try{ saveState(); }catch(e){} });
+    showScreen('menu'); enterMenu();
+  }
   else { showScreen('screen-login'); }
 });
 document.addEventListener('touchend',function(e){e.preventDefault();},{passive:false});
@@ -2953,6 +2985,427 @@ window.__applyPortableSaveData=async function(data){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
   else boot();
 })();
+
+// ==================================================================
+// DS-Style Overlay CSS
+// ==================================================================
+(function(){var s=document.createElement("style");s.textContent=
+".fff-modal{position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);backdrop-filter:blur(4px)}"+
+".fff-modal-inner{background:linear-gradient(160deg,#1e3448,#0d1b2a);border:1px solid rgba(56,189,248,.25);border-radius:22px;padding:24px 20px;width:min(380px,92vw);color:#fff;box-shadow:0 20px 48px rgba(0,0,0,.5)}"+
+".fff-modal-inner h3{margin:0 0 10px;font-size:1.05rem}"+
+".fff-modal-inner label{display:block;font-size:.82rem;margin:6px 0 2px;color:rgba(255,255,255,.78)}"+
+".fff-modal-inner .inp{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(56,189,248,.35);background:rgba(255,255,255,.1);color:#fff}"+
+".fff-modal-inner .inp-row{display:flex;gap:8px;margin:6px 0}"+
+".fff-modal-inner .btn-row{display:flex;gap:8px;margin-top:10px}"+
+".fff-modal-inner .btn-row .btn{flex:1}"+
+"#ws-loading{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);color:#fff;font-size:1.1rem}"+
+"#ws-result{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.65);backdrop-filter:blur(3px)}"+
+"#ws-result .inner{background:linear-gradient(160deg,#1e3448,#0d1b2a);border:1px solid rgba(56,189,248,.25);border-radius:22px;padding:24px 20px;width:min(340px,90vw);text-align:center;color:#fff}"+
+"#ws-result .inner button{margin-top:12px}"+
+"#ws-loadingOverlay{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);color:#fff;font-size:1.3rem;font-weight:700}";document.head.appendChild(s);})();
+
+// ==================================================================
+// DS-Style Overlay HTML
+// ==================================================================
+(function(){var h=document.createElement("div");h.innerHTML=
+'<div id="ws-modal" class="fff-modal" style="display:none">'+
+  '<div class="fff-modal-inner">'+
+    '<h3>📥 抓取论坛数据</h3>'+
+    '<label>UID</label><input id="ws-uid" class="inp" type="text" placeholder="论坛UID">'+
+    '<div class="inp-row"><div style="flex:1"><label>开始日期</label><input id="ws-date-start" class="inp" type="date"></div><div style="flex:1"><label>结束日期</label><input id="ws-date-end" class="inp" type="date"></div></div>'+
+    '<div style="font-size:.78rem;color:rgba(255,255,255,.6);margin-top:6px">不填写则仅查看云端记录</div>'+
+    '<div class="btn-row"><button class="btn" id="ws-btn-fetch" style="background:linear-gradient(135deg,#0f766e,#0891b2)">抓取</button><button class="btn" id="ws-btn-view" style="background:#1f2937">仅查看记录</button><button class="btn" id="ws-btn-close" style="background:#4b5563">关闭</button></div>'+
+  '</div>'+
+'</div>'+
+'<div id="ws-loading"><span id="ws-loading-text">⏳ 处理中…</span></div>'+
+'<div id="ws-result"><div class="inner"><div id="ws-result-text"></div><button class="btn" onclick="document.getElementById(\'ws-result\').style.display=\'none\'">关闭</button></div></div>'+
+'<div id="ws-loadingOverlay" class="ws-overlay"><span id="ws-loadingOverlay-text">☁️ 云端读取中…</span></div>';
+document.body.appendChild(h);})();
+
+// ==================================================================
+// DS-Style Forum Fetch & Save/Load Overrides
+// ==================================================================
+
+// --- GAS JSONP for activity_fetch / activity_log ---
+var _wsActivitySheet = "倒水排序返乡活跃度记录";
+function _wsShowLoading(t){var el=document.getElementById("ws-loading");if(el){el.style.display="flex";document.getElementById("ws-loading-text").textContent=t||"⏳ 处理中…";}}
+function _wsHideLoading(){var el=document.getElementById("ws-loading");if(el)el.style.display="none";}
+function _wsShowResult(t){var el=document.getElementById("ws-result");if(el){document.getElementById("ws-result-text").innerHTML=t;el.style.display="flex";}}
+
+async function _wsActivityFetch(uid,startDate,endDate){
+  try{
+    var d=await gasJsonp({action:"activity_fetch",uid:uid,startDate:startDate||"",endDate:endDate||"",sheet:_wsActivitySheet},15000);
+    if(d&&d.ok&&d.rows)return d.rows;
+    return null;
+  }catch(e){return null;}
+}
+async function _wsLoadActivityStats_(){
+  var uid=String(G.uid||'').trim();
+  if(!uid||!GAS_URL)return;
+  var activityR=null, activityC=null;
+  try{
+    var rows=await _wsActivityFetch(uid,'','');
+    if(rows&&rows.length){
+      var r=0,c=0;
+      rows.forEach(function(x){r+=parseInt(x.replies,10)||0;c+=parseInt(x.citations,10)||0;});
+      activityR=r; activityC=c;
+    }
+  }catch(e){}
+  // 备援：从 cloudLoad 取旧存档
+  var cloudR=null, cloudC=null;
+  if(G&&G.id){
+    try{
+      var cd=await cloudLoad(G.id);
+      if(cd&&cd.state_json){
+        var cs=JSON.parse(cd.state_json);
+        if(cs){cloudR=Number(cs.replies)||0;cloudC=Number(cs.citations)||0;}
+      }
+    }catch(e){}
+  }
+  // 优先使用 activity 分页数据（新系统来源）
+  if(activityR!==null&&activityC!==null){
+    G.replies=activityR; G.citations=activityC;
+    if((G.repliesSpent||0)>activityR) G.repliesSpent=0;
+    if((G.citationsSpent||0)>activityC) G.citationsSpent=0;
+  }else if(cloudR!==null){
+    G.replies=cloudR; G.citations=cloudC;
+  }
+}
+
+async function _wsActivityLog(uid,date,replies,citations){
+  if(!uid||!date)return;
+  try{
+    await gasJsonp({type:"activity_log",uid:uid,date:date,replies:String(replies||0),citations:String(citations||0),sheet:_wsActivitySheet},8000);
+  }catch(e){}
+}
+
+async function _wsFetchLog(p){
+  try{
+    var uid=String(p.uid||G.uid||"").trim();
+    var q=Object.assign({},p,{type:"fetch_log",uid:uid,sheet:_wsActivitySheet});
+    if(typeof fetch!=="undefined"){
+      var u=GAS_URL+"?"+new URLSearchParams(q);
+      await fetch(u,{method:"POST",mode:"no-cors"});
+    }
+  }catch(e){}
+}
+
+// --- Vercel proxy ---
+var WS_FETCH_MS=35000;
+var WS_PROXY_VERCEL='https://sstm-raffle.vercel.app/Domino-style-proxy?url=';
+
+function _wsProxyOkText_(text){
+  return text&&text.length>80&&(text.indexOf('<')>=0||/profile|ipsQuote|cProfileContent/i.test(text));
+}
+
+async function _wsGasProxyGet_(url){
+  var data=await gasJsonp({action:'fetch_url',url:url},WS_FETCH_MS);
+  var text=(data&&(data.html||data.contents))||'';
+  if(_wsProxyOkText_(text))return text;
+  throw new Error((data&&data.error)||'gas_proxy_empty');
+}
+
+// --- Override fffProxyGet ---
+var _fffProxyGetOrig=fffProxyGet;
+fffProxyGet=async function(url,noCache){
+  var bustUrl=url+(url.includes("?")?"&":"?")+"_b="+Date.now();
+  var sk='ws_fff_'+bustUrl;
+  if(!noCache){try{var hit=sessionStorage.getItem(sk);if(hit)return hit;}catch(e){}}
+  // 1) GAS JSONP
+  try{
+    var text=await _wsGasProxyGet_(bustUrl);
+    try{sessionStorage.setItem(sk,text);}catch(e){}
+    return text;
+  }catch(e){console.warn('[ws-proxy] GAS FAIL:',e.message||e);}
+  // 2) Vercel
+  try{
+    var resp=await fetch(WS_PROXY_VERCEL+encodeURIComponent(bustUrl),{
+      referrerPolicy:'no-referrer',credentials:'omit',
+      signal:AbortSignal.timeout(WS_FETCH_MS)
+    });
+    if(!resp.ok)throw new Error('HTTP_'+resp.status);
+    var text2=await resp.text();
+    if(!_wsProxyOkText_(text2))throw new Error('empty_response');
+    try{sessionStorage.setItem(sk,text2);}catch(e){}
+    return text2;
+  }catch(e){console.warn('[ws-proxy] Vercel FAIL:',e.message||e);}
+  // 3) Original CORS fallback
+  try{return await _fffProxyGetOrig(url,true);}catch(e){}
+  throw new Error('所有中转站均不可用');
+};
+
+// --- Override fetchForumData: DS-style byDay dedup ---
+async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
+  var uid=String(G.uid||"").trim();
+  if(!uid){if(showAlert)alert("请先输入UID");return false;}
+  var sd=startDate||todayISO(),ed=endDate||sd;
+  // ── 防重复：同一区间不允许再次抓取 ──
+  if(!G.fetchRangeHistory||typeof G.fetchRangeHistory!=="object")G.fetchRangeHistory={};
+  var rk=String(uid)+"|"+sd+"|"+ed;
+  if(G.fetchRangeHistory[rk]){
+    if(showAlert)alert("⚠️ 此区间（"+sd+" ~ "+ed+"）已抓取过，不会重复累加。\n如需重新抓取请先清除存档或更换日期区间。");
+    return false;
+  }
+  _wsShowLoading("正在查询云端记录…");
+  try{
+    // 1. 读取云端当前区间记录（逐日比对用）
+    var existing=await _wsActivityFetch(uid,sd,ed);
+    if(existing===null)throw new Error("GAS 连线失败，无法查询云端记录");
+    var existingMap={};
+    existing.forEach(function(r){existingMap[r.date]={replies:parseInt(r.replies,10)||0,citations:parseInt(r.citations,10)||0};});
+    // 3. 抓取论坛
+    _wsShowLoading("正在连接论坛…");
+    var startD=new Date(sd+"T00:00:00"),endD=new Date(ed+"T23:59:59");
+    var slug=null;
+    try{
+      var sh=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+uid);
+      (function(){var doc_=new DOMParser().parseFromString(sh,"text/html");for(var a of doc_.querySelectorAll("a[href]")){var m=(a.getAttribute("href")||"").match(/\/profile\/(\d+-[^\/\?#"]+)/);if(m&&m[1].startsWith(uid+"-")){slug=m[1];return;}}})();
+    }catch(e){}
+    if(!slug)throw new Error("无法定位用户页面，请检查UID是否正确");
+    var page=1,maxPages=(opt&&opt.maxPages)||60,budget=(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:20;
+    var byDay={};
+    while(page<=maxPages){
+      _wsShowLoading("正在抓取… 第 "+page+" 页");
+      var u=page===1?"https://sstm.moe/profile/"+slug+"/content/?type=forums_topic_post&change_section=1":"https://sstm.moe/profile/"+slug+"/content/page/"+page+"/?type=forums_topic_post";
+      var html,doc,items;
+      try{html=await fffProxyGet(u);doc=new DOMParser().parseFromString(html,"text/html");items=[].slice.call(doc.querySelectorAll("ol.cProfileContent>li"));}catch(e){break;}
+      if(!items.length)break;
+      var allOlder=true,anyIn=false;
+      items.forEach(function(it){
+        var t=it.querySelector("time[datetime]")||it.querySelector("time");
+        var dt=t&&(t.getAttribute("datetime")||t.textContent||"");
+        var m=String(dt).match(/(\d{4})-(\d{2})-(\d{2})/);
+        var dateObj=m?new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00"):null;
+        if(dateObj&&dateObj>=startD)allOlder=false;
+        if(!dateObj||dateObj<startD||dateObj>endD)return;
+        anyIn=true;
+        var ds2=dateObj.toISOString().slice(0,10);
+        if(!byDay[ds2])byDay[ds2]={replies:0,citations:0,citationChecks:[]};
+        var aEl=it.querySelector("p.ipsType_light a[href]");
+        if(aEl&&/forum\/32[-\/]/.test(aEl.getAttribute("href")||""))byDay[ds2].replies++;
+        var bq=it.querySelector(".ipsQuote");
+        if(bq){var cid=bq.getAttribute("data-ipsquote-contentcommentid"),tid=bq.getAttribute("data-ipsquote-contentid");if(cid&&tid)byDay[ds2].citationChecks.push({cid:cid,tid:tid});}
+      });
+      if(allOlder&&!anyIn)break;
+      if(!doc.querySelector("li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel='next']"))break;
+      page++;
+      await new Promise(function(r){setTimeout(r,24);});
+    }
+    var allChecks=[];
+    for(var dsKey in byDay){byDay[dsKey].citationChecks.forEach(function(c){allChecks.push({date:dsKey,cid:c.cid,tid:c.tid});});}
+    allChecks=allChecks.slice(0,Math.max(0,budget));
+    for(var i=0;i<allChecks.length;i+=10){
+      await Promise.all(allChecks.slice(i,i+10).map(async function(x){
+        try{
+          var q=await fffProxyGet("https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid);
+          if(/forum\/32[-\/]/.test(q)&&new RegExp("data-ipsquote-userid=\\\""+uid+"\\\"").test(q))byDay[x.date].citations++;
+        }catch(e){}
+      }));
+      await new Promise(function(r){setTimeout(r,50);});
+    }
+    // 4. 逐日比对：仅记录超过云端的净新增，云端写入 max(抓取,云端)
+    var netR=0,netC=0,skippedDates=[];
+    for(var dsKey2 in byDay){
+      var day=byDay[dsKey2];
+      var cloud=existingMap[dsKey2];
+      if(cloud){
+        var dR=Math.max(0,day.replies-cloud.replies);
+        var dC=Math.max(0,day.citations-cloud.citations);
+        if(dR===0&&dC===0){skippedDates.push(dsKey2);continue;}
+        netR+=dR;netC+=dC;
+        try{await _wsActivityLog(uid,dsKey2,Math.max(day.replies,cloud.replies),Math.max(day.citations,cloud.citations));}catch(e){}
+      }else{
+        netR+=day.replies;netC+=day.citations;
+        try{await _wsActivityLog(uid,dsKey2,day.replies,day.citations);}catch(e){}
+      }
+    }
+    // 5. 增量累加
+    G.replies=(Number(G.replies)||0)+netR;G.citations=(Number(G.citations)||0)+netC;
+    G.fetchRangeHistory[rk]=new Date().toISOString();
+    saveState();try{await cloudSave();}catch(e){}
+    updateMenuUI();if(typeof updateShopCurrency==='function')updateShopCurrency();
+    try{await _wsFetchLog({uid:uid,id:G.id,replies:String(netR),citations:String(netC),startDate:sd,endDate:ed,ok:"true",elapsed_ms:"0",method:"gas+scrape"});}catch(e){}
+    _wsHideLoading();
+    var msg="抓取完成\n新增回复:"+netR+" 新增被引用:"+netC+"\n累计已记录回复:"+G.replies+" 累计被引用:"+G.citations;
+    if(skippedDates.length)msg+="\n以下日期无新增："+skippedDates.slice(0,5).join(", ");
+    if(showAlert)alert(msg);
+    return true;
+  }catch(e){
+    _wsHideLoading();
+    if(showAlert)alert("抓取失败:"+e.message);
+    return false;
+  }
+}
+
+// --- Override downloadGameData: xlsx export with protection ---
+var _downloadGameDataOrig=downloadGameData;
+downloadGameData=async function(){
+  saveState();
+  try{
+    var Xlsx=window.ExcelJS;
+    if(!Xlsx){_downloadGameDataOrig();return;}
+    var wb=new Xlsx.Workbook();
+    wb.creator="water-sort";
+    var ws=wb.addWorksheet("SaveData");
+    function pad(t){return String(t).padStart(2,"0");}
+    var now=new Date();
+    var ts=now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate())+" "+pad(now.getHours())+":"+pad(now.getMinutes());
+    var rows=[
+      ["Key","Value"],["GameID",G.id||""],["UID",G.uid||""],
+      ["coins",String(G.coins||0)],["tickets",String(G.tickets||0)],
+      ["replies",String(G.replies||0)],["citations",String(G.citations||0)],
+      ["repliesSpent",String(G.repliesSpent||0)],["citationsSpent",String(G.citationsSpent||0)],
+      ["unlocked",(G.unlocked||[]).join(" ")],["cleared",(G.cleared||[]).join(" ")],
+      ["skin",G.skin||"default"],["bgSkin",G.bgSkin||""],["savedAt",ts]
+    ];
+    if(G.boosters){
+      Object.keys(G.boosters).forEach(function(k){
+        if(G.boosters[k])rows.push(["booster_"+k,String(G.boosters[k])]);
+      });
+    }
+    rows.push(["stateJson",JSON.stringify(G)]);
+    ws.addTable({name:"SaveTable",ref:"A1",columns:[{name:"Key",filterButton:false},{name:"Value",filterButton:false}],rows:rows,style:{theme:"TableStyleLight1",showRowStripes:true}});
+    ws.getColumn("A").width=22;ws.getColumn("B").width=60;
+    ws.eachRow(function(row){row.eachCell(function(cell){cell.protection={locked:true};});});
+    await ws.protect('sstm',{selectLockedCells:true,selectUnlockedCells:false,formatCells:false,formatColumns:false,formatRows:false,insertColumns:false,insertRows:false,insertHyperlinks:false,deleteColumns:false,deleteRows:false,sort:false,autoFilter:false,pivotTables:false});
+    var buf=await wb.xlsx.writeBuffer();
+    var blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="water-sort-"+(G.id||"player")+".xlsx";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+  }catch(e){console.warn("ExcelJS export failed, fallback to CSV:",e);_downloadGameDataOrig();}
+};
+
+// --- Override importGameSaveData_: xlsx / csv / json ---
+var _importOrig=window.importGameSaveData_;
+window.importGameSaveData_=function(){
+  var input=document.createElement("input");input.type="file";input.accept=".xlsx,.csv,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/json";
+  input.onchange=function(){
+    var file=input.files&&input.files[0];if(!file)return;
+    var reader=new FileReader();
+    reader.onload=async function(){
+      try{
+        var data;
+        if(file.name.endsWith(".xlsx")){
+          try{
+            var Xlsx=window.ExcelJS;
+            if(!Xlsx)throw new Error("ExcelJS not loaded");
+            var wb=new Xlsx.Workbook();
+            await wb.xlsx.load(reader.result);
+            var ws2=wb.getWorksheet(1);
+            if(!ws2)throw new Error("no worksheet");
+            var json={};
+            ws2.eachRow(function(row,rowNumber){
+              if(rowNumber===1)return;
+              var key=String(row.getCell(1).value||"").trim();
+              var val=String(row.getCell(2).value||"").trim();
+              if(key==="stateJson"){try{var sj=JSON.parse(val);Object.assign(json,sj);}catch(e){}}
+              else if(key==="GameID")json.id=val;
+              else if(key==="UID")json.uid=isNaN(parseInt(val,10))?val:parseInt(val,10);
+              else if(key==="coins")json.coins=parseInt(val,10)||0;
+              else if(key==="tickets")json.tickets=parseInt(val,10)||0;
+              else if(key==="replies")json.replies=parseInt(val,10)||0;
+              else if(key==="citations")json.citations=parseInt(val,10)||0;
+              else if(key==="repliesSpent")json.repliesSpent=parseInt(val,10)||0;
+              else if(key==="citationsSpent")json.citationsSpent=parseInt(val,10)||0;
+              else if(key==="unlocked")json.unlocked=val?val.split(/\s+/).filter(Boolean).map(Number):[];
+              else if(key==="cleared")json.cleared=val?val.split(/\s+/).filter(Boolean).map(Number):[];
+              else if(key==="skin")json.skin=val||"default";
+              else if(key==="bgSkin")json.bgSkin=val||"";
+              else if(key.indexOf("booster_")===0){if(!json.boosters)json.boosters={};json.boosters[key.replace("booster_","")]=parseInt(val,10)||0;}
+            });
+            data=json;
+          }catch(e){throw new Error("xlsx解析失败:"+e.message);}
+        } else {
+          var raw=reader.result;
+          raw=String(raw||"").replace(/^\uFEFF/,"").trim();
+          var parsed=raw.charAt(0)==="{"?JSON.parse(raw):null;
+          if(!parsed){
+            var csvRows=raw.split("\n").filter(function(l){return l.trim();});
+            var csvJson={};
+            csvRows.forEach(function(l){
+              var parts=l.split(",");
+              if(parts.length<2)return;
+              var key=parts[0].replace(/^"|"$/g,"").trim();
+              var val=parts.slice(1).join(",").replace(/^"|"$/g,"").trim();
+              if(key==="stateJson"){try{var sj2=JSON.parse(val);Object.assign(csvJson,sj2);}catch(e){}}
+              else if(key==="GameID")csvJson.id=val;
+              else if(key==="UID")csvJson.uid=isNaN(parseInt(val,10))?val:parseInt(val,10);
+              else if(key==="coins")csvJson.coins=parseInt(val,10)||0;
+              else if(key==="tickets")csvJson.tickets=parseInt(val,10)||0;
+              else if(key==="replies")csvJson.replies=parseInt(val,10)||0;
+              else if(key==="citations")csvJson.citations=parseInt(val,10)||0;
+              else if(key==="repliesSpent")csvJson.repliesSpent=parseInt(val,10)||0;
+              else if(key==="citationsSpent")csvJson.citationsSpent=parseInt(val,10)||0;
+              else if(key==="unlocked")csvJson.unlocked=val?val.split(/\s+/).filter(Boolean).map(Number):[];
+              else if(key==="cleared")csvJson.cleared=val?val.split(/\s+/).filter(Boolean).map(Number):[];
+              else if(key==="skin")csvJson.skin=val||"default";
+              else if(key==="bgSkin")csvJson.bgSkin=val||"";
+              else if(key.indexOf("booster_")===0){if(!csvJson.boosters)csvJson.boosters={};csvJson.boosters[key.replace("booster_","")]=parseInt(val,10)||0;}
+            });
+            parsed=csvJson;
+          }
+          data=parsed;
+        }
+        if(!data||typeof data!=="object")throw new Error("bad_save");
+        Object.assign(G,data);
+        try{if(typeof normalize==='function')normalize();}catch(e){}
+        try{if(G.id)localStorage.setItem(KEY_ID,G.id);if(G.uid!=null)localStorage.setItem(KEY_UID,String(G.uid));}catch(e){}
+        if(typeof saveState==='function')saveState();else if(typeof save==='function')save();
+        try{await cloudSave();}catch(e){console.warn("cloud save after import failed",e);}
+        try{updateMenuUI();}catch(e){}
+        alert("导入成功！数据已恢复并同步至云端。");
+      }catch(e){console.error(e);alert("导入失败："+e.message+"\n请选择正确的存档文件（.xlsx / .csv / .json）");}
+    };
+    if(file.name.endsWith(".xlsx"))reader.readAsArrayBuffer(file);
+    else reader.readAsText(file,"utf-8");
+  };
+  input.click();
+};
+
+// --- Update shop currency display (instant refresh) ---
+function updateShopCurrency(){
+  var el=document.getElementById("sh-replies");
+  if(el)el.textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  el=document.getElementById("sh-citations");
+  if(el)el.textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  el=document.getElementById("sh-tickets");
+  if(el)el.textContent=G.tickets||0;
+}
+
+// --- Version badge + connection status ---
+(function(){
+  var vb=document.createElement("div");
+  vb.id="ws-version-badge";
+  vb.style.cssText="position:fixed;bottom:8px;right:10px;font-size:.7rem;opacity:.55;color:rgba(255,255,255,.5);z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)";
+  vb.textContent=typeof HM_HTML_VERSION!=='undefined'?HM_HTML_VERSION:'';
+  document.body.appendChild(vb);
+
+  var cs=document.createElement("div");
+  cs.id="ws-connection-status";
+  cs.style.cssText="position:fixed;bottom:8px;left:10px;font-size:.7rem;z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)";
+  document.body.appendChild(cs);
+
+  var online=false;
+  function setStatus(){
+    cs.textContent=online?'☁️ 连线':'☁️ 离线';
+    cs.style.color=online?'rgba(52,211,153,.65)':'rgba(248,113,113,.65)';
+    _wsOnline=online;
+  }
+  async function checkConn(){
+    try{
+      var ctrl=new AbortController();
+      var tid=setTimeout(function(){ctrl.abort();},5000);
+      await fetch(GAS_URL+'?ping=1&_t='+Date.now(),{signal:ctrl.signal,mode:'no-cors'});
+      clearTimeout(tid);
+      online=true;
+    }catch(e){online=false;}
+    setStatus();
+  }
+  checkConn();
+  setInterval(checkConn,15000);
+  setStatus();
+})();
+
 </script>
 </body>
 </html>

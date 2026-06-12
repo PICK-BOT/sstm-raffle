@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>十年后重逢 — 命运的骰子 v2</title>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -210,13 +211,53 @@ input[type="text"]:focus, input[type="number"]:focus {
 .summary-box .s-label { color: var(--white-dim); }
 .summary-box .s-val { color: var(--gold-light); font-weight: 700; }
 
-/* ===== SCREEN 4 — BOOK COVER ===== */
+/* ===== SCREEN 4 — BOOK COVER（全屏） & SCREEN 1 登入封面（全屏） ===== */
+body.fullbleed-view {
+  overflow: hidden;
+  min-height: 100dvh;
+  height: 100dvh;
+}
+body.fullbleed-view #app {
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  align-items: stretch;
+  justify-content: stretch;
+}
+#screen1.screen {
+  max-width: none;
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  padding: clamp(20px, 4vh, 48px) clamp(16px, 4vw, 32px);
+  justify-content: center;
+  box-sizing: border-box;
+  background-image: linear-gradient(rgba(0,0,0,.52), rgba(0,0,0,.52)), url('https://s.sstmlt.com/img/2026/05/17/dice-story-v2e81a1036cbadeef4.jpeg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+#screen1 .card { max-width: 420px; width: 100%; }
+#screen1 h1 { font-size: clamp(1.6rem, 5vw, 2rem); max-width: 100%; }
+#screen1 .subtitle { max-width: 100%; margin-bottom: clamp(12px, 3vh, 30px); }
+#screen1 #idHistoryRow { max-width: 420px; width: 100%; }
+#screen4.screen {
+  max-width: none;
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #0a0515 0%, #12082a 35%, #1a0a20 60%, #0d0a1a 100%);
+}
 #screen4 {
   padding: 0;
   position: relative;
   overflow: hidden;
   background: linear-gradient(180deg, #0a0515 0%, #12082a 35%, #1a0a20 60%, #0d0a1a 100%);
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
 }
 
 .cover-sky {
@@ -283,9 +324,12 @@ input[type="text"]:focus, input[type="number"]:focus {
 .cover-content {
   position: relative; z-index: 10;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-  min-height: 100vh;
-  padding: 70px 30px 40px;
+  width: 100%;
+  min-height: 100dvh;
+  height: 100%;
+  padding: clamp(48px, 8vh, 70px) 30px clamp(24px, 4vh, 40px);
   text-align: center;
+  box-sizing: border-box;
 }
 .cover-title {
   font-size: 3.5rem; font-weight: 900;
@@ -959,11 +1003,16 @@ input[type="text"]:focus, input[type="number"]:focus {
   background:rgba(255,160,40,0.05);
 }
 .mix-panel-title{font-size:0.82rem;color:#ffb347;text-align:center;margin-bottom:10px}
-/* sstm-login-cover */
-#screen1{background-image:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,.58)),url('https://s.sstmlt.com/img/2026/05/17/dice-story-v2e81a1036cbadeef4.jpeg');background-size:cover;background-position:center;background-repeat:no-repeat}
+.reply-remainder-row{
+  width:100%;margin-bottom:12px;padding:10px 12px;border-radius:8px;
+  background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.28);
+  font-size:0.82rem;color:var(--white-dim);line-height:1.6;text-align:center;
+}
+.reply-remainder-row b{color:var(--gold-light);font-size:1.05rem;}
+.reply-remainder-row small{display:block;margin-top:4px;opacity:.85;font-size:0.75rem;}
 </style>
 </head>
-<body>
+<body class="fullbleed-view">
 
 <!-- Starfield -->
 <div id="starfield"></div>
@@ -1032,6 +1081,10 @@ input[type="text"]:focus, input[type="number"]:focus {
     <details id="s1bMixDetails" style="display:none;">
       <summary>⚄ 混合骰子待分配　<b id="s1bMixCount">0</b> 个</summary>
       <div id="s1bMixPanel">
+        <div id="s1bReplyRemainderRow" class="reply-remainder-row" style="display:none;">
+          📝 回复余数（未满 5 条）：<b id="s1bReplyRemainderVal">0</b> 条
+          <small id="s1bReplyRemainderHint">下次抓取会自动合并，满 5 条换 1 个正骰子</small>
+        </div>
         <p class="mix-panel-title" style="margin-bottom:8px;">选择每个混合骰子的方向</p>
 
         <!-- 批量数量输入 -->
@@ -1080,7 +1133,7 @@ input[type="text"]:focus, input[type="number"]:focus {
     <div class="s1b-util-row">
       <button type="button" class="btn btn-ghost" onclick="fffOpenModal(true)">📡 论坛更新</button>
       <button type="button" class="btn btn-ghost" data-import-save-bound="1"
-        onclick="downloadDiceData_()">📥 下载数据</button>
+        onclick="downloadDiceSave_()">📥 下载游玩存档</button>
       <button type="button" class="btn btn-ghost" onclick="importGameSaveData_()">📤 读取存档</button>
       <button type="button" class="btn btn-ghost" style="color:var(--purple-light);border-color:rgba(157,127,212,0.5);"
         onclick="openDiceGuide_()">📖 玩法介绍</button>
@@ -1157,6 +1210,7 @@ input[type="text"]:focus, input[type="number"]:focus {
           <span class="calc-value" id="calcNegDice">0 个</span>
         </div>
         <p class="calc-note">每5回复 = 1个正骰子 &nbsp;|&nbsp; 每次被引用 = 1个混合骰子（可 +4 或 −4）</p>
+        <p class="calc-note" id="calcReplyRemainder" style="display:none;color:#ffb347;"></p>
       </div>
       <button type="button" class="btn btn-ghost" id="btnS2ForumRead" style="width:100%;margin-bottom:8px;font-size:0.88rem;"
         onclick="fffOpenModal(false)">📡 论坛自动读取（新手区）</button>
@@ -1298,7 +1352,7 @@ input[type="text"]:focus, input[type="number"]:focus {
     <button type="button" class="btn btn-ghost" style="width:100%;max-width:320px;margin-bottom:8px;font-size:0.85rem;"
       onclick="fffOpenModal(true)">📡 论坛更新（游戏中）</button>
     <button type="button" class="btn btn-ghost" style="width:100%;max-width:320px;margin-bottom:12px;font-size:0.85rem;"
-      onclick="downloadDiceData_()">📥 下载游玩数据</button>
+      onclick="downloadDiceSave_()">📥 下载游玩存档</button>
     <p class="roll-header">你拥有的正骰子</p>
     <p class="roll-big"><span id="s5TotalDice">0</span> 个 d4</p>
 
@@ -1459,7 +1513,7 @@ input[type="text"]:focus, input[type="number"]:focus {
     </div>
     <div class="ds-guide-section">
       <h4>🏠 主画面可以做什么</h4>
-      <p>查看剩余骰子与 20 则故事的完成度；在「混合骰子待分配」中把被引用折算的骰子定为 +4 或 −4；用「继续投骰」回到投掷界面；「论坛更新」按新区间净增骰子；「下载数据 / 读取存档」备份或还原进度。</p>
+      <p>查看剩余骰子与 20 则故事的完成度；在「混合骰子待分配」中把被引用折算的骰子定为 +4 或 −4；用「继续投骰」回到投掷界面；「论坛更新」按新区间净增骰子；「下载游玩存档 / 读取存档」备份或还原进度。</p>
     </div>
     <div class="ds-guide-section">
       <h4>🎁 奖励累计与如何获得</h4>
@@ -1592,6 +1646,8 @@ const REWARDS = [
 
 // ===== GAS CONFIG =====
 const GAS_URL = 'https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec';
+const DICE_GAME_VERSION = 'v2.3';
+const DICE_SAVE_XLSX_PASSWORD = 'sstm';
 
 // ===== GAME STATE =====
 const KEY_UID = 'diceStoryForumUid_v2';
@@ -1660,6 +1716,7 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const el = document.getElementById(id);
   el.classList.add('active');
+  document.body.classList.toggle('fullbleed-view', id === 'screen1' || id === 'screen4');
   // re-trigger animation
   el.style.animation = 'none';
   el.offsetHeight; // reflow
@@ -2190,15 +2247,33 @@ async function fffDoFetch() {
     const slug = await fffGetUsername(uid);
     fffSetStatus('开始统计回复...');
     const raw = await fffScrape(uid, slug, startDate, endDate);
+    fffSetStatus('正在查询云端逐日记录…');
+    const deduped = await resolveForumFetchDedup_(uid, raw.byDay, startDate, endDate, fffSetStatus);
     fffCloseLoading();
-    const prev = fffGetImp(uid);
-    const isSame = !!(prev && prev.key === dateKey);
-    const netR = isSame ? Math.max(0, raw.replies - prev.r) : raw.replies;
-    const netC = isSame ? Math.max(0, raw.citations - prev.c) : raw.citations;
-    _fffResult = { uid, dateKey, rawR: raw.replies, rawC: raw.citations, netR, netC, isSame, startDate, endDate, byDay: raw.byDay || {} };
-    const html = isSame
-      ? '同区间净增：<b style="color:var(--gold-light)">' + netR + '</b> 回复 / <b style="color:var(--gold-light)">' + netC + '</b> 被引用<br><small style="opacity:.65">（总计' + raw.replies + '/' + raw.citations + '，已记录' + prev.r + '/' + prev.c + '）</small>'
-      : '读取结果：<b style="color:var(--gold-light)">' + netR + '</b> 回复 / <b style="color:var(--gold-light)">' + netC + '</b> 被引用';
+    const { netByDay, netR, netC, skippedDates, updatedDates } = deduped;
+    const preview = previewRepliesWithRemainder_(uid, netR);
+    _fffResult = {
+      uid, dateKey,
+      rawR: raw.replies, rawC: raw.citations,
+      netR, netC,
+      startDate, endDate,
+      netByDay, skippedDates, updatedDates
+    };
+    let html = '可新增：<b style="color:var(--gold-light)">' + netR + '</b> 回复 / <b style="color:var(--gold-light)">' + netC + '</b> 被引用';
+    html += '<br><small style="opacity:.65">论坛区间总计 ' + raw.replies + ' / ' + raw.citations + '</small>';
+    if (preview.prevRemainder > 0 || preview.newRemainder > 0 || preview.posAdd > 0) {
+      html += '<br><small style="color:#ffb347">合并余数：现有 ' + preview.prevRemainder + ' + 本次 ' + preview.netR
+        + ' → 约 <b>' + preview.posAdd + '</b> 正骰，余 <b>' + preview.newRemainder + '</b> 条</small>';
+    }
+    if (updatedDates.length) {
+      html += '<br><small style="color:#7dd3fc">以下日期云端数字已更新（补差额）：' + formatSkippedDatesMsg_(updatedDates) + '</small>';
+    }
+    if (skippedDates.length) {
+      html += '<br><small style="color:#ffb347">以下日期无新增（云端已有相同或更多）：' + formatSkippedDatesMsg_(skippedDates) + '</small>';
+    }
+    if (netR <= 0 && netC <= 0 && (skippedDates.length || updatedDates.length)) {
+      html += '<br><small style="opacity:.75">本次区间内没有可新增的回复/被引用。</small>';
+    }
     fffOpenResult(html, _fffIsUpdate ? '确认添加' : '确认填入');
   } catch (err) {
     fffCloseLoading();
@@ -2207,15 +2282,22 @@ async function fffDoFetch() {
   }
 }
 
-/** 游戏中/进度页：净增回复→正骰子；净增被引用→混合骰子（进度页写入 pending，投骰页加本轮 −4 可用数） */
+/** 游戏中/进度页：净增回复→正骰子（含余数凑满5）；净增被引用→混合骰子 */
 function applyForumDeltaToDiceState_(netR, netC) {
-  const posAdd = Math.floor(netR / 5);
+  const uid = state.uid || fffGetCurrentUid();
+  const conv = convertRepliesWithRemainder_(uid, netR);
+  const posAdd = conv.posAdd;
   const mixAdd = netC;
   if (posAdd <= 0 && mixAdd <= 0) {
-    alert('本次区间内没有可折算的新增回复/被引用。');
+    let msg = '本次区间内没有可折算的新增回复/被引用。';
+    if (conv.newRemainder > 0) msg += '\n（回复余数 ' + conv.newRemainder + ' 条已保存，满 5 条换 1 正骰）';
+    alert(msg);
     return;
   }
   let msg = '论坛更新：+' + posAdd + ' 个正骰子（d4）';
+  if (conv.prevRemainder > 0 || conv.newRemainder > 0) {
+    msg += '（含余数 ' + conv.prevRemainder + '+' + conv.netR + '→余 ' + conv.newRemainder + '）';
+  }
   if (mixAdd > 0) msg += '，+' + mixAdd + ' 个混合骰子（被引用）';
 
   const s5 = document.getElementById('screen5');
@@ -2255,6 +2337,7 @@ function applyForumDeltaToDiceState_(netR, netC) {
     saveAllProgress(all);
     pushDiceToGAS(all[state.id].pos_dice_left, all[state.id].pending_neg_dice, all[state.id].stories_done || {});
     showProgressScreen(all[state.id]);
+    updateReplyRemainderUI_();
     msg += '。混合骰子将在下次「记录并继续」时进入分配。';
     alert(msg);
     return;
@@ -2265,14 +2348,13 @@ function applyForumDeltaToDiceState_(netR, netC) {
 function fffConfirm() {
   fffCloseResult();
   if (!_fffResult) return;
-  const { uid, dateKey, rawR, rawC, netR, netC, startDate, endDate } = _fffResult;
+  const { uid, dateKey, rawR, rawC, netR, netC, startDate, endDate, netByDay, skippedDates } = _fffResult;
   fffSaveImp(uid, dateKey, rawR, rawC);
   try { localStorage.setItem('diceStoryForumUid_v2', String(uid)); } catch (e) {}
-  // 写入返乡活跃度（逐日记录；相同则 GAS 跳过，更多/更少则更新）
-  const byDay = _fffResult.byDay || {};
-  Object.entries(byDay).forEach(([date, counts]) => {
-    logActivityToGAS_(uid, date, counts.replies, counts.citations);
-  });
+  logActivityByDayToGAS_(uid, netByDay || {});
+  if (skippedDates && skippedDates.length) {
+    console.info('[dice] skipped cloud dates:', skippedDates.join(', '));
+  }
   logForumFetchToGAS_({
     mode: _fffIsUpdate ? 'dicestory_v2_fetch_confirm_update' : 'dicestory_v2_fetch_confirm_menu',
     forum_uid: String(uid),
@@ -2428,10 +2510,13 @@ function showProgressScreen(prog) {
   const pendingMix = prog.pending_neg_dice || 0;
   const mixDetails = document.getElementById('s1bMixDetails');
   if (mixDetails) {
-    mixDetails.style.display = pendingMix > 0 ? 'block' : 'none';
+    mixDetails.style.display = (pendingMix > 0 || getReplyRemainder_(state.uid) > 0) ? 'block' : 'none';
     if (pendingMix > 0) renderS1bMixPanel_(pendingMix);
   }
+  updateReplyRemainderUI_();
   let subtitleText = diceLeft > 0 ? `还有 ${diceLeft} 个骰子未使用` : '骰子已用完，可重新输入或查看记录';
+  const remNow = getReplyRemainder_(state.uid);
+  if (remNow > 0) subtitleText += `　· 回复余数 ${remNow} 条`;
   if (pendingDice > 0) subtitleText += `　· 另有 ${pendingDice} 个混合骰子待分配`;
   document.getElementById('s1bSubtitle').textContent = subtitleText;
 
@@ -2508,22 +2593,42 @@ function resumeGame() { resumeWithDice(); }
 
 // ===== LIVE CALC =====
 function updateCalc() {
-  const r = parseInt(document.getElementById('inputReplies').value) || 0;
-  const c = parseInt(document.getElementById('inputCitations').value) || 0;
-  const pos = Math.floor(r / 5);
+  const ir = document.getElementById('inputReplies');
+  const ic = document.getElementById('inputCitations');
+  if (!ir || !ic) return;
+  const r = parseInt(ir.value) || 0;
+  const c = parseInt(ic.value) || 0;
+  const rem = getReplyRemainder_(state.uid);
+  const total = r + rem;
+  const pos = Math.floor(total / 5);
   const mix = c;
   document.getElementById('calcPosDice').textContent = pos + ' 个';
   document.getElementById('calcNegDice').textContent = mix + ' 个';
+  const remEl = document.getElementById('calcReplyRemainder');
+  if (remEl) {
+    if (rem > 0) {
+      remEl.style.display = '';
+      remEl.textContent = '含上次余数 ' + rem + ' 条，合计 ' + total + ' 条 → ' + pos + ' 正骰（确认出发后余 ' + (total % 5) + ' 条）';
+    } else {
+      remEl.style.display = 'none';
+    }
+  }
 }
 
 // ===== SCREEN 2 → 3 =====
 function goScreen3() {
   const replies = parseInt(document.getElementById('inputReplies').value) || 0;
   const citations = parseInt(document.getElementById('inputCitations').value) || 0;
-  const pos_dice = Math.floor(replies / 5);
+  const prevRem = getReplyRemainder_(state.uid);
+  const totalReplies = prevRem + replies;
+  const pos_dice = Math.floor(totalReplies / 5);
   let neg_dice = citations;
 
-  if (pos_dice < 1) { alert('你至少需要 5 个回复（1个骰子）才能出发！'); return; }
+  if (pos_dice < 1) {
+    alert('回复合计不足 5 条（本次 ' + replies + ' + 余数 ' + prevRem + ' = ' + totalReplies + '），无法换正骰子出发。');
+    return;
+  }
+  setReplyRemainder_(state.uid, totalReplies % 5);
 
   state.replies = replies;
   state.citations = citations;
@@ -3567,24 +3672,201 @@ function renderIdHistory_() {
   });
 }
 
-// ===== 返乡活跃度写入 GAS =====
+// ===== 返乡活跃度（骰子故事独立分页 + 云端逐日去重） =====
+const DICE_ACTIVITY_SHEET = '骰子故事返乡活跃度记录';
+
+function normalizeDateISO_(s) {
+  const raw = String(s || '').trim();
+  if (!raw) return '';
+  const m = raw.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (m) return m[1] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[3]).padStart(2, '0');
+  const d = new Date(raw);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return raw;
+}
+
+function enumerateDates_(startDate, endDate) {
+  const out = [];
+  if (!startDate || !endDate) return out;
+  const d = new Date(startDate + 'T12:00:00');
+  const end = new Date(endDate + 'T12:00:00');
+  if (isNaN(d.getTime()) || isNaN(end.getTime())) return out;
+  while (d <= end) {
+    out.push(d.toISOString().slice(0, 10));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+
+function expandByDayRange_(byDay, startDate, endDate) {
+  const full = {};
+  enumerateDates_(startDate, endDate).forEach(d => {
+    const src = byDay && byDay[d];
+    full[d] = {
+      replies: src ? (parseInt(src.replies, 10) || 0) : 0,
+      citations: src ? (parseInt(src.citations, 10) || 0) : 0
+    };
+  });
+  return full;
+}
+
+async function fetchActivityFromGAS_(uid, startDate, endDate) {
+  if (!GAS_URL || !uid) return [];
+  try {
+    const data = await _diceGasJsonp_({
+      action: 'activity_fetch',
+      uid: String(uid),
+      startDate: String(startDate || ''),
+      endDate: String(endDate || ''),
+      sheet: DICE_ACTIVITY_SHEET
+    }, 12000);
+    return (data && data.ok && data.rows) ? data.rows : [];
+  } catch (e) {
+    console.warn('fetchActivityFromGAS_', e);
+    return [];
+  }
+}
+
+/** 合并云端逐日记录：新日期全额计入；已有日期仅在新数字更大时补差额 */
+function mergeByDayWithCloud_(fullByDay, cloudRows, startDate, endDate) {
+  const existing = {};
+  (cloudRows || []).forEach(r => {
+    const d = normalizeDateISO_(r.date);
+    if (d) {
+      existing[d] = {
+        replies: parseInt(r.replies, 10) || 0,
+        citations: parseInt(r.citations, 10) || 0
+      };
+    }
+  });
+  const netByDay = {};
+  const skippedDates = [];
+  const updatedDates = [];
+  let netR = 0, netC = 0;
+  enumerateDates_(startDate, endDate).forEach(d => {
+    const scraped = fullByDay[d] || { replies: 0, citations: 0 };
+    const cloud = existing[d];
+    if (!cloud) {
+      netByDay[d] = { replies: scraped.replies, citations: scraped.citations, action: 'insert' };
+      netR += scraped.replies;
+      netC += scraped.citations;
+      return;
+    }
+    const dR = Math.max(0, scraped.replies - cloud.replies);
+    const dC = Math.max(0, scraped.citations - cloud.citations);
+    if (dR <= 0 && dC <= 0) {
+      skippedDates.push(d);
+      return;
+    }
+    netByDay[d] = {
+      replies: Math.max(scraped.replies, cloud.replies),
+      citations: Math.max(scraped.citations, cloud.citations),
+      action: 'update'
+    };
+    netR += dR;
+    netC += dC;
+    updatedDates.push(d);
+  });
+  return { netByDay, netR, netC, skippedDates, updatedDates };
+}
+
+function formatSkippedDatesMsg_(dates) {
+  if (!dates || !dates.length) return '';
+  const shown = dates.slice(0, 8).map(d => d.slice(5).replace('-', '/'));
+  const tail = dates.length > 8 ? ' 等 ' + dates.length + ' 天' : '';
+  return shown.join('、') + tail;
+}
+
+async function resolveForumFetchDedup_(uid, byDay, startDate, endDate, onStatus) {
+  const fullByDay = expandByDayRange_(byDay || {}, startDate, endDate);
+  let cloudRows = [];
+  if (_diceOnline && GAS_URL) {
+    if (typeof onStatus === 'function') onStatus('正在查询云端逐日记录…');
+    cloudRows = await fetchActivityFromGAS_(uid, startDate, endDate);
+  }
+  return mergeByDayWithCloud_(fullByDay, cloudRows, startDate, endDate);
+}
+
+const KEY_REPLY_REM = 'diceStoryReplyRemainder_v2';
+
+function getReplyRemainder_(uid) {
+  uid = String(uid || state.uid || '').trim();
+  if (!uid) return 0;
+  try {
+    const map = JSON.parse(localStorage.getItem(KEY_REPLY_REM) || '{}');
+    return Math.max(0, parseInt(map[uid], 10) || 0);
+  } catch (e) { return 0; }
+}
+
+function setReplyRemainder_(uid, n) {
+  uid = String(uid || state.uid || '').trim();
+  if (!uid) return;
+  n = Math.max(0, parseInt(n, 10) || 0);
+  try {
+    const map = JSON.parse(localStorage.getItem(KEY_REPLY_REM) || '{}');
+    if (n <= 0) delete map[uid]; else map[uid] = n;
+    localStorage.setItem(KEY_REPLY_REM, JSON.stringify(map));
+  } catch (e) {}
+  updateReplyRemainderUI_();
+}
+
+function previewRepliesWithRemainder_(uid, netR) {
+  const prev = getReplyRemainder_(uid);
+  const total = prev + (parseInt(netR, 10) || 0);
+  return {
+    prevRemainder: prev,
+    netR: parseInt(netR, 10) || 0,
+    total: total,
+    posAdd: Math.floor(total / 5),
+    newRemainder: total % 5
+  };
+}
+
+/** 合并余数并换算正骰；会写入 localStorage 余数 */
+function convertRepliesWithRemainder_(uid, netR) {
+  const p = previewRepliesWithRemainder_(uid, netR);
+  setReplyRemainder_(uid, p.newRemainder);
+  return p;
+}
+
+function updateReplyRemainderUI_() {
+  const uid = state.uid || fffGetCurrentUid();
+  const rem = getReplyRemainder_(uid);
+  const row = document.getElementById('s1bReplyRemainderRow');
+  const val = document.getElementById('s1bReplyRemainderVal');
+  const mixDetails = document.getElementById('s1bMixDetails');
+  const pendingMix = parseInt((document.getElementById('s1bMixCount') || {}).textContent, 10) || 0;
+  if (val) val.textContent = String(rem);
+  if (row) row.style.display = rem > 0 ? '' : 'none';
+  if (mixDetails) {
+    const show = rem > 0 || pendingMix > 0;
+    mixDetails.style.display = show ? 'block' : 'none';
+  }
+  const s2 = document.getElementById('screen2');
+  if (s2 && s2.classList.contains('active')) updateCalc();
+}
+
 function logActivityToGAS_(uid, date, replies, citations) {
   if (!GAS_URL || !uid || !date) return;
   fetch(GAS_URL, {
     method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      sheet: '返乡活跃度',
+      sheet: DICE_ACTIVITY_SHEET,
       type: 'activity_log',
       uid: String(uid),
-      date: String(date),
+      date: normalizeDateISO_(date),
       replies: parseInt(replies, 10) || 0,
       citations: parseInt(citations, 10) || 0
     })
   }).catch(e => console.warn('GAS activity log failed', e));
 }
 
-// ===== 连线状态（对齐 timewar_sstm） =====
+function logActivityByDayToGAS_(uid, netByDay) {
+  Object.entries(netByDay || {}).forEach(([date, counts]) => {
+    logActivityToGAS_(uid, date, counts.replies, counts.citations);
+  });
+}
 let _diceOfflineMode = true;
 let _diceOnline = false;
 
@@ -3858,13 +4140,20 @@ async function beginScreen2ForumFetch_(retryLeft) {
     if (token !== _s2FetchToken) return;
     if (_s2FetchTickId) { clearInterval(_s2FetchTickId); _s2FetchTickId = null; }
 
-    const replies = raw.replies || 0;
-    const citations = raw.citations || 0;
-    if (replies <= 0 && citations <= 0) {
-      showScreen2Manual_('您选定的时间区间内找不到新手区回复或被引用，请手动输入。');
+    setStatus('正在查询云端逐日记录…');
+    const deduped = await resolveForumFetchDedup_(uid, raw.byDay, startDate, endDate, setStatus);
+    if (token !== _s2FetchToken) return;
+    const { netR, netC, netByDay, skippedDates, updatedDates } = deduped;
+
+    if (netR <= 0 && netC <= 0) {
+      if (skippedDates.length || updatedDates.length) {
+        showScreen2Manual_('所选区间内没有可新增的回复/被引用（云端已有相同或更多记录）。');
+      } else {
+        showScreen2Manual_('您选定的时间区间内找不到新手区回复或被引用，请手动输入。');
+      }
       return;
     }
-    applyScreen2FetchAndContinue_(replies, citations, startDate, endDate, raw.byDay || {});
+    applyScreen2FetchAndContinue_(raw.replies, raw.citations, netR, netC, startDate, endDate, netByDay, skippedDates, updatedDates);
   } catch (err) {
     if (token !== _s2FetchToken) return;
     if (retryLeft > 0) {
@@ -3880,26 +4169,37 @@ async function beginScreen2ForumFetch_(retryLeft) {
   }
 }
 
-function applyScreen2FetchAndContinue_(replies, citations, startDate, endDate, byDay) {
+function applyScreen2FetchAndContinue_(rawR, rawC, netR, netC, startDate, endDate, netByDay, skippedDates, updatedDates) {
   const uid = state.uid;
   const dateKey = (startDate || '') + '_' + (endDate || '');
-  fffSaveImp(uid, dateKey, replies, citations);
-  Object.entries(byDay || {}).forEach(([date, counts]) => {
-    logActivityToGAS_(uid, date, counts.replies, counts.citations);
-  });
+  fffSaveImp(uid, dateKey, rawR, rawC);
+  logActivityByDayToGAS_(uid, netByDay || {});
   logForumFetchToGAS_({
     mode: 'dicestory_v2_auto_screen2',
     forum_uid: String(uid),
-    reply_count: replies,
-    citation_count: citations,
+    reply_count: netR,
+    citation_count: netC,
     startDate: String(startDate || ''),
     endDate: String(endDate || '')
   });
-  document.getElementById('inputReplies').value = String(replies);
-  document.getElementById('inputCitations').value = String(citations);
+  document.getElementById('inputReplies').value = String(netR);
+  document.getElementById('inputCitations').value = String(netC);
   updateCalc();
   const st = document.getElementById('screen2FetchStatus');
-  if (st) st.textContent = '读取成功：' + replies + ' 回复 / ' + citations + ' 被引用，正在进入骰子分配…';
+  if (st) {
+    const preview = previewRepliesWithRemainder_(uid, netR);
+    let msg = '读取成功：' + netR + ' 回复 / ' + netC + ' 被引用，正在进入骰子分配…';
+    if (preview.prevRemainder > 0 || preview.newRemainder > 0) {
+      msg += '（含余数合计 ' + preview.total + ' 条→' + preview.posAdd + ' 正骰，余 ' + preview.newRemainder + ' 条）';
+    }
+    if (updatedDates && updatedDates.length) {
+      msg += '（云端已更新：' + formatSkippedDatesMsg_(updatedDates) + '）';
+    }
+    if (skippedDates && skippedDates.length) {
+      msg += '（无新增：' + formatSkippedDatesMsg_(skippedDates) + '）';
+    }
+    st.textContent = msg;
+  }
   goScreen3();
 }
 
@@ -3918,35 +4218,93 @@ function enterScreen2_() {
   }
 }
 
-// ===== 下载游玩数据 =====
-function downloadDiceData_() {
+// ===== 下载游玩存档（只读 Excel，含完整进度） =====
+function buildDiceExportRows_() {
   const cached = getCachedProgress(state.id || '');
   const id = state.id || '未知';
-  const now = new Date().toLocaleString('zh-TW');
+  const now = new Date().toLocaleString('zh-CN');
   const rows = [
     ['类别', '项目', '数值'],
     ['基本', '论坛ID', id],
-    ['基本', '下载时间', now],
+    ['基本', '论坛UID', state.uid || ''],
+    ['基本', '导出时间', now],
     ['骰子', '剩余正骰', cached ? (cached.pos_dice_left || 0) : state.pos_dice],
     ['骰子', '待分配混合骰', cached ? (cached.pending_neg_dice || 0) : 0],
+    ['骰子', '回复余数', getReplyRemainder_(state.uid)],
   ];
+  if (cached) {
+    rows.push(['奖励', '节操累计', cached.seiso_total || 0]);
+    rows.push(['奖励', '羽毛累计', cached.feather_total || 0]);
+    rows.push(['奖励', '字母勋章累计', cached.letter_total || 0]);
+    rows.push(['奖励', '往期兑换机会', cached.legacy_chances || 0]);
+    rows.push(['奖励', '永久本期勋章', cached.perm_medal ? '已获得' : '未获得']);
+  }
   const done = normalizeStoriesDone((cached && cached.stories_done) || {});
   Object.keys(done).sort((a, b) => Number(a) - Number(b)).forEach(k => {
     const story = STORIES[Number(k) - 1];
     const title = story ? story.title : ('故事#' + k);
-    const choices = done[k];
-    const choiceStr = Array.isArray(choices) ? choices.join('/') : String(choices);
+    const entry = done[k];
+    let choiceStr = '';
+    if (entry && Array.isArray(entry.choices)) {
+      choiceStr = entry.choices.map(c => (c && c.choice) || '').filter(Boolean).join('/');
+    } else if (entry && entry.choice) {
+      choiceStr = String(entry.choice);
+    }
     rows.push(['故事进度', title, choiceStr]);
   });
-  __appendPortableSaveRows(rows,'dice_story',{state:state,progress:getCachedProgress(state.id||'')});
-  const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'dice-story-' + id + '.csv';
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  rows.push(['导出信息', '游戏版本', DICE_GAME_VERSION]);
+  return rows;
+}
+
+async function downloadDiceSave_() {
+  if (typeof ExcelJS === 'undefined') {
+    alert('Excel 组件未加载，请刷新页面后重试');
+    return;
+  }
+  try {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = '命运的骰子';
+    const ws = wb.addWorksheet('游玩存档');
+    const rows = buildDiceExportRows_();
+    const cached = getCachedProgress(state.id || '');
+    __appendPortableSaveRows(rows, 'dice_story', {
+      state: Object.assign({}, state, { reply_remainder: getReplyRemainder_(state.uid) }),
+      progress: cached ? JSON.parse(JSON.stringify(cached)) : null
+    });
+    rows.forEach(r => ws.addRow(r));
+    ws.getColumn(1).width = 14;
+    ws.getColumn(2).width = 22;
+    ws.getColumn(3).width = 48;
+    ws.eachRow(row => { row.eachCell(cell => { cell.protection = { locked: true }; }); });
+    await ws.protect(DICE_SAVE_XLSX_PASSWORD, {
+      selectLockedCells: true,
+      selectUnlockedCells: false,
+      formatCells: false,
+      formatColumns: false,
+      formatRows: false,
+      insertColumns: false,
+      insertRows: false,
+      insertHyperlinks: false,
+      deleteColumns: false,
+      deleteRows: false,
+      sort: false,
+      autoFilter: false,
+      pivotTables: false
+    });
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'dice-story-存档_' + (state.id || '未知') + '_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (e) {
+    console.error(e);
+    alert('存档导出失败：' + (e.message || e));
+  }
 }
 
 // ===== 骰子奖励写入 GAS =====
@@ -3988,6 +4346,9 @@ window.__applyPortableSaveData=async function(data){
   if(!id) throw new Error('missing_id');
   Object.assign(state,st);
   state.id=id;
+  if (st.reply_remainder != null && (state.uid || st.uid)) {
+    setReplyRemainder_(state.uid || st.uid, st.reply_remainder);
+  }
   if(data.progress) setCachedProgress(id,data.progress);
   else if(data.cached) setCachedProgress(id,data.cached);
   var prog=getCachedProgress(id)||{};
@@ -4041,10 +4402,39 @@ window.__applyPortableSaveData=async function(data){
   window.importGameSaveData_=function(){
     var input=document.createElement('input');
     input.type='file';
-    input.accept='.csv,.json,text/csv,application/json';
+    input.accept='.csv,.json,.xlsx,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     input.onchange=function(){
       var file=input.files&&input.files[0];
       if(!file) return;
+      var name=String(file.name||'').toLowerCase();
+      if(name.endsWith('.xlsx')){
+        if(typeof ExcelJS==='undefined'){ alert('Excel 组件未加载，无法读取存档'); return; }
+        var reader=new FileReader();
+        reader.onload=function(){
+          Promise.resolve().then(async function(){
+            if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+            var wb=new ExcelJS.Workbook();
+            await wb.xlsx.load(reader.result);
+            var ws=wb.worksheets[0];
+            if(!ws) throw new Error('xlsx_empty');
+            var data=null;
+            ws.eachRow(function(row){
+              if(row.getCell(1).value==='__HTML_GAME_SAVE__' && row.getCell(2).value==='state_json'){
+                data=JSON.parse(String(row.getCell(3).value||'{}'));
+              }
+            });
+            if(!data) throw new Error('save_json_not_found');
+            return window.__applyPortableSaveData(data);
+          }).then(function(){
+            alert('读档完成：本机记录已复原，并已尝试同步到云端。');
+          }).catch(function(e){
+            console.error(e);
+            alert('读档失败：请选择由本游戏「下载游玩存档」导出的 Excel 文件。');
+          });
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+      }
       var reader=new FileReader();
       reader.onload=function(){
         Promise.resolve().then(function(){
@@ -4055,32 +4445,15 @@ window.__applyPortableSaveData=async function(data){
           alert('读档完成：本机记录已复原，并已尝试同步到云端。');
         }).catch(function(e){
           console.error(e);
-          alert('读档失败：请选择由本游戏「下载游玩数据/存档」导出的 CSV。');
+          alert('读档失败：请选择由本游戏「下载游玩存档」导出的 Excel 文件。');
         });
       };
       reader.readAsText(file,'utf-8');
     };
     input.click();
   };
-  window.__installPortableSaveImport=function(){
-    var found=false;
-    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
-      var oc=btn.getAttribute('onclick')||'';
-      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
-      btn.setAttribute('data-import-save-bound','1');
-      var b=document.createElement('button');
-      b.type='button';
-      b.className=btn.className||'';
-      b.style.cssText=btn.style.cssText||'';
-      b.textContent='📤 读取存档';
-      b.title='读取先前下载的存档 CSV';
-      b.onclick=window.importGameSaveData_;
-      btn.insertAdjacentElement('afterend',b);
-      found=true;
-    });
-    return found;
-  };
-  function boot(){ window.__installPortableSaveImport(); }
+  window.__installPortableSaveImport=function(){ return false; };
+  function boot(){}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
   else boot();
 })();
@@ -4093,6 +4466,9 @@ window.__applyPortableSaveData=async function(data){
 <!-- v1.8 2026-04-04 screen1b 混合骰子分配改为折叠面板+逐粒按钮（正向/负向）+批量控制，样式与 screen3 一致 -->
 <!-- v1.9 2026-04-04 移除「清除此帐号所有记录」；进游戏读取 GAS 时合并云端奖励累计+同步上传 rewards JSON（需部署新版 GAS 聚合「骰子故事奖励」） -->
 <!-- v2.0 2026-06-06 登入需 ID+UID；连线状态；screen2 区间自动抓取；各阶段玩法引导；主画面工具列 -->
+<!-- v2.1 2026-06-06 书本封面全屏；论坛抓取逐日写入「骰子故事返乡活跃度记录」并跳过云端已有日期 -->
+<!-- v2.2 2026-06-06 登入封面全屏自适应；云端逐日可补差额更新；回复余数(localStorage)凑满5换正骰，显示于混合骰面板 -->
+<!-- v2.3 2026-06-06 下载游玩存档改为只读 Excel（含完整进度）；菜单仅一种存档格式；读取存档支持 Excel；界面不显示保护密码 -->
 <div id="dice-offline-warning" onclick="retryDiceCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 </body>
 </html>
