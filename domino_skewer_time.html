@@ -94,6 +94,7 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#101827;c
 
 <div id="menu" class="screen hidden">
   <div class="title">骨牌梦旅</div>
+  <div id="menu-rep-cit" class="sub">-</div>
   <div id="menu-stat" class="sub">-</div>
   <div id="menu-lootbox-info" style="font-size:.82rem;color:rgba(255,255,255,.85);margin-bottom:4px;text-align:center;min-height:20px"></div>
   <div id="menu-lootbox-btn-row" style="margin-bottom:10px;text-align:center"></div>
@@ -446,8 +447,8 @@ function normalize(){
   ensureOwnedBgSkins();
   if(!G.dominoInit){G.coins=(G.coins||0)+600;G.stars=G.stars||0;G.dominoInit=true;}
 }
-async function cloudSave(){if(!G.id)return;try{await gasJsonp({sheet:SHEET,action:"save",id:G.id,uid:String(G.uid),coins:String(G.coins||0),unlocked_count:String((G.unlocked||[]).length),cleared_count:String((G.cleared||[]).length),state_json:JSON.stringify(G),date:todayISO()},12000);}catch(e){}}
-async function cloudLoad(id){try{const d=await gasJsonp({sheet:SHEET,action:"load",id},16000);return d.data||null;}catch(e){return null;}}
+function cloudSave(){if(!G.id)return;var p={sheet:SHEET,action:"save",id:G.id,uid:String(G.uid),coins:String(G.coins||0),unlocked_count:String((G.unlocked||[]).length),cleared_count:String((G.cleared||[]).length),state_json:JSON.stringify(G),date:todayISO()};_dsGasJsonp_(p,12000).catch(function(){gasBeacon(p);});}
+async function cloudLoad(id){try{const d=await _dsGasJsonp_({sheet:SHEET,action:"load",id},16000);return d.data||null;}catch(e){return null;}}
 function show(id){["login","menu","game"].forEach(x=>qs(x).classList.add("hidden"));qs(id).classList.remove("hidden");}
 function hint(s){qs("hint").textContent=s||"";}
 function setForumStatus(s){const el=qs("forum-status");if(el)el.textContent=s||"";}
@@ -467,7 +468,8 @@ function pickSkin(){const s=SKINS.find(x=>x.id===G.skin)||SKINS[0];const b=BG_SK
 function updateMenuStat(){
   const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
   const ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
-  qs("menu-stat").textContent="📝 "+ar+" · 💬 "+ac+" · 🪙 "+(G.coins||0)+" · ⭐ "+(G.stars||0)+" · 🎫 "+(G.tickets||0);
+  qs("menu-rep-cit").textContent=G.id?("📝 回复 "+ar+" 条 · 💬 被引用 "+ac+" 条"):"";
+  qs("menu-stat").textContent="🪙 "+(G.coins||0)+" · ⭐ "+(G.stars||0)+" · 🎫 "+(G.tickets||0);
   const lb=qs("menu-lootbox-info");
   if(lb)lb.innerHTML="🎁 宝箱：<b>"+(G.lootBoxes||0)+"</b> 个 ｜ 节操 "+(G.jieCao||0)+"/5000 · 羽毛 "+(G.feather||0)+"/2000 · 本期勋章 "+(G.medal30||0)+" · 字母勋章 "+(G.letterMedal30||0);
   // 主画面宝箱快捷按钮
@@ -488,18 +490,54 @@ async function doLogin(){
   const btn=qs("btn-login");
   if(!id||!uid){qs("login-err").textContent="请输入论坛ID与UID";return;}
   qs("login-err").textContent="";
-  const oldText=btn.textContent;btn.disabled=true;btn.textContent="登入中...";
+  const oldText=btn.textContent;btn.disabled=true;
   try{
     G.id=id;G.uid=uid;localStorage.setItem(KEY_ID,id);localStorage.setItem(KEY_UID,String(uid));
     load();normalize();
-    const c=await cloudLoad(id);
-    if(c&&c.state_json){try{Object.assign(G,JSON.parse(c.state_json));G.id=id;G.uid=uid;normalize();}catch(e){}}
-    save();cloudSave();
-    saveIdHistory();renderIdHistory();
-    gasBeacon({sheet:SHEET,action:"login_log",id:G.id,uid:String(G.uid),date:todayISO(),info:"domino_skewer_html"});
-    await _loadActivityStats_();
+    btn.textContent="云端读取中...";
+    // 并行拉取三份数据：存档、活跃度（总回复/引用）、商店（已消费）
+    const [c,actRows,shopData]=await Promise.all([
+      cloudLoad(id),
+      fetchActivityFromGAS_(String(uid),'','').catch(function(){return null;}),
+      fetchShopFromGAS_(String(uid)).catch(function(){return null;})
+    ]);
+    if(c&&c.state_json){try{
+      const cs=JSON.parse(c.state_json);
+      var _lrp=G.repliesSpent||0,_lcp=G.citationsSpent||0;
+      var _lc=(G.cleared||[]).slice(),_lu=(G.unlocked||[]).slice();
+      Object.assign(G,cs);
+      G.cleared=[...new Set([..._lc,...(cs.cleared||[])])];
+      G.unlocked=[...new Set([..._lu,...(cs.unlocked||[])])];
+      G.repliesSpent=Math.max(_lrp,Number(cs.repliesSpent)||0);
+      G.citationsSpent=Math.max(_lcp,Number(cs.citationsSpent)||0);
+      G.id=id;G.uid=uid;normalize();
+      // 安全兜底：cleared 中每一关的下一关自动解锁（修复数据不一致）
+      (G.cleared||[]).forEach(function(lv){if(!G.unlocked.includes(lv+1))G.unlocked.push(lv+1);});
+    }catch(e){}}
+    // 用活跃度分页覆写真实总回复/引用数
+    if(actRows&&actRows.length){
+      var _r=0,_c=0;
+      actRows.forEach(function(x){_r+=parseInt(x.replies,10)||0;_c+=parseInt(x.citations,10)||0;});
+      G.replies=_r;G.citations=_c;
+    }
+    // 用商店分页覆写已消费数（确保总-消与商店一致）
+    if(shopData){
+      if(shopData.repliesSpent>=(G.repliesSpent||0))G.repliesSpent=shopData.repliesSpent;
+      if(shopData.citationsSpent>=(G.citationsSpent||0))G.citationsSpent=shopData.citationsSpent;
+    }
+    if((G.repliesSpent||0)>(G.replies||0))G.repliesSpent=0;
+    if((G.citationsSpent||0)>(G.citations||0))G.citationsSpent=0;
+    save();
+    saveIdHistory();renderIdHistory();updateMenuStat();
     enterMenu();
-  }finally{btn.disabled=false;btn.textContent=oldText;}
+    // 以下云端写入全部后台执行（不阻挡选单显示）
+    _dsGasJsonp_({sheet:SHEET,action:"save",id:G.id+"_spent",uid:String(G.uid),repliesSpent:String(G.repliesSpent||0),citationsSpent:String(G.citationsSpent||0),date:todayISO()},12000).catch(function(){cloudSave();});
+    cloudSave();
+    gasBeacon({sheet:SHEET,action:"login_log",id:G.id,uid:String(G.uid),date:todayISO(),info:"domino_skewer_html"});
+  }finally{
+    // 只在仍显示登入画面时才重设按钮（防止停留可再次登入）
+    if(!qs("login").classList.contains("hidden")){btn.disabled=false;btn.textContent=oldText;}
+  }
 }
 function offlineMode(){load();normalize();enterMenu();}
 
@@ -1134,9 +1172,12 @@ async function fetchForumDataCustom(show,opt){
 }
 function openShop(){renderShop();updateShopCurrency();qs("ov-shop").classList.remove("hidden");}
 function closeShop(){qs("ov-shop").classList.add("hidden");}
-function updateShopCurrency(){qs("sh-replies").textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));qs("sh-cites").textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));}
+function updateShopCurrency(){if((G.repliesSpent||0)>(G.replies||0))G.repliesSpent=0;if((G.citationsSpent||0)>(G.citations||0))G.citationsSpent=0;qs("sh-replies").textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));qs("sh-cites").textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));}
 function renderShop(){
-  const list=qs("shop-list");list.innerHTML="";const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  const list=qs("shop-list");list.innerHTML="";
+  if((G.repliesSpent||0)>(G.replies||0)) G.repliesSpent=0;
+  if((G.citationsSpent||0)>(G.citations||0)) G.citationsSpent=0;
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
   SHOP_ITEMS.forEach(it=>{const av=it.costType==="replies"?ar:ac,owned=it.give&&it.give.bgSkin&&ownsBgSkin(it.give.bgSkin),can=av>=it.cost&&!owned,d=document.createElement("div");d.className="shop-item"+(owned?" owned":"");if(owned)d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:#94a3b8'>已拥有</div></div><button class='btn' disabled>已拥有</button>";else{d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>花费 "+it.cost+" "+(it.costType==="replies"?"回复":"被引用")+"</div></div><button class='btn' "+(can?"":"disabled")+">购买</button>";d.querySelector("button").onclick=()=>buyItemDirect(it.id);}list.appendChild(d);});
 }
 function buyItemDirect(id){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;if(it.give&&it.give.bgSkin){if(ownsBgSkin(it.give.bgSkin)){alert("你已经拥有这款骨牌背景皮肤了，无法重复购买。");return;}return buyItem(id,1);}return buyItemPrompt(id);}
@@ -1148,6 +1189,7 @@ function buyItem(id,qty){
   if(it.costType==="replies")G.repliesSpent=(G.repliesSpent||0)+cost;else G.citationsSpent=(G.citationsSpent||0)+cost;
   if(it.give.undo)G.boosters.undo+=it.give.undo*qty;if(it.give.hint)G.boosters.hint+=it.give.hint*qty;if(it.give.add)G.boosters.add+=it.give.add*qty;if(it.give.reveal)G.boosters.reveal+=it.give.reveal*qty;if(it.give.ticket)G.tickets=(G.tickets||0)+it.give.ticket*qty;if(it.give.bgSkin){for(let i=0;i<qty;i++)grantBgSkin(it.give.bgSkin);if(!qs("ov-skin").classList.contains("hidden"))openSkin();}
   save();cloudSave();renderShop();updateShopCurrency();updateMenuStat();if(!qs("game").classList.contains("hidden"))renderAll();gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId:id,cost:String(cost),costType:it.costType,date:todayISO()});
+  _dsGasJsonp_({sheet:SHEET,action:"save",id:G.id+"_spent",uid:String(G.uid),repliesSpent:String(G.repliesSpent||0),citationsSpent:String(G.citationsSpent||0),date:todayISO()},8000).catch(function(){});
 }
 function downloadSkewerData_(){
   save();
@@ -1168,7 +1210,13 @@ window.__applyPortableSaveData=async function(data){if(!data||typeof data!=="obj
   function boot(){window.__installPortableSaveImport();}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
 })();
-window.addEventListener("DOMContentLoaded",()=>{load();normalize();applyBgTheme();const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;renderIdHistory();save();});
+window.addEventListener("DOMContentLoaded",()=>{
+  load();normalize();applyBgTheme();
+  const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";
+  if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;
+  const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;renderIdHistory();
+  save();
+});
 window.addEventListener("resize",()=>{if(!qs("game").classList.contains("hidden")){assignBoardLayout();renderAll();}});
 </script>
 
@@ -1236,6 +1284,7 @@ const DS_FETCH_MS=35000;
 const FFF_PROXY_DS='https://sstm-raffle.vercel.app/Domino-style-proxy?url=';
 const FFF_IMP_DS='fff_imp_ds_v2';
 const DS_ACTIVITY_SHEET='骨牌梦旅返乡活跃度记录';
+const DS_SHOP_SHEET='骨牌梦旅_商店记录';
 
 let _fffResult=null;
 let _diceOnline_ds=false;
@@ -1479,6 +1528,22 @@ async function fetchActivityFromGAS_(uid,startDate,endDate){
     return null;
   }catch(e){console.warn('fetchActivityFromGAS_',e);return null;}
 }
+async function fetchShopFromGAS_(uid){
+  if(!GAS_URL||!uid)return null;
+  try{
+    const data=await _dsGasJsonp_({action:'activity_fetch',uid:String(uid),startDate:'',endDate:'',sheet:DS_SHOP_SHEET},15000);
+    if(data&&data.ok&&data.rows&&data.rows.length){
+      var r=0,c=0;
+      data.rows.forEach(function(x){
+        var qty=parseInt(x.花费数量||x.qty||x.cost||0,10)||0;
+        var type=String(x.货币类型||x.costType||x.type||'').trim();
+        if(type==='replies')r+=qty;else if(type==='citations')c+=qty;
+      });
+      return{repliesSpent:r,citationsSpent:c};
+    }
+    return null;
+  }catch(e){return null;}
+}
 function mergeByDayWithCloud_(fullByDay,cloudRows,startDate,endDate){
   const existing={};
   (cloudRows||[]).forEach(r=>{
@@ -1549,7 +1614,8 @@ function logActivityToGAS_(uid,date,replies,citations){
   },15000).catch(e=>console.warn('GAS activity log failed',e));
 }
 function logActivityByDayToGAS_(uid,netByDay){
-  Object.entries(netByDay||{}).forEach(([date,counts])=>{
+  Object.keys(netByDay||{}).sort().forEach(function(date){
+    var counts=netByDay[date];
     logActivityToGAS_(uid,date,counts.replies,counts.citations);
   });
 }
@@ -1847,24 +1913,35 @@ window.importGameSaveData_=function(){
 
 // --- 统一加载活动统计（GAS 优先，cloudLoad 备援）---
 async function _loadActivityStats_(){
+  if(!GAS_URL)return;
   var uid=String(G.uid||'').trim();
-  if(!uid||!GAS_URL)return;
-  try{
-    var rows=await fetchActivityFromGAS_(uid,'','');
-    if(rows&&rows.length){
-      var r=0,c=0;
-      rows.forEach(function(x){r+=parseInt(x.replies,10)||0;c+=parseInt(x.citations,10)||0;});
-      G.replies=r;G.citations=c;
-      return;
-    }
-  }catch(e){}
+  if(uid){
+    try{
+      var rows=await fetchActivityFromGAS_(uid,'','');
+      if(rows&&rows.length){
+        var r=0,c=0;
+        rows.forEach(function(x){r+=parseInt(x.replies,10)||0;c+=parseInt(x.citations,10)||0;});
+        G.replies=r; G.citations=c;
+        // 从「骨牌梦旅_商店记录」分页读取已消费（优先）
+        var _shop=await fetchShopFromGAS_(uid);
+        if(_shop){G.repliesSpent=_shop.repliesSpent;G.citationsSpent=_shop.citationsSpent;}
+        else{
+          // 备援：专用键或主存档
+          try{var _sk=(G.id||uid)+'_spent';var _sd=await _dsGasJsonp_({sheet:SHEET,action:'load',id:_sk},8000);if(_sd&&_sd.data){if(!G.repliesSpent||Number(_sd.data.repliesSpent)>G.repliesSpent)G.repliesSpent=Number(_sd.data.repliesSpent)||0;if(!G.citationsSpent||Number(_sd.data.citationsSpent)>G.citationsSpent)G.citationsSpent=Number(_sd.data.citationsSpent)||0;}else throw 0;}catch(e){try{var cd=await cloudLoad(G.id||uid);if(cd&&cd.state_json){var cs=JSON.parse(cd.state_json);if(cs){if(!G.repliesSpent||Number(cs.repliesSpent)>G.repliesSpent)G.repliesSpent=Number(cs.repliesSpent)||0;if(!G.citationsSpent||Number(cs.citationsSpent)>G.citationsSpent)G.citationsSpent=Number(cs.citationsSpent)||0;}}}catch(e2){}}
+        }
+        if((G.repliesSpent||0)>r) G.repliesSpent=0;
+        if((G.citationsSpent||0)>c) G.citationsSpent=0;
+        return;
+      }
+    }catch(e){}
+  }
   // 备援：从 cloudLoad 取旧存档
   if(G&&G.id){
     try{
       var cd=await cloudLoad(G.id);
       if(cd&&cd.state_json){
         var cs=JSON.parse(cd.state_json);
-        if(cs){G.replies=Number(cs.replies)||0;G.citations=Number(cs.citations)||0;}
+        if(cs){G.replies=Number(cs.replies)||0;G.citations=Number(cs.citations)||0;if(!G.repliesSpent||Number(cs.repliesSpent)>G.repliesSpent)G.repliesSpent=Number(cs.repliesSpent)||0;if(!G.citationsSpent||Number(cs.citationsSpent)>G.citationsSpent)G.citationsSpent=Number(cs.citationsSpent)||0;}
       }
     }catch(e){}
   }
@@ -1878,6 +1955,8 @@ openShop=async function(){
   if(overlay)overlay.style.display="flex";
   await _loadActivityStats_();
   if(overlay)overlay.style.display="none";
+  if((G.repliesSpent||0)>(G.replies||0)) G.repliesSpent=0;
+  if((G.citationsSpent||0)>(G.citations||0)) G.citationsSpent=0;
   if(typeof _openShopOrig==='function')_openShopOrig();
 };
 </script>

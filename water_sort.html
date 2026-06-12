@@ -535,40 +535,53 @@ function gasJsonp(params,timeout) {
       else reject(new Error((data && data.error) || "err"));
     };
     var qs = Object.keys(params).map(function(k){ return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]); }).join("&");
-    // fetch: 纯 JSON（无 callback，回 JSON）
-    var fetchUrl = GAS_URL + "?" + qs + "&game=water_sort&_t=" + Date.now();
-    var ctrl = new AbortController();
-    var tid2 = setTimeout(function(){ ctrl.abort(); }, timeout);
+    var scriptUrl = GAS_URL + "?" + qs + "&game=water_sort&callback=" + cb + "&_t=" + Date.now();
+    var s = document.createElement("script");
+    s.src = scriptUrl;
+    s.onerror = function(){ clearTimeout(tid); try{ delete window[cb]; }catch(e){} if(s.parentNode) s.remove(); reject(new Error("load_fail")); };
+    document.head.appendChild(s);
+  });
+}
+function _dsGasJsonp_(params,timeout){
+  if(timeout==null)timeout=25000;
+  return new Promise(function(resolve,reject){
+    var cb='ds_cb_'+Date.now()+'_'+Math.floor(Math.random()*9999);
+    var tid=setTimeout(function(){reject(new Error('timeout'));},timeout);
+    window[cb]=function(data){
+      clearTimeout(tid);
+      try{delete window[cb];}catch(e){}
+      if(data&&data.ok)resolve(data);
+      else reject(new Error((data&&data.error)||'err'));
+    };
+    var qs=Object.keys(params).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);}).join('&');
+    var fetchUrl=GAS_URL+'?'+qs+'&game=water_sort&_t='+Date.now();
+    var ctrl=new AbortController();
+    var tid2=setTimeout(function(){ctrl.abort();},timeout);
     fetch(fetchUrl,{signal:ctrl.signal})
-      .then(function(r){
-        if(!r.ok)throw new Error('HTTP_'+r.status);
-        return r.json();
-      })
+      .then(function(r){return r.json();})
       .then(function(d){
-        clearTimeout(tid); clearTimeout(tid2);
-        try{ delete window[cb]; }catch(e){}
-        if(d && d.ok) resolve(d);
-        else reject(new Error((d && d.error) || "err_no_ok"));
+        clearTimeout(tid);clearTimeout(tid2);
+        try{delete window[cb];}catch(e){}
+        if(d&&d.ok)resolve(d);
+        else reject(new Error((d&&d.error)||'err'));
       })
-      .catch(function(e){
-        clearTimeout(tid); clearTimeout(tid2);
-        // fetch 失败，回退到 script 标签（含 callback，回 JSONP）
-        var scriptUrl = GAS_URL + "?" + qs + "&game=water_sort&callback=" + cb + "&_t=" + Date.now();
-        var s = document.createElement("script");
-        s.src = scriptUrl;
-        s.onerror = function(){ clearTimeout(tid); try{ delete window[cb]; }catch(e){} if(s.parentNode) s.remove(); reject(new Error("load_fail")); };
+      .catch(function(){
+        clearTimeout(tid);clearTimeout(tid2);
+        var scriptUrl=GAS_URL+'?'+qs+'&game=water_sort&callback='+cb+'&_t='+Date.now();
+        var s=document.createElement('script');
+        s.src=scriptUrl;
+        s.onerror=function(){clearTimeout(tid);try{delete window[cb];}catch(e){}if(s.parentNode)s.remove();reject(new Error('load_fail'));};
         document.head.appendChild(s);
       });
   });
 }
 function cloudSave(){
   if(!G.id||_offline) return;
-  gasBeacon({sheet:SHEET,action:"save",id:G.id,uid:String(G.uid),
-    state_json:JSON.stringify(G),date:todayISO(),
-    coins:String(G.coins||0)});
+  var p={sheet:SHEET,action:"save",id:G.id,uid:String(G.uid),state_json:JSON.stringify(G),date:todayISO(),coins:String(G.coins||0)};
+  _dsGasJsonp_(p,12000).catch(function(){gasBeacon(p);});
 }
 async function cloudLoad(id){
-  try{ const d=await gasJsonp({sheet:SHEET,action:"load",id},16000); return d.data||null; }catch(e){ return null; }
+  try{const d=await _dsGasJsonp_({sheet:SHEET,action:"load",id},16000);return d.data||null;}catch(e){return null;}
 }
 
 function openSkinPanel(){ensureOwnedBgSkins();if(G.bgSkin)curBgSkin=G.bgSkin;else curBgSkin='default';renderBgSkinPanel();applyBgTheme();updateSkinUI();var el=document.getElementById('skin-overlay');if(el){el.classList.remove('hidden');el.style.display='flex';}}
@@ -589,7 +602,7 @@ async function retryCloud(){
   var bar=document.getElementById('tm-offline-bar');
   if(bar) bar.textContent='🔄 正在重新连线...';
   try{
-    await gasJsonp({sheet:SHEET,action:"ping"},5000);
+    await _dsGasJsonp_({sheet:SHEET,action:"ping"},5000);
     setOffline(false);
     if(bar){ bar.textContent='✅ 已连线'; setTimeout(function(){ bar.style.display='none'; },2000); }
     if(G.id){
@@ -938,12 +951,16 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
 
 
 openShop=async function(){
+  (function(){var sd=document.getElementById('forum-start-date'),ed=document.getElementById('forum-end-date'),t=todayISO();if(sd&&!sd.value)sd.value=t;if(ed&&!ed.value)ed.value=t;})();
   var overlay=document.getElementById("ws-loadingOverlay");
   var loadingText=document.getElementById("ws-loadingOverlay-text");
   if(loadingText)loadingText.textContent="☁️ 云端读取中…";
   if(overlay)overlay.style.display="flex";
   await _wsLoadActivityStats_().catch(function(){});
   if(overlay)overlay.style.display="none";
+  // 安全防护：确保已花费不超过实际可用数
+  if((G.repliesSpent||0)>(G.replies||0)) G.repliesSpent=0;
+  if((G.citationsSpent||0)>(G.citations||0)) G.citationsSpent=0;
   renderShopItems();
   var el=document.getElementById("sh-replies");if(el)el.textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
   el=document.getElementById("sh-citations");if(el)el.textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
@@ -960,6 +977,8 @@ function closeShop(){
 
 function renderShopItems(){
   const list=document.getElementById("shop-items-list");
+  if((G.repliesSpent||0)>(G.replies||0)) G.repliesSpent=0;
+  if((G.citationsSpent||0)>(G.citations||0)) G.citationsSpent=0;
   const availReplies=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
   const availCitations=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
   list.innerHTML="";
@@ -1019,6 +1038,7 @@ function buyItem(itemId, qty){
   if(typeof isGameScreenVisible==='function' && isGameScreenVisible() && typeof renderAllTubes==='function') renderAllTubes();
   openShop(); // 刷新商店
   gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId,cost:String(totalCost),costType:item.costType,date:todayISO()});
+  _dsGasJsonp_({sheet:SHEET,action:"save",id:G.id+"_spent",uid:String(G.uid),repliesSpent:String(G.repliesSpent||0),citationsSpent:String(G.citationsSpent||0),date:todayISO()},8000).catch(function(){});
 }
 
 
@@ -1694,7 +1714,7 @@ function updateMenuUI(){
   var el=document.getElementById('menu-id-label');
   var sl=document.getElementById('menu-stats-label');
   if(el) el.textContent=G.id?('💧 '+G.id+' · 🪙 '+(G.coins||0)+' 金币'):'-';
-  if(sl) sl.textContent='📝 '+(G.replies||0)+' · 💬 '+(G.citations||0)+' · 🎫 '+(G.tickets||0);
+  if(sl) sl.textContent='📝 '+Math.max(0,(G.replies||0)-(G.repliesSpent||0))+' · 💬 '+Math.max(0,(G.citations||0)-(G.citationsSpent||0))+' · 🎫 '+(G.tickets||0);
   var gc=document.getElementById('game-coins'); if(gc) gc.textContent=G.coins||0;
   if(G.skin) curSkin=G.skin;
   if(G.bgSkin) curBgSkin=G.bgSkin; else curBgSkin='default';
@@ -2137,7 +2157,10 @@ async function doLogin(){
     if(cloud&&cloud.state_json){
       try{
         var cs=JSON.parse(cloud.state_json);
+        var _lrp=G.repliesSpent||0,_lcp=G.citationsSpent||0;
         Object.assign(G,cs||{});
+        G.repliesSpent=Math.max(_lrp,Number(cs.repliesSpent)||0);
+        G.citationsSpent=Math.max(_lcp,Number(cs.citationsSpent)||0);
         G.id=id;
         G.uid=uid;
         normalizeBoosters_();
@@ -2147,15 +2170,14 @@ async function doLogin(){
   }catch(e){
     _offline=true;
     setOffline(true);
-  }finally{
-    hideLoading();
-    if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent='▶ 登入游戏'; }
   }
   saveIdHistory();
   gasBeacon({sheet:SHEET,action:'login_log',id:G.id,uid:String(G.uid),date:todayISO(),info:'water_sort_v1.2.0'});
   try{ await _wsLoadActivityStats_(); }catch(e){}
   saveState();
   enterMenu();
+  hideLoading();
+  if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent='▶ 登入游戏'; }
 }
 
 function enterMenu(){ensureOwnedBgSkins();if(G.bgSkin)curBgSkin=G.bgSkin;applyBgTheme();
@@ -2877,8 +2899,7 @@ window.addEventListener('DOMContentLoaded', function(){
   if(savedId) document.getElementById('inp-id').value=savedId;
   if(savedUid) document.getElementById('inp-uid').value=savedUid;
   if(G.id){
-    _wsLoadActivityStats_().catch(function(){}).then(function(){ updateMenuUI(); try{ saveState(); }catch(e){} });
-    showScreen('menu'); enterMenu();
+    _wsLoadActivityStats_().catch(function(){}).then(function(){ updateMenuUI(); try{ saveState(); }catch(e){} showScreen('menu'); enterMenu(); }).catch(function(){ showScreen('menu'); enterMenu(); });
   }
   else { showScreen('screen-login'); }
 });
@@ -3034,23 +3055,27 @@ function _wsShowResult(t){var el=document.getElementById("ws-result");if(el){doc
 
 async function _wsActivityFetch(uid,startDate,endDate){
   try{
-    var d=await gasJsonp({action:"activity_fetch",uid:uid,startDate:startDate||"",endDate:endDate||"",sheet:_wsActivitySheet},15000);
+    var d=await _dsGasJsonp_({action:"activity_fetch",uid:uid,startDate:startDate||"",endDate:endDate||"",sheet:_wsActivitySheet},15000);
     if(d&&d.ok&&d.rows)return d.rows;
     return null;
   }catch(e){return null;}
 }
 async function _wsLoadActivityStats_(){
-  var uid=String(G.uid||'').trim();
-  if(!uid||!GAS_URL)return;
+  if(!GAS_URL)return;
   var activityR=null, activityC=null;
-  try{
-    var rows=await _wsActivityFetch(uid,'','');
-    if(rows&&rows.length){
-      var r=0,c=0;
-      rows.forEach(function(x){r+=parseInt(x.replies,10)||0;c+=parseInt(x.citations,10)||0;});
-      activityR=r; activityC=c;
-    }
-  }catch(e){}
+  var uid=String(G.uid||'').trim();
+  if(uid){
+    try{
+      var rows=await _wsActivityFetch(uid,'','');
+      if(rows&&rows.length){
+        var r=0,c=0;
+        rows.forEach(function(x){r+=parseInt(x.replies,10)||0;c+=parseInt(x.citations,10)||0;});
+        activityR=r; activityC=c;
+      }
+    }catch(e){}
+  }
+  // 从专用键载入已消费的回复/引用数（仅当本地未正确记录时才覆盖）
+  try{var _sk=(G.id||uid)+'_spent';var _sd=await _dsGasJsonp_({sheet:SHEET,action:'load',id:_sk},8000);if(_sd&&_sd.data){if(!G.repliesSpent||Number(_sd.data.repliesSpent)>G.repliesSpent)G.repliesSpent=Number(_sd.data.repliesSpent)||0;if(!G.citationsSpent||Number(_sd.data.citationsSpent)>G.citationsSpent)G.citationsSpent=Number(_sd.data.citationsSpent)||0;}else throw 0;}catch(e){try{var cd=await cloudLoad(G.id);if(cd&&cd.state_json){var cs=JSON.parse(cd.state_json);if(!G.repliesSpent||Number(cs.repliesSpent)>G.repliesSpent)G.repliesSpent=Number(cs.repliesSpent)||0;if(!G.citationsSpent||Number(cs.citationsSpent)>G.citationsSpent)G.citationsSpent=Number(cs.citationsSpent)||0;}}catch(e2){}}
   // 备援：从 cloudLoad 取旧存档
   var cloudR=null, cloudC=null;
   if(G&&G.id){
@@ -3070,12 +3095,13 @@ async function _wsLoadActivityStats_(){
   }else if(cloudR!==null){
     G.replies=cloudR; G.citations=cloudC;
   }
+  console.log('[ws-debug] activityR=%s activityC=%s cloudR=%s cloudC=%s replies=%s repliesSpent=%s citations=%s citationsSpent=%s',activityR,activityC,cloudR,cloudC,G.replies,G.repliesSpent,G.citations,G.citationsSpent);
 }
 
 async function _wsActivityLog(uid,date,replies,citations){
   if(!uid||!date)return;
   try{
-    await gasJsonp({type:"activity_log",uid:uid,date:date,replies:String(replies||0),citations:String(citations||0),sheet:_wsActivitySheet},8000);
+    await _dsGasJsonp_({type:"activity_log",uid:uid,date:date,replies:String(replies||0),citations:String(citations||0),sheet:_wsActivitySheet},8000);
   }catch(e){}
 }
 
