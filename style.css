@@ -33,6 +33,87 @@ body {
   border-radius: 10px;
   padding: 10px 12px;
 }
+.login-history-label {
+  font-size: 12px;
+  margin: 8px 0 4px;
+}
+
+.ih-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.ih-chip-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 20px;
+  padding: 2px 2px 2px 7px;
+}
+
+.ih-chip {
+  border: none;
+  padding: 2px 5px;
+  border-radius: 14px;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  color: #93c5fd;
+  font-family: inherit;
+  font-weight: 700;
+}
+
+.ih-chip:hover {
+  background: rgba(96, 165, 250, 0.2);
+}
+
+.ih-x {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  background: rgba(248, 113, 113, 0.35);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.fs-game-hud-badge {
+  position: fixed;
+  bottom: 8px;
+  font-size: 0.7rem;
+  z-index: 10050;
+  pointer-events: none;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+.fs-game-hud-badge.hidden {
+  display: none;
+}
+
+.fs-version-badge {
+  right: 10px;
+  opacity: 0.55;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.fs-connection-badge[data-state="online"] {
+  left: 10px;
+  color: rgba(52, 211, 153, 0.75);
+}
+
+.fs-connection-badge[data-state="offline"] {
+  left: 10px;
+  color: rgba(248, 113, 113, 0.75);
+}
+
 .screen-login-overlay {
   position: fixed;
   inset: 0;

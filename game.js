@@ -8,8 +8,17 @@ const CLOUD_GAS_URL = "https://script.google.com/macros/s/AKfycbwTvyIn6UZE16aCfl
 const CLOUD_META_KEY = "frost_frontier_cloud_last_meta_v1";
 const CLOUD_ACTIVITY_FP_KEY = "frost_frontier_cloud_activity_fp_v1";
 const LOGIN_HISTORY_KEY = "frost_frontier_login_history_v1";
+const FS_HTML_VERSION =
+  typeof window !== "undefined" && window.FS_HTML_VERSION
+    ? window.FS_HTML_VERSION
+    : "frost-survival-v1.0.0-2026-06-12";
+const FS_ACTIVITY_SHEET = "冰霜返乡活跃度记录";
+const FROST_FORUM_PROXY = "https://sstm-raffle.vercel.app/Frost-Survival-proxy?url=";
+const FS_SAVE_PASSWORD = "sstm";
+const FS_SAVE_MARK = "__FROST_SAVE_JSON__";
 
-/** 论坛同步进行中（切页不中断抓取，仅影响商店 DOM 重绘时的状态提示） */
+/** GAS 连线状态（论坛去重 / 活跃度写入） */
+let _frostGasOnline_ = false;
 let forumSyncInProgress_ = false;
 let forumSyncLiveMsg_ = "";
 let activityHubTab_ = "checkin";
@@ -2478,13 +2487,86 @@ function csvCell_(value) {
 }
 
 function exportSaveExcelFile_() {
+  return exportSaveExcelFileAsync_();
+}
+
+async function exportSaveExcelFileAsync_() {
   save();
+  const rows = buildFrostExportRows_();
+  if (typeof ExcelJS === "undefined") {
+    const csv = "\uFEFF" + rows.map((row) => row.map(csvCell_).join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    const id = state.profile && state.profile.id ? state.profile.id : "local";
+    a.download = "frost-survival-save-" + id + "-" + Date.now() + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+    logEvent("系统", "已下载 CSV 存档（Excel 组件未加载时的备用格式）。");
+    renderLogs();
+    return;
+  }
+  try {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "寒霜边境";
+    const ws = wb.addWorksheet("游玩存档");
+    rows.forEach((r) => ws.addRow(r));
+    ws.getColumn(1).width = 14;
+    ws.getColumn(2).width = 22;
+    ws.getColumn(3).width = 48;
+    ws.eachRow((row) => {
+      row.eachCell((cell) => {
+        cell.protection = { locked: true };
+      });
+    });
+    await ws.protect(FS_SAVE_PASSWORD, {
+      selectLockedCells: true,
+      selectUnlockedCells: false,
+      formatCells: false,
+      formatColumns: false,
+      formatRows: false,
+      insertColumns: false,
+      insertRows: false,
+      insertHyperlinks: false,
+      deleteColumns: false,
+      deleteRows: false,
+      sort: false,
+      autoFilter: false,
+      pivotTables: false,
+    });
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const id = state.profile && state.profile.id ? state.profile.id : "local";
+    a.download =
+      "frost-survival-存档_" + id + "_" + new Date().toISOString().slice(0, 10) + ".xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    logEvent("系统", "已下载唯读 Excel 存档（工作表已锁定，可用 Excel 开启）。");
+    renderLogs();
+  } catch (e) {
+    console.error(e);
+    alert("存档导出失败：" + (e.message || e));
+  }
+}
+
+function buildFrostExportRows_() {
   const ach = achievementState_();
   const rewards = ach.rewards;
   const rows = [
     ["类别", "项目", "数值"],
     ["基本", "存档时间", new Date().toLocaleString()],
+    ["基本", "HTML版本", FS_HTML_VERSION],
     ["基本", "玩家ID", state.profile && state.profile.id ? state.profile.id : ""],
+    ["基本", "论坛UID", state.profile && state.profile.uid ? state.profile.uid : ""],
     ["基本", "天数", state.day],
     ["基本", "关卡", state.stage],
     ["成就", "已完成", achievementCount_()],
@@ -2496,20 +2578,11 @@ function exportSaveExcelFile_() {
     ["奖励", "30天字母勋章", rewards.letterMedal30d],
     ["奖励", "永久本期勋章", rewards.permanentCurrentMedal],
     ["奖励", "往期勋章兑换机会", rewards.legacyChances],
-    ["__FROST_SAVE_JSON__", "save_json", JSON.stringify(state)]
+    [FS_SAVE_MARK, "game", "frost_survival"],
+    [FS_SAVE_MARK, "saved_at", new Date().toISOString()],
+    [FS_SAVE_MARK, "save_json", JSON.stringify(state)],
   ];
-  const csv = "\uFEFF" + rows.map((row) => row.map(csvCell_).join(",")).join("\r\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  const id = state.profile && state.profile.id ? state.profile.id : "local";
-  a.download = "frost-survival-save-" + id + "-" + Date.now() + ".csv";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(a.href);
-  logEvent("系统", "已下载 Excel 可开启的专用存档 CSV。");
-  renderLogs();
+  return rows;
 }
 
 function parseCsvLine_(line) {
@@ -2546,12 +2619,36 @@ function parseSaveImportText_(txt) {
   if (clean[0] === "{") return JSON.parse(clean);
   const lines = clean.split(/\r?\n/);
   for (const line of lines) {
-    if (!line.includes("__FROST_SAVE_JSON__")) continue;
+    if (!line.includes(FS_SAVE_MARK) && !line.includes("__FROST_SAVE_JSON__")) continue;
     const cells = parseCsvLine_(line);
     const json = cells[cells.length - 1];
     return JSON.parse(json);
   }
   throw new Error("unsupported_save_file");
+}
+
+async function parseSaveImportFile_(file) {
+  const name = String(file.name || "").toLowerCase();
+  if (name.endsWith(".xlsx")) {
+    if (typeof ExcelJS === "undefined") throw new Error("exceljs_not_loaded");
+    const buf = await file.arrayBuffer();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf);
+    const ws = wb.worksheets[0];
+    if (!ws) throw new Error("xlsx_empty");
+    let data = null;
+    ws.eachRow((row) => {
+      const k1 = String(row.getCell(1).value ?? "");
+      const k2 = String(row.getCell(2).value ?? "");
+      if ((k1 === FS_SAVE_MARK || k1 === "__FROST_SAVE_JSON__") && k2 === "save_json") {
+        data = JSON.parse(String(row.getCell(3).value || "{}"));
+      }
+    });
+    if (!data) throw new Error("save_json_not_found");
+    return data;
+  }
+  const txt = await file.text();
+  return parseSaveImportText_(txt);
 }
 
 function installAchievementUi_() {
@@ -2618,7 +2715,7 @@ function installAchievementUi_() {
   const saveBtn = byId("btn-save");
   if (saveBtn) {
     saveBtn.textContent = "手动存档 Excel";
-    saveBtn.title = "下载可由 Excel 开启的专用存档 CSV";
+    saveBtn.title = "下载唯读 Excel 存档（工作表锁定，可用 Excel 开启）";
   }
   if (saveBtn && !byId("btn-shop-save-import")) {
     const loadBtn = document.createElement("button");
@@ -3073,6 +3170,10 @@ function init() {
         byId("screen-login")?.classList.add("hidden");
         startAutoSaveReminder_();
       }
+      renderLoginHistory_();
+      installFrostGameHud_();
+      updateFrostVersionHud_();
+      updateFrostConnectionHud_();
     });
 }
 
@@ -7219,10 +7320,16 @@ function renderShopForum_() {
           setSt(t);
         },
         maxCitationChecks: fast ? 0 : null,
-        // 需要跨月（例如 3 月）时页数可能很深；配合页码日期缓存可快速跳到附近。
         maxPages: fast ? 60 : 260,
         overallMs: fast ? 120000 : 420000,
       });
+      setSt("正在查询云端逐日记录…");
+      const dedupHint = await resolveForumFetchDedup_(
+        String(uid),
+        buildForumByDayFromBuckets_(r.repliesByDay, r.citesByDay, state.forumShop.startDate, state.forumShop.endDate),
+        state.forumShop.startDate,
+        state.forumShop.endDate
+      );
       const nr = Number(r.replies || 0);
       const nc = Number(r.citations || 0);
       if (!state.forumShop.liveByFp || typeof state.forumShop.liveByFp !== "object") state.forumShop.liveByFp = {};
@@ -7260,7 +7367,12 @@ function renderShopForum_() {
       } catch (_) {
         // cloud log is best-effort, do not block normal sync flow
       }
-      setSt(`同步完成（当前区间）：回复 ${nr} / 引用 ${nc}`);
+      setSt(
+        `同步完成（当前区间）：回复 ${nr} / 引用 ${nc}` +
+          (dedupHint.netR > 0 || dedupHint.netC > 0
+            ? ` · 云端新增 ${dedupHint.netR}/${dedupHint.netC}`
+            : "")
+      );
       save();
       renderShopForum_();
       renderCity();
@@ -8173,27 +8285,69 @@ function pushLoginHistory_(id, uid) {
   try { localStorage.setItem(LOGIN_HISTORY_KEY, JSON.stringify(next)); } catch (_) {}
 }
 
+function removeLoginHistory_(id) {
+  const next = loginHistory_().filter((x) => String(x.id) !== String(id));
+  try {
+    localStorage.setItem(LOGIN_HISTORY_KEY, JSON.stringify(next));
+  } catch (_) {}
+  renderLoginHistory_();
+}
+
 function renderLoginHistory_() {
-  const el = byId("login-history");
-  if (!el) return;
-  const hist = loginHistory_();
-  if (!hist.length) {
-    el.textContent = "";
+  const row = byId("login-history-row");
+  const chips = byId("login-history-chips");
+  if (!chips) {
+    const el = byId("login-history");
+    if (!el) return;
+    const hist = loginHistory_();
+    if (!hist.length) {
+      el.textContent = "";
+      return;
+    }
+    el.innerHTML = `最近使用：${hist
+      .map((x, i) => `<button type="button" data-login-h="${i}">${escapeHtml_(x.id)} (${x.uid})</button>`)
+      .join("")}`;
+    el.querySelectorAll("[data-login-h]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const i = Number(btn.getAttribute("data-login-h") || -1);
+        const x = hist[i];
+        if (!x) return;
+        const idEl = byId("login-id");
+        const uidEl = byId("login-uid");
+        if (idEl) idEl.value = x.id;
+        if (uidEl) uidEl.value = String(x.uid);
+      });
+    });
     return;
   }
-  el.innerHTML = `最近使用：${hist
-    .map((x, i) => `<button type="button" data-login-h="${i}">${escapeHtml_(x.id)} (${x.uid})</button>`)
-    .join("")}`;
-  el.querySelectorAll("[data-login-h]").forEach((btn) => {
+  const hist = loginHistory_();
+  if (row) row.style.display = hist.length ? "block" : "none";
+  chips.innerHTML = "";
+  hist.forEach((item) => {
+    const wrap = document.createElement("div");
+    wrap.className = "ih-chip-wrap";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "ih-chip";
+    btn.textContent = item.id + (item.uid ? " (" + item.uid + ")" : "");
     btn.addEventListener("click", () => {
-      const i = Number(btn.getAttribute("data-login-h") || -1);
-      const x = hist[i];
-      if (!x) return;
       const idEl = byId("login-id");
       const uidEl = byId("login-uid");
-      if (idEl) idEl.value = x.id;
-      if (uidEl) uidEl.value = String(x.uid);
+      if (idEl) idEl.value = item.id;
+      if (uidEl) uidEl.value = String(item.uid || "");
     });
+    const bx = document.createElement("button");
+    bx.type = "button";
+    bx.className = "ih-x";
+    bx.textContent = "×";
+    bx.title = "移除此记忆";
+    bx.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      removeLoginHistory_(item.id);
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(bx);
+    chips.appendChild(wrap);
   });
 }
 
@@ -8225,6 +8379,9 @@ function openLoginOverlayForSwitch_() {
   if (curUid > 0 && !confirm(`当前帐号：${curId || "-"} (${curUid})\n切换帐号将尝试自动导入新 UID 的云端数据，是否继续？`)) return;
   byId("screen-login")?.classList.remove("hidden");
   syncLoginUi_();
+  renderLoginHistory_();
+  updateFrostVersionHud_();
+  updateFrostConnectionHud_();
 }
 
 function logoutAccount_() {
@@ -8238,6 +8395,9 @@ function logoutAccount_() {
   save();
   byId("screen-login")?.classList.remove("hidden");
   syncLoginUi_();
+  renderLoginHistory_();
+  updateFrostVersionHud_();
+  updateFrostConnectionHud_();
 }
 
 async function submitLogin_() {
@@ -8280,6 +8440,8 @@ async function submitLogin_() {
   }
   byId("screen-login")?.classList.add("hidden");
   renderLoginHistory_();
+  updateFrostVersionHud_();
+  updateFrostConnectionHud_();
   renderAll();
   startAutoSaveReminder_();
 }
@@ -8336,25 +8498,146 @@ function markActivityFingerprint_(fp) {
 async function pushForumDailyActivityLogs_(uid, startDate, endDate, repliesByDay, citesByDay) {
   const u = String(uid || "");
   if (!u) return;
-  const rep = repliesByDay || {};
-  const cit = citesByDay || {};
-  const days = Array.from(new Set([...Object.keys(rep), ...Object.keys(cit)]))
-    .filter((d) => d >= startDate && d <= endDate)
-    .sort();
-  for (const d of days) {
-    const rv = Number(rep[d] || 0);
-    const cv = Number(cit[d] || 0);
-    const fp = `forum_daily_dist|${u}|${startDate}|${endDate}|${d}|${rv}|${cv}`;
-    if (!markActivityFingerprint_(fp)) continue;
-    await cloudWriteNoCors_("activity_log", {
-      uid: u,
-      date: d,
-      event: "forum_daily_dist",
-      value: rv + cv,
-      note: `range:${startDate}~${endDate};replies:${rv};cites:${cv}`,
-      ts: Date.now(),
-    });
+  const byDay = buildForumByDayFromBuckets_(repliesByDay, citesByDay, startDate, endDate);
+  const deduped = await resolveForumFetchDedup_(u, byDay, startDate, endDate);
+  Object.entries(deduped.netByDay || {}).forEach(([date, counts]) => {
+    if (counts.action !== "insert" && counts.action !== "update") return;
+    logForumActivityToGas_(u, date, counts.replies, counts.citations);
+  });
+}
+
+function normalizeDateISO_(s) {
+  const raw = String(s || "").trim();
+  if (!raw) return "";
+  const m = raw.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (m) {
+    return m[1] + "-" + String(m[2]).padStart(2, "0") + "-" + String(m[3]).padStart(2, "0");
   }
+  const d = new Date(raw);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return raw;
+}
+
+function enumerateDates_(startDate, endDate) {
+  const out = [];
+  if (!startDate || !endDate) return out;
+  const d = new Date(startDate + "T12:00:00");
+  const end = new Date(endDate + "T12:00:00");
+  if (isNaN(d.getTime()) || isNaN(end.getTime())) return out;
+  while (d <= end) {
+    out.push(d.toISOString().slice(0, 10));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+
+function buildForumByDayFromBuckets_(repliesByDay, citesByDay, startDate, endDate) {
+  const byDay = {};
+  enumerateDates_(startDate, endDate).forEach((d) => {
+    byDay[d] = {
+      replies: Number(repliesByDay?.[d] || 0),
+      citations: Number(citesByDay?.[d] || 0),
+    };
+  });
+  return byDay;
+}
+
+function expandByDayRange_(byDay, startDate, endDate) {
+  const full = {};
+  enumerateDates_(startDate, endDate).forEach((d) => {
+    const src = byDay && byDay[d];
+    full[d] = {
+      replies: src ? parseInt(src.replies, 10) || 0 : 0,
+      citations: src ? parseInt(src.citations, 10) || 0 : 0,
+    };
+  });
+  return full;
+}
+
+async function fetchActivityFromGAS_(uid, startDate, endDate) {
+  if (!CLOUD_GAS_URL || !uid) return [];
+  try {
+    const data = await cloudJsonp_({
+      action: "activity_fetch",
+      uid: String(uid),
+      startDate: String(startDate || ""),
+      endDate: String(endDate || ""),
+      sheet: FS_ACTIVITY_SHEET,
+    });
+    return data?.ok && data.rows ? data.rows : [];
+  } catch (e) {
+    console.warn("fetchActivityFromGAS_", e);
+    return [];
+  }
+}
+
+function mergeByDayWithCloud_(fullByDay, cloudRows, startDate, endDate) {
+  const existing = {};
+  (cloudRows || []).forEach((r) => {
+    const d = normalizeDateISO_(r.date);
+    if (d) existing[d] = { replies: parseInt(r.replies, 10) || 0, citations: parseInt(r.citations, 10) || 0 };
+  });
+  const netByDay = {};
+  let netR = 0;
+  let netC = 0;
+  enumerateDates_(startDate, endDate).forEach((d) => {
+    const scraped = fullByDay[d] || { replies: 0, citations: 0 };
+    const cloud = existing[d];
+    if (!cloud) {
+      netByDay[d] = { replies: scraped.replies, citations: scraped.citations, action: "insert" };
+      netR += scraped.replies;
+      netC += scraped.citations;
+      return;
+    }
+    const dR = Math.max(0, scraped.replies - cloud.replies);
+    const dC = Math.max(0, scraped.citations - cloud.citations);
+    if (dR <= 0 && dC <= 0) {
+      netByDay[d] = { replies: cloud.replies, citations: cloud.citations, action: "unchanged" };
+      return;
+    }
+    netByDay[d] = {
+      replies: Math.max(scraped.replies, cloud.replies),
+      citations: Math.max(scraped.citations, cloud.citations),
+      action: "update",
+    };
+    netR += dR;
+    netC += dC;
+  });
+  return { netByDay, netR, netC };
+}
+
+async function resolveForumFetchDedup_(uid, byDay, startDate, endDate) {
+  const fullByDay = expandByDayRange_(byDay || {}, startDate, endDate);
+  let cloudRows = [];
+  if (_frostGasOnline_ && CLOUD_GAS_URL) {
+    cloudRows = await fetchActivityFromGAS_(uid, startDate, endDate);
+  }
+  return mergeByDayWithCloud_(fullByDay, cloudRows, startDate, endDate);
+}
+
+function frostGasPostBeacon_(payload) {
+  try {
+    const body = JSON.stringify(payload);
+    if (navigator.sendBeacon) {
+      const ok = navigator.sendBeacon(CLOUD_GAS_URL, new Blob([body], { type: "text/plain;charset=UTF-8" }));
+      if (ok) return;
+    }
+    fetch(CLOUD_GAS_URL, { method: "POST", mode: "no-cors", body }).catch(() => {});
+  } catch (e) {
+    console.warn("frostGasPostBeacon_", e);
+  }
+}
+
+function logForumActivityToGas_(uid, date, replies, citations) {
+  if (!CLOUD_GAS_URL || !uid || !date) return;
+  frostGasPostBeacon_({
+    sheet: FS_ACTIVITY_SHEET,
+    type: "activity_log",
+    uid: String(uid),
+    date: normalizeDateISO_(date),
+    replies: parseInt(replies, 10) || 0,
+    citations: parseInt(citations, 10) || 0,
+  });
 }
 
 function setCloudSavingUi_(show, text, title) {
@@ -8434,7 +8717,7 @@ function collectFullSavePayload_() {
   save();
   return {
     uid: cloudUid_(),
-    client_ver: "frost-frontier-web",
+    client_ver: FS_HTML_VERSION,
     ts: Date.now(),
     save_json: localStorage.getItem(SAVE_KEY) || "{}",
     assets_json: localStorage.getItem(ASSET_KEY) || "{}",
@@ -8512,13 +8795,75 @@ async function loadCloudSave_() {
 async function pingCloudSave_() {
   try {
     const ret = await cloudRequestRead_("ping", {});
+    _frostGasOnline_ = true;
+    updateFrostConnectionHud_();
     const ver = String(ret?.v || "-");
     logSave_(`云端连线正常（${ver}）。`);
     alert(`云端连线正常：${ver}`);
   } catch (e) {
+    _frostGasOnline_ = false;
+    updateFrostConnectionHud_();
     logSave_(`云端连线失败：${e?.message || e}`);
     alert(`云端连线失败：${e?.message || e}`);
   }
+}
+
+function installFrostGameHud_() {
+  if (!byId("fs-version-badge")) {
+    const vb = document.createElement("div");
+    vb.id = "fs-version-badge";
+    vb.className = "fs-game-hud-badge fs-version-badge";
+    document.body.appendChild(vb);
+  }
+  if (!byId("fs-connection-status")) {
+    const cs = document.createElement("div");
+    cs.id = "fs-connection-status";
+    cs.className = "fs-game-hud-badge fs-connection-badge";
+    document.body.appendChild(cs);
+  }
+  updateFrostVersionHud_();
+  updateFrostConnectionHud_();
+  checkFrostGasConnection_();
+  if (!window._frostConnTimer_) {
+    window._frostConnTimer_ = setInterval(checkFrostGasConnection_, 15000);
+  }
+}
+
+function updateFrostVersionHud_() {
+  const vb = byId("fs-version-badge");
+  if (vb) vb.textContent = FS_HTML_VERSION;
+  const loggedIn = Number(state?.profile?.uid || 0) > 0 && String(state?.profile?.id || "").trim();
+  const loginOpen = !byId("screen-login")?.classList.contains("hidden");
+  vb?.classList.toggle("hidden", !loggedIn || loginOpen);
+}
+
+function updateFrostConnectionHud_() {
+  const cs = byId("fs-connection-status");
+  if (!cs) return;
+  const loggedIn = Number(state?.profile?.uid || 0) > 0 && String(state?.profile?.id || "").trim();
+  const loginOpen = !byId("screen-login")?.classList.contains("hidden");
+  if (!loggedIn || loginOpen) {
+    cs.classList.add("hidden");
+    return;
+  }
+  cs.classList.remove("hidden");
+  if (_frostGasOnline_) {
+    cs.textContent = "☁️ 连线中";
+    cs.dataset.state = "online";
+  } else {
+    cs.textContent = "☁️ 无连线";
+    cs.dataset.state = "offline";
+  }
+}
+
+async function checkFrostGasConnection_() {
+  try {
+    await cloudRequestRead_("ping", {});
+    _frostGasOnline_ = true;
+  } catch (_) {
+    _frostGasOnline_ = false;
+  }
+  updateFrostConnectionHud_();
 }
 
 function exportSaveFile_() {
@@ -8546,8 +8891,7 @@ async function importSaveFile_(ev) {
   const f = inp?.files?.[0];
   if (!f) return;
   try {
-    const txt = await f.text();
-    const parsed = parseSaveImportText_(txt);
+    const parsed = await parseSaveImportFile_(f);
     if (!isUsableSave_(parsed)) {
       alert("存档格式无效，读取失败。");
       logSave_("读取存档失败：文件格式无效。");
@@ -8559,7 +8903,11 @@ async function importSaveFile_(ev) {
     inp.value = "";
     location.reload();
   } catch (e) {
-    alert("读取存档失败，请确认文件是有效 JSON。");
+    const msg =
+      e && e.message === "exceljs_not_loaded"
+        ? "Excel 组件未加载，无法读取 .xlsx 存档。"
+        : "读取存档失败，请确认文件是有效 JSON / CSV / Excel 存档。";
+    alert(msg);
     logSave_(`读取存档失败：${e?.message || e}`);
     if (inp) inp.value = "";
   }

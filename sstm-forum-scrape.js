@@ -1,13 +1,16 @@
 /**
- * SSTM 论坛抓取（自 checkin_game.html 移植）
- * 与打卡游戏分离：localStorage / sessionStorage 键前缀 ffSstm_
+ * SSTM 论坛抓取（对齐 hexa_master_3d：GAS fetch_url → Frost-Survival-proxy）
+ * 配置：window.FrostForumConfig = { gasUrl, proxyPrefix }
  */
 (function () {
-  const FORUM_PROXY = "https://api.codetabs.com/v1/proxy?quest=";
+  const cfg = window.FrostForumConfig || {};
+  const GAS_URL = String(cfg.gasUrl || "").trim();
+  const FORUM_PROXY =
+    String(cfg.proxyPrefix || "").trim() ||
+    "https://sstm-raffle.vercel.app/Frost-Survival-proxy?url=";
   const NOVICE_FORUM_RE = /forum\/32[-\/]/;
-  const FETCH_MS = 14000;
+  const FETCH_MS = 35000;
 
-  /** 以浏览器本地时区将时间戳转成 YYYY-MM-DD（用于与日期输入框比对） */
   function isoDateLocalFromTs_(ts) {
     const d = new Date(ts);
     const y = d.getFullYear();
@@ -32,34 +35,115 @@
     });
   }
 
-  async function fetchViaProxy_(bustUrl) {
+  function proxyOkText_(text) {
+    return text && text.length > 80 && (text.indexOf("<") >= 0 || /profile|ipsQuote|cProfileContent/i.test(text));
+  }
+
+  function gasJsonp_(params, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      if (!GAS_URL) {
+        reject(new Error("missing_gas_url"));
+        return;
+      }
+      const cb = "ff_gas_cb_" + Date.now() + "_" + Math.floor(Math.random() * 9999);
+      let done = false;
+      const tid = setTimeout(() => {
+        if (done) return;
+        done = true;
+        try {
+          delete window[cb];
+        } catch (_) {}
+        const sc = document.getElementById(cb + "_s");
+        if (sc) sc.remove();
+        reject(new Error("gas_timeout"));
+      }, timeoutMs || FETCH_MS);
+      window[cb] = (data) => {
+        if (done) return;
+        done = true;
+        clearTimeout(tid);
+        try {
+          delete window[cb];
+        } catch (_) {}
+        const sc = document.getElementById(cb + "_s");
+        if (sc) sc.remove();
+        if (data && data.ok) resolve(data);
+        else reject(new Error((data && data.error) || "gas_err"));
+      };
+      const qs = Object.keys(params)
+        .map((k) => encodeURIComponent(k) + "=" + encodeURIComponent(params[k]))
+        .join("&");
+      const s = document.createElement("script");
+      s.id = cb + "_s";
+      s.src = GAS_URL + "?" + qs + "&callback=" + cb + "&_t=" + Date.now();
+      s.onerror = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(tid);
+        try {
+          delete window[cb];
+        } catch (_) {}
+        s.remove();
+        reject(new Error("gas_load_fail"));
+      };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function fetchViaGas_(url) {
+    const data = await gasJsonp_({ action: "fetch_url", url: url }, FETCH_MS);
+    const text = (data && (data.html || data.contents)) || "";
+    if (proxyOkText_(text)) return text;
+    throw new Error((data && data.error) || "gas_proxy_empty");
+  }
+
+  async function fetchViaVercel_(bustUrl) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), FETCH_MS);
     try {
-      const resp = await fetch(FORUM_PROXY + encodeURIComponent(bustUrl), { signal: ctrl.signal });
+      const resp = await fetch(FORUM_PROXY + encodeURIComponent(bustUrl), {
+        signal: ctrl.signal,
+        referrerPolicy: "no-referrer",
+        credentials: "omit",
+      });
       if (!resp.ok) throw new Error("网络错误 " + resp.status);
-      return await resp.text();
+      const text = await resp.text();
+      if (!proxyOkText_(text)) throw new Error("empty_response");
+      return text;
     } finally {
       clearTimeout(timer);
     }
   }
 
   async function ffProxyGet(url, noCache) {
+    const sk = "ffSstm_px_" + url;
     if (!noCache) {
-      const sk = "ffSstm_px_" + url;
-      const hit = sessionStorage.getItem(sk);
-      if (hit) return hit;
+      try {
+        const hit = sessionStorage.getItem(sk);
+        if (hit) return hit;
+      } catch (_) {}
     }
     const bustUrl = url + (url.includes("?") ? "&" : "?") + "_bust=" + Date.now();
-    const text = await fetchViaProxy_(bustUrl);
-    if (!noCache && url.includes("controller=profile")) {
+    if (GAS_URL) {
       try {
-        sessionStorage.setItem("ffSstm_px_" + url, text);
+        const text = await fetchViaGas_(url);
+        try {
+          sessionStorage.setItem(sk, text);
+        } catch (_) {}
+        return text;
       } catch (e) {
-        /* ignore */
+        console.warn("[frost-proxy] GAS FAIL:", e.message || e);
       }
     }
-    return text;
+    try {
+      const text = await fetchViaVercel_(bustUrl);
+      try {
+        sessionStorage.setItem(sk, text);
+      } catch (_) {}
+      return text;
+    } catch (e) {
+      console.warn("[frost-proxy] Vercel FAIL:", e.message || e);
+      throw new Error("所有中转站均不可用（GAS + Frost-Survival-proxy 均失败）");
+    }
   }
 
   async function ffGetSlug(uid) {
@@ -143,7 +227,6 @@
       cache = new Map();
     }
 
-    // 页码→该页第一条时间（用于跳过明显太新的页面；参考 gal-story.html 的实现，但不依赖其代码）
     const pageIndex = loadPageIndex_(slug);
     const indexedPages = Object.keys(pageIndex)
       .map((x) => parseInt(x, 10))
@@ -155,28 +238,23 @@
         const ts = new Date(pageIndex[p]).getTime();
         if (!Number.isFinite(ts) || ts <= 0) continue;
         const pd = isoDateLocalFromTs_(ts);
-        // 若该页第一条仍晚于统计结束日，说明这页太新，需要继续往后翻页
         if (pd > endStr) page = p;
         else break;
       }
-      if (page > 1) onProgress("已根据缓存快速跳至第 " + page + " 页附近（缩短寻找 " + endStr + " 的翻页耗时）");
+      if (page > 1) onProgress("已根据缓存快速跳至第 " + page + " 页附近…");
     }
     let done = false;
     let newLastTs = lastTs;
 
     while (!done) {
       if (page > maxPages) {
-        onProgress("已达本轮页数上限（约 " + maxPages + " 页），先显示目前统计；可再按同步继续。");
+        onProgress("已达本轮页数上限，先显示目前统计；可再按同步继续。");
         break;
       }
       onProgress(
         citeBudget === Number.POSITIVE_INFINITY
-          ? "读取发帖列表 第 " + page + " 页…（引用验证：无上限，将逐条核对）"
-          : "读取发帖列表 第 " +
-              page +
-              " 页…（引用验证剩余 " +
-              citeBudget +
-              " 次；为每轮上限，用完后本轮不再计新引用，回复数仍累计，可再同步继续）"
+          ? "读取发帖列表 第 " + page + " 页…（引用验证：无上限）"
+          : "读取发帖列表 第 " + page + " 页…（引用验证剩余 " + citeBudget + " 次）"
       );
 
       const url =
@@ -277,7 +355,7 @@
               cache.set(x.cid, false);
               continue;
             }
-            const qs = el.querySelectorAll('.ipsQuote[data-ipsquote-userid="' + uid + '"]');
+            const qs = qDoc.querySelectorAll('.ipsQuote[data-ipsquote-userid="' + uid + '"]');
             const ok = Array.from(qs).some((q) => !q.parentElement.closest(".ipsQuote"));
             cache.set(x.cid, ok);
             if (ok) {
@@ -290,12 +368,11 @@
           await new Promise((r) => setTimeout(r, 90));
         }
       } else if (toCheck.length && citeBudget <= 0) {
-        onProgress("本轮跳过引用网络验证（已无剩余配额），仅更新回复计数。");
+        onProgress("本轮跳过引用网络验证，仅更新回复计数。");
       }
 
       if (done) break;
       if (!foundNew) {
-        // 个人页从新到旧排序：若本页帖子全部晚于「结束日」，仍需翻页才能看到区间内（例如 3 月）的旧帖
         if (minPostDayOnPage && endStr && minPostDayOnPage > endStr) {
           onProgress("本页帖子均晚于统计结束日，继续翻页查找区间内发言…");
         } else {
@@ -341,7 +418,6 @@
     const onProgress = typeof opt.onProgress === "function" ? opt.onProgress : function () {};
     const overallMs = Number(opt.overallMs) > 0 ? Number(opt.overallMs) : 240000;
     const maxPages = Number(opt.maxPages) > 0 ? Number(opt.maxPages) : 80;
-    /** null/undefined = 不限制引用验证次数（逐条核对）；0 = 完全不验引用（快速同步）；正数 = 上限 */
     let maxCitationChecks;
     if (opt.maxCitationChecks === 0) maxCitationChecks = 0;
     else if (opt.maxCitationChecks == null) maxCitationChecks = null;
@@ -353,7 +429,7 @@
     return withTimeout(
       (async () => {
         onProgress("连线代理：取得个人页 slug…");
-        const slug = await withTimeout(ffGetSlug(uid), 20000, "取得个人页逾时（代理可能被挡或网络不稳）");
+        const slug = await withTimeout(ffGetSlug(uid), 20000, "取得个人页逾时");
         onProgress("已取得资料，开始扫描列表…");
         return ffScrapeRange_(uid, slug, startDate, endDate, keySuffix || "_ffshop", {
           onProgress,
@@ -362,11 +438,9 @@
         });
       })(),
       overallMs,
-      "同步逾时（约 " +
-        Math.round(overallMs / 1000) +
-        "s）：请把起迄都设成「今天」、或关闭代理广告拦截后重试；亦可用手动记帐。"
+      "同步逾时：请把起迄都设成「今天」后重试，或使用快速同步。"
     );
   }
 
-  window.SstmForumScrape = { scrapeRange, FORUM_PROXY, NOVICE_FORUM_RE };
+  window.SstmForumScrape = { scrapeRange, FORUM_PROXY, NOVICE_FORUM_RE, ffProxyGet };
 })();
