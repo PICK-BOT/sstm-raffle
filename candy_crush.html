@@ -97,6 +97,49 @@ body.skin-retro    #game{background:radial-gradient(ellipse at 50% 30%,#3a2000 0
 /* selected 状态：outline 而非 box-shadow，确保选中效果在覆盖层之上且不被遮挡 */
 .candy.selected{outline:3px solid #fde68a !important;outline-offset:1px;z-index:9 !important;animation:selPulse .4s ease-in-out infinite alternate}
 
+/* ═══════════════════════════════════════════
+   🌿 场地效果覆盖层 CSS（v2.4.0 新增）
+   草地/泥沼/石墙/荆棘/传送阵 各自使用 ::after 伪元素，
+   pointer-events:none 确保不阻挡点击事件
+   ═══════════════════════════════════════════ */
+/* 🌿 草地 — 绿色植物覆盖，需旁边消除才清除 */
+.candy.terrain-grass::after{content:'🌿';position:absolute;inset:0;border-radius:9px;
+  background:rgba(34,197,94,.52);box-shadow:inset 0 0 0 3px rgba(74,222,128,.85);
+  pointer-events:none;z-index:2;display:flex;align-items:center;justify-content:center;
+  font-size:1.05em;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+/* 🟫 泥沼 — 棕色泥土覆盖，需两次消除清除 */
+.candy.terrain-mud1::after{content:'🟫';position:absolute;inset:0;border-radius:9px;
+  background:rgba(120,53,15,.6);box-shadow:inset 0 0 0 3px rgba(180,83,9,.8);
+  pointer-events:none;z-index:2;display:flex;align-items:center;justify-content:center;
+  font-size:1.05em}
+.candy.terrain-mud2::after{content:'💧';position:absolute;inset:0;border-radius:9px;
+  background:rgba(120,53,15,.85);box-shadow:inset 0 0 0 3px rgba(92,40,5,.9),inset 0 0 8px rgba(0,0,0,.4);
+  pointer-events:none;z-index:2;display:flex;align-items:center;justify-content:center;
+  font-size:1.05em}
+/* 🪨 石墙 — 灰色岩石，只有特殊糖果爆炸才能清除 */
+.candy.terrain-stone::after{content:'🪨';position:absolute;inset:0;border-radius:9px;
+  background:rgba(71,85,105,.75);box-shadow:inset 0 0 0 3px rgba(148,163,184,.7),inset 0 0 10px rgba(0,0,0,.5);
+  pointer-events:none;z-index:2;display:flex;align-items:center;justify-content:center;
+  font-size:1em}
+/* 🌵 荆棘 — 消除旁边糖果时有几率损耗一步 */
+.candy.terrain-thorn::after{content:'🌵';position:absolute;inset:0;border-radius:9px;
+  background:rgba(20,83,45,.6);box-shadow:inset 0 0 0 3px rgba(134,239,172,.6);
+  pointer-events:none;z-index:2;display:flex;align-items:center;justify-content:center;
+  font-size:1em;animation:thornPulse 1.5s ease-in-out infinite alternate}
+@keyframes thornPulse{from{box-shadow:inset 0 0 0 3px rgba(134,239,172,.4)}to{box-shadow:inset 0 0 0 3px rgba(74,222,128,.9),0 0 6px rgba(74,222,128,.4)}}
+/* 🌀 传送阵 — 成对出现，糖果从一端进另一端出 */
+.candy.terrain-portal-a::after{content:'🌀';position:absolute;inset:0;border-radius:9px;
+  background:rgba(124,58,237,.55);box-shadow:inset 0 0 0 3px rgba(196,181,253,.8);
+  pointer-events:none;z-index:2;display:flex;align-items:center;justify-content:center;
+  font-size:1em;animation:portalSpin 2s linear infinite}
+.candy.terrain-portal-b::after{content:'⭕';position:absolute;inset:0;border-radius:9px;
+  background:rgba(6,95,70,.55);box-shadow:inset 0 0 0 3px rgba(167,243,208,.8);
+  pointer-events:none;z-index:2;display:flex;align-items:center;justify-content:center;
+  font-size:1em;animation:portalSpin 2s linear infinite reverse}
+@keyframes portalSpin{from{filter:hue-rotate(0deg)}to{filter:hue-rotate(360deg)}}
+.candy.teleport-in{animation:teleportPop .35s ease-out}
+@keyframes teleportPop{0%{transform:scale(.2) rotate(0deg);opacity:.3}60%{transform:scale(1.15) rotate(200deg)}100%{transform:scale(1) rotate(360deg);opacity:1}}
+
 /* 暗格样式 */
 .candy.dark-unrevealed{background:radial-gradient(circle at 50% 35%,#3b2a7a 0%,#12082a 72%)!important;color:#a5b4fc!important;border:2px solid rgba(129,140,248,.65)!important;box-shadow:inset 0 0 16px rgba(99,102,241,.55),0 4px 0 rgba(0,0,0,.5)!important;animation:darkPulse 1.4s ease-in-out infinite alternate}
 @keyframes darkPulse{from{filter:brightness(.85)}to{filter:brightness(1.15)}}
@@ -400,8 +443,12 @@ body.skin-retro    #game{background:radial-gradient(ellipse at 50% 30%,#3a2000 0
 <div id="loading-mask"><div class="loading-spinner"></div><div id="loading-text">读取中...</div></div>
 <script>
 // ══════════════════════════════════════════
-// 糖果小镇 v2 · 完整修复版
-// 修复：1.点击失效 2.GAS URL 3.论坛抓取 4.特殊糖果真正出现 5.卡位 6.10种关卡类型
+// 糖果小镇 v2.4.2 · 场地效果版
+// v2.3.1 基础上新增：5种场地障碍机制（草地/泥沼/石墙/荆棘/传送阵）
+// v2.4.1：草地/石墙/荆棘改为固定从棋盘最底部整行往上填充，避免散布导致卡位
+// v2.4.2：①草地/石墙/荆棘格糖果完全无法选中/交换，必须先清除场地才能移动
+//         ②修复重开游戏不会自动载入云端记录的问题：有保存ID/UID时自动登入；
+//           云端/本机合并改为「智能合并」（取并集/取较大值），不再互相覆盖丢失进度
 // ══════════════════════════════════════════
 
 // ── 糖果颜色 ──
@@ -416,6 +463,34 @@ const CANDY_COLORS=[
 
 // ── 特殊糖果类型 ──
 const SP={NONE:0,STRH:1,STRV:2,WRAP:3,BOMB:4,FISH:5};
+
+// ═══════════════════════════════════════════════════════════════
+// 🌿 场地效果类型（v2.4.0 新增）
+// NONE  = 普通格（无场地效果）
+// GRASS = 草地：旁边消除才能清除，通关条件包含「消除所有草地」
+// MUD   = 泥沼：需两次消除（先变浅泥 mud1→mud2，再消 mud2）；mud2阶段糖果下落时额外延迟
+// STONE = 石墙：只有特殊糖果（条纹/包装/彩弹/鱼鱼）爆炸范围内才能清除，普通消除无效
+// THORN = 荆棘：旁边消除时有 40% 几率额外扣 1 步（触发后荆棘消失）
+// PORTAL_A/B = 传送阵（成对）：糖果落入 A/B 时，从配对的 B/A 出现
+// ═══════════════════════════════════════════════════════════════
+const TERRAIN={
+  NONE:0,
+  GRASS:1,
+  MUD1:2,   // 泥沼层1（需第一次消除变成 MUD2）
+  MUD2:3,   // 泥沼层2（再一次消除才完全清除）
+  STONE:4,
+  THORN:5,
+  PORTAL_A:6,
+  PORTAL_B:7,
+};
+// 首次出现场地效果的最低关卡（低于此关卡不会生成）
+const TERRAIN_UNLOCK={
+  [TERRAIN.GRASS]:   15,
+  [TERRAIN.MUD1]:    20,
+  [TERRAIN.STONE]:   25,
+  [TERRAIN.THORN]:   30,
+  [TERRAIN.PORTAL_A]:35,
+};
 
 // ── 10种关卡类型 ──
 const LEVEL_TYPES={
@@ -476,6 +551,44 @@ function genLevelCfg(id){
   const iceCount=Math.max(6, Math.min(Math.round(totCells*0.25)+tier*3, Math.round(totCells*0.45)));
   const bombTarget=2+tier*2;
 
+  // ═══════════════════════════════════════════════════════════════
+  // 🌿 场地效果注入（v2.4.0 新增）：
+  // 达到解锁关卡后，每关有几率额外叠加 1 种场地效果（不取代原关卡类型，
+  // 是在原玩法之上叠加的额外通关条件）。解锁越早的场地权重越高，
+  // 越往后关卡，越晚解锁的场地效果出现机率追上来，保持新鲜感。
+  // ═══════════════════════════════════════════════════════════════
+  let terrainType=TERRAIN.NONE, terrainCount=0, portalCount=0;
+  const terrainCandidates=[];
+  if(id>=TERRAIN_UNLOCK[TERRAIN.GRASS])  terrainCandidates.push(TERRAIN.GRASS);
+  if(id>=TERRAIN_UNLOCK[TERRAIN.MUD1])   terrainCandidates.push(TERRAIN.MUD1);
+  if(id>=TERRAIN_UNLOCK[TERRAIN.STONE])  terrainCandidates.push(TERRAIN.STONE);
+  if(id>=TERRAIN_UNLOCK[TERRAIN.THORN])  terrainCandidates.push(TERRAIN.THORN);
+  if(id>=TERRAIN_UNLOCK[TERRAIN.PORTAL_A])terrainCandidates.push(TERRAIN.PORTAL_A);
+  // 70% 几率本关出现一种场地效果（确保不是每关都有，维持节奏感）；
+  // 用 id 做确定性伪随机种子，保证同一关卡每次生成内容一致
+  if(terrainCandidates.length>0){
+    const seedRoll=((id*2654435761)>>>0)%100;
+    if(seedRoll<70){
+      const pickIdx=((id*40503)>>>0)%terrainCandidates.length;
+      terrainType=terrainCandidates[pickIdx];
+      const tierBonus=Math.floor((id-TERRAIN_UNLOCK[terrainType])/10);
+      if(terrainType===TERRAIN.PORTAL_A){
+        portalCount=Math.min(3, 1+Math.floor(tierBonus/2)); // 传送阵对数
+      } else {
+        terrainCount=Math.max(3, Math.min(Math.round(totCells*0.16)+tierBonus*2, Math.round(totCells*0.3)));
+        // 🪨 石墙完全不参与三消，固定生成在底部会占用整行可用空间，
+        // 数量需更保守，避免底部铺满整行导致长期无解（最多约2行的量）
+        if(terrainType===TERRAIN.STONE){
+          terrainCount=Math.min(terrainCount, cols*2);
+        }
+        // 草地/荆棘虽参与三消，但固定填满底部仍需留出至少3行供正常游玩
+        if(terrainType===TERRAIN.GRASS||terrainType===TERRAIN.THORN){
+          terrainCount=Math.min(terrainCount, Math.round(totCells*0.3), cols*Math.max(1,rows-3));
+        }
+      }
+    }
+  }
+
   return {
     id,
     name:typeNames[pos]+(tier>0?' Lv'+(tier+1):''),
@@ -483,6 +596,7 @@ function genLevelCfg(id){
     scoreTarget,jellyCount,collectColor,collectCount,
     orderTarget,ingredCount,iceCount,bombTarget,
     darkMode:type===LEVEL_TYPES.DARK,
+    terrainType,terrainCount,portalCount,
     tier,pos,
   };
 }
@@ -506,7 +620,7 @@ function getMenuLevelMax(){
 // ══ CONFIG 常量 ══
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwtg97eIbxTMTAf2vx0hzOaJbD9DCwKJeCUibt20dsmMpXTgNzwsRRoo5U-UHgx8xM8eg/exec";
 const SHEET = "糖果小镇";
-const GAME_VERSION = "v2.3.1";
+const GAME_VERSION = "v2.4.2";
 const CANDY_SAVE_XLSX_PASSWORD = "sstm";
 const FORUM_PROXY = "https://sstm-raffle.vercel.app/candy-proxy?url="; // 保留旧变量供兼容
 
@@ -642,6 +756,41 @@ async function cloudLoad(id){
   try{ const d=await gasJsonp({sheet:SHEET,action:"load",id}); return d.data||null; }catch(e){ return null; }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 🔄 云端/本机存档智能合并（v2.4.2 新增）
+// 不直接用云端整体覆盖本机（避免本机较新的进度被云端旧数据冲掉），
+// 而是逐项取「两边较多/较大」的值，确保无论先前在哪台机器游玩，
+// 通关记录、星级、金币、道具都不会倒退或遗失。
+// ═══════════════════════════════════════════════════════════════
+function mergeCloudState_(cs){
+  if(!cs||typeof cs!=='object')return;
+  // 关卡解锁/通关：取并集（任一边有就保留）
+  G.unlocked=Array.from(new Set([...(G.unlocked||[1]),...(cs.unlocked||[1])])).sort((a,b)=>a-b);
+  G.cleared=Array.from(new Set([...(G.cleared||[]),...(cs.cleared||[])])).sort((a,b)=>a-b);
+  // 各关星级：每关取较高星数
+  G.levelStars=G.levelStars||{};
+  Object.keys(cs.levelStars||{}).forEach(lv=>{
+    G.levelStars[lv]=Math.max(G.levelStars[lv]||0,cs.levelStars[lv]||0);
+  });
+  // 数值型资产：取较大值（避免覆盖掉本机刚赚到、云端还没same步的部分）
+  G.coins=Math.max(G.coins||0,cs.coins||0);
+  G.tickets=Math.max(G.tickets||0,cs.tickets||0);
+  G.replies=Math.max(G.replies||0,cs.replies||0);
+  G.citations=Math.max(G.citations||0,cs.citations||0);
+  G.totalCoinsEarned=Math.max(G.totalCoinsEarned||0,cs.totalCoinsEarned||0);
+  G.totalStarsEarned=Math.max(G.totalStarsEarned||0,cs.totalStarsEarned||0);
+  // 道具：取较大值
+  G.boosters=G.boosters||{hammer:0,lollipop:0,fish:0};
+  Object.keys(cs.boosters||{}).forEach(k=>{
+    G.boosters[k]=Math.max(G.boosters[k]||0,cs.boosters[k]||0);
+  });
+  // 已购买皮肤：取并集
+  G.purchasedSkins=Array.from(new Set([...(G.purchasedSkins||[]),...(cs.purchasedSkins||[])]));
+  // 已看过的教程弹窗：取并集（避免同一提示在另一台设备上重复弹出）
+  G.seenLevelTypes=Array.from(new Set([...(G.seenLevelTypes||[]),...(cs.seenLevelTypes||[])]));
+  G.seenTerrainTypes=Array.from(new Set([...(G.seenTerrainTypes||[]),...(cs.seenTerrainTypes||[])]));
+}
+
 function openSkinPanel(){
   updateSkinUI();
   var el=document.getElementById('skin-overlay');
@@ -680,9 +829,7 @@ async function retryCloud(){
       if(cd&&cd.state_json){
         try{
           var cs=JSON.parse(cd.state_json);
-          if((cs.coins||0)>(G.coins||0)) G.coins=cs.coins;
-          if((cs.tickets||0)>(G.tickets||0)) G.tickets=cs.tickets;
-          Object.keys(cs.boosters||{}).forEach(function(k){ if((cs.boosters[k]||0)>(G.boosters[k]||0)) G.boosters[k]=cs.boosters[k]; });
+          mergeCloudState_(cs); // 🔄 智能合并：同登入流程一致，含通关记录/解锁关卡/星级
           saveState(); updateMenuUI();
         }catch(e){}
       }
@@ -743,7 +890,7 @@ async function doLogin(){
     if(cloud&&cloud.state_json){
       try{
         const cs=JSON.parse(cloud.state_json);
-        Object.assign(G,cs);
+        mergeCloudState_(cs); // 🔄 智能合并：取本机与云端较多/较大的进度，避免互相覆盖丢失记录
         G.id=id; G.uid=uid;
       }catch(e){}
     }
@@ -1808,16 +1955,22 @@ let isRepeatChallenge=false;
 let movesOvertime=false;
 let boostersLeft={hammer:0,lollipop:0,fish:0};
 let jellyLeft=0,collectDone=0,ingredDone=0,bombMade=0,iceDone=0;
+let terrainDone=0,terrainTotal=0; // 🌿 场地效果：已清除数 / 总数（v2.4.0 新增）
 let shownSpecialTypes=new Set();
+let shownTerrainTypes=new Set();   // 🌿 已展示过说明弹窗的场地类型（v2.4.0 新增）
+let shownGoalTypes=new Set();      // 🎯 已展示过说明弹窗的通关条件类型（v2.4.0 新增）
 let cellSize=50;
 
 // ════ 棋盘生成 ════
 function makeCell(color=-1,special=SP.NONE){
-  return {color,special,jelly:0,ice:0,ingredient:false,dark:false,_revealed:false,_moveIngred:false,_pendingIngred:false,el:null,cid:0};
+  // terrain: TERRAIN.* 场地类型；portalPair: 配对的传送阵格坐标 {r,c}
+  return {color,special,jelly:0,ice:0,ingredient:false,dark:false,_revealed:false,
+          _moveIngred:false,_pendingIngred:false,el:null,cid:0,
+          terrain:TERRAIN.NONE,portalPair:null};
 }
 
 function generateBoard(cfg){
-  const {cols,rows,colors,type,jellyCount,iceCount,ingredCount}=cfg;
+  const {cols,rows,colors,type,jellyCount,iceCount,ingredCount,terrainType,terrainCount,portalCount}=cfg;
   const b=[];
   for(let r=0;r<rows;r++){
     b.push([]);
@@ -1893,6 +2046,51 @@ function generateBoard(cfg){
       b[r][cv]._revealed=false;
     }
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🌿 场地效果放置（v2.4.0 新增，v2.4.1 调整）
+  // 草地/石墙/荆棘：固定从棋盘「最底部」开始，整行依次往上填满
+  // （而非随机散布），避免场地格夹在棋盘中间、卡住糖果交换与下落路径。
+  // ═══════════════════════════════════════════════════════════════
+  function fillBottomRows_(terrainVal){
+    // 从最后一行开始，整行填入场地，直到填满 terrainCount 个格子（食材格跳过，改填下一格）
+    let need=terrainCount;
+    for(let r=rows-1;r>=0&&need>0;r--){
+      for(let c=0;c<cols&&need>0;c++){
+        if(b[r][c].ingredient)continue; // 食材格不可覆盖场地，跳过留给下一行补
+        b[r][c].terrain=terrainVal;
+        need--;
+      }
+    }
+  }
+  if(terrainType===TERRAIN.GRASS){
+    fillBottomRows_(TERRAIN.GRASS);
+  } else if(terrainType===TERRAIN.MUD1){
+    // 泥沼维持随机散布（不挡路，只是需多消一次）
+    const pool=positions.filter(([r,cv])=>!b[r][cv].ingredient);
+    shuffleArr(pool);
+    for(let i=0;i<Math.min(terrainCount,pool.length);i++){
+      const [r,cv]=pool[i];
+      b[r][cv].terrain=TERRAIN.MUD1;
+    }
+  } else if(terrainType===TERRAIN.STONE){
+    fillBottomRows_(TERRAIN.STONE);
+  } else if(terrainType===TERRAIN.THORN){
+    fillBottomRows_(TERRAIN.THORN);
+  } else if(terrainType===TERRAIN.PORTAL_A){
+    // 传送阵成对放置：A格落入的糖果会从配对的B格冒出（不挡路，维持随机散布）
+    const pool=positions.filter(([r,cv])=>!b[r][cv].ingredient);
+    shuffleArr(pool);
+    let idx=0;
+    for(let p=0;p<portalCount&&idx+1<pool.length;p++){
+      const [ra,ca]=pool[idx++];
+      const [rb,cb]=pool[idx++];
+      b[ra][ca].terrain=TERRAIN.PORTAL_A;
+      b[ra][ca].portalPair={r:rb,c:cb};
+      b[rb][cb].terrain=TERRAIN.PORTAL_B;
+      b[rb][cb].portalPair={r:ra,c:ca};
+    }
+  }
   return b;
 }
 
@@ -1933,10 +2131,27 @@ function renderBoard(){
 function updateBgCell(r,c){
   const cell=board[r][c];
   if(!cell||!cell.el)return;
-  cell.el.classList.remove('jelly1','jelly2','ice');
+  cell.el.classList.remove('jelly1','jelly2','ice',
+    'terrain-grass','terrain-mud1','terrain-mud2','terrain-stone','terrain-thorn','terrain-portal-a','terrain-portal-b');
   if(cell.jelly===2)cell.el.classList.add('jelly2');
   else if(cell.jelly===1)cell.el.classList.add('jelly1');
   if(cell.ice)cell.el.classList.add('ice');
+  _applyTerrainClass(cell.el,cell.terrain);
+}
+
+// 把 terrain 数值映射成对应的 CSS class
+function _applyTerrainClass(el,terrain){
+  if(!el||terrain===TERRAIN.NONE)return;
+  const map={
+    [TERRAIN.GRASS]:'terrain-grass',
+    [TERRAIN.MUD1]:'terrain-mud1',
+    [TERRAIN.MUD2]:'terrain-mud2',
+    [TERRAIN.STONE]:'terrain-stone',
+    [TERRAIN.THORN]:'terrain-thorn',
+    [TERRAIN.PORTAL_A]:'terrain-portal-a',
+    [TERRAIN.PORTAL_B]:'terrain-portal-b',
+  };
+  if(map[terrain])el.classList.add(map[terrain]);
 }
 
 function renderCell(r,c){
@@ -1984,7 +2199,9 @@ function renderCell(r,c){
   if(cell.ice)el.classList.add('ice');
   // 暗格样式
   if(cell.dark&&!cell._revealed)el.classList.add('dark-unrevealed');
-  
+  // 场地效果样式（v2.4.0 新增）
+  _applyTerrainClass(el,cell.terrain);
+
   boardEl.appendChild(el);
   cell.el=el;
 }
@@ -2021,6 +2238,18 @@ function handleCandyCid(cid){
   if(lollipopMode){triggerLollipop(r,c);return;}
   if(fishMode){triggerFish(r,c);return;}
 
+  // 🌿🪨🌵 草地/石墙/荆棘：糖果被固定，不能选中也不能交换移动，
+  // 必须先靠旁边消除/特殊糖果清除场地后才能恢复可移动
+  if(isImmovableTerrain_(board[r][c].terrain)){
+    showBanner(IMMOVABLE_TERRAIN_MSG_[board[r][c].terrain]||'⛔ 此格被固定，无法移动！','#f87171');
+    if(selectedId!==null){
+      const prevPos=findByCid(selectedId);
+      if(prevPos)board[prevPos.r][prevPos.c].el&&board[prevPos.r][prevPos.c].el.classList.remove('selected');
+      selectedId=null;
+    }
+    return;
+  }
+
   if(selectedId===null){
     // 选中
     selectedId=cid;
@@ -2048,6 +2277,15 @@ function handleCandyCid(cid){
     board[r][c].el&&board[r][c].el.classList.add('selected');
   }
 }
+// 判断该 terrain 是否使糖果完全无法被选中/交换（草地/石墙/荆棘）
+function isImmovableTerrain_(terrain){
+  return terrain===TERRAIN.GRASS||terrain===TERRAIN.STONE||terrain===TERRAIN.THORN;
+}
+const IMMOVABLE_TERRAIN_MSG_={
+  [TERRAIN.GRASS]:'🌿 草地固定无法移动，先消除旁边的糖果！',
+  [TERRAIN.STONE]:'🪨 石墙固定无法移动，用特殊糖果炸开它！',
+  [TERRAIN.THORN]:'🌵 荆棘固定无法移动，先消除旁边的糖果！',
+};
 
 // ════ 交换与消除核心（完全重写，无闭包bug）════
 async function doSwap(r1,c1,r2,c2){
@@ -2095,9 +2333,9 @@ async function doSwap(r1,c1,r2,c2){
   // 更新 el 位置
   if(el2){el2.style.left=(c1*cellSize+1)+'px';el2.style.top=(r1*cellSize+1)+'px';}
   if(el1){el1.style.left=(c2*cellSize+1)+'px';el1.style.top=(r2*cellSize+1)+'px';}
-  // 同步更新视觉覆盖层（果冻/冰块 class 可能随数据变了）
-  if(el2){el2.classList.remove('jelly1','jelly2','ice');if(board[r1][c1].jelly===2)el2.classList.add('jelly2');else if(board[r1][c1].jelly===1)el2.classList.add('jelly1');if(board[r1][c1].ice)el2.classList.add('ice');}
-  if(el1){el1.classList.remove('jelly1','jelly2','ice');if(board[r2][c2].jelly===2)el1.classList.add('jelly2');else if(board[r2][c2].jelly===1)el1.classList.add('jelly1');if(board[r2][c2].ice)el1.classList.add('ice');}
+  // 同步更新视觉覆盖层（果冻/冰块/terrain class 可能随数据变了；terrain 属于格子本身，糖果交换后需贴上新格的场地样式）
+  if(el2){el2.classList.remove('jelly1','jelly2','ice','terrain-grass','terrain-mud1','terrain-mud2','terrain-stone','terrain-thorn','terrain-portal-a','terrain-portal-b');if(board[r1][c1].jelly===2)el2.classList.add('jelly2');else if(board[r1][c1].jelly===1)el2.classList.add('jelly1');if(board[r1][c1].ice)el2.classList.add('ice');_applyTerrainClass(el2,board[r1][c1].terrain);}
+  if(el1){el1.classList.remove('jelly1','jelly2','ice','terrain-grass','terrain-mud1','terrain-mud2','terrain-stone','terrain-thorn','terrain-portal-a','terrain-portal-b');if(board[r2][c2].jelly===2)el1.classList.add('jelly2');else if(board[r2][c2].jelly===1)el1.classList.add('jelly1');if(board[r2][c2].ice)el1.classList.add('ice');_applyTerrainClass(el1,board[r2][c2].terrain);}
 
   // 检查特殊组合
   const sc=checkSpecialCombo(r1,c1,r2,c2);
@@ -2124,9 +2362,9 @@ async function doSwap(r1,c1,r2,c2){
       board[r1][c1].el=el1;board[r2][c2].el=el2;
       if(el1){el1.dataset.cid=String(tmp.cid);el1.style.left=(c1*cellSize+1)+'px';el1.style.top=(r1*cellSize+1)+'px';}
       if(el2){el2.dataset.cid=String(tmp2.cid);el2.style.left=(c2*cellSize+1)+'px';el2.style.top=(r2*cellSize+1)+'px';}
-      // 恢复覆盖层 class
-      if(el1){el1.classList.remove('jelly1','jelly2','ice');if(tmp.jelly===2)el1.classList.add('jelly2');else if(tmp.jelly===1)el1.classList.add('jelly1');if(tmp.ice)el1.classList.add('ice');}
-      if(el2){el2.classList.remove('jelly1','jelly2','ice');if(tmp2.jelly===2)el2.classList.add('jelly2');else if(tmp2.jelly===1)el2.classList.add('jelly1');if(tmp2.ice)el2.classList.add('ice');}
+      // 恢复覆盖层 class（terrain 属于格子本身，换回后贴回各自原格的场地样式）
+      if(el1){el1.classList.remove('jelly1','jelly2','ice','terrain-grass','terrain-mud1','terrain-mud2','terrain-stone','terrain-thorn','terrain-portal-a','terrain-portal-b');if(tmp.jelly===2)el1.classList.add('jelly2');else if(tmp.jelly===1)el1.classList.add('jelly1');if(tmp.ice)el1.classList.add('ice');_applyTerrainClass(el1,board[r1][c1].terrain);}
+      if(el2){el2.classList.remove('jelly1','jelly2','ice','terrain-grass','terrain-mud1','terrain-mud2','terrain-stone','terrain-thorn','terrain-portal-a','terrain-portal-b');if(tmp2.jelly===2)el2.classList.add('jelly2');else if(tmp2.jelly===1)el2.classList.add('jelly1');if(tmp2.ice)el2.classList.add('ice');_applyTerrainClass(el2,board[r2][c2].terrain);}
       if(el1)el1.style.transition='left .14s,top .14s';
       if(el2)el2.style.transition='left .14s,top .14s';
       await sleep(160);
@@ -2149,6 +2387,7 @@ function findMatches(){
     if(!cell||cell.color<0)return false;
     if(cell.special===SP.BOMB)return false;  // 彩弹不参与普通三消
     if(cell.ingredient)return false;         // 食材格不参与三消（食材是障碍物，靠下落到底部完成）
+    if(cell.terrain===TERRAIN.STONE)return false; // 🪨 石墙格不参与普通三消，只能被特殊糖果效果清除
     return true;
   }
 
@@ -2430,6 +2669,11 @@ async function doRemove(cells,newSp=SP.NONE,spawnR=0,spawnC=0){
     if(levelCfg.type===LEVEL_TYPES.COLLECT&&cell.color===levelCfg.collectColor){collectDone++;updateProgress();}
     // 彩弹生成计数（每次消除产生彩弹时+1）
     // bombMade 在 processMatches -> doRemove 开始时统一计算
+    // 🪨 石墙：格子本身在消除范围内（只可能是特殊糖果效果命中，因为普通三消已排除石墙）→ 清除石墙层
+    if(cell.terrain===TERRAIN.STONE){
+      cell.terrain=TERRAIN.NONE;terrainDone++;updateProgress();
+      showBanner('🪨 石墙被炸开了！','#94a3b8');
+    }
   });
   // 弹出分数
   showScorePop('+'+pts);
@@ -2470,6 +2714,52 @@ async function doRemove(cells,newSp=SP.NONE,spawnR=0,spawnC=0){
       }
     });
   });
+  // ═══════════════════════════════════════════════════════════════
+  // 🌿 场地效果：邻近清除（v2.4.0 新增）
+  // 草地/泥沼/荆棘：本格被消除 或 旁边格子被消除，都会触发清除
+  // （草地/泥沼/荆棘所在格的糖果本身仍可正常三消，这里只处理覆盖层）
+  // ═══════════════════════════════════════════════════════════════
+  const terrainTouch=new Set(); // 记录所有"被消除波及"的格子（含本格+四邻）
+  cells.forEach(({r,c})=>{
+    terrainTouch.add(r+'_'+c);
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+      const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nr<levelCfg.rows&&nc>=0&&nc<levelCfg.cols) terrainTouch.add(nr+'_'+nc);
+    });
+  });
+  terrainTouch.forEach(key=>{
+    const [tr,tc]=key.split('_').map(Number);
+    const tcell=board[tr]&&board[tr][tc];
+    if(!tcell)return;
+    if(tcell.terrain===TERRAIN.GRASS){
+      tcell.terrain=TERRAIN.NONE;terrainDone++;
+      if(tcell.el)tcell.el.classList.remove('terrain-grass');
+      updateProgress();
+      showBanner('🌿 草地被清除了！','#4ade80');
+    } else if(tcell.terrain===TERRAIN.MUD1){
+      tcell.terrain=TERRAIN.MUD2; // 第一次：变浅泥，尚未完全清除
+      if(tcell.el){tcell.el.classList.remove('terrain-mud1');tcell.el.classList.add('terrain-mud2');}
+      showBanner('🟫 泥沼变浅了，再消一次！','#b45309');
+    } else if(tcell.terrain===TERRAIN.MUD2){
+      tcell.terrain=TERRAIN.NONE;terrainDone++;
+      if(tcell.el)tcell.el.classList.remove('terrain-mud2');
+      updateProgress();
+      showBanner('💧 泥沼完全清除！','#92400e');
+    } else if(tcell.terrain===TERRAIN.THORN){
+      tcell.terrain=TERRAIN.NONE;terrainDone++;
+      if(tcell.el)tcell.el.classList.remove('terrain-thorn');
+      updateProgress();
+      // 40% 几率额外扣 1 步（荆棘惩罚）
+      if(Math.random()<0.4){
+        movesLeft=Math.max(0,movesLeft-1);
+        updateMoveUI();
+        showBanner('🌵 荆棘扎了一下！多扣1步！','#ef4444');
+      } else {
+        showBanner('🌵 荆棘被清除了！','#86efac');
+      }
+    }
+  });
+  // 🌀 传送阵：若有糖果掉落途经传送阵 A 格，从配对 B 格冒出（在 dropDown 中处理触发点，这里仅做安全检查占位）
   spawnParticles();
 }
 
@@ -2510,6 +2800,8 @@ function hasAnyMove(){
         if(nr>=rows||nc>=cols)continue;
         const a=board[r][cc],b=board[nr][nc];
         if(a.color<0||b.color<0)continue;
+        // 🌿🪨🌵 固定地形格不可被玩家实际交换，跳过
+        if(isImmovableTerrain_(a.terrain)||isImmovableTerrain_(b.terrain))continue;
         [a.color,b.color]=[b.color,a.color];
         const m=findMatches();
         [a.color,b.color]=[b.color,a.color];
@@ -2581,10 +2873,12 @@ async function dropDown(){
           if(to.el){
             to.el.dataset.cid=String(to.cid);
             // 同步障碍覆盖层 class（下落时数据已更新）
-            to.el.classList.remove('jelly1','jelly2','ice');
+            to.el.classList.remove('jelly1','jelly2','ice',
+              'terrain-grass','terrain-mud1','terrain-mud2','terrain-stone','terrain-thorn','terrain-portal-a','terrain-portal-b');
             if(to.jelly===2)to.el.classList.add('jelly2');
             else if(to.jelly===1)to.el.classList.add('jelly1');
             if(to.ice)to.el.classList.add('ice');
+            _applyTerrainClass(to.el,to.terrain); // 🌿 terrain 属于目标格本身，糖果落入后需贴上该格的场地样式
             to.el.style.transition='top .22s ease-in';
             to.el.style.top=(writeR*cellSize+1)+'px';
           }
@@ -2595,6 +2889,34 @@ async function dropDown(){
     }
   }
   if(moved)await sleep(240);
+  // ═══════════════════════════════════════════════════════════════
+  // 🌀 传送阵（v2.4.0 新增）：糖果下落后若停在 A 格，立即与配对的 B 格互换位置
+  // （成对传送：A↔B 互换糖果，制造"从对面冒出来"的效果）
+  // ═══════════════════════════════════════════════════════════════
+  let teleported=false;
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const cell=board[r][c];
+      if(cell&&cell.terrain===TERRAIN.PORTAL_A&&cell.color>=0&&cell.portalPair&&!cell._justTeleported){
+        const{r:pr,c:pc}=cell.portalPair;
+        const pcell=board[pr]&&board[pr][pc];
+        if(pcell&&pcell.terrain===TERRAIN.PORTAL_B&&!pcell._justTeleported){
+          // 互换糖果数据（terrain/portalPair 保留在原位，只换糖果本体属性）
+          const tmp={color:cell.color,special:cell.special,cid:cell.cid,ice:cell.ice,jelly:cell.jelly};
+          cell.color=pcell.color;cell.special=pcell.special;cell.cid=pcell.cid;cell.ice=pcell.ice;cell.jelly=pcell.jelly;
+          pcell.color=tmp.color;pcell.special=tmp.special;pcell.cid=tmp.cid;pcell.ice=tmp.ice;pcell.jelly=tmp.jelly;
+          cell._justTeleported=true;pcell._justTeleported=true;
+          renderCell(r,c);renderCell(pr,pc);
+          if(cell.el)cell.el.classList.add('teleport-in');
+          if(pcell.el)pcell.el.classList.add('teleport-in');
+          teleported=true;
+        }
+      }
+    }
+  }
+  // 清除传送标记（避免同一帧内来回传送）
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){if(board[r][c])board[r][c]._justTeleported=false;}
+  if(teleported){showBanner('🌀 传送阵启动！','#a78bfa');await sleep(260);}
 }
 
 async function refillBoard(){
@@ -2776,6 +3098,21 @@ function updateProgress(){
     if(gt)gt.textContent='🎯 目标得分 '+score+'/'+cfg.scoreTarget;
     if(gp)gp.textContent=pct+'%';
   }
+  // 🌿 场地效果附加目标文字（v2.4.0 新增）：草地/泥沼/荆棘需额外显示清除进度
+  if(cfg.terrainType&&cfg.terrainType!==TERRAIN.NONE&&cfg.terrainType!==TERRAIN.PORTAL_A&&gt){
+    const terrainLabel={
+      [TERRAIN.GRASS]:'🌿 清除草地',
+      [TERRAIN.MUD1]:'🟫 清除泥沼',
+      [TERRAIN.STONE]:'🪨 炸开石墙',
+      [TERRAIN.THORN]:'🌵 清除荆棘',
+    }[cfg.terrainType]||'清除场地';
+    gt.textContent+='　·　'+terrainLabel+' '+terrainDone+'/'+terrainTotal;
+    // 若主目标已达成但场地未清除，调低进度条百分比，避免误以为已通关
+    if(terrainTotal>0&&terrainDone<terrainTotal&&pct>=100){
+      pct=Math.min(99,Math.round(terrainDone/terrainTotal*100));
+      if(gp)gp.textContent=pct+'%';
+    }
+  }
   const pb=document.getElementById('progress-bar');if(pb)pb.style.width=pct+'%';
 }
 
@@ -2800,6 +3137,11 @@ function checkWinLose(){
   else if(cfg.type===LEVEL_TYPES.RAINBOW) win=bombMade>=cfg.bombTarget;
   else if(cfg.type===LEVEL_TYPES.ORDER) win=orderMade>=cfg.orderTarget.count;
   else win=score>=cfg.scoreTarget;
+  // 🌿 场地效果通关条件（v2.4.0 新增）：本关若有场地效果，必须额外清除所有场地才算通关
+  // （草地/泥沼/荆棘需 terrainDone>=terrainTotal；传送阵本身不需要清除，仅作为机制存在）
+  if(cfg.terrainType&&cfg.terrainType!==TERRAIN.NONE&&cfg.terrainType!==TERRAIN.PORTAL_A){
+    win=win&&(terrainDone>=terrainTotal);
+  }
   if(win){showWin();return;}
   if(movesLeft<=0&&!movesOvertime){movesOvertime=true;showBanner('⏰ 建议步数已用完！仍可继续，但影响星级','#f97316');}
   if(movesLeft===3&&!movesOvertime)showBanner('⚠️ 只剩 3 步！','#f87171');
@@ -2893,6 +3235,48 @@ function showLevelTutorial(typeKey){
     ov.remove();
     G.seenLevelTypes.push(typeKey);
     saveState();
+    // 场地效果弹窗紧接关卡类型弹窗之后显示（避免两个弹窗叠在一起）
+    maybeShowTerrainTutorial_();
+  };
+  return true; // 表示已显示，场地弹窗需等这个关闭后再显示
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 🌿 场地效果说明弹窗（v2.4.0 新增）
+// 复用与 LEVEL_TUTORIALS 相同的卡片样式，独立用 G.seenTerrainTypes 记录
+// ═══════════════════════════════════════════════════════════════
+const TERRAIN_TUTORIALS={
+  [TERRAIN.GRASS]:{icon:'🌿',title:'草地地形',
+    desc:'棋盘最底部出现了草地🌿！\n草地无法直接交换移动，但只要在草地旁边（上下左右）产生消除，草地就会被清除，糖果才能正常往下移动。\n本关必须清除所有草地才能通关！'},
+  [TERRAIN.MUD1]:{icon:'🟫',title:'泥沼地形',
+    desc:'部分格子被泥沼🟫覆盖！\n在泥沼旁边消除一次会让泥沼变浅（💧），再消除一次才能完全清除。\n本关必须清除所有泥沼才能通关！'},
+  [TERRAIN.STONE]:{icon:'🪨',title:'石墙地形',
+    desc:'棋盘最底部出现了石墙🪨！\n石墙无法被普通三消直接打破，必须用特殊糖果（条纹／包装／彩色炸弹／鱼鱼）的爆炸范围才能炸开，糖果才能正常往下移动。\n本关必须炸开所有石墙才能通关！'},
+  [TERRAIN.THORN]:{icon:'🌵',title:'荆棘地形',
+    desc:'棋盘最底部出现了荆棘🌵！\n在荆棘旁边消除糖果可以清除荆棘，但有几率会被扎到，额外多扣1步！\n本关必须清除所有荆棘才能通关！'},
+  [TERRAIN.PORTAL_A]:{icon:'🌀',title:'传送阵地形',
+    desc:'棋盘上出现了成对的传送阵🌀⭕！\n糖果掉落到传送阵的一端时，会立刻和配对的另一端互换位置，巧妙利用可以创造意外的连锁消除！'},
+};
+function maybeShowTerrainTutorial_(){
+  const cfg=levelCfg;
+  if(!cfg||!cfg.terrainType||cfg.terrainType===TERRAIN.NONE)return;
+  if(!G.seenTerrainTypes)G.seenTerrainTypes=[];
+  if(G.seenTerrainTypes.includes(cfg.terrainType))return;
+  const tut=TERRAIN_TUTORIALS[cfg.terrainType];
+  if(!tut)return;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:20px';
+  const card=document.createElement('div');
+  card.style.cssText='background:linear-gradient(160deg,#0a3d2e,#062417);border:1.5px solid rgba(74,222,128,.4);border-radius:20px;padding:26px 22px;max-width:340px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.6)';
+  card.innerHTML='<div style="font-size:2.8rem;margin-bottom:8px">'+tut.icon+'</div>'
+    +'<div style="font-size:1.15rem;font-weight:900;color:#86efac;margin-bottom:10px">'+tut.title+'</div>'
+    +'<div style="font-size:.84rem;color:rgba(255,255,255,.82);line-height:1.75;margin-bottom:18px;white-space:pre-line;text-align:left">'+tut.desc+'</div>'
+    +'<button id="terr-tut-ok" style="padding:11px 36px;border:none;border-radius:50px;background:linear-gradient(135deg,#4ade80,#16a34a);color:#fff;font-size:.95rem;font-weight:800;cursor:pointer;font-family:Nunito,sans-serif;box-shadow:0 4px 0 #15803d">知道了，开始！</button>';
+  ov.appendChild(card);document.body.appendChild(ov);
+  document.getElementById('terr-tut-ok').onclick=()=>{
+    ov.remove();
+    G.seenTerrainTypes.push(cfg.terrainType);
+    saveState();
   };
 }
 
@@ -2973,6 +3357,7 @@ function startGame(id){
   // ── 全部计数器重置（只重置一次，不在后面重复）──
   score=0;comboCount=0;movesLeft=levelCfg.moves;movesOvertime=false;
   jellyDone=0;jellyLeft=0;collectDone=0;ingredDone=0;bombMade=0;iceDone=0;orderMade=0;
+  terrainDone=0;terrainTotal=0; // 🌿 场地效果计数重置（v2.4.0 新增）
   shownSpecialTypes=new Set();selectedId=null;isAnimating=false;
   hammerMode=false;lollipopMode=false;fishMode=false;candyIdCounter=0;
   boostersLeft={
@@ -2992,9 +3377,22 @@ function startGame(id){
   levelCfg.jellyTarget=actualJellyCount;
   jellyLeft=actualJellyCount;
   // jellyDone 已在上方重置为0，不在此重复
+  // 🌿 统计实际场地效果数量（草地/泥沼/荆棘 需清除数；石墙也计入；传送阵不需要清除，跳过）（v2.4.0 新增）
+  if(levelCfg.terrainType===TERRAIN.GRASS||levelCfg.terrainType===TERRAIN.MUD1||
+     levelCfg.terrainType===TERRAIN.STONE||levelCfg.terrainType===TERRAIN.THORN){
+    let cnt=0;
+    for(let r=0;r<levelCfg.rows;r++)for(let c=0;c<levelCfg.cols;c++){
+      const t=board[r][c].terrain;
+      if(t===TERRAIN.GRASS||t===TERRAIN.MUD1||t===TERRAIN.MUD2||t===TERRAIN.STONE||t===TERRAIN.THORN)cnt++;
+    }
+    terrainTotal=cnt;
+  }
   showScreen('game');
   applyThemeNow();
-  setTimeout(()=>{showLevelTutorial(levelCfg.type);},350);
+  setTimeout(()=>{
+    const shown=showLevelTutorial(levelCfg.type);
+    if(!shown) maybeShowTerrainTutorial_(); // 关卡类型弹窗未显示（已看过）时，直接检查场地效果弹窗
+  },350);
   setTimeout(()=>{
     renderBoard();
     setupBoardClick();
@@ -3291,6 +3689,15 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(!savedId){const h=loadIdHistory();if(h.length){document.getElementById('inp-id').value=h[0].id;document.getElementById('inp-uid').value=h[0].uid||'';}}
   renderIdHistory();
   updateMenuVersion_();
+  // ═══════════════════════════════════════════════════════════════
+  // 🔄 自动登入（v2.4.2 新增）：
+  // 上次成功登入过（本机存有 ID/UID）时，重新打开游戏直接自动
+  // 走一遍完整登入流程（含云端同步），确保通关记录、金币、星级等
+  // 与云端保持一致，玩家不需要每次手动点击登入按钮。
+  // ═══════════════════════════════════════════════════════════════
+  if(savedId&&savedUid&&parseInt(savedUid,10)>0){
+    doLogin();
+  }
 });
 document.addEventListener('keydown',e=>{
   if((e.key||'').toLowerCase()==='x'){

@@ -982,6 +982,14 @@ body.fullbleed-view #app {
 .rsb-blue{background:rgba(100,160,255,0.08);border-color:rgba(100,160,255,0.3);color:#a0c4ff}
 .rsb-dim{background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.38)}
 .rsb-val{font-size:1.05rem;font-weight:800;display:block;margin-top:2px}
+.reward-pool-ref{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06)}
+.rpr-title{font-size:0.78rem;color:var(--gold);font-weight:700;margin-bottom:6px;text-align:center;letter-spacing:.03em}
+.rpr-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:0.72rem;border-bottom:1px solid rgba(255,255,255,0.04)}
+.rpr-row:last-child{border-bottom:none}
+.rpr-name{flex:0 0 auto;min-width:8em}
+.rpr-rate{flex:0 0 auto;min-width:3em;text-align:right;color:var(--gold);font-weight:700}
+.rpr-note{flex:1;text-align:right;color:rgba(255,255,255,0.4);font-size:0.7rem}
+.rpr-rare{color:#ff8899}
 
 /* ── MIX DICE PANEL in screen1b ── */
 #s1bMixDetails{width:100%;margin-bottom:12px}
@@ -1074,6 +1082,23 @@ body.fullbleed-view #app {
         <div class="rsb-item rsb-dim" id="rsbSeiso">⚔️ 节操累计<span class="rsb-val">0</span></div>
         <div class="rsb-item rsb-dim" id="rsbFeather">🪶 羽毛累计<span class="rsb-val">0</span></div>
         <div class="rsb-item rsb-dim" id="rsbLetter" style="grid-column:span 2;">🎖️ 字母勋章累计<span class="rsb-val">0 天</span></div>
+        <div class="rsb-item rsb-dim" id="rsbTentacle">🐙 触手勋章累计<span class="rsb-val">0 天</span></div>
+        <div class="rsb-item rsb-dim" id="rsbPeriodCard">🃏 本期本地用户牌<span class="rsb-val">未获得</span></div>
+        <div class="rsb-item rsb-dim" id="rsbPastCard">🌀 往期本地用户牌<span class="rsb-val">0 / 5</span></div>
+        <div class="rsb-item rsb-dim" id="rsbMitsuhaCard">🌸 三叶本地用户牌<span class="rsb-val">未获得</span></div>
+        <div class="rsb-item rsb-dim" id="rsbTakiCard">🌙 泷本地用户牌<span class="rsb-val">未获得</span></div>
+      </div>
+      <div class="reward-pool-ref">
+        <div class="rpr-title">📊 奖池机率参考（约 100 份总池）</div>
+        <div class="rpr-row"><span class="rpr-name">⚔️ 30 节操</span><span class="rpr-rate">~45%</span><span class="rpr-note">节操累计 ≥ 5000 后移除</span></div>
+        <div class="rpr-row"><span class="rpr-name">🪶 10 羽毛</span><span class="rpr-rate">~40%</span><span class="rpr-note">羽毛累计 ≥ 2000 后移除</span></div>
+        <div class="rpr-row"><span class="rpr-name">🏅 30天本期勋章</span><span class="rpr-rate">~4.5%</span><span class="rpr-note">获得永久本期勋章后移除</span></div>
+        <div class="rpr-row"><span class="rpr-name">🎖️ 30天字母勋章</span><span class="rpr-rate">~4.5–95%</span><span class="rpr-note">始终存在，其他奖品满后占比上升</span></div>
+        <div class="rpr-row"><span class="rpr-name">🐙 30天触手勋章</span><span class="rpr-rate">~4.5%</span><span class="rpr-note">可无限重复获得</span></div>
+        <div class="rpr-row"><span class="rpr-name">🃏 本期本地用户牌</span><span class="rpr-rate">&lt;1%</span><span class="rpr-note rpr-rare">⚠️ 仅 1 次机会，抽后改放三叶/泷</span></div>
+        <div class="rpr-row"><span class="rpr-name">🌸 三叶本地用户牌</span><span class="rpr-rate">&lt;1%</span><span class="rpr-note rpr-rare">⚠️ 仅 1 次机会，抽过即消失</span></div>
+        <div class="rpr-row"><span class="rpr-name">🌙 泷本地用户牌</span><span class="rpr-rate">&lt;1%</span><span class="rpr-note rpr-rare">⚠️ 仅 1 次机会，抽过即消失</span></div>
+        <div class="rpr-row"><span class="rpr-name">🌀 往期本地用户牌</span><span class="rpr-rate">&lt;1%</span><span class="rpr-note">最多可获 5 次，满 5 后移除</span></div>
       </div>
     </details>
 
@@ -1160,14 +1185,24 @@ body.fullbleed-view #app {
         请先设定本次要统计的<strong style="color:var(--gold)">回复</strong>与<strong style="color:var(--gold)">被引用</strong>时间区间<br>
         <span style="font-size:0.78rem;opacity:.85;">（新手区帖子；默认带入今天日期，确认后点「搜寻」）</span>
       </p>
+      <!-- ══════════════════════════════════════════════════════════════
+           📅 论坛抓取日期区间限制（Screen 2 区间输入卡）
+           • min / max 属性限制玩家可选的日期范围
+           • 预设值由下方 JS initScreen2Dates_() 统一写入，
+             不在此处写死 value；如需更改区间，
+             请同步修改：
+               1. 此处 min / max
+               2. JS initScreen2Dates_() 中的 SCRAPE_DATE_MIN / MAX
+               3. 弹窗 #fff-date-start / #fff-date-end 的 min / max / value
+      ════════════════════════════════════════════════════════════════ -->
       <div class="field-row">
         <div class="field">
           <label for="s2-date-start">开始日期</label>
-          <input type="date" id="s2-date-start">
+          <input type="date" id="s2-date-start" min="2026-07-01" max="2026-08-01">
         </div>
         <div class="field">
           <label for="s2-date-end">结束日期</label>
-          <input type="date" id="s2-date-end">
+          <input type="date" id="s2-date-end" min="2026-07-01" max="2026-08-01">
         </div>
       </div>
       <div id="screen2FetchStatus">请确认日期区间后，点下方「搜寻」开始读取。</div>
@@ -1472,8 +1507,16 @@ body.fullbleed-view #app {
   <div class="fff-box">
     <h3 id="fff-modal-title">📡 论坛自动读取</h3>
     <div class="fff-row"><label>UID</label><input id="fff-uid" class="fff-inp" type="number" placeholder="论坛数字 UID" inputmode="numeric"></div>
-    <div class="fff-row"><label>开始日期</label><input id="fff-date-start" class="fff-inp" type="date" value="2026-03-01"></div>
-    <div class="fff-row"><label>结束日期</label><input id="fff-date-end" class="fff-inp" type="date" value="2026-03-28"></div>
+    <!-- ══════════════════════════════════════════════════════════════
+         📅 论坛抓取日期区间限制（弹窗）
+         • SCRAPE_DATE_MIN  = 可选最早日期（含）
+         • SCRAPE_DATE_MAX  = 可选最晚日期（含）
+         • value            = 开启弹窗时的预设值
+         如需更改活动期间，同步修改下方两处 value、min、max，
+         以及 JS 段落中 initScreen2Dates_() 里的相同常数。
+    ════════════════════════════════════════════════════════════════ -->
+    <div class="fff-row"><label>开始日期</label><input id="fff-date-start" class="fff-inp" type="date" value="2026-07-01" min="2026-07-01" max="2026-08-01"></div>
+    <div class="fff-row"><label>结束日期</label><input id="fff-date-end"   class="fff-inp" type="date" value="2026-08-01" min="2026-07-01" max="2026-08-01"></div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
       <button type="button" class="fff-btn-ok" onclick="fffDoFetch()">🔍 开始读取</button>
       <button type="button" class="fff-btn-cancel" onclick="fffCloseModal()">取消</button>
@@ -1507,24 +1550,54 @@ body.fullbleed-view #app {
 <div id="ds-guide-overlay" class="ds-guide-overlay">
   <div class="ds-guide-box">
     <h3>📖 玩法介绍</h3>
+
     <div class="ds-guide-section">
       <h4>🎲 如何游玩</h4>
-      <p>用论坛活跃度换取骰子：每 <strong>5 条回复</strong>得 1 个正骰子（d4），每 <strong>1 次被引用</strong>得 1 个混合骰子（可 +4 进攻或 −4 防御）。投掷骰子后翻开命运之书，从四个选项中择一，解锁《你的名字》十年后重逢主题故事。</p>
+      <p>用论坛活跃度换骰子，投出点数翻开《你的名字》十年后故事：</p>
+      <p><strong>每 5 条回复</strong> → 1 个正骰子 (d4)<br>
+      <strong>每 1 次被引用</strong> → 1 个混合骰子（可定为 +4 进攻 或 −4 防御）<br>
+      投 d4 合计 → 翻开命运之书 → 从四个选项中择一解锁故事</p>
     </div>
+
     <div class="ds-guide-section">
-      <h4>🏠 主画面可以做什么</h4>
-      <p>查看剩余骰子与 20 则故事的完成度；在「混合骰子待分配」中把被引用折算的骰子定为 +4 或 −4；用「继续投骰」回到投掷界面；「论坛更新」按新区间净增骰子；「下载游玩存档 / 读取存档」备份或还原进度。</p>
+      <h4>🏠 主画面功能一览</h4>
+      <p>• 查看剩余骰子数与 20 则故事的完成度<br>
+      • 「混合骰子待分配」将引用折算的骰子定为 +4 / −4<br>
+      • 「继续投骰」回到投掷界面<br>
+      • 「论坛更新」按新区间净增骰子<br>
+      • 「下载/读取存档」备份或还原进度</p>
     </div>
+
     <div class="ds-guide-section">
-      <h4>🎁 奖励累计与如何获得</h4>
-      <p>每次完成一则故事的选择后，会<strong>随机抽取</strong>一项奖励：30 节操、10 羽毛、30 天本期勋章或 30 天字母勋章（已获永久本期勋章后，本期勋章不再出现）。主画面「🎁 奖励累计」可查看节操 / 羽毛 / 字母勋章总数，以及永久本期勋章、往期兑换机会。</p>
-      <p><strong>里程碑（额外累计）：</strong>读过 10 则故事 → 永久本期勋章；20 则故事各至少选过 1 / 2 / 3 / 4 种不同选项 → 各获得 1 次往期勋章兑换机会。节操累计达 5000、羽毛达 2000 后，随机池会改为以字母勋章等为主。</p>
-      <p>同一则故事四个选项<strong>全部选过</strong>后，若骰子再次翻到该故事，将提示已全部体验并<strong>直接发放</strong>与正常完成相同的随机奖励后返回主画面。</p>
+      <h4>🎁 奖励系统</h4>
+      <p>每次完成故事随机抽取一项奖励。点开主画面「🎁 奖励累计」可查看完整清单与机率表。</p>
+      <p><strong>常见奖励（绝大多数机率）：</strong><br>
+      ⚔️ 30 节操 · 🪶 10 羽毛 · 🏅 30天本期勋章 · 🎖️ 30天字母勋章 · 🐙 30天触手勋章</p>
+      <p><strong>极稀有奖励（各仅 1 份）：</strong><br>
+      🃏 本期本地用户牌（抽后改放三叶/泷）<br>
+      🌸 三叶本地用户牌 · 🌙 泷本地用户牌</p>
+      <p><strong>可重复稀有奖励：</strong><br>
+      🌀 往期本地用户牌（最多可获 5 次）</p>
+      <p><strong>里程碑奖励（额外累计）：</strong><br>
+      读过 10 则故事 → 🏅 永久本期勋章<br>
+      20 则故事各选满 1/2/3/4 种选项 → 🎖 往期兑换机会 各 1 次</p>
     </div>
+
+    <div class="ds-guide-section">
+      <h4>🎯 攻略建议</h4>
+      <p>• 节操 ≥ 5000 后节操移除奖池；羽毛 ≥ 2000 后羽毛移除，字母勋章占比飙升<br>
+      • 获得永久本期勋章后，本期勋章不再出现<br>
+      • 触手勋章约占 5%，可无限重复获得<br>
+      • 极稀有奖品（本期/三叶/泷牌）仅有一次机会，抽过即永久消失<br>
+      • 往期本地用户牌最多 5 个，全拿后不再出现<br>
+      • 同一故事四选项全选过后，骰子再次翻到会直接发奖</p>
+    </div>
+
     <div class="ds-guide-section">
       <h4>☁️ 连线与离线</h4>
-      <p>登入时会检测云端（GAS）是否可达。连线时进度会同步试算表；离线时仍可游玩，右下角会提示，点击可尝试重新连线。</p>
+      <p>登入时检测云端（GAS）是否可达。连线时进度自动同步试算表；断线后可离线游玩，右下角有提醒，点击可尝试重新连线。</p>
     </div>
+
     <button type="button" class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="closeDiceGuide_()">关闭</button>
   </div>
 </div>
@@ -1749,7 +1822,12 @@ function buildRewardsSyncPayload_(prog) {
     feather_total: Number(prog.feather_total) || 0,
     letter_total: Number(prog.letter_total) || 0,
     legacy_chances: Number(prog.legacy_chances) || 0,
+    tentacle_medal_days: Number(prog.tentacle_medal_days) || 0,
+    past_card_count: Number(prog.past_card_count) || 0,
     perm_medal: !!prog.perm_medal,
+    has_mitsuha_card: !!prog.has_mitsuha_card,
+    has_taki_card: !!prog.has_taki_card,
+    local_card_phase: Number(prog.local_card_phase) || 0,
     milestones: prog.milestones && typeof prog.milestones === 'object' ? prog.milestones : {}
   };
 }
@@ -1772,7 +1850,12 @@ function mergeCloudRewardsIntoProg_(prog, cloudRewards) {
   prog.feather_total = Math.max(Number(prog.feather_total) || 0, Number(c.feather_total) || 0);
   prog.letter_total = Math.max(Number(prog.letter_total) || 0, Number(c.letter_total) || 0);
   prog.legacy_chances = Math.max(Number(prog.legacy_chances) || 0, Number(c.legacy_chances) || 0);
+  prog.tentacle_medal_days = Math.max(Number(prog.tentacle_medal_days) || 0, Number(c.tentacle_medal_days) || 0);
+  prog.past_card_count = Math.max(Number(prog.past_card_count) || 0, Number(c.past_card_count) || 0);
   if (c.perm_medal) prog.perm_medal = true;
+  if (c.has_mitsuha_card) prog.has_mitsuha_card = true;
+  if (c.has_taki_card)    prog.has_taki_card    = true;
+  if (c.local_card_phase) prog.local_card_phase = Math.max(Number(prog.local_card_phase) || 0, Number(c.local_card_phase) || 0);
   prog.milestones = mergeMilestoneMaps_(prog.milestones, c.milestones);
 }
 
@@ -2493,6 +2576,9 @@ function showProgressScreen(prog) {
   const seisoTotal   = prog.seiso_total     || 0;
   const featherTotal = prog.feather_total   || 0;
   const letterTotal  = prog.letter_total    || 0;
+  const tentacleDays = prog.tentacle_medal_days || 0;
+  const hasMitsuha   = !!prog.has_mitsuha_card;
+  const hasTaki      = !!prog.has_taki_card;
   function rsbSet(id, val, cls) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -2505,6 +2591,13 @@ function showProgressScreen(prog) {
   rsbSet('rsbSeiso',     seisoTotal + ' 节操',  seisoTotal  > 0 ? 'rsb-active' : 'rsb-dim');
   rsbSet('rsbFeather',   featherTotal + ' 羽毛', featherTotal > 0 ? 'rsb-active' : 'rsb-dim');
   rsbSet('rsbLetter',    letterTotal + ' 天',   letterTotal  > 0 ? 'rsb-active' : 'rsb-dim');
+  const periodCardPhase = prog.local_card_phase || 0;
+  const pastCardCount   = prog.past_card_count  || 0;
+  rsbSet('rsbTentacle',  tentacleDays + ' 天',  tentacleDays > 0 ? 'rsb-active' : 'rsb-dim');
+  rsbSet('rsbPeriodCard', periodCardPhase > 0 ? '✅ 已获得' : '未获得', periodCardPhase > 0 ? 'rsb-active' : 'rsb-dim');
+  rsbSet('rsbPastCard',   pastCardCount + ' / 5', pastCardCount > 0 ? 'rsb-active' : 'rsb-dim');
+  rsbSet('rsbMitsuhaCard', hasMitsuha ? '✅ 已获得' : '未获得', hasMitsuha ? 'rsb-active' : 'rsb-dim');
+  rsbSet('rsbTakiCard',    hasTaki    ? '✅ 已获得' : '未获得', hasTaki    ? 'rsb-active' : 'rsb-dim');
 
   // 混合骰子分配面板
   const pendingMix = prog.pending_neg_dice || 0;
@@ -3356,6 +3449,11 @@ function getRewardPool_() {
   const FEATHER = { icon: '🪶',  name: '10 羽毛',    desc: '故事送来了礼物，获得 10 羽毛！' };
   const MEDAL   = { icon: '🏅',  name: '30天本期勋章', desc: '荣耀属于你，获得 30 天本期勋章！' };
   const LETTER  = { icon: '🎖️', name: '30天字母勋章', desc: '传说级奖励，获得 30 天字母勋章！' };
+  const TENTACLE = { icon: '🐙', name: '30天触手勋章', desc: '获得 30 天触手勋章！可无限重复获得。' };
+  const LOCAL_CARD_PERIOD = { icon: '🃏', name: '本期本地用户牌', desc: '本地用户专属，证明你是本期的成员！' };
+  const MITSUHA_CARD = { icon: '🌸', name: '三叶本地用户牌', desc: '三叶的本地用户牌，独一无二的荣耀！' };
+  const TAKI_CARD = { icon: '🌙', name: '泷本地用户牌', desc: '泷的本地用户牌，独一无二的荣耀！' };
+  const PAST_CARD = { icon: '🌀', name: '往期本地用户牌', desc: '来自过去的本地用户牌，见证你的历程！' };
 
   if (!seisoFull)   addN(50, SEISO);
   if (!featherFull) addN(45, FEATHER);
@@ -3371,6 +3469,20 @@ function getRewardPool_() {
     addN(5 + bonus, LETTER);
   }
 
+  // 触手勋章约占 5%（可无限重复获得）
+  addN(5, TENTACLE);
+  const localCardPhase = prog.local_card_phase || 0;
+  if (localCardPhase === 0) {
+    addN(1, LOCAL_CARD_PERIOD);
+  } else {
+    if (!prog.has_mitsuha_card) addN(1, MITSUHA_CARD);
+    if (!prog.has_taki_card)    addN(1, TAKI_CARD);
+  }
+
+  // 往期本地用户牌（可重复获得，最多 5 个）
+  const pastCardCount = prog.past_card_count || 0;
+  if (pastCardCount < 5) addN(1, PAST_CARD);
+
   if (pool.length === 0) pool.push(LETTER);
   return pool;
 }
@@ -3381,9 +3493,14 @@ function updateRewardTotal_(reward) {
   const all = loadAllProgress();
   if (!all[state.id]) return;
   const name = reward.name || '';
-  if (name.includes('节操'))  all[state.id].seiso_total   = (all[state.id].seiso_total   || 0) + 30;
-  if (name.includes('羽毛'))  all[state.id].feather_total  = (all[state.id].feather_total  || 0) + 10;
-  if (name.includes('字母勋章')) all[state.id].letter_total = (all[state.id].letter_total || 0) + 30;
+  if (name.includes('节操'))    all[state.id].seiso_total   = (all[state.id].seiso_total   || 0) + 30;
+  if (name.includes('羽毛'))    all[state.id].feather_total  = (all[state.id].feather_total  || 0) + 10;
+  if (name.includes('字母勋章')) all[state.id].letter_total  = (all[state.id].letter_total  || 0) + 30;
+  if (name.includes('触手勋章')) all[state.id].tentacle_medal_days = (all[state.id].tentacle_medal_days || 0) + 30;
+  if (name === '本期本地用户牌')   all[state.id].local_card_phase = 1;
+  if (name === '三叶本地用户牌') { all[state.id].has_mitsuha_card = true; all[state.id].local_card_phase = 1; }
+  if (name === '泷本地用户牌')   { all[state.id].has_taki_card    = true; all[state.id].local_card_phase = 1; }
+  if (name === '往期本地用户牌')   all[state.id].past_card_count = (all[state.id].past_card_count || 0) + 1;
   saveAllProgress(all);
 }
 
@@ -4034,11 +4151,18 @@ function todayISO_() {
 }
 
 function initScreen2Dates_() {
-  const today = todayISO_();
+  // ══════════════════════════════════════════════════════════════
+  // 📅 论坛抓取日期区间限制（JS 初始化）
+  // 修改活动期间时，同步更新以下两个常数，
+  // 以及 HTML 中 #s2-date-start / #s2-date-end / #fff-date-start /
+  // #fff-date-end 的 min、max、value 属性。
+  const SCRAPE_DATE_MIN = '2026-07-01'; // ← 活动开始日（含）
+  const SCRAPE_DATE_MAX = '2026-08-01'; // ← 活动结束日（含）
+  // ══════════════════════════════════════════════════════════════
   const s = document.getElementById('s2-date-start');
   const e = document.getElementById('s2-date-end');
-  if (s) s.value = today;
-  if (e) e.value = today;
+  if (s) { s.value = SCRAPE_DATE_MIN; s.min = SCRAPE_DATE_MIN; s.max = SCRAPE_DATE_MAX; }
+  if (e) { e.value = SCRAPE_DATE_MAX; e.min = SCRAPE_DATE_MIN; e.max = SCRAPE_DATE_MAX; }
 }
 
 function resetScreen2Phases_() {
@@ -4468,7 +4592,7 @@ window.__applyPortableSaveData=async function(data){
 <!-- v2.0 2026-06-06 登入需 ID+UID；连线状态；screen2 区间自动抓取；各阶段玩法引导；主画面工具列 -->
 <!-- v2.1 2026-06-06 书本封面全屏；论坛抓取逐日写入「骰子故事返乡活跃度记录」并跳过云端已有日期 -->
 <!-- v2.2 2026-06-06 登入封面全屏自适应；云端逐日可补差额更新；回复余数(localStorage)凑满5换正骰，显示于混合骰面板 -->
-<!-- v2.3 2026-06-06 下载游玩存档改为只读 Excel（含完整进度）；菜单仅一种存档格式；读取存档支持 Excel；界面不显示保护密码 -->
+<!-- v2.4 2026-06-20 触手勋章~5%无限重复；奖池：本期本地用户牌×1（抽后开启三叶/泷各自×1）、往期本地用户牌×1（可重复最多5次） -->
 <div id="dice-offline-warning" onclick="retryDiceCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 </body>
 </html>
