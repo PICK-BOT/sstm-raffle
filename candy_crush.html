@@ -747,7 +747,7 @@ function gasJsonp(params,timeout=10000){
   });
 }
 function cloudSave(){
-  if(!G.id||_offline) return;
+  if(!G.id) return;
   gasBeacon({sheet:SHEET,action:"save",id:G.id,uid:String(G.uid),
     state_json:JSON.stringify(G),date:todayISO(),
     coins:String(G.coins||0)});
@@ -3469,11 +3469,11 @@ async function doLogin(){
     loadState();G.id=id;G.uid=uid;
     showLoading('系统：正在登录中（读取云端）...');
     const cloud=await cloudLoad(id);
-    if(cloud&&cloud.state_json){try{const cs=JSON.parse(cloud.state_json);Object.assign(G,cs);G.id=id;G.uid=uid;}catch(e){}}
+    if(cloud&&cloud.state_json){try{const cs=JSON.parse(cloud.state_json);mergeCloudState_(cs);G.id=id;G.uid=uid;}catch(e){console.warn('[login] mergeCloudState_ err',e);}}else{console.warn('[login] cloud data unavailable',cloud?'missing state_json':'null response');}
     try{await gasJsonp({sheet:SHEET,action:'ping'},5000);setOffline(false);}
     catch(e){_offline=true;setOffline(true);}
   }catch(e){console.warn('[login]',e);}
-  saveState();saveIdHistory();
+  saveState();cloudSave();saveIdHistory();
   gasBeacon({sheet:SHEET,action:'login_log',id:G.id,uid:String(G.uid),date:todayISO(),info:'candy_town_'+GAME_VERSION});
   hideLoading();
   if(loginBtn){loginBtn.disabled=false;loginBtn.textContent='▶ 进入游戏';}
