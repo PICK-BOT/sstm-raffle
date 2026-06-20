@@ -1549,7 +1549,7 @@ function renderIdHistory(){
 
 // ════ CLOUD ════
 function cloudSave(){
-  if(!G.id||_offline)return;
+  if(!G.id)return;
   saveState();
   const payload={sheet:SHEET,action:'save',id:G.id,uid:String(G.uid),state_json:JSON.stringify(G),date:todayISO(),coins:String(G.coins||0)};
   // 双通道保存：保留原本 beacon，同时再补一次后台 JSONP，提高重登前最后一笔存档真正写入云端的成功率。

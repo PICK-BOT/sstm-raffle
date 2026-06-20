@@ -900,13 +900,32 @@ function gasJsonp(params,timeout=10000){
   });
 }
 function cloudSave(){
-  if(!G.id||_offline) return;
+  if(!G.id) return;
   gasBeacon({sheet:SHEET,action:"save",id:G.id,uid:String(G.uid),
     state_json:JSON.stringify(G),date:todayISO(),
     coins:String(G.coins||0)});
 }
 async function cloudLoad(id){
   try{ const d=await gasJsonp({sheet:SHEET,action:"load",id}); return d.data||null; }catch(e){ return null; }
+}
+async function autoRecoverFromCloud(){
+  if(!G.id||G.id==='访客') return;
+  try{
+    const d=await gasJsonp({sheet:SHEET,action:"load_level_clears",id:G.id});
+    if(!d||!d.ok||!d.maxLevel) return;
+    const maxLevel=d.maxLevel;
+    const currentMax=Math.max.apply(null,G.cleared||[0]);
+    if(maxLevel>currentMax){
+      var c=G.cleared||[];var u=G.unlocked||[1];
+      for(var i=currentMax+1;i<=maxLevel;i++){
+        if(c.indexOf(i)<0)c.push(i);
+        if(u.indexOf(i+1)<0)u.push(i+1);
+      }
+      c.sort(function(a,b){return a-b});u.sort(function(a,b){return a-b});
+      G.cleared=c;G.unlocked=u;
+      saveState();cloudSave();
+    }
+  }catch(e){}
 }
 
 async function fetchActivityFromTripleMatch_(uid, startDate, endDate) {
@@ -971,6 +990,7 @@ async function retryCloud(){
           saveState(); updateMenuUI();
         }catch(e){}
       }
+      await autoRecoverFromCloud();
     }
   }catch(e){
     if(bar) bar.innerHTML='🔴 离线游玩中<br><span style="font-size:.7rem;opacity:.8">点击重新连线</span>';
@@ -1074,6 +1094,7 @@ async function doLogin(){
         G.id=id; G.uid=uid;
       }catch(e){}
     }
+    await autoRecoverFromCloud();
   }catch(e){ _offline=true; setOffline(true); }
   saveState();
   saveIdHistory();
