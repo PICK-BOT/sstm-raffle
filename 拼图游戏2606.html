@@ -29,8 +29,8 @@ body{background:#1a1a1a;font-family:Arial,sans-serif;color:#ccc;height:100vh;ove
 .loginCloud{font-size:.78rem!important;line-height:1.55!important;color:#888!important;margin:-6px 0 14px!important}
 #boardArea{flex:1;position:relative;overflow:hidden;background-color:#3c3c3c;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Crect width='6' height='6' fill='%233c3c3c'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%23383838' opacity='.8'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%23383838' opacity='.8'/%3E%3C/svg%3E")}
 #boardCanvas{position:absolute;top:0;left:0;touch-action:none;cursor:default}
-#ghostImg{position:absolute;pointer-events:none;opacity:.2;display:none}
-#refPanel{position:absolute;bottom:58px;left:10px;border:2px solid #555;border-radius:8px;overflow:hidden;display:none;z-index:200}
+#ghostImg{position:absolute;pointer-events:none;opacity:.2;display:none;top:50%;left:50%;transform:translate(-50%,-50%);object-fit:contain}
+#refPanel{position:absolute;bottom:58px;left:10px;border:2px solid #555;border-radius:8px;overflow:hidden;display:none;z-index:200;pointer-events:none}
 #refPanel img{display:block;max-width:220px;max-height:165px}
 #bottomBar{background:#111;border-top:1px solid #2a2a2a;height:46px;display:flex;align-items:center;padding:0 10px;gap:2px;flex-shrink:0}
 .tbtn{width:36px;height:36px;background:transparent;border:none;border-radius:6px;color:#777;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:all .15s}
@@ -103,12 +103,12 @@ body{background:#1a1a1a;font-family:Arial,sans-serif;color:#ccc;height:100vh;ove
   </div>
 </div>
 <div id="toast"></div>
-<div id="versionTag" style="position:fixed;bottom:10px;left:50%;transform:translateX(-50%);color:#666;font-size:12px;pointer-events:none;z-index:9996;letter-spacing:.5px">版本：v18.12 / 导出：2026-06-08</div>
+<div id="versionTag" style="position:fixed;bottom:10px;left:50%;transform:translateX(-50%);color:#666;font-size:12px;pointer-events:none;z-index:9996;letter-spacing:.5px">版本：v19.00 / 导出：2026-06-30</div>
 <script>
 var PUZZLE_CONFIG={
   "title": "拼图游戏",
   "imgUrl": "https://s.sstmlt.com/img/2026/06/06/13f9db193d0c76c5c.png",
-  "gasUrl": "https://sstm-raffle.vercel.app/puzzle-proxy",
+  "gasUrl": "https://script.google.com/macros/s/AKfycbzvoAl4oeBq4uldtddEND26VnEOuWXPdXmy_szXBI6IMXrp7LAOC1BTmPWz1pLohwnQWA/exec",
   "rows": 6,
   "cols": 10,
   "edgeStyle": "wave"
@@ -1051,16 +1051,10 @@ function toggleRef(){
 function layoutGhostPreview_(){
   const gi=document.getElementById('ghostImg');
   if(!gi||!G.showGhost||!G.cellW||!G.cols)return;
-  const maxW=220,maxH=165;
-  let w=G.cellW*G.cols,h=G.cellH*G.rows;
-  const scale=Math.min(1,maxW/w,maxH/h);
-  w=Math.max(1,Math.round(w*scale));
-  h=Math.max(1,Math.round(h*scale));
   Object.assign(gi.style,{
     display:'block',
-    left:'auto',top:'auto',
-    right:'10px',bottom:'58px',
-    width:w+'px',height:h+'px',
+    width:Math.round(G.cellW*G.cols)+'px',
+    height:Math.round(G.cellH*G.rows)+'px',
     opacity:'0.5'
   });
 }
