@@ -2146,7 +2146,7 @@ function _diceGasJsonp_(params, timeout) {
   });
 }
 function _diceProxyOkText_(text) {
-  return text && text.length > 80 && (text.indexOf('<') >= 0 || /profile|ipsQuote|cProfileContent/i.test(text));
+  return text && text.length > 50 && (text.indexOf('<') >= 0 || /profile|ipsQuote|cProfileContent|ipsType_sectionHead/i.test(text));
 }
 async function _diceGasProxyGet_(url) {
   const data = await _diceGasJsonp_({ action: 'fetch_url', url: url }, FORUM_FETCH_MS);
@@ -2157,21 +2157,50 @@ async function _diceGasProxyGet_(url) {
 
 async function fffProxyGet(url) {
   const sk = 'fff_' + url;
-  // sessionStorage 页面缓存
   try { const hit = sessionStorage.getItem(sk); if (hit) return hit; } catch(e) {}
 
-  // 优先：GAS 云端代理（Google试算表后台转发）
-  try {
-    const text = await _diceGasProxyGet_(url);
-    try { sessionStorage.setItem(sk, text); } catch(e) {}
-    return text;
-  } catch(e) {
-    console.warn('[dice-proxy] GAS FAIL:', e.message || e);
+  const CORS_PROXIES = [
+    'https://api.allorigins.win/get?url=',
+    'https://corsproxy.io/?',
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://corsproxy.org/?',
+    'https://cors.eu.org/'
+  ];
+
+  async function _tryCorsProxyChain_(targetUrl, extractor) {
+    for (const proxy of CORS_PROXIES) {
+      try {
+        const resp = await fetch(proxy + encodeURIComponent(targetUrl), {
+          signal: AbortSignal.timeout(FORUM_FETCH_MS)
+        });
+        if (!resp.ok) continue;
+        const raw = await resp.text();
+        let text = raw;
+        try { const j = JSON.parse(raw); if (j && j.contents) text = j.contents; } catch(e) {}
+        if (extractor) { const t = extractor(raw); if (t) text = t; }
+        if (_diceProxyOkText_(text)) return text;
+      } catch(e) { console.warn('[dice-proxy] CORS proxy fail:', proxy, e.message || e); }
+    }
+    return null;
   }
 
-  // 备用：Vercel 中转站
+  // 1. CORS 代理 → Vercel（VPN 玩家：能到公有代理，公有代理能到 Vercel，Vercel 能到 SSTM）
+  const vercelUrl = FFF_PROXY + encodeURIComponent(url);
+  const viaVercel = await _tryCorsProxyChain_(vercelUrl);
+  if (viaVercel) { try { sessionStorage.setItem(sk, viaVercel); } catch(e) {} return viaVercel; }
+
+  // 2. CORS 代理 → GAS（同上，走 GAS 抓 SSTM）
+  const gasUrl = GAS_URL + '?action=fetch_url&url=' + encodeURIComponent(url);
+  const gasExtractor = function(raw) {
+    try { var j = JSON.parse(raw.replace(/^[^(]+\(/, '').replace(/\);?$/, '')); if (j && (j.html || j.contents)) return j.html || j.contents; } catch(e) {}
+    return null;
+  };
+  const viaGas = await _tryCorsProxyChain_(gasUrl, gasExtractor);
+  if (viaGas) { try { sessionStorage.setItem(sk, viaGas); } catch(e) {} return viaGas; }
+
+  // 3. Vercel 直连（无 VPN 玩家直接走）
   try {
-    const resp = await fetch(FFF_PROXY + encodeURIComponent(url), {
+    const resp = await fetch(vercelUrl, {
       referrerPolicy: 'no-referrer', credentials: 'omit',
       signal: AbortSignal.timeout(FORUM_FETCH_MS)
     });
@@ -2180,11 +2209,34 @@ async function fffProxyGet(url) {
     if (!_diceProxyOkText_(text)) throw new Error('empty_response');
     try { sessionStorage.setItem(sk, text); } catch(e) {}
     return text;
-  } catch(e) {
-    console.warn('[dice-proxy] Vercel FAIL:', e.message || e);
-  }
+  } catch(e) { console.warn('[dice-proxy] Vercel FAIL:', e.message || e); }
 
-  throw new Error('所有中转站均不可用（GAS + Vercel 均失败）');
+  // 4. GAS 直连（JSONP）
+  try {
+    const text = await _diceGasProxyGet_(url);
+    try { sessionStorage.setItem(sk, text); } catch(e) {}
+    return text;
+  } catch(e) { console.warn('[dice-proxy] GAS FAIL:', e.message || e); }
+
+  // 5. 直连（备用，CORS 通常会拦）
+  try {
+    const resp = await fetch(url, {
+      mode: 'cors', credentials: 'include',
+      signal: AbortSignal.timeout(FORUM_FETCH_MS)
+    });
+    if (resp.ok) {
+      const text = await resp.text();
+      if (_diceProxyOkText_(text)) {
+        try { sessionStorage.setItem(sk, text); } catch(e) {}
+        return text;
+      }
+    }
+  } catch(e) { console.warn('[dice-proxy] 直连 FAIL:', e.message || e); }
+
+  throw new Error(
+    '无法连接论坛，请确认网络可访问 sstm.moe。\n'
+    + '回复数与引用数将无法抓取，但手动填入 UID 仍可正常游戏。'
+  );
 }
 
 async function fffGetUsername(uid) {
@@ -2579,9 +2631,9 @@ function showProgressScreen(prog) {
   const visitedCount = Object.keys(done).length;
 
   // ── 已持有永久本期勋章但尚未检查进阶勋章 → 于登入时扫描 ──
-  if (prog.perm_medal && !prog.perm_advanced_medal && _permAdvCheckResult === null && !window._permAdvFetchFired) {
+    if (prog.perm_medal && !prog.perm_advanced_medal && _permAdvCheckResult === null && !window._permAdvFetchFired) {
     window._permAdvFetchFired = true;
-    fffProxyGet('https://sstm.moe/profile/340824-%E6%94%B8%E8%96%A9/?tab=node_awards_Awards')
+    fffProxyGet('https://sstm.moe/profile/' + state.uid + '-' + encodeURIComponent(state.id) + '/?tab=node_awards_Awards')
       .then(function(html) {
         try {
           var doc = new DOMParser().parseFromString(html, 'text/html');
@@ -3613,7 +3665,7 @@ function checkMilestones_() {
     // ── 扫描指定用户勋章页，检查「神社没落的警示」→ 解锁永久进阶勋章 50% 抽奖 ──
     if (!prog.perm_advanced_medal) {
       _permAdvCheckResult = null;
-      fffProxyGet('https://sstm.moe/profile/340824-%E6%94%B8%E8%96%A9/?tab=node_awards_Awards')
+      fffProxyGet('https://sstm.moe/profile/' + (state.uid || fffGetCurrentUid()) + '-' + encodeURIComponent(state.id || '') + '/?tab=node_awards_Awards')
         .then(function(html) {
           try {
             var doc = new DOMParser().parseFromString(html, 'text/html');
@@ -4574,26 +4626,21 @@ function logDiceRewardToGAS_(reward) {
 function detectForumUser_() {
   var inputId = document.getElementById('inputId');
   var inputUid = document.getElementById('inputUid');
+  var loginErr = document.getElementById('loginErr');
 
   fffProxyGet('https://sstm.moe/')
     .then(function(html) {
       try {
         var doc = new DOMParser().parseFromString(html, 'text/html');
         var link = doc.querySelector('#cUserLink a[href*="/profile/"]');
-        if (!link) link = doc.querySelector('a[href*="/profile/"]');
-        if (!link) return;
+        if (!link) { console.warn('[dice] 代理返回的是游客页面（无 #cUserLink），跳过自动侦测'); return; }
         var m = (link.getAttribute('href') || '').match(/\/profile\/(\d+)-([^/]+)/);
         if (!m) return;
         var detectedUid = m[1];
         var detectedName = decodeURIComponent(m[2].replace(/\+/g, ' '));
-
-        // 已有手动填入的 UID 且与侦测结果不一致 → 弹窗询问是否替换
         var existingUid = inputUid && inputUid.value.trim();
         if (existingUid && existingUid !== detectedUid) {
-          if (!confirm('侦测到论坛已登录帐号（' + detectedName + '，UID: ' + detectedUid + '）与你填入的 UID（' + existingUid + '）不同。\n\n是否替换为论坛已登录的 UID？')) {
-            return;
-          }
-          // 用户确认替换 → ID 与 UID 都覆盖
+          if (!confirm('侦测到论坛已登录帐号（' + detectedName + '，UID: ' + detectedUid + '）与你填入的 UID（' + existingUid + '）不同。\n\n是否替换为论坛已登录的 UID？')) return;
           if (inputId) inputId.value = detectedName;
           if (inputUid) inputUid.value = detectedUid;
         } else {
@@ -4606,7 +4653,15 @@ function detectForumUser_() {
         state.uid = parseInt(detectedUid, 10) || 0;
       } catch(e) { console.warn('[dice] 解析论坛页面失败:', e); }
     })
-    .catch(function(e) { console.warn('[dice] 自动侦测论坛失败:', e); });
+    .catch(function(e) {
+      console.warn('[dice] 自动侦测论坛失败:', e.message || e);
+      if (loginErr && !loginErr.textContent.trim()) {
+        loginErr.style.color = '#cc8844';
+        loginErr.innerHTML = '⚠️ 论坛自动侦测不可用。<br>'
+          + '<span style="font-size:0.78rem;">请打开 <b>sstm.moe</b> → 点右上角头像 →<br>'
+          + '网址列 <code>/profile/<b>UID</b>-ID</code> 中的数字就是 UID，填入下方即可。</span>';
+      }
+    });
 }
 
 // ===== 页面初始化 =====
