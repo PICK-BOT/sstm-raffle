@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>十年后重逢 — 命运的骰子 v2</title>
+<title>十年后重逢 — 命运的骰子 v2.5</title>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -1719,7 +1719,7 @@ const REWARDS = [
 
 // ===== GAS CONFIG =====
 const GAS_URL = 'https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec';
-const DICE_GAME_VERSION = 'v2.3';
+const DICE_GAME_VERSION = 'v2.5';
 const DICE_SAVE_XLSX_PASSWORD = 'sstm';
 
 // ===== GAME STATE =====
@@ -2374,6 +2374,7 @@ function applyForumDeltaToDiceState_(netR, netC) {
   if (posAdd <= 0 && mixAdd <= 0) {
     let msg = '本次区间内没有可折算的新增回复/被引用。';
     if (conv.newRemainder > 0) msg += '\n（回复余数 ' + conv.newRemainder + ' 条已保存，满 5 条换 1 正骰）';
+    msg += '\n\n请确认你已在 7/1~7/31 期间于新手村回复至少 5 次，或被引用后回复了该被引用。\n注意：被引用后必须回复被引用，系统才会搜寻到。';
     alert(msg);
     return;
   }
@@ -2663,6 +2664,7 @@ function showProgressScreen(prog) {
 
   showScreen('screen1b');
   maybeShowPermMedalMainGuide_(prog, visitedCount);
+  setTimeout(showNewcomerGuide_, 600);
 }
 
 // ===== 带入剩余骰子继续 =====
@@ -4141,6 +4143,16 @@ function closeDiceGuide_() {
   if (el) el.classList.remove('show');
 }
 
+// ===== 新手活动引导弹窗（v2.5） =====
+function showNewcomerGuide_() {
+  const ov = document.getElementById('newcomer-guide-overlay');
+  if (ov) ov.classList.add('show');
+}
+function closeNewcomerGuide() {
+  const ov = document.getElementById('newcomer-guide-overlay');
+  if (ov) ov.classList.remove('show');
+}
+
 // ===== SCREEN 2 区间抓取 =====
 let _s2FetchToken = 0;
 let _s2FetchTickId = null;
@@ -4274,6 +4286,7 @@ async function beginScreen2ForumFetch_(retryLeft) {
         showScreen2Manual_('所选区间内没有可新增的回复/被引用（云端已有相同或更多记录）。');
       } else {
         showScreen2Manual_('您选定的时间区间内找不到新手区回复或被引用，请手动输入。');
+        alert('⚠️ 未搜寻到你的回复或被引用。\n\n请确认你已在 7/1~7/31 期间于新手村回复至少 5 次，或被引用后回复了该被引用。\n\n注意：被引用后「必须回复该被引用内容」，系统才会搜寻到你的被引用纪录。');
       }
       return;
     }
@@ -4340,6 +4353,7 @@ function enterScreen2_() {
   if (!_diceOnline || !state.uid) {
     showScreen2Manual_('当前离线，请手动输入回复与被引用。');
   }
+  setTimeout(showNewcomerGuide_, 600);
 }
 
 // ===== 下载游玩存档（只读 Excel，含完整进度） =====
@@ -4582,6 +4596,25 @@ window.__applyPortableSaveData=async function(data){
   else boot();
 })();
 </script>
+<!-- ── 新手活动引导弹窗（v2.5） ── -->
+<div id="newcomer-guide-overlay" class="ds-guide-overlay">
+  <div class="ds-guide-box">
+    <h3>🎲 欢迎来到骰子故事</h3>
+    <div style="text-align:left;color:var(--white-dim);font-size:0.9rem;line-height:1.85;margin-bottom:18px;">
+      <p style="margin-bottom:12px;">在使用骰子故事前，请先完成以下条件：</p>
+      <p style="margin-bottom:8px;">① 在 <strong style="color:var(--gold-light);">7/1 ~ 7/31</strong> 期间，于 <strong style="color:var(--gold-light);">新手村</strong> 回复 <strong style="color:var(--gold-light);">至少 5 次</strong>。</p>
+      <p style="margin-bottom:8px;">② 或 <strong style="color:var(--gold-light);">被引用回复</strong> 后 <strong style="color:var(--gold-light);">回复该被引用</strong> 至少 1 次。</p>
+      <p style="margin-bottom:8px;">③ 然后使用下方「搜寻」功能，系统会自动统计你的回复与被引用数。</p>
+      <div style="margin-top:14px;padding:10px 14px;background:rgba(255,179,71,0.08);border:1px solid rgba(255,179,71,0.25);border-radius:8px;font-size:0.82rem;">
+        💡 <strong style="color:#ffb347;">重要提醒：</strong>被引用后<strong style="color:var(--gold-light);">必须回复该被引用内容</strong>，系统才会搜寻到你的被引用纪录。
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="closeNewcomerGuide()" style="width:auto;padding:10px 32px;">我知道了</button>
+  </div>
+</div>
+
+<!-- v2.5 2026-07-01 新手活动引导弹窗：进入欢迎画面时提醒7/1~7/31新手村5回复或回复被引用条件，搜寻无结果也弹窗提醒 -->
+
 <!-- v1.3 2026-03-28 论坛抓取写入 GAS「论坛抓取记录_骰子故事」独立分页 -->
 <!-- v1.4 2026-04-04 离线模式浮动警告+下载游玩数据；骰子奖励写入 GAS「骰子故事奖励」分页（中文奖励名称） -->
 <!-- v1.5 2026-04-04 里程碑系统：10故事→永久本期勋章；20故事×1/2/3/4种选项→往期勋章兑换机会；动态奖励池（节操/羽毛/字母勋章权重+上限）；screen1b显示永久奖励徽章 -->
