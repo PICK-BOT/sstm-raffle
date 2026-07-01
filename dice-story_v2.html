@@ -4593,11 +4593,13 @@ function detectForumUser_() {
           if (!confirm('侦测到论坛已登录帐号（' + detectedName + '，UID: ' + detectedUid + '）与你填入的 UID（' + existingUid + '）不同。\n\n是否替换为论坛已登录的 UID？')) {
             return;
           }
+          // 用户确认替换 → ID 与 UID 都覆盖
+          if (inputId) inputId.value = detectedName;
+          if (inputUid) inputUid.value = detectedUid;
+        } else {
+          if (inputId && !inputId.value.trim()) inputId.value = detectedName;
+          if (inputUid && !inputUid.value.trim()) inputUid.value = detectedUid;
         }
-
-        if (inputId && !inputId.value.trim()) inputId.value = detectedName;
-        if (inputUid && !inputUid.value.trim()) inputUid.value = detectedUid;
-        if (inputUid && existingUid && existingUid !== detectedUid) inputUid.value = detectedUid;
         try { localStorage.setItem('diceStoryLastId_v2', detectedName); } catch(e) {}
         try { localStorage.setItem(KEY_UID, detectedUid); } catch(e) {}
         state.id = detectedName;
