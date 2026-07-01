@@ -2019,7 +2019,7 @@ async function logForumFetchToGAS_(opts) {
 }
 
 // ===== FORUM AUTO-FETCH（论坛32 新手区；逻辑对齐 board_game） =====
-// 中转站：优先 GAS 云端代理（Google试算表后台），备用 Vercel 中转
+// 中转站：优先 GAS 云端代理（Google试算表后台），VPN 下可经 Vercel 转到 GAS 再抓 SSTM
 const FFF_PROXY = 'https://sstm-raffle.vercel.app/gal-proxy?url=';
 const FORUM_FETCH_MS = 35000;
 const _diceIsFileOrigin = typeof location !== 'undefined' && location.protocol === 'file:';
@@ -2124,6 +2124,19 @@ async function _diceGasProxyGet_(url) {
   if (_diceProxyOkText_(text)) return text;
   throw new Error((data && data.error) || 'gas_proxy_empty');
 }
+function _diceExtractProxyHtml_(raw) {
+  const text = String(raw || '').trim();
+  if (!text) throw new Error('empty_response');
+  if (text.charAt(0) === '{') {
+    let data = null;
+    try { data = JSON.parse(text); } catch(e) { throw new Error('bad_proxy_json'); }
+    const html = (data && (data.html || data.contents)) || '';
+    if (_diceProxyOkText_(html)) return html;
+    throw new Error((data && (data.error || data.msg)) || 'empty_response');
+  }
+  if (_diceProxyOkText_(text)) return text;
+  throw new Error('empty_response');
+}
 
 async function fffProxyGet(url) {
   const sk = 'fff_' + url;
@@ -2138,23 +2151,22 @@ async function fffProxyGet(url) {
     console.warn('[dice-proxy] GAS FAIL:', e.message || e);
   }
 
-  // 备用：Vercel 中转站
+  // VPN 备用：玩家 → Vercel /gal-proxy → GAS fetch_url → SSTM
   try {
     const resp = await fetch(FFF_PROXY + encodeURIComponent(url), {
       referrerPolicy: 'no-referrer', credentials: 'omit',
       signal: AbortSignal.timeout(FORUM_FETCH_MS)
     });
     if (!resp.ok) throw new Error('HTTP_' + resp.status);
-    const text = await resp.text();
-    if (!_diceProxyOkText_(text)) throw new Error('empty_response');
+    const text = _diceExtractProxyHtml_(await resp.text());
     try { sessionStorage.setItem(sk, text); } catch(e) {}
     return text;
   } catch(e) {
-    console.warn('[dice-proxy] Vercel FAIL:', e.message || e);
+    console.warn('[dice-proxy] Vercel→GAS FAIL:', e.message || e);
   }
 
   const hint = _diceIsFileOrigin ? '（本地 file:// 建议改用 GitHub Pages）' : '';
-  throw new Error('所有中转站均不可用（GAS + Vercel 均失败）' + hint);
+  throw new Error('所有中转站均不可用（GAS + Vercel→GAS 均失败）' + hint);
 }
 
 async function fffGetUsername(uid) {
@@ -4741,3 +4753,4 @@ window.__applyPortableSaveData=async function(data){
 <div id="dice-offline-warning" onclick="retryDiceCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 </body>
 </html>
+
