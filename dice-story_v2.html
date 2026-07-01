@@ -1078,6 +1078,7 @@ body.fullbleed-view #app {
       <summary>🎁 奖励累计</summary>
       <div class="reward-summary-body" id="rewardSummaryBody">
         <div class="rsb-item rsb-dim" id="rsbPermMedal">🏅 永久本期勋章<span class="rsb-val">未获得</span></div>
+        <div class="rsb-item rsb-dim" id="rsbPermAdvMedal">💎 永久进阶勋章<span class="rsb-val">未获得</span></div>
         <div class="rsb-item rsb-dim" id="rsbLegacy">🎖 往期兑换机会<span class="rsb-val">0 次</span></div>
         <div class="rsb-item rsb-dim" id="rsbSeiso">⚔️ 节操累计<span class="rsb-val">0</span></div>
         <div class="rsb-item rsb-dim" id="rsbFeather">🪶 羽毛累计<span class="rsb-val">0</span></div>
@@ -1825,6 +1826,7 @@ function buildRewardsSyncPayload_(prog) {
     tentacle_medal_days: Number(prog.tentacle_medal_days) || 0,
     past_card_count: Number(prog.past_card_count) || 0,
     perm_medal: !!prog.perm_medal,
+    perm_advanced_medal: !!prog.perm_advanced_medal,
     has_mitsuha_card: !!prog.has_mitsuha_card,
     has_taki_card: !!prog.has_taki_card,
     local_card_phase: Number(prog.local_card_phase) || 0,
@@ -1853,6 +1855,7 @@ function mergeCloudRewardsIntoProg_(prog, cloudRewards) {
   prog.tentacle_medal_days = Math.max(Number(prog.tentacle_medal_days) || 0, Number(c.tentacle_medal_days) || 0);
   prog.past_card_count = Math.max(Number(prog.past_card_count) || 0, Number(c.past_card_count) || 0);
   if (c.perm_medal) prog.perm_medal = true;
+  if (c.perm_advanced_medal) prog.perm_advanced_medal = true;
   if (c.has_mitsuha_card) prog.has_mitsuha_card = true;
   if (c.has_taki_card)    prog.has_taki_card    = true;
   if (c.local_card_phase) prog.local_card_phase = Math.max(Number(prog.local_card_phase) || 0, Number(c.local_card_phase) || 0);
@@ -2552,6 +2555,21 @@ async function goScreen2() {
 // 跳过检查直接进 screen2（「重新输入」按钮）
 function goScreen2NoCheck() { enterScreen2_(); }
 
+// ===== TOAST =====
+function showToast(msg) {
+  var el = document.getElementById('dice-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'dice-toast';
+    el.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,.88);color:#f0e8d0;padding:12px 24px;border-radius:12px;font-size:0.95rem;font-family:"Noto Serif SC",serif;border:1px solid rgba(201,168,76,0.4);box-shadow:0 4px 20px rgba(0,0,0,0.5);opacity:0;transition:opacity .35s;pointer-events:none;text-align:center;max-width:85vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  if (window._toastTimer) clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(function() { el.style.opacity = '0'; }, 5000);
+}
+
 // ===== 显示进度面板 =====
 function showProgressScreen(prog) {
   document.getElementById('s1bWelcome').textContent = '欢迎回来，' + state.id;
@@ -2559,6 +2577,32 @@ function showProgressScreen(prog) {
   const pendingDice = prog.pending_neg_dice || 0;
   const done        = normalizeStoriesDone(prog.stories_done);
   const visitedCount = Object.keys(done).length;
+
+  // ── 已持有永久本期勋章但尚未检查进阶勋章 → 于登入时扫描 ──
+  if (prog.perm_medal && !prog.perm_advanced_medal && _permAdvCheckResult === null && !window._permAdvFetchFired) {
+    window._permAdvFetchFired = true;
+    fffProxyGet('https://sstm.moe/profile/340824-%E6%94%B8%E8%96%A9/?tab=node_awards_Awards')
+      .then(function(html) {
+        try {
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          var blocks = doc.querySelectorAll('.ipsResponsive_showPhone.ipsResponsive_block');
+          var hasBadge = false;
+          blocks.forEach(function(block) {
+            var heads = block.querySelectorAll('.ipsType_sectionHead.ipsCursor_pointer');
+            heads.forEach(function(h) {
+              if ((h.textContent || '').trim().indexOf('神社没落的警示') !== -1) hasBadge = true;
+            });
+          });
+          if (hasBadge && Math.random() < 0.5) {
+            prog.perm_advanced_medal = true;
+            var all = loadAllProgress();
+            if (all[state.id]) { all[state.id].perm_advanced_medal = true; saveAllProgress(all); }
+            showToast('💎 命运之线牵动！获得【永久进阶勋章】！');
+          }
+        } catch(e) { console.warn('[dice] 登入进阶勋章扫描失败:', e); }
+      })
+      .catch(function(e) { console.warn('[dice] 登入进阶勋章抓取失败:', e); });
+  }
 
   // 全选完成度：4种选项全部选过的故事数
   let fullyDone = 0;
@@ -2588,6 +2632,8 @@ function showProgressScreen(prog) {
     if (v) v.textContent = val;
   }
   rsbSet('rsbPermMedal', permMedal ? '✅ 已获得' : '未获得', permMedal ? 'rsb-active' : 'rsb-dim');
+  const permAdvMedal = !!prog.perm_advanced_medal;
+  rsbSet('rsbPermAdvMedal', permAdvMedal ? '✅ 已获得' : '未获得', permAdvMedal ? 'rsb-active' : 'rsb-dim');
   rsbSet('rsbLegacy',    legacyChances + ' 次', legacyChances > 0 ? 'rsb-blue' : 'rsb-dim');
   rsbSet('rsbSeiso',     seisoTotal + ' 节操',  seisoTotal  > 0 ? 'rsb-active' : 'rsb-dim');
   rsbSet('rsbFeather',   featherTotal + ' 羽毛', featherTotal > 0 ? 'rsb-active' : 'rsb-dim');
@@ -3509,6 +3555,7 @@ function updateRewardTotal_(reward) {
 // ===== MILESTONE CHECK & POPUP =====
 let _milestoneQueue = [];
 let _pendingPermMainGuide = false;
+let _permAdvCheckResult = null; // null=检查中, true=可领进阶勋章, false=不符合
 
 function maybeShowPermMedalMainGuide_(prog, visitedCount) {
   if (!_pendingPermMainGuide || !prog || !prog.perm_medal || visitedCount < 10 || !state.id) return;
@@ -3562,6 +3609,33 @@ function checkMilestones_() {
       body: '你已探索 10 个以上的故事！\n\n恭喜获得【永久本期勋章】！\n\n今后的随机奖励中，30天本期勋章将不再出现，改为节操、羽毛与字母勋章。',
       type: 'perm_medal'
     });
+
+    // ── 扫描指定用户勋章页，检查「神社没落的警示」→ 解锁永久进阶勋章 50% 抽奖 ──
+    if (!prog.perm_advanced_medal) {
+      _permAdvCheckResult = null;
+      fffProxyGet('https://sstm.moe/profile/340824-%E6%94%B8%E8%96%A9/?tab=node_awards_Awards')
+        .then(function(html) {
+          try {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            var blocks = doc.querySelectorAll('.ipsResponsive_showPhone.ipsResponsive_block');
+            var hasBadge = false;
+            blocks.forEach(function(block) {
+              var heads = block.querySelectorAll('.ipsType_sectionHead.ipsCursor_pointer');
+              heads.forEach(function(h) {
+                if ((h.textContent || '').trim().indexOf('神社没落的警示') !== -1) hasBadge = true;
+              });
+            });
+            if (hasBadge && Math.random() < 0.5) {
+              prog.perm_advanced_medal = true;
+              saveAllProgress(all);
+              _permAdvCheckResult = true;
+            } else {
+              _permAdvCheckResult = false;
+            }
+          } catch(e) { _permAdvCheckResult = false; console.warn('[dice] 进阶勋章解析失败:', e); }
+        })
+        .catch(function(e) { _permAdvCheckResult = false; console.warn('[dice] 进阶勋章抓取失败:', e); });
+    }
   }
 
   // ── 20 个故事各选 ≥1 次 → 往期兑换机会 ──
@@ -3638,8 +3712,26 @@ function showNextMilestone_() {
 
 function closeMilestone_() {
   document.getElementById('milestoneOverlay').classList.remove('show');
+
+  // 检查进阶勋章扫描结果
+  if (_permAdvCheckResult === null) {
+    // 还在扫描中，等待（最多重试 20 次 = 约 8 秒）
+    window._permAdvRetryCount = (window._permAdvRetryCount || 0) + 1;
+    if (window._permAdvRetryCount > 20) { _permAdvCheckResult = false; }
+    else { setTimeout(closeMilestone_, 400); return; }
+  }
+  if (_permAdvCheckResult === true) {
+    _permAdvCheckResult = null;
+    window._permAdvRetryCount = 0;
+    _milestoneQueue.push({
+      icon: '💎',
+      title: '永久进阶勋章',
+      body: '你身上的「神社没落的警示」勋章引动了命运之线！\n\n恭喜获得【永久进阶勋章】！',
+      type: 'perm_advanced_medal'
+    });
+  }
+
   if (_milestoneQueue.length > 0) {
-    // 还有更多里程碑，继续弹
     setTimeout(showNextMilestone_, 300);
     return;
   }
@@ -3773,9 +3865,11 @@ function renderIdHistory_() {
   if (hist.length === 0) { row.style.display = 'none'; return; }
   row.style.display = 'block';
   chips.innerHTML = '';
-  hist.forEach(entry => {
+  hist.forEach((entry, idx) => {
     const id = typeof entry === 'string' ? entry : entry.id;
     const uid = typeof entry === 'object' ? entry.uid : getUidForId_(id);
+    const wrap = document.createElement('span');
+    wrap.style.cssText = 'position:relative;display:inline-block;';
     const btn = document.createElement('button');
     btn.className = 'ih-chip';
     btn.textContent = id;
@@ -3787,7 +3881,20 @@ function renderIdHistory_() {
       state.uid = parseInt(uid, 10) || 0;
       doDiceLogin();
     };
-    chips.appendChild(btn);
+    wrap.appendChild(btn);
+    const del = document.createElement('span');
+    del.textContent = '×';
+    del.title = '删除此记录';
+    del.style.cssText = 'position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:rgba(180,60,60,0.9);color:#fff;font-size:12px;line-height:16px;text-align:center;cursor:pointer;z-index:2;';
+    del.onclick = function(e) {
+      e.stopPropagation();
+      var h = loadIdHistory_();
+      h.splice(idx, 1);
+      try { localStorage.setItem(ID_HISTORY_KEY, JSON.stringify(h)); } catch(e) {}
+      renderIdHistory_();
+    };
+    wrap.appendChild(del);
+    chips.appendChild(wrap);
   });
 }
 
@@ -4463,6 +4570,34 @@ function logDiceRewardToGAS_(reward) {
   }).catch(e => console.warn('GAS dice reward log failed', e));
 }
 
+// ===== 自动侦测论坛登录状态 =====
+function detectForumUser_() {
+  var inputId = document.getElementById('inputId');
+  var inputUid = document.getElementById('inputUid');
+  if ((inputId && inputId.value.trim()) || (inputUid && inputUid.value.trim())) return;
+
+  fffProxyGet('https://sstm.moe/')
+    .then(function(html) {
+      try {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var link = doc.querySelector('#cUserLink a[href*="/profile/"]');
+        if (!link) link = doc.querySelector('a[href*="/profile/"]');
+        if (!link) return;
+        var m = (link.getAttribute('href') || '').match(/\/profile\/(\d+)-([^/]+)/);
+        if (!m) return;
+        var detectedUid = m[1];
+        var detectedName = decodeURIComponent(m[2].replace(/\+/g, ' '));
+        if (inputId && !inputId.value.trim()) inputId.value = detectedName;
+        if (inputUid && !inputUid.value.trim()) inputUid.value = detectedUid;
+        try { localStorage.setItem('diceStoryLastId_v2', detectedName); } catch(e) {}
+        try { localStorage.setItem(KEY_UID, detectedUid); } catch(e) {}
+        state.id = detectedName;
+        state.uid = parseInt(detectedUid, 10) || 0;
+      } catch(e) { console.warn('[dice] 解析论坛页面失败:', e); }
+    })
+    .catch(function(e) { console.warn('[dice] 自动侦测论坛失败:', e); });
+}
+
 // ===== 页面初始化 =====
 (function init_() {
   renderIdHistory_();
@@ -4474,6 +4609,8 @@ function logDiceRewardToGAS_(reward) {
   } catch (e) {}
   setDiceOnlineStatus_(false);
   checkDiceCloudConnection_();
+  // 自动侦测论坛登录信息（静默，不覆盖已有值）
+  detectForumUser_();
 })();
 
 
@@ -4613,6 +4750,9 @@ window.__applyPortableSaveData=async function(data){
   </div>
 </div>
 
+<!-- 版本号右下角 -->
+<div id="dice-version-badge" style="position:fixed;bottom:8px;right:10px;z-index:9999;font-size:0.68rem;color:rgba(232,224,208,0.25);font-family:'Consolas','Courier New',monospace;pointer-events:none;user-select:none;">v2.5</div>
+
 <!-- v2.5 2026-07-01 新手活动引导弹窗：进入欢迎画面时提醒7/1~7/31新手村5回复或回复被引用条件，搜寻无结果也弹窗提醒 -->
 
 <!-- v1.3 2026-03-28 论坛抓取写入 GAS「论坛抓取记录_骰子故事」独立分页 -->
@@ -4626,6 +4766,7 @@ window.__applyPortableSaveData=async function(data){
 <!-- v2.1 2026-06-06 书本封面全屏；论坛抓取逐日写入「骰子故事返乡活跃度记录」并跳过云端已有日期 -->
 <!-- v2.2 2026-06-06 登入封面全屏自适应；云端逐日可补差额更新；回复余数(localStorage)凑满5换正骰，显示于混合骰面板 -->
 <!-- v2.4 2026-06-20 触手勋章~5%无限重复；奖池：本期本地用户牌×1（抽后开启三叶/泷各自×1）、往期本地用户牌×1（可重复最多5次） -->
+<!-- v2.5 2026-07-01 新增：永久进阶勋章（50%几率）；登入时自动扫描论坛UID填入表单；历史ID可删除；右下角版本号显示 -->
 <div id="dice-offline-warning" onclick="retryDiceCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 </body>
 </html>
