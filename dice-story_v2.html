@@ -1038,7 +1038,7 @@ body.fullbleed-view #app {
       <input type="number" id="inputUid" placeholder="论坛个人页 URL 中的数字 UID" inputmode="numeric">
       <div class="conn-row">
         <div id="conn-dot"></div>
-        <div id="conn-label">未连线</div>
+        <div id="conn-label">检测连线中…</div>
       </div>
       <div id="loginErr"></div>
       <button class="btn btn-primary" id="btnDiceLogin" onclick="doDiceLogin()">登入 →</button>
@@ -1180,35 +1180,15 @@ body.fullbleed-view #app {
       <div id="s2-conn-label">检测连线中…</div>
     </div>
 
-    <!-- 阶段一：时间区间（玩家确认后按搜寻） -->
+    <!-- 阶段一：读取论坛数据 -->
     <div id="screen2Interval" class="card">
       <p style="font-size:0.88rem;color:var(--white-dim);text-align:center;margin-bottom:14px;line-height:1.7;">
-        请先设定本次要统计的<strong style="color:var(--gold)">回复</strong>与<strong style="color:var(--gold)">被引用</strong>时间区间<br>
-        <span style="font-size:0.78rem;opacity:.85;">（新手区帖子；默认带入今天日期，确认后点「搜寻」）</span>
+        系统将自动统计你在<strong style="color:var(--gold)">新手区</strong>的<strong style="color:var(--gold)">回复</strong>与<strong style="color:var(--gold)">被引用</strong>次数<br>
+        <span style="font-size:0.78rem;opacity:.85;">（自活动开始至今天）</span>
       </p>
-      <!-- ══════════════════════════════════════════════════════════════
-           📅 论坛抓取日期区间限制（Screen 2 区间输入卡）
-           • min / max 属性限制玩家可选的日期范围
-           • 预设值由下方 JS initScreen2Dates_() 统一写入，
-             不在此处写死 value；如需更改区间，
-             请同步修改：
-               1. 此处 min / max
-               2. JS initScreen2Dates_() 中的 SCRAPE_DATE_MIN / MAX
-               3. 弹窗 #fff-date-start / #fff-date-end 的 min / max / value
-      ════════════════════════════════════════════════════════════════ -->
-      <div class="field-row">
-        <div class="field">
-          <label for="s2-date-start">开始日期</label>
-          <input type="date" id="s2-date-start" min="2026-07-01" max="2026-08-01">
-        </div>
-        <div class="field">
-          <label for="s2-date-end">结束日期</label>
-          <input type="date" id="s2-date-end" min="2026-07-01" max="2026-08-01">
-        </div>
-      </div>
-      <div id="screen2FetchStatus">请确认日期区间后，点下方「搜寻」开始读取。</div>
+      <div id="screen2FetchStatus">请点下方「开始读取」以取得论坛数据。</div>
       <button type="button" class="btn btn-primary" id="btnS2Search" style="width:100%;margin-top:6px;"
-        onclick="startScreen2ForumSearch_()">🔍 搜寻</button>
+        onclick="startScreen2ForumSearch_()">🔍 开始读取</button>
       <button type="button" class="btn btn-ghost" id="btnS2Manual" style="width:100%;font-size:0.85rem;margin-top:8px;display:none;"
         onclick="showScreen2Manual_('您选择改用手动输入回复与被引用。')">改用手动输入回复 / 被引用 →</button>
     </div>
@@ -1222,7 +1202,7 @@ body.fullbleed-view #app {
         <p style="font-size:0.82rem;color:var(--gold);font-weight:700;margin-bottom:8px;">📖 这游戏怎么玩？</p>
         <p class="calc-note" style="margin:0;line-height:1.8;">
           用论坛活跃度换骰子：<strong style="color:var(--gold-light)">每 5 回复 → 1 个正骰子（d4）</strong>，<strong style="color:#ff8899">每 1 次被引用 → 1 个混合骰子</strong>。<br>
-          混合骰子须先分配为 <strong style="color:var(--gold-light)">+4 进攻</strong> 或 <strong style="color:#ff8899">−4 防御</strong>：进攻骰增加投出点数，防御骰在投骰后可用来 <strong>每个扣 4 点</strong>，影响最终翻开哪一则故事。<br>
+          混合骰子须先选择为 <strong style="color:var(--gold-light)">+4 正向</strong> 或 <strong style="color:#ff8899">−4 负向</strong>：+4 增加投出点数，−4 在投骰后可<strong>每个扣 4 点</strong>，影响最终翻开哪一则故事。<br>
           投掷 d4 合计后翻开命运之书，从四个选项择一；进度会同步到主画面，可随时返回查看记录。
         </p>
       </div>
@@ -1255,60 +1235,57 @@ body.fullbleed-view #app {
     </div>
   </div>
 
-  <!-- ===================== SCREEN 3: 骰子分配 ===================== -->
-  <div id="screen3" class="screen">
-    <h2>骰子分配</h2>
-    <div class="dice-info">你共有 <span id="s3PosDice">0</span> 个正骰子（d4）</div>
-
-    <div id="mixDiceSection" class="hidden" style="width:100%;">
-      <!-- 上次未分配提醒 -->
-      <div class="pending-dice-banner hidden" id="pendingBanner"></div>
-
-      <p style="font-size:0.88rem;color:var(--white-dim);margin-bottom:10px;text-align:center;">
-        你有 <span id="s3NegCount" style="color:#ff8899;font-weight:700;">0</span> 个混合骰子，选择进攻或防御方向：
-      </p>
-
-      <!-- 批量数量输入 -->
-      <div class="batch-input-row">
-        <input type="number" id="batchPosN" min="1" placeholder="数量">
-        <button class="btn-batch btn-batch-pos" style="flex:1;" onclick="batchAssignN('pos')">个 → +4 进攻</button>
-        <input type="number" id="batchNegN" min="1" placeholder="数量">
-        <button class="btn-batch btn-batch-neg" style="flex:1;" onclick="batchAssignN('neg')">个 → −4 防御</button>
-      </div>
-      <!-- 快捷全选 + 清除 -->
-      <div class="batch-row">
-        <button class="btn-batch btn-batch-pos" onclick="batchAssign('pos')">全部 +4</button>
-        <button class="btn-batch btn-batch-neg" onclick="batchAssign('neg')">全部 −4</button>
-        <button class="btn-batch btn-batch-clear" onclick="batchClear()">全部清除</button>
+  <!-- ===================== SCREEN 3: 混合骰子分配 → 骰子摘要 ===================== -->
+    <div id="screen3" class="screen">
+      <h2 id="s3ScreenTitle">骰子分配</h2>
+      <div id="s3SummaryBlock">
+      <div class="dice-info" style="margin-bottom:20px;">
+        你共有 <span style="color:var(--gold-light);font-weight:700;" id="s3PosDice">0</span> 个正骰子（d4）
+        <span style="margin:0 12px;opacity:.4">|</span>
+        共有 <span style="color:#ff8899;font-weight:700;" id="s3NegCount">0</span> 个混合骰子
       </div>
 
-      <div id="mixDiceRows" style="width:100%;"></div>
+      <div class="summary-box">
+        <div class="calc-row">
+          <span class="s-label">⚀ 正骰子</span>
+          <span class="s-val" id="s3SumPos">0 个</span>
+        </div>
+        <div class="calc-row">
+          <span class="s-label">⛀ 混合骰子（被引用）</span>
+          <span class="s-val" style="color:#ff8899;" id="s3SumNeg">0 个</span>
+        </div>
+      </div>
+      </div>
 
-      <!-- 未分配提示 -->
-      <div class="unassigned-note" id="unassignedNote"></div>
+      <div id="s3MixPanel" style="display:none;width:100%;max-width:480px;margin:16px auto 0;">
+        <p class="mix-panel-title" style="margin-bottom:8px;text-align:center;line-height:1.7;">
+          被引用换来的混合骰子：请为<strong>每一个</strong>选择 <strong style="color:var(--gold-light)">+4</strong> 或 <strong style="color:#ff8899">−4</strong>
+        </p>
+        <div class="batch-row">
+          <button type="button" class="btn-batch btn-batch-pos" onclick="batchAssignS3_('pos')">全部 +4</button>
+          <button type="button" class="btn-batch btn-batch-neg" onclick="batchAssignS3_('neg')">全部 −4</button>
+          <button type="button" class="btn-batch btn-batch-clear" onclick="batchClearS3_()">全部清除</button>
+        </div>
+        <div id="s3MixRows" style="width:100%;"></div>
+        <div class="unassigned-note" id="s3UnassignedNote"></div>
+        <div class="summary-box" style="margin-top:10px;">
+          <div class="calc-row">
+            <span class="s-label">⚀ 已选 +4</span>
+            <span class="s-val gold" id="s3MixSumPos">0 个</span>
+          </div>
+          <div class="calc-row">
+            <span class="s-label">− 已选 −4</span>
+            <span class="s-val" style="color:#ff8899;" id="s3MixSumNeg">0 个</span>
+          </div>
+          <div class="calc-row" id="s3MixSumUnassignedRow">
+            <span class="s-label" style="color:#ffb347;">◌ 未选择</span>
+            <span class="s-val" style="color:#ffb347;" id="s3MixSumUnassigned">0 个</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btnGoS4" type="button" onclick="onScreen3PrimaryClick_()">确认并出发 →</button>
     </div>
-
-    <div class="summary-box">
-      <div class="calc-row">
-        <span class="s-label">⚀ 正骰子</span>
-        <span class="s-val" id="s3SumPos">0 个</span>
-      </div>
-      <div class="calc-row">
-        <span class="s-label">＋ 进攻骰子（+4）</span>
-        <span class="s-val gold" id="s3SumPlus">0 个</span>
-      </div>
-      <div class="calc-row">
-        <span class="s-label">− 防御骰子（-4）</span>
-        <span class="s-val" style="color:#ff8899;" id="s3SumMinus">0 个</span>
-      </div>
-      <div class="calc-row" id="s3SumUnassignedRow" style="display:none;">
-        <span class="s-label" style="color:#ffb347;">◌ 未分配（本次跳过）</span>
-        <span class="s-val" style="color:#ffb347;" id="s3SumUnassigned">0 个</span>
-      </div>
-    </div>
-
-    <button class="btn btn-primary" id="btnGoS4" onclick="goScreen4()">了解了，出发！</button>
-  </div>
 
   <!-- ===================== SCREEN 4: 书本封面 ===================== -->
   <div id="screen4" class="screen">
@@ -1508,16 +1485,6 @@ body.fullbleed-view #app {
   <div class="fff-box">
     <h3 id="fff-modal-title">📡 论坛自动读取</h3>
     <div class="fff-row"><label>UID</label><input id="fff-uid" class="fff-inp" type="number" placeholder="论坛数字 UID" inputmode="numeric"></div>
-    <!-- ══════════════════════════════════════════════════════════════
-         📅 论坛抓取日期区间限制（弹窗）
-         • SCRAPE_DATE_MIN  = 可选最早日期（含）
-         • SCRAPE_DATE_MAX  = 可选最晚日期（含）
-         • value            = 开启弹窗时的预设值
-         如需更改活动期间，同步修改下方两处 value、min、max，
-         以及 JS 段落中 initScreen2Dates_() 里的相同常数。
-    ════════════════════════════════════════════════════════════════ -->
-    <div class="fff-row"><label>开始日期</label><input id="fff-date-start" class="fff-inp" type="date" value="2026-07-01" min="2026-07-01" max="2026-08-01"></div>
-    <div class="fff-row"><label>结束日期</label><input id="fff-date-end"   class="fff-inp" type="date" value="2026-08-01" min="2026-07-01" max="2026-08-01"></div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
       <button type="button" class="fff-btn-ok" onclick="fffDoFetch()">🔍 开始读取</button>
       <button type="button" class="fff-btn-cancel" onclick="fffCloseModal()">取消</button>
@@ -1526,7 +1493,7 @@ body.fullbleed-view #app {
 </div>
 <div id="fff-loading" class="fff-modal" style="flex-direction:column;gap:14px;">
   <div class="fff-spinner"></div>
-  <div id="fff-status" style="color:var(--white-dim);font-size:0.88rem;text-align:center;max-width:300px;line-height:1.75">正在连接论坛…</div>
+  <div id="fff-status" style="color:var(--white-dim);font-size:0.88rem;text-align:center;max-width:300px;line-height:1.75">正在获取论坛资料…</div>
   <div style="color:#555;font-size:0.75rem">可能需要数十秒</div>
 </div>
 <div id="fff-result" class="fff-modal" style="flex-direction:column;">
@@ -1556,7 +1523,7 @@ body.fullbleed-view #app {
       <h4>🎲 如何游玩</h4>
       <p>用论坛活跃度换骰子，投出点数翻开《你的名字》十年后故事：</p>
       <p><strong>每 5 条回复</strong> → 1 个正骰子 (d4)<br>
-      <strong>每 1 次被引用</strong> → 1 个混合骰子（可定为 +4 进攻 或 −4 防御）<br>
+      <strong>每 1 次被引用</strong> → 1 个混合骰子（可定为 +4 或 −4）<br>
       投 d4 合计 → 翻开命运之书 → 从四个选项中择一解锁故事</p>
     </div>
 
@@ -2055,6 +2022,7 @@ async function logForumFetchToGAS_(opts) {
 // 中转站：优先 GAS 云端代理（Google试算表后台），备用 Vercel 中转
 const FFF_PROXY = 'https://sstm-raffle.vercel.app/gal-proxy?url=';
 const FORUM_FETCH_MS = 35000;
+const _diceIsFileOrigin = typeof location !== 'undefined' && location.protocol === 'file:';
 const FFF_IMP = 'fff_imp_dicestory_v2';
 let _fffResult = null;
 let _fffIsUpdate = false;
@@ -2069,6 +2037,8 @@ function fffGetCurrentUid() {
 function fffSetStatus(m) {
   const e = document.getElementById('fff-status');
   if (e) e.textContent = m;
+  const s2 = document.getElementById('screen2FetchStatus');
+  if (s2) s2.textContent = m;
 }
 
 function fffOpenLoading() {
@@ -2140,13 +2110,13 @@ function _diceGasJsonp_(params, timeout) {
     const qs = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
     const s = document.createElement('script');
     s.id = cb + '_s';
-    s.src = GAS_URL + '?' + qs + '&callback=' + cb + '&_t=' + Date.now();
+    s.src = GAS_URL + (GAS_URL.includes('?') ? '&' : '?') + qs + '&callback=' + cb + '&_t=' + Date.now();
     s.onerror = function() { clearTimeout(tid); try { delete window[cb]; } catch(e) {} s.remove(); reject(new Error('load_fail')); };
     document.head.appendChild(s);
   });
 }
 function _diceProxyOkText_(text) {
-  return text && text.length > 50 && (text.indexOf('<') >= 0 || /profile|ipsQuote|cProfileContent|ipsType_sectionHead/i.test(text));
+  return text && text.length > 80 && (text.indexOf('<') >= 0 || /profile|ipsQuote|cProfileContent/i.test(text));
 }
 async function _diceGasProxyGet_(url) {
   const data = await _diceGasJsonp_({ action: 'fetch_url', url: url }, FORUM_FETCH_MS);
@@ -2159,48 +2129,18 @@ async function fffProxyGet(url) {
   const sk = 'fff_' + url;
   try { const hit = sessionStorage.getItem(sk); if (hit) return hit; } catch(e) {}
 
-  const CORS_PROXIES = [
-    'https://api.allorigins.win/get?url=',
-    'https://corsproxy.io/?',
-    'https://api.codetabs.com/v1/proxy?quest=',
-    'https://corsproxy.org/?',
-    'https://cors.eu.org/'
-  ];
-
-  async function _tryCorsProxyChain_(targetUrl, extractor) {
-    for (const proxy of CORS_PROXIES) {
-      try {
-        const resp = await fetch(proxy + encodeURIComponent(targetUrl), {
-          signal: AbortSignal.timeout(FORUM_FETCH_MS)
-        });
-        if (!resp.ok) continue;
-        const raw = await resp.text();
-        let text = raw;
-        try { const j = JSON.parse(raw); if (j && j.contents) text = j.contents; } catch(e) {}
-        if (extractor) { const t = extractor(raw); if (t) text = t; }
-        if (_diceProxyOkText_(text)) return text;
-      } catch(e) { console.warn('[dice-proxy] CORS proxy fail:', proxy, e.message || e); }
-    }
-    return null;
+  // 优先：GAS 云端代理（与 dungeon_story 对齐）
+  try {
+    const text = await _diceGasProxyGet_(url);
+    try { sessionStorage.setItem(sk, text); } catch(e) {}
+    return text;
+  } catch(e) {
+    console.warn('[dice-proxy] GAS FAIL:', e.message || e);
   }
 
-  // 1. CORS 代理 → Vercel（VPN 玩家：能到公有代理，公有代理能到 Vercel，Vercel 能到 SSTM）
-  const vercelUrl = FFF_PROXY + encodeURIComponent(url);
-  const viaVercel = await _tryCorsProxyChain_(vercelUrl);
-  if (viaVercel) { try { sessionStorage.setItem(sk, viaVercel); } catch(e) {} return viaVercel; }
-
-  // 2. CORS 代理 → GAS（同上，走 GAS 抓 SSTM）
-  const gasUrl = GAS_URL + '?action=fetch_url&url=' + encodeURIComponent(url);
-  const gasExtractor = function(raw) {
-    try { var j = JSON.parse(raw.replace(/^[^(]+\(/, '').replace(/\);?$/, '')); if (j && (j.html || j.contents)) return j.html || j.contents; } catch(e) {}
-    return null;
-  };
-  const viaGas = await _tryCorsProxyChain_(gasUrl, gasExtractor);
-  if (viaGas) { try { sessionStorage.setItem(sk, viaGas); } catch(e) {} return viaGas; }
-
-  // 3. Vercel 直连（无 VPN 玩家直接走）
+  // 备用：Vercel 中转站
   try {
-    const resp = await fetch(vercelUrl, {
+    const resp = await fetch(FFF_PROXY + encodeURIComponent(url), {
       referrerPolicy: 'no-referrer', credentials: 'omit',
       signal: AbortSignal.timeout(FORUM_FETCH_MS)
     });
@@ -2209,34 +2149,12 @@ async function fffProxyGet(url) {
     if (!_diceProxyOkText_(text)) throw new Error('empty_response');
     try { sessionStorage.setItem(sk, text); } catch(e) {}
     return text;
-  } catch(e) { console.warn('[dice-proxy] Vercel FAIL:', e.message || e); }
+  } catch(e) {
+    console.warn('[dice-proxy] Vercel FAIL:', e.message || e);
+  }
 
-  // 4. GAS 直连（JSONP）
-  try {
-    const text = await _diceGasProxyGet_(url);
-    try { sessionStorage.setItem(sk, text); } catch(e) {}
-    return text;
-  } catch(e) { console.warn('[dice-proxy] GAS FAIL:', e.message || e); }
-
-  // 5. 直连（备用，CORS 通常会拦）
-  try {
-    const resp = await fetch(url, {
-      mode: 'cors', credentials: 'include',
-      signal: AbortSignal.timeout(FORUM_FETCH_MS)
-    });
-    if (resp.ok) {
-      const text = await resp.text();
-      if (_diceProxyOkText_(text)) {
-        try { sessionStorage.setItem(sk, text); } catch(e) {}
-        return text;
-      }
-    }
-  } catch(e) { console.warn('[dice-proxy] 直连 FAIL:', e.message || e); }
-
-  throw new Error(
-    '无法连接论坛，请确认网络可访问 sstm.moe。\n'
-    + '回复数与引用数将无法抓取，但手动填入 UID 仍可正常游戏。'
-  );
+  const hint = _diceIsFileOrigin ? '（本地 file:// 建议改用 GitHub Pages）' : '';
+  throw new Error('所有中转站均不可用（GAS + Vercel 均失败）' + hint);
 }
 
 async function fffGetUsername(uid) {
@@ -2324,9 +2242,10 @@ async function fffScrape(uid, slug, startDate, endDate) {
       const BATCH = 5;
       for (let i = 0; i < toCheck.length; i += BATCH) {
         const batch = toCheck.slice(i, i + BATCH);
-        fffSetStatus('第' + page + '页验证引用 ' + (i + 1) + '–' + Math.min(i + BATCH, toCheck.length) + '/' + toCheck.length + '（被引用:' + citedIds.size + '）...');
+        fffSetStatus('正在读取第 ' + page + ' 页（回复:' + replies + ' 被引用:' + citedIds.size + '）...');
         const results = await Promise.all(batch.map(x => fffCheckQuote(x.cid, x.tid, uid, cache)));
         batch.forEach((x, j) => { if (results[j]) { citedIds.add(x.cid); addDay(x.dateStr, 'citations'); } });
+        fffSetStatus('正在读取第 ' + page + ' 页（回复:' + replies + ' 被引用:' + citedIds.size + '）...');
         if (i + BATCH < toCheck.length) await new Promise(r => setTimeout(r, 150));
       }
     }
@@ -2356,12 +2275,6 @@ function fffOpenModal(isUpdate) {
       el.disabled = false;
     }
   }
-  const s2s = document.getElementById('s2-date-start');
-  const s2e = document.getElementById('s2-date-end');
-  const fs = document.getElementById('fff-date-start');
-  const fe = document.getElementById('fff-date-end');
-  if (s2s && s2s.value && fs) fs.value = s2s.value;
-  if (s2e && s2e.value && fe) fe.value = s2e.value;
   const tit = document.getElementById('fff-modal-title');
   if (tit) tit.textContent = isUpdate ? '📡 论坛更新（游戏中）' : '📡 论坛自动读取';
   modal.style.display = 'flex';
@@ -2375,42 +2288,29 @@ function fffCloseModal() {
 async function fffDoFetch() {
   const uid = parseInt((document.getElementById('fff-uid').value || '').trim(), 10);
   if (!uid || isNaN(uid)) { alert('请输入有效的论坛 UID（数字）'); return; }
-  const startDate = document.getElementById('fff-date-start').value;
-  const endDate = document.getElementById('fff-date-end').value;
-  const dateKey = (startDate || '') + '_' + (endDate || '');
+  const startDate = SCRAPE_DATE_MIN;
+  const endDate = todayISO_();
   fffCloseModal();
   fffOpenLoading();
   try {
-    fffSetStatus('正在获取用户资料...');
+    fffSetStatus('正在获取论坛资料…');
     const slug = await fffGetUsername(uid);
-    fffSetStatus('开始统计回复...');
     const raw = await fffScrape(uid, slug, startDate, endDate);
-    fffSetStatus('正在查询云端逐日记录…');
-    const deduped = await resolveForumFetchDedup_(uid, raw.byDay, startDate, endDate, fffSetStatus);
+    const deduped = await resolveForumFetchDedup_(uid, raw.byDay, startDate, endDate);
     fffCloseLoading();
-    const { netByDay, netR, netC, skippedDates, updatedDates } = deduped;
-    const preview = previewRepliesWithRemainder_(uid, netR);
-    _fffResult = {
-      uid, dateKey,
-      rawR: raw.replies, rawC: raw.citations,
-      netR, netC,
-      startDate, endDate,
-      netByDay, skippedDates, updatedDates
-    };
-    let html = '可新增：<b style="color:var(--gold-light)">' + netR + '</b> 回复 / <b style="color:var(--gold-light)">' + netC + '</b> 被引用';
-    html += '<br><small style="opacity:.65">论坛区间总计 ' + raw.replies + ' / ' + raw.citations + '</small>';
+    // 用 raw（论坛原始结果）作为显示值与确认值，不再减去云端已有记录
+    const r = raw.replies, c = raw.citations;
+    const { netByDay } = deduped;
+    _fffResult = { uid, rawR: raw.replies, rawC: raw.citations, netR: r, netC: c, netByDay, startDate, endDate };
+    const preview = previewRepliesWithRemainder_(uid, r);
+    let html = '可新增：<b style="color:var(--gold-light)">' + r + '</b> 回复 / <b style="color:var(--gold-light)">' + c + '</b> 被引用';
+    html += '<br><small style="opacity:.65">论坛总计 ' + raw.replies + ' / ' + raw.citations + '</small>';
     if (preview.prevRemainder > 0 || preview.newRemainder > 0 || preview.posAdd > 0) {
       html += '<br><small style="color:#ffb347">合并余数：现有 ' + preview.prevRemainder + ' + 本次 ' + preview.netR
         + ' → 约 <b>' + preview.posAdd + '</b> 正骰，余 <b>' + preview.newRemainder + '</b> 条</small>';
     }
-    if (updatedDates.length) {
-      html += '<br><small style="color:#7dd3fc">以下日期云端数字已更新（补差额）：' + formatSkippedDatesMsg_(updatedDates) + '</small>';
-    }
-    if (skippedDates.length) {
-      html += '<br><small style="color:#ffb347">以下日期无新增（云端已有相同或更多）：' + formatSkippedDatesMsg_(skippedDates) + '</small>';
-    }
-    if (netR <= 0 && netC <= 0 && (skippedDates.length || updatedDates.length)) {
-      html += '<br><small style="opacity:.75">本次区间内没有可新增的回复/被引用。</small>';
+    if (r <= 0 && c <= 0) {
+      html += '<br><small style="opacity:.75">没有可新增的回复/被引用（已全部使用完毕）。</small>';
     }
     fffOpenResult(html, _fffIsUpdate ? '确认添加' : '确认填入');
   } catch (err) {
@@ -2487,13 +2387,10 @@ function applyForumDeltaToDiceState_(netR, netC) {
 function fffConfirm() {
   fffCloseResult();
   if (!_fffResult) return;
-  const { uid, dateKey, rawR, rawC, netR, netC, startDate, endDate, netByDay, skippedDates } = _fffResult;
-  fffSaveImp(uid, dateKey, rawR, rawC);
+  const { uid, rawR, rawC, netR, netC, netByDay, startDate, endDate } = _fffResult;
+  fffSaveImp(uid, (startDate||'')+'_'+(endDate||''), rawR, rawC);
   try { localStorage.setItem('diceStoryForumUid_v2', String(uid)); } catch (e) {}
-  logActivityByDayToGAS_(uid, netByDay || {});
-  if (skippedDates && skippedDates.length) {
-    console.info('[dice] skipped cloud dates:', skippedDates.join(', '));
-  }
+  if (netByDay) logActivityByDayToGAS_(uid, netByDay || {});
   logForumFetchToGAS_({
     mode: _fffIsUpdate ? 'dicestory_v2_fetch_confirm_update' : 'dicestory_v2_fetch_confirm_menu',
     forum_uid: String(uid),
@@ -2809,13 +2706,170 @@ function updateCalc() {
 }
 
 // ===== SCREEN 2 → 3 =====
-function goScreen3() {
-  const replies = parseInt(document.getElementById('inputReplies').value) || 0;
-  const citations = parseInt(document.getElementById('inputCitations').value) || 0;
+let _s3MixAssigns = [];
+let _s3UiPhase = 'summary'; // 'mix' | 'summary'
+
+function refreshScreen3SummaryUi_() {
+  const posTotal = state.pos_dice || 0;
+  const mixMinus = state.minus_dice || 0;
+  const mixPlus = state.plus_dice || 0;
+  const mixOrig = state.neg_dice || 0;
+  const elPos = document.getElementById('s3PosDice');
+  const elNeg = document.getElementById('s3NegCount');
+  const elSumPos = document.getElementById('s3SumPos');
+  const elSumNeg = document.getElementById('s3SumNeg');
+  if (elPos) elPos.textContent = posTotal;
+  if (elNeg) elNeg.textContent = mixOrig > 0 ? mixOrig : mixMinus;
+  if (elSumPos) {
+    const base = state._s3BasePosDice || posTotal;
+    elSumPos.textContent = mixPlus > 0
+      ? base + ' 个（+4 加成 ' + mixPlus + ' → 共 ' + posTotal + '）'
+      : posTotal + ' 个';
+  }
+  if (elSumNeg) {
+    elSumNeg.textContent = mixMinus > 0
+      ? '−4 × ' + mixMinus + ' 个'
+      : (mixOrig > 0 ? mixOrig + ' 个（待分配）' : '0 个');
+  }
+}
+
+function showScreen3MixPhase_() {
+  _s3UiPhase = 'mix';
+  const title = document.getElementById('s3ScreenTitle');
+  const summary = document.getElementById('s3SummaryBlock');
+  const mixPanel = document.getElementById('s3MixPanel');
+  const btnGo = document.getElementById('btnGoS4');
+  if (title) title.textContent = '混合骰子分配';
+  if (summary) summary.style.display = 'none';
+  if (mixPanel) mixPanel.style.display = '';
+  if (btnGo) btnGo.textContent = '确认分配 →';
+  showScreen('screen3');
+}
+
+function showScreen3SummaryPhase_() {
+  _s3UiPhase = 'summary';
+  state._s3MixPhaseDone_ = true;
+  const title = document.getElementById('s3ScreenTitle');
+  const summary = document.getElementById('s3SummaryBlock');
+  const mixPanel = document.getElementById('s3MixPanel');
+  const btnGo = document.getElementById('btnGoS4');
+  if (title) title.textContent = '骰子分配';
+  if (summary) summary.style.display = '';
+  if (mixPanel) mixPanel.style.display = 'none';
+  refreshScreen3SummaryUi_();
+  if (btnGo) btnGo.textContent = '了解了，出发！';
+  showScreen('screen3');
+}
+
+function onScreen3PrimaryClick_() {
+  if (_s3UiPhase === 'mix') {
+    if (!finalizeS3MixAssignments_()) return;
+    showScreen3SummaryPhase_();
+    return;
+  }
+  goScreen4();
+}
+
+function renderS3MixPanel_(total) {
+  _s3MixAssigns = new Array(total).fill(null);
+  const rows = document.getElementById('s3MixRows');
+  if (!rows) return;
+  rows.innerHTML = '';
+  for (let i = 0; i < total; i++) {
+    const row = document.createElement('div');
+    row.className = 'mix-die-row';
+    row.innerHTML = `
+      <span class="mix-die-label">混合骰子 #${i + 1}</span>
+      <div class="mix-die-btns">
+        <button type="button" class="die-toggle pos" id="s3tp${i}" onclick="assignS3Die_(${i},'pos')">+4</button>
+        <button type="button" class="die-toggle neg" id="s3tn${i}" onclick="assignS3Die_(${i},'neg')">−4</button>
+      </div>
+    `;
+    rows.appendChild(row);
+  }
+  updateS3Summary_();
+}
+
+function assignS3Die_(idx, type) {
+  if (_s3MixAssigns[idx] === type) _s3MixAssigns[idx] = null;
+  else _s3MixAssigns[idx] = type;
+  const tp = document.getElementById('s3tp' + idx);
+  const tn = document.getElementById('s3tn' + idx);
+  if (tp) tp.classList.toggle('selected', _s3MixAssigns[idx] === 'pos');
+  if (tn) tn.classList.toggle('selected', _s3MixAssigns[idx] === 'neg');
+  updateS3Summary_();
+}
+
+function batchAssignS3_(type) {
+  for (let i = 0; i < _s3MixAssigns.length; i++) {
+    _s3MixAssigns[i] = type;
+    const tp = document.getElementById('s3tp' + i);
+    const tn = document.getElementById('s3tn' + i);
+    if (tp) tp.classList.toggle('selected', type === 'pos');
+    if (tn) tn.classList.toggle('selected', type === 'neg');
+  }
+  updateS3Summary_();
+}
+
+function batchClearS3_() {
+  for (let i = 0; i < _s3MixAssigns.length; i++) {
+    _s3MixAssigns[i] = null;
+    const tp = document.getElementById('s3tp' + i);
+    const tn = document.getElementById('s3tn' + i);
+    if (tp) tp.classList.remove('selected');
+    if (tn) tn.classList.remove('selected');
+  }
+  updateS3Summary_();
+}
+
+function updateS3Summary_() {
+  const pos = _s3MixAssigns.filter(x => x === 'pos').length;
+  const neg = _s3MixAssigns.filter(x => x === 'neg').length;
+  const unassigned = _s3MixAssigns.filter(x => x === null).length;
+  const elPos = document.getElementById('s3MixSumPos');
+  const elNeg = document.getElementById('s3MixSumNeg');
+  const elUn = document.getElementById('s3MixSumUnassigned');
+  const elUnRow = document.getElementById('s3MixSumUnassignedRow');
+  const elNote = document.getElementById('s3UnassignedNote');
+  if (elPos) elPos.textContent = pos + ' 个';
+  if (elNeg) elNeg.textContent = neg + ' 个';
+  if (elUn) elUn.textContent = unassigned + ' 个';
+  if (elUnRow) elUnRow.style.display = unassigned > 0 ? '' : 'none';
+  if (elNote) {
+    elNote.textContent = unassigned > 0 ? `还有 ${unassigned} 个未选择 +4 / −4` : '';
+    elNote.classList.toggle('show', unassigned > 0);
+  }
+}
+
+function finalizeS3MixAssignments_() {
+  if (!state.neg_dice || state.neg_dice < 1) return true;
+  const unassigned = _s3MixAssigns.filter(x => x === null).length;
+  if (unassigned > 0) {
+    alert('请先为每个被引用换来的混合骰子选择 +4 或 −4。');
+    return false;
+  }
+  const posAssign = _s3MixAssigns.filter(x => x === 'pos').length;
+  const negAssign = _s3MixAssigns.filter(x => x === 'neg').length;
+  const basePos = Number(state._s3BasePosDice || state.pos_dice || 0);
+  state.pos_dice = basePos + posAssign;
+  state.minus_dice = negAssign;
+  state.plus_dice = posAssign;
+  state.mixAssignments = _s3MixAssigns.slice();
+  state.unassigned_dice = 0;
+  return true;
+}
+
+function goScreen3(repliesOpt, citationsOpt) {
+  const replies = repliesOpt != null
+    ? Number(repliesOpt) || 0
+    : parseInt(document.getElementById('inputReplies').value, 10) || 0;
+  const citations = citationsOpt != null
+    ? Number(citationsOpt) || 0
+    : parseInt(document.getElementById('inputCitations').value, 10) || 0;
   const prevRem = getReplyRemainder_(state.uid);
   const totalReplies = prevRem + replies;
   const pos_dice = Math.floor(totalReplies / 5);
-  let neg_dice = citations;
+  const neg_dice = citations;
 
   if (pos_dice < 1) {
     alert('回复合计不足 5 条（本次 ' + replies + ' + 余数 ' + prevRem + ' = ' + totalReplies + '），无法换正骰子出发。');
@@ -2826,132 +2880,35 @@ function goScreen3() {
   state.replies = replies;
   state.citations = citations;
   state.pos_dice = pos_dice;
-
-  // 合并上次遗留的未分配混合骰子
-  const cached = getCachedProgress(state.id);
-  const pendingNeg = (cached && cached.pending_neg_dice) || 0;
-  state.pending_neg_dice = pendingNeg;
-
-  const banner = document.getElementById('pendingBanner');
-  if (pendingNeg > 0) {
-    neg_dice += pendingNeg;
-    banner.textContent = `上次还有 ${pendingNeg} 个混合骰子未分配，已合并入本次！`;
-    banner.classList.remove('hidden');
-  } else {
-    banner.classList.add('hidden');
-  }
-
+  state._s3BasePosDice = pos_dice;
   state.neg_dice = neg_dice;
-  state.mixAssignments = new Array(neg_dice).fill(null);
-  state.unassigned_dice = 0;
-
-  // Build screen 3
-  document.getElementById('s3PosDice').textContent = pos_dice;
-  document.getElementById('s3SumPos').textContent = pos_dice + ' 个';
-
-  const mixSec = document.getElementById('mixDiceSection');
-  const mixRows = document.getElementById('mixDiceRows');
-  mixRows.innerHTML = '';
+  state.plus_dice = 0;
+  state.minus_dice = 0;
+  state.mixAssignments = neg_dice > 0 ? new Array(neg_dice).fill(null) : [];
+  state.unassigned_dice = neg_dice;
+  state._s3MixPhaseDone_ = false;
 
   if (neg_dice > 0) {
-    mixSec.classList.remove('hidden');
-    document.getElementById('s3NegCount').textContent = neg_dice;
-    for (let i = 0; i < neg_dice; i++) {
-      const row = document.createElement('div');
-      row.className = 'mix-die-row';
-      row.innerHTML = `
-        <span class="mix-die-label">混合骰子 #${i+1}</span>
-        <div class="mix-die-btns">
-          <button class="die-toggle pos" id="tp${i}" onclick="assignDie(${i},'pos')">+4 进攻</button>
-          <button class="die-toggle neg" id="tn${i}" onclick="assignDie(${i},'neg')">−4 防御</button>
-        </div>
-      `;
-      mixRows.appendChild(row);
-    }
-  } else {
-    mixSec.classList.add('hidden');
+    renderS3MixPanel_(neg_dice);
+    showScreen3MixPhase_();
+    return;
   }
 
-  updateS3Summary();
   showGameIntroIfNeeded_([{
-    title: '⚄ 骰子分配',
-    body: '<p>你有 <strong style="color:var(--gold-light)">正骰子（d4）</strong>用于投掷点数；<strong style="color:#ff8899">混合骰子</strong>来自被引用，每个须择一为 <strong>+4 进攻</strong> 或 <strong>−4 防御</strong>（投骰后可选用防御骰扣点）。</p><p>可用批量按钮快速分配；未分配的混合骰子会保留到下次。确认后进入封面，再开始投掷。</p>',
+    title: '⚀ 骰子准备',
+    body: '<p>你有 <strong style="color:var(--gold-light)">' + pos_dice + ' 个正骰子（d4）</strong>，接下来将投掷点数并翻开命运之书。</p>',
     btn: '了解了'
-  }], () => showScreen('screen3'));
+  }], () => showScreen3SummaryPhase_());
 }
 
-function assignDie(idx, type) {
-  state.mixAssignments[idx] = type;
-  // Update button states
-  const tp = document.getElementById('tp' + idx);
-  const tn = document.getElementById('tn' + idx);
-  tp.classList.toggle('selected', type === 'pos');
-  tn.classList.toggle('selected', type === 'neg');
-  updateS3Summary();
-}
 
-function updateS3Summary() {
-  const plus = state.mixAssignments.filter(x => x === 'pos').length;
-  const minus = state.mixAssignments.filter(x => x === 'neg').length;
-  const unassigned = state.mixAssignments.filter(x => x === null).length;
-  document.getElementById('s3SumPlus').textContent = plus + ' 个';
-  document.getElementById('s3SumMinus').textContent = minus + ' 个';
-
-  const note = document.getElementById('unassignedNote');
-  const uRow = document.getElementById('s3SumUnassignedRow');
-  if (unassigned > 0) {
-    note.textContent = `还有 ${unassigned} 个未分配（下次进来会提醒）`;
-    note.classList.add('show');
-    uRow.style.display = '';
-    document.getElementById('s3SumUnassigned').textContent = unassigned + ' 个';
-  } else {
-    note.classList.remove('show');
-    uRow.style.display = 'none';
-  }
-
-  // 按钮始终可用，不需要全部分配
-  const btn = document.getElementById('btnGoS4');
-  btn.disabled = false;
-  btn.style.opacity = '1';
-
-  state.plus_dice = plus;
-  state.minus_dice = minus;
-  state.unassigned_dice = unassigned;
-}
-
-function batchAssign(type) {
-  for (let i = 0; i < state.neg_dice; i++) {
-    assignDie(i, type);
-  }
-}
-
-function batchAssignN(type) {
-  const inputId = type === 'pos' ? 'batchPosN' : 'batchNegN';
-  const n = parseInt(document.getElementById(inputId).value) || 0;
-  if (n < 1) return;
-  let assigned = 0;
-  for (let i = 0; i < state.neg_dice && assigned < n; i++) {
-    if (state.mixAssignments[i] === null) {
-      assignDie(i, type);
-      assigned++;
-    }
-  }
-  document.getElementById(inputId).value = '';
-}
-
-function batchClear() {
-  for (let i = 0; i < state.neg_dice; i++) {
-    state.mixAssignments[i] = null;
-    const tp = document.getElementById('tp' + i);
-    const tn = document.getElementById('tn' + i);
-    if (tp) tp.classList.remove('selected');
-    if (tn) tn.classList.remove('selected');
-  }
-  updateS3Summary();
-}
 
 // ===== SCREEN 3 → 4 =====
 function goScreen4() {
+  if (_s3UiPhase === 'mix') {
+    onScreen3PrimaryClick_();
+    return;
+  }
   showScreen('screen4');
 }
 
@@ -2962,7 +2919,7 @@ function goScreen5() {
   _diceRollIntroShown = true;
   showGameIntroIfNeeded_([{
     title: '🎲 投掷命运之骰',
-    body: '<p>选择本次要投掷的 <strong>d4 正骰子</strong>数量（可用滑杆或数字框），点「投骰」观看动画，或「一次投完」跳过。</p><p>点数合计后，若有 <strong>−4 防御骰</strong>可酌情扣减，再翻开命运之书。投掷中也可用「论坛更新」按新区间增加骰子。</p>',
+    body: '<p>选择本次要投掷的 <strong>d4 正骰子</strong>数量（可用滑杆或数字框），点「投骰」观看动画，或「一次投完」跳过。</p><p>点数合计后，若有 <strong>−4 负向骰</strong>可酌情扣减，再翻开命运之书。投掷中也可用「论坛更新」按新区间增加骰子。</p>',
     btn: '开始投骰'
   }], () => goScreen5Core_());
 }
@@ -4059,7 +4016,6 @@ async function resolveForumFetchDedup_(uid, byDay, startDate, endDate, onStatus)
   const fullByDay = expandByDayRange_(byDay || {}, startDate, endDate);
   let cloudRows = [];
   if (_diceOnline && GAS_URL) {
-    if (typeof onStatus === 'function') onStatus('正在查询云端逐日记录…');
     cloudRows = await fetchActivityFromGAS_(uid, startDate, endDate);
   }
   return mergeByDayWithCloud_(fullByDay, cloudRows, startDate, endDate);
@@ -4148,6 +4104,23 @@ function logActivityByDayToGAS_(uid, netByDay) {
 let _diceOfflineMode = true;
 let _diceOnline = false;
 
+function setDiceCloudChecking_() {
+  const dotIds = ['conn-dot', 's2-conn-dot'];
+  const lblIds = ['conn-label', 's2-conn-label'];
+  dotIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('online');
+      el.style.background = '#f59e0b';
+      el.style.boxShadow = '0 0 6px rgba(245,158,11,0.45)';
+    }
+  });
+  lblIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '检测连线中…';
+  });
+}
+
 function setDiceOnlineStatus_(online) {
   _diceOnline = !!online;
   _diceOfflineMode = !online;
@@ -4158,6 +4131,7 @@ function setDiceOnlineStatus_(online) {
     if (el) {
       el.classList.toggle('online', online);
       el.style.background = online ? '#22c55e' : '#ef4444';
+      el.style.boxShadow = online ? '0 0 6px rgba(34,197,94,0.6)' : 'none';
     }
   });
   lblIds.forEach(id => {
@@ -4320,20 +4294,13 @@ function todayISO_() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+// ══════════════════════════════════════════════════════════════
+
+// 📅 论坛抓取日期区间限制（全局常数）
+const SCRAPE_DATE_MIN = '2026-07-01'; // ← 活动开始日（含）
+const SCRAPE_DATE_MAX = '2026-08-01'; // ← 活动结束日（含）
 
 function initScreen2Dates_() {
-  // ══════════════════════════════════════════════════════════════
-  // 📅 论坛抓取日期区间限制（JS 初始化）
-  // 修改活动期间时，同步更新以下两个常数，
-  // 以及 HTML 中 #s2-date-start / #s2-date-end / #fff-date-start /
-  // #fff-date-end 的 min、max、value 属性。
-  const SCRAPE_DATE_MIN = '2026-07-01'; // ← 活动开始日（含）
-  const SCRAPE_DATE_MAX = '2026-08-01'; // ← 活动结束日（含）
-  // ══════════════════════════════════════════════════════════════
-  const s = document.getElementById('s2-date-start');
-  const e = document.getElementById('s2-date-end');
-  if (s) { s.value = SCRAPE_DATE_MIN; s.min = SCRAPE_DATE_MIN; s.max = SCRAPE_DATE_MAX; }
-  if (e) { e.value = SCRAPE_DATE_MAX; e.min = SCRAPE_DATE_MIN; e.max = SCRAPE_DATE_MAX; }
 }
 
 function resetScreen2Phases_() {
@@ -4348,16 +4315,12 @@ function resetScreen2Phases_() {
   const st = document.getElementById('screen2FetchStatus');
   if (st) {
     st.textContent = _diceOnline
-      ? '已默认带入今天日期，请确认区间后点「搜寻」。'
+      ? '系统将自动统计论坛回复与被引用数。'
       : '当前离线，请改用手动输入回复与被引用。';
   }
 }
 
 async function startScreen2ForumSearch_() {
-  const startDate = (document.getElementById('s2-date-start').value || '').trim();
-  const endDate = (document.getElementById('s2-date-end').value || '').trim();
-  if (!startDate || !endDate) { alert('请设定开始与结束日期'); return; }
-  if (startDate > endDate) { alert('开始日期不能晚于结束日期'); return; }
   if (!_diceOnline || !state.uid) {
     showScreen2Manual_('当前离线，请手动输入回复与被引用。');
     return;
@@ -4403,64 +4366,51 @@ async function beginScreen2ForumFetch_(retryLeft) {
     return Promise.resolve();
   }
   const token = ++_s2FetchToken;
-  const startDate = document.getElementById('s2-date-start').value;
-  const endDate = document.getElementById('s2-date-end').value;
+  const startDate = SCRAPE_DATE_MIN;
+  const endDate = todayISO_();
   const statusEl = document.getElementById('screen2FetchStatus');
   const btnManual = document.getElementById('btnS2Manual');
   if (btnManual) btnManual.style.display = 'none';
+  if (_s2FetchTickId) { clearInterval(_s2FetchTickId); _s2FetchTickId = null; }
 
-  let elapsed = 0;
-  if (_s2FetchTickId) clearInterval(_s2FetchTickId);
-  _s2FetchTickId = setInterval(() => {
-    if (token !== _s2FetchToken) { clearInterval(_s2FetchTickId); _s2FetchTickId = null; return; }
-    elapsed++;
-    if (!statusEl) return;
-    if (elapsed <= 30) {
-      statusEl.textContent = '正在依日期区间自动读取论坛数据…（' + elapsed + ' 秒）';
-    } else {
-      statusEl.textContent = '读取时间较长，仍在连接论坛…（可稍候或点下方改用手动输入）';
-      if (btnManual) btnManual.style.display = '';
-    }
-  }, 1000);
-
-  const setStatus = (txt) => { if (statusEl && token === _s2FetchToken) statusEl.textContent = txt; };
+  fffSetStatus('正在获取论坛资料…');
 
   try {
-    setStatus('正在获取论坛资料…');
     const uid = state.uid;
     const slug = await fffGetUsername(uid);
     if (token !== _s2FetchToken) return;
-    setStatus('正在统计新手区回复与被引用…');
     const raw = await fffScrape(uid, slug, startDate, endDate);
     if (token !== _s2FetchToken) return;
-    if (_s2FetchTickId) { clearInterval(_s2FetchTickId); _s2FetchTickId = null; }
 
-    setStatus('正在查询云端逐日记录…');
-    const deduped = await resolveForumFetchDedup_(uid, raw.byDay, startDate, endDate, setStatus);
+    const deduped = await resolveForumFetchDedup_(uid, raw.byDay, startDate, endDate);
     if (token !== _s2FetchToken) return;
-    const { netR, netC, netByDay, skippedDates, updatedDates } = deduped;
+    // 用 raw（论坛原始结果）作为显示值，不再减去云端已有记录
+    const r = raw.replies, c = raw.citations;
+    // 仅用 dedup 结果作为云端日志的增量
+    const { netByDay, skippedDates, updatedDates } = deduped;
 
-    if (netR <= 0 && netC <= 0) {
-      if (skippedDates.length || updatedDates.length) {
-        showScreen2Manual_('所选区间内没有可新增的回复/被引用（云端已有相同或更多记录）。');
+    if (r <= 0 && c <= 0) {
+      if (skippedDates && skippedDates.length) {
+        showScreen2Manual_('找不到新手区回复或被引用，请手动输入。');
+        alert('⚠️ 未搜寻到你的回复或被引用。\n\n请确认你已在 7/1~7/31 期间于新手村回复至少 5 次，或被引用后回复了该被引用。\n\n注意：被引用后「必须回复该被引用内容」，系统才会搜寻到你的被引用纪录。');
       } else {
         showScreen2Manual_('您选定的时间区间内找不到新手区回复或被引用，请手动输入。');
         alert('⚠️ 未搜寻到你的回复或被引用。\n\n请确认你已在 7/1~7/31 期间于新手村回复至少 5 次，或被引用后回复了该被引用。\n\n注意：被引用后「必须回复该被引用内容」，系统才会搜寻到你的被引用纪录。');
       }
       return;
     }
-    applyScreen2FetchAndContinue_(raw.replies, raw.citations, netR, netC, startDate, endDate, netByDay, skippedDates, updatedDates);
+    applyScreen2FetchAndContinue_(raw.replies, raw.citations, r, c, startDate, endDate, netByDay, skippedDates, updatedDates);
   } catch (err) {
     if (token !== _s2FetchToken) return;
     if (retryLeft > 0) {
-      setStatus('论坛连接中，正在重试…（剩余 ' + retryLeft + ' 次）');
+      fffSetStatus('正在获取论坛资料…');
       setTimeout(() => {
         if (token === _s2FetchToken) beginScreen2ForumFetch_(retryLeft - 1);
       }, 2500);
       return;
     }
     if (_s2FetchTickId) { clearInterval(_s2FetchTickId); _s2FetchTickId = null; }
-    setStatus('暂时无法连接论坛，请检查网络；您也可改用手动输入。');
+    if (statusEl) statusEl.textContent = '暂时无法连接论坛，请检查网络；您也可改用手动输入。';
     if (btnManual) btnManual.style.display = '';
   }
 }
@@ -4484,19 +4434,20 @@ function applyScreen2FetchAndContinue_(rawR, rawC, netR, netC, startDate, endDat
   const st = document.getElementById('screen2FetchStatus');
   if (st) {
     const preview = previewRepliesWithRemainder_(uid, netR);
-    let msg = '读取成功：' + netR + ' 回复 / ' + netC + ' 被引用，正在进入骰子分配…';
+    let msg = '读取成功：' + netR + ' 回复 / ' + netC + ' 被引用，'
+      + (netC > 0 ? '正在进入混合骰子分配…' : '正在进入骰子分配…');
     if (preview.prevRemainder > 0 || preview.newRemainder > 0) {
       msg += '（含余数合计 ' + preview.total + ' 条→' + preview.posAdd + ' 正骰，余 ' + preview.newRemainder + ' 条）';
     }
     if (updatedDates && updatedDates.length) {
-      msg += '（云端已更新：' + formatSkippedDatesMsg_(updatedDates) + '）';
+      msg += '<br><small style="color:#ffb347">已更新 ' + updatedDates.length + ' 天云端记录</small>';
     }
     if (skippedDates && skippedDates.length) {
-      msg += '（无新增：' + formatSkippedDatesMsg_(skippedDates) + '）';
+      msg += '<br><small style="opacity:.6">跳过已记录：' + skippedDates.slice(0, 4).map(function(d){ return d.slice(5).replace('-','/'); }).join('、') + (skippedDates.length > 4 ? ' 等' + skippedDates.length + '天' : '') + '</small>';
     }
-    st.textContent = msg;
+    st.innerHTML = msg;
   }
-  goScreen3();
+  goScreen3(netR, netC);
 }
 
 function enterScreen2_() {
@@ -4511,6 +4462,8 @@ function enterScreen2_() {
   showScreen('screen2');
   if (!_diceOnline || !state.uid) {
     showScreen2Manual_('当前离线，请手动输入回复与被引用。');
+  } else {
+    setTimeout(function () { startScreen2ForumSearch_(); }, 350);
   }
   setTimeout(showNewcomerGuide_, 600);
 }
@@ -4622,48 +4575,6 @@ function logDiceRewardToGAS_(reward) {
   }).catch(e => console.warn('GAS dice reward log failed', e));
 }
 
-// ===== 自动侦测论坛登录状态 =====
-function detectForumUser_() {
-  var inputId = document.getElementById('inputId');
-  var inputUid = document.getElementById('inputUid');
-  var loginErr = document.getElementById('loginErr');
-
-  fffProxyGet('https://sstm.moe/')
-    .then(function(html) {
-      try {
-        var doc = new DOMParser().parseFromString(html, 'text/html');
-        var link = doc.querySelector('#cUserLink a[href*="/profile/"]');
-        if (!link) { console.warn('[dice] 代理返回的是游客页面（无 #cUserLink），跳过自动侦测'); return; }
-        var m = (link.getAttribute('href') || '').match(/\/profile\/(\d+)-([^/]+)/);
-        if (!m) return;
-        var detectedUid = m[1];
-        var detectedName = decodeURIComponent(m[2].replace(/\+/g, ' '));
-        var existingUid = inputUid && inputUid.value.trim();
-        if (existingUid && existingUid !== detectedUid) {
-          if (!confirm('侦测到论坛已登录帐号（' + detectedName + '，UID: ' + detectedUid + '）与你填入的 UID（' + existingUid + '）不同。\n\n是否替换为论坛已登录的 UID？')) return;
-          if (inputId) inputId.value = detectedName;
-          if (inputUid) inputUid.value = detectedUid;
-        } else {
-          if (inputId && !inputId.value.trim()) inputId.value = detectedName;
-          if (inputUid && !inputUid.value.trim()) inputUid.value = detectedUid;
-        }
-        try { localStorage.setItem('diceStoryLastId_v2', detectedName); } catch(e) {}
-        try { localStorage.setItem(KEY_UID, detectedUid); } catch(e) {}
-        state.id = detectedName;
-        state.uid = parseInt(detectedUid, 10) || 0;
-      } catch(e) { console.warn('[dice] 解析论坛页面失败:', e); }
-    })
-    .catch(function(e) {
-      console.warn('[dice] 自动侦测论坛失败:', e.message || e);
-      if (loginErr && !loginErr.textContent.trim()) {
-        loginErr.style.color = '#cc8844';
-        loginErr.innerHTML = '⚠️ 论坛自动侦测不可用。<br>'
-          + '<span style="font-size:0.78rem;">请打开 <b>sstm.moe</b> → 点右上角头像 →<br>'
-          + '网址列 <code>/profile/<b>UID</b>-ID</code> 中的数字就是 UID，填入下方即可。</span>';
-      }
-    });
-}
-
 // ===== 页面初始化 =====
 (function init_() {
   renderIdHistory_();
@@ -4673,10 +4584,8 @@ function detectForumUser_() {
     if (lastId) document.getElementById('inputId').value = lastId;
     if (lastUid) document.getElementById('inputUid').value = lastUid;
   } catch (e) {}
-  setDiceOnlineStatus_(false);
+  setDiceCloudChecking_();
   checkDiceCloudConnection_();
-  // 自动侦测论坛登录信息（静默，不覆盖已有值）
-  detectForumUser_();
 })();
 
 
@@ -4816,9 +4725,6 @@ window.__applyPortableSaveData=async function(data){
   </div>
 </div>
 
-<!-- 版本号右下角 -->
-<div id="dice-version-badge" style="position:fixed;bottom:8px;right:10px;z-index:9999;font-size:0.68rem;color:rgba(232,224,208,0.25);font-family:'Consolas','Courier New',monospace;pointer-events:none;user-select:none;">v2.5</div>
-
 <!-- v2.5 2026-07-01 新手活动引导弹窗：进入欢迎画面时提醒7/1~7/31新手村5回复或回复被引用条件，搜寻无结果也弹窗提醒 -->
 
 <!-- v1.3 2026-03-28 论坛抓取写入 GAS「论坛抓取记录_骰子故事」独立分页 -->
@@ -4832,7 +4738,6 @@ window.__applyPortableSaveData=async function(data){
 <!-- v2.1 2026-06-06 书本封面全屏；论坛抓取逐日写入「骰子故事返乡活跃度记录」并跳过云端已有日期 -->
 <!-- v2.2 2026-06-06 登入封面全屏自适应；云端逐日可补差额更新；回复余数(localStorage)凑满5换正骰，显示于混合骰面板 -->
 <!-- v2.4 2026-06-20 触手勋章~5%无限重复；奖池：本期本地用户牌×1（抽后开启三叶/泷各自×1）、往期本地用户牌×1（可重复最多5次） -->
-<!-- v2.5 2026-07-01 新增：永久进阶勋章（50%几率）；登入时自动扫描论坛UID填入表单；历史ID可删除；右下角版本号显示 -->
 <div id="dice-offline-warning" onclick="retryDiceCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 </body>
 </html>
