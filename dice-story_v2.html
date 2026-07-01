@@ -4574,7 +4574,6 @@ function logDiceRewardToGAS_(reward) {
 function detectForumUser_() {
   var inputId = document.getElementById('inputId');
   var inputUid = document.getElementById('inputUid');
-  if ((inputId && inputId.value.trim()) || (inputUid && inputUid.value.trim())) return;
 
   fffProxyGet('https://sstm.moe/')
     .then(function(html) {
@@ -4587,8 +4586,18 @@ function detectForumUser_() {
         if (!m) return;
         var detectedUid = m[1];
         var detectedName = decodeURIComponent(m[2].replace(/\+/g, ' '));
+
+        // 已有手动填入的 UID 且与侦测结果不一致 → 弹窗询问是否替换
+        var existingUid = inputUid && inputUid.value.trim();
+        if (existingUid && existingUid !== detectedUid) {
+          if (!confirm('侦测到论坛已登录帐号（' + detectedName + '，UID: ' + detectedUid + '）与你填入的 UID（' + existingUid + '）不同。\n\n是否替换为论坛已登录的 UID？')) {
+            return;
+          }
+        }
+
         if (inputId && !inputId.value.trim()) inputId.value = detectedName;
         if (inputUid && !inputUid.value.trim()) inputUid.value = detectedUid;
+        if (inputUid && existingUid && existingUid !== detectedUid) inputUid.value = detectedUid;
         try { localStorage.setItem('diceStoryLastId_v2', detectedName); } catch(e) {}
         try { localStorage.setItem(KEY_UID, detectedUid); } catch(e) {}
         state.id = detectedName;
