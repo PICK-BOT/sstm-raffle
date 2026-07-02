@@ -2309,21 +2309,40 @@ async function fffDoFetch() {
     fffSetStatus('正在获取论坛资料…');
     const slug = await fffGetUsername(uid);
     const raw = await fffScrape(uid, slug, startDate, endDate);
+    fffSetStatus('正在查询云端逐日记录…');
     const deduped = await resolveForumFetchDedup_(uid, raw.byDay, startDate, endDate);
     fffCloseLoading();
-    // 用 raw（论坛原始结果）作为显示值与确认值，不再减去云端已有记录
-    const r = raw.replies, c = raw.citations;
-    const { netByDay } = deduped;
-    _fffResult = { uid, rawR: raw.replies, rawC: raw.citations, netR: r, netC: c, netByDay, startDate, endDate };
+    const { netByDay, netR, netC, skippedDates, updatedDates } = deduped;
+    const r = netR, c = netC;
+    _fffResult = { uid, rawR: raw.replies, rawC: raw.citations, netR: r, netC: c, netByDay, startDate, endDate, skippedDates, updatedDates };
     const preview = previewRepliesWithRemainder_(uid, r);
-    let html = '可新增：<b style="color:var(--gold-light)">' + r + '</b> 回复 / <b style="color:var(--gold-light)">' + c + '</b> 被引用';
-    html += '<br><small style="opacity:.65">论坛总计 ' + raw.replies + ' / ' + raw.citations + '</small>';
-    if (preview.prevRemainder > 0 || preview.newRemainder > 0 || preview.posAdd > 0) {
-      html += '<br><small style="color:#ffb347">合并余数：现有 ' + preview.prevRemainder + ' + 本次 ' + preview.netR
-        + ' → 约 <b>' + preview.posAdd + '</b> 正骰，余 <b>' + preview.newRemainder + '</b> 条</small>';
-    }
-    if (r <= 0 && c <= 0) {
-      html += '<br><small style="opacity:.75">没有可新增的回复/被引用（已全部使用完毕）。</small>';
+    let html;
+    if (_fffIsUpdate) {
+      html = '论坛读取：<b style="color:var(--gold-light)">' + raw.replies + '</b> 回复 · <b style="color:#ff8899">' + raw.citations + '</b> 被引用';
+      html += formatDedupHintHtml_(raw.replies, raw.citations, netR, netC, skippedDates, updatedDates);
+      html += '<br><br>折算为骰子：<br>';
+      html += '⚀ <b style="color:var(--gold-light)">' + preview.posAdd + '</b> 个正骰子（d4）<br>';
+      html += '⚄ <b style="color:#ff8899">' + c + '</b> 个混合骰子';
+      if (preview.prevRemainder > 0 || preview.newRemainder > 0) {
+        html += '<br><small style="color:#ffb347">回复余数：' + preview.prevRemainder + ' + ' + preview.netR
+          + ' → 余 ' + preview.newRemainder + ' 条</small>';
+      }
+      if (preview.posAdd <= 0 && c <= 0) {
+        html += '<br><small style="opacity:.75">' + ((raw.replies > 0 || raw.citations > 0)
+          ? '与云端记录相同，无新增骰子可兑换。' : '没有可折算的新骰子。') + '</small>';
+      }
+      html += '<br><small style="opacity:.65">确认后将加入主画面的待使用骰子与混合骰子</small>';
+    } else {
+      html = '可新增：<b style="color:var(--gold-light)">' + r + '</b> 回复 / <b style="color:var(--gold-light)">' + c + '</b> 被引用';
+      html += formatDedupHintHtml_(raw.replies, raw.citations, netR, netC, skippedDates, updatedDates);
+      if (preview.prevRemainder > 0 || preview.newRemainder > 0 || preview.posAdd > 0) {
+        html += '<br><small style="color:#ffb347">合并余数：现有 ' + preview.prevRemainder + ' + 本次 ' + preview.netR
+          + ' → 约 <b>' + preview.posAdd + '</b> 正骰，余 <b>' + preview.newRemainder + '</b> 条</small>';
+      }
+      if (r <= 0 && c <= 0) {
+        html += '<br><small style="opacity:.75">' + ((raw.replies > 0 || raw.citations > 0)
+          ? '与云端记录相同，无新增可填入。' : '没有可新增的回复/被引用。') + '</small>';
+      }
     }
     fffOpenResult(html, _fffIsUpdate ? '确认添加' : '确认填入');
   } catch (err) {
@@ -2340,7 +2359,9 @@ function applyForumDeltaToDiceState_(netR, netC) {
   const posAdd = conv.posAdd;
   const mixAdd = netC;
   if (posAdd <= 0 && mixAdd <= 0) {
-    let msg = '本次区间内没有可折算的新增回复/被引用。';
+    let msg = (_fffResult && (_fffResult.rawR > 0 || _fffResult.rawC > 0))
+      ? '论坛数据与云端记录相同，无新增骰子可兑换。'
+      : '本次区间内没有可折算的新增回复/被引用。';
     if (conv.newRemainder > 0) msg += '\n（回复余数 ' + conv.newRemainder + ' 条已保存，满 5 条换 1 正骰）';
     msg += '\n\n请确认你已在 7/1~7/31 期间于新手村回复至少 5 次，或被引用后回复了该被引用。\n注意：被引用后必须回复被引用，系统才会搜寻到。';
     alert(msg);
@@ -2390,8 +2411,11 @@ function applyForumDeltaToDiceState_(netR, netC) {
     pushDiceToGAS(all[state.id].pos_dice_left, all[state.id].pending_neg_dice, all[state.id].stories_done || {});
     showProgressScreen(all[state.id]);
     updateReplyRemainderUI_();
-    msg += '。混合骰子将在下次「记录并继续」时进入分配。';
-    alert(msg);
+    if (mixAdd > 0) {
+      const mixDetails = document.getElementById('s1bMixDetails');
+      if (mixDetails) { mixDetails.style.display = 'block'; mixDetails.open = true; }
+    }
+    showToast('已加入主画面：+' + posAdd + ' 正骰 · +' + mixAdd + ' 混合骰');
     return;
   }
   alert(msg + '\n请到进度页或投骰页使用「论坛更新」，或开局前在输入页确认读取。');
@@ -2514,8 +2538,8 @@ async function goScreen2() {
   }
 }
 
-// 跳过检查直接进 screen2（「重新输入」按钮）
-function goScreen2NoCheck() { enterScreen2_(); }
+// 主画面「重新输入」→ 论坛自动读取弹窗（不再跳转 screen2）
+function goScreen2NoCheck() { fffOpenModal(true); }
 
 // ===== TOAST =====
 function showToast(msg) {
@@ -2616,7 +2640,7 @@ function showProgressScreen(prog) {
     if (pendingMix > 0) renderS1bMixPanel_(pendingMix);
   }
   updateReplyRemainderUI_();
-  let subtitleText = diceLeft > 0 ? `还有 ${diceLeft} 个骰子未使用` : '骰子已用完，可重新输入或查看记录';
+  let subtitleText = diceLeft > 0 ? `还有 ${diceLeft} 个骰子未使用` : '骰子已用完，可点「重新输入」读取论坛或查看记录';
   const remNow = getReplyRemainder_(state.uid);
   if (remNow > 0) subtitleText += `　· 回复余数 ${remNow} 条`;
   if (pendingDice > 0) subtitleText += `　· 另有 ${pendingDice} 个混合骰子待分配`;
@@ -2672,7 +2696,6 @@ function showProgressScreen(prog) {
 
   showScreen('screen1b');
   maybeShowPermMedalMainGuide_(prog, visitedCount);
-  setTimeout(showNewcomerGuide_, 600);
 }
 
 // ===== 带入剩余骰子继续 =====
@@ -3976,25 +3999,43 @@ async function fetchActivityFromGAS_(uid, startDate, endDate) {
 }
 
 /** 合并云端逐日记录：新日期全额计入；已有日期仅在新数字更大时补差额 */
-function mergeByDayWithCloud_(fullByDay, cloudRows, startDate, endDate) {
+function mergeByDayWithCloud_(scrapedByDay, cloudRows, startDate, endDate) {
   const existing = {};
   (cloudRows || []).forEach(r => {
     const d = normalizeDateISO_(r.date);
-    if (d) {
+    if (d && d !== '__manual__') {
       existing[d] = {
         replies: parseInt(r.replies, 10) || 0,
         citations: parseInt(r.citations, 10) || 0
       };
     }
   });
+  const dateSet = new Set();
+  Object.keys(scrapedByDay || {}).forEach(d => {
+    const nd = normalizeDateISO_(d);
+    if (!nd) return;
+    if (startDate && nd < startDate) return;
+    if (endDate && nd > endDate) return;
+    dateSet.add(nd);
+  });
+  Object.keys(existing).forEach(d => {
+    if (startDate && d < startDate) return;
+    if (endDate && d > endDate) return;
+    dateSet.add(d);
+  });
   const netByDay = {};
   const skippedDates = [];
   const updatedDates = [];
   let netR = 0, netC = 0;
-  enumerateDates_(startDate, endDate).forEach(d => {
-    const scraped = fullByDay[d] || { replies: 0, citations: 0 };
+  dateSet.forEach(d => {
+    const src = scrapedByDay && scrapedByDay[d];
+    const scraped = {
+      replies: src ? (parseInt(src.replies, 10) || 0) : 0,
+      citations: src ? (parseInt(src.citations, 10) || 0) : 0
+    };
     const cloud = existing[d];
     if (!cloud) {
+      if (scraped.replies <= 0 && scraped.citations <= 0) return;
       netByDay[d] = { replies: scraped.replies, citations: scraped.citations, action: 'insert' };
       netR += scraped.replies;
       netC += scraped.citations;
@@ -4018,6 +4059,21 @@ function mergeByDayWithCloud_(fullByDay, cloudRows, startDate, endDate) {
   return { netByDay, netR, netC, skippedDates, updatedDates };
 }
 
+function formatDedupHintHtml_(rawR, rawC, netR, netC, skippedDates, updatedDates) {
+  let html = '';
+  if ((rawR || 0) !== (netR || 0) || (rawC || 0) !== (netC || 0)) {
+    html += '<br><small style="opacity:.65">论坛抓取 ' + rawR + ' 回复 / ' + rawC + ' 被引用'
+      + ' → 云端去重后新增 <b style="color:var(--gold-light)">' + netR + '</b> / <b style="color:#ff8899">' + netC + '</b></small>';
+  }
+  if (updatedDates && updatedDates.length) {
+    html += '<br><small style="color:#ffb347">已更新 ' + updatedDates.length + ' 天云端记录</small>';
+  }
+  if (skippedDates && skippedDates.length) {
+    html += '<br><small style="opacity:.6">跳过已记录：' + formatSkippedDatesMsg_(skippedDates) + '</small>';
+  }
+  return html;
+}
+
 function formatSkippedDatesMsg_(dates) {
   if (!dates || !dates.length) return '';
   const shown = dates.slice(0, 8).map(d => d.slice(5).replace('-', '/'));
@@ -4026,12 +4082,12 @@ function formatSkippedDatesMsg_(dates) {
 }
 
 async function resolveForumFetchDedup_(uid, byDay, startDate, endDate, onStatus) {
-  const fullByDay = expandByDayRange_(byDay || {}, startDate, endDate);
   let cloudRows = [];
   if (_diceOnline && GAS_URL) {
+    if (onStatus) onStatus('正在查询云端逐日记录…');
     cloudRows = await fetchActivityFromGAS_(uid, startDate, endDate);
   }
-  return mergeByDayWithCloud_(fullByDay, cloudRows, startDate, endDate);
+  return mergeByDayWithCloud_(byDay || {}, cloudRows, startDate, endDate);
 }
 
 const KEY_REPLY_REM = 'diceStoryReplyRemainder_v2';
@@ -4289,15 +4345,17 @@ function closeDiceGuide_() {
   if (el) el.classList.remove('show');
 }
 
-// ===== 新手活动引导弹窗（v2.5） =====
-function showNewcomerGuide_() {
-  const ov = document.getElementById('newcomer-guide-overlay');
+// ===== 首次打开：活动提醒 + UID 填入（合并弹窗） =====
+function showFirstVisitOverlay_() {
+  const ov = document.getElementById('first-visit-overlay');
   if (ov) ov.classList.add('show');
 }
-function closeNewcomerGuide() {
-  const ov = document.getElementById('newcomer-guide-overlay');
+function hideFirstVisitOverlay_() {
+  const ov = document.getElementById('first-visit-overlay');
   if (ov) ov.classList.remove('show');
 }
+function showUrlFillOverlay() { showFirstVisitOverlay_(); }
+function hideUrlFillOverlay() { hideFirstVisitOverlay_(); }
 
 // ===== SCREEN 2 区间抓取 =====
 let _s2FetchToken = 0;
@@ -4395,15 +4453,16 @@ async function beginScreen2ForumFetch_(retryLeft) {
     const raw = await fffScrape(uid, slug, startDate, endDate);
     if (token !== _s2FetchToken) return;
 
+    fffSetStatus('正在查询云端逐日记录…');
     const deduped = await resolveForumFetchDedup_(uid, raw.byDay, startDate, endDate);
     if (token !== _s2FetchToken) return;
-    // 用 raw（论坛原始结果）作为显示值，不再减去云端已有记录
-    const r = raw.replies, c = raw.citations;
-    // 仅用 dedup 结果作为云端日志的增量
-    const { netByDay, skippedDates, updatedDates } = deduped;
+    const { netByDay, netR, netC, skippedDates, updatedDates } = deduped;
 
-    if (r <= 0 && c <= 0) {
-      if (skippedDates && skippedDates.length) {
+    if (netR <= 0 && netC <= 0) {
+      if (raw.replies > 0 || raw.citations > 0) {
+        showScreen2Manual_('论坛数据与云端一致，无新增回复或被引用。');
+        alert('⚠️ 论坛抓取成功，但与云端记录相同，无新增骰子可兑换。\n\n若你最近有新回复或被引用，请稍后再试。');
+      } else if (skippedDates && skippedDates.length) {
         showScreen2Manual_('找不到新手区回复或被引用，请手动输入。');
         alert('⚠️ 未搜寻到你的回复或被引用。\n\n请确认你已在 7/1~7/31 期间于新手村回复至少 5 次，或被引用后回复了该被引用。\n\n注意：被引用后「必须回复该被引用内容」，系统才会搜寻到你的被引用纪录。');
       } else {
@@ -4412,7 +4471,7 @@ async function beginScreen2ForumFetch_(retryLeft) {
       }
       return;
     }
-    applyScreen2FetchAndContinue_(raw.replies, raw.citations, r, c, startDate, endDate, netByDay, skippedDates, updatedDates);
+    applyScreen2FetchAndContinue_(raw.replies, raw.citations, netR, netC, startDate, endDate, netByDay, skippedDates, updatedDates);
   } catch (err) {
     if (token !== _s2FetchToken) return;
     if (retryLeft > 0) {
@@ -4449,6 +4508,9 @@ function applyScreen2FetchAndContinue_(rawR, rawC, netR, netC, startDate, endDat
     const preview = previewRepliesWithRemainder_(uid, netR);
     let msg = '读取成功：' + netR + ' 回复 / ' + netC + ' 被引用，'
       + (netC > 0 ? '正在进入混合骰子分配…' : '正在进入骰子分配…');
+    if (rawR !== netR || rawC !== netC) {
+      msg += '<br><small style="opacity:.65">论坛抓取 ' + rawR + ' / ' + rawC + '，云端去重后新增</small>';
+    }
     if (preview.prevRemainder > 0 || preview.newRemainder > 0) {
       msg += '（含余数合计 ' + preview.total + ' 条→' + preview.posAdd + ' 正骰，余 ' + preview.newRemainder + ' 条）';
     }
@@ -4478,7 +4540,6 @@ function enterScreen2_() {
   } else {
     setTimeout(function () { startScreen2ForumSearch_(); }, 350);
   }
-  setTimeout(showNewcomerGuide_, 600);
 }
 
 // ===== 下载游玩存档（只读 Excel，含完整进度） =====
@@ -4604,26 +4665,18 @@ function logDiceRewardToGAS_(reward) {
     e.preventDefault();
     showUrlFillOverlay();
   });
-  document.getElementById('urlFillConfirmBtn')?.addEventListener('click',applyUrlFill);
-  document.getElementById('urlFillSkipBtn')?.addEventListener('click',function(){
-    hideUrlFillOverlay();
-  });
-  document.getElementById('urlFillInput')?.addEventListener('keydown',function(e){
-    if(e.key==='Enter') applyUrlFill();
-  });
 })();
 function parseProfileUrl(url){
-  var m=url.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
-  if(!m) return null;
-  return {id:decodeURIComponent(m[2]), uid:m[1]};
-}
-function showUrlFillOverlay(){
-  var ov=document.getElementById('urlFillOverlay');
-  if(ov) ov.classList.remove('hidden');
-}
-function hideUrlFillOverlay(){
-  var ov=document.getElementById('urlFillOverlay');
-  if(ov) ov.classList.add('hidden');
+  var raw = String(url || '').trim();
+  if (!raw) return null;
+  try {
+    var u = new URL(raw.indexOf('://') >= 0 ? raw : 'https://sstm.moe/' + raw.replace(/^\/+/, ''));
+    var m = u.pathname.match(/\/profile\/(\d+)-([^\/]+)/i);
+    if (m) return { id: decodeURIComponent(m[2]), uid: m[1] };
+  } catch (e) {}
+  var m = raw.match(/\/profile\/(\d+)-([^\/\?#]+)/i);
+  if (!m) return null;
+  return { id: decodeURIComponent(m[2]), uid: m[1] };
 }
 function applyUrlFill(){
   var inp=document.getElementById('urlFillInput');
@@ -4646,13 +4699,12 @@ function applyUrlFill(){
   if(err) err.style.display='none';
   hideUrlFillOverlay();
 }
-/** 从论坛首页自动获取ID+UID */
+/** 从URL hash自动填入ID+UID（不自动登入） */
 async function fffAutoLogin(){
   var idEl=document.getElementById('inp-id')||document.getElementById('login-id')||document.getElementById('inputId')||document.getElementById('uid');
   var uidEl=document.getElementById('inp-uid')||document.getElementById('login-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
   if(!idEl||!uidEl) return;
-  if(idEl.value.trim()&&uidEl.value.trim()) return;
-  // 1) URL hash
+  // 1) URL hash (bookmarklet / 油猴跳转)
   var hash=location.hash||'';
   if(hash.indexOf('auto-id=')>=0){
     try{
@@ -4667,25 +4719,10 @@ async function fffAutoLogin(){
       }
     }catch(e){}
   }
-  // 2) proxy
-  try{
-    var html=await fffProxyGet('https://sstm.moe/');
-    var doc=new DOMParser().parseFromString(html,'text/html');
-    var userLink=doc.getElementById('cUserLink');
-    if(!userLink) return;
-    var profileLink=userLink.querySelector('a[href*="/profile/"]');
-    if(!profileLink) return;
-    var href=profileLink.getAttribute('href')||'';
-    var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
-    if(!m) return;
-    if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
-    if(!uidEl.value.trim()) uidEl.value=m[1];
-    return;
-  }catch(e){}
-  // 3) first visit popup
-  if(!localStorage.getItem('_urlFillShown')){
+  // 2) 首次使用 + 两栏都空白 → 合并引导弹窗（活动提醒 + UID 填入）
+  if(!idEl.value.trim() && !uidEl.value.trim() && !localStorage.getItem('_urlFillShown')){
     localStorage.setItem('_urlFillShown','1');
-    setTimeout(showUrlFillOverlay, 500);
+    setTimeout(showFirstVisitOverlay_, 500);
   }
 }
 
@@ -4809,24 +4846,49 @@ window.__applyPortableSaveData=async function(data){
   else boot();
 })();
 </script>
-<!-- ── 新手活动引导弹窗（v2.6） ── -->
-<div id="newcomer-guide-overlay" class="ds-guide-overlay">
-  <div class="ds-guide-box">
-    <h3>🎲 欢迎来到骰子故事</h3>
-    <div style="text-align:left;color:var(--white-dim);font-size:0.9rem;line-height:1.85;margin-bottom:18px;">
-      <p style="margin-bottom:12px;">在使用骰子故事前，请先完成以下条件：</p>
-      <p style="margin-bottom:8px;">① 在 <strong style="color:var(--gold-light);">7/1 ~ 7/31</strong> 期间，于 <strong style="color:var(--gold-light);">新手村</strong> 回复 <strong style="color:var(--gold-light);">至少 5 次</strong>。</p>
-      <p style="margin-bottom:8px;">② 或 <strong style="color:var(--gold-light);">被引用回复</strong> 后 <strong style="color:var(--gold-light);">回复该被引用</strong> 至少 1 次。</p>
-      <p style="margin-bottom:8px;">③ 然后使用下方「搜寻」功能，系统会自动统计你的回复与被引用数。</p>
-      <div style="margin-top:14px;padding:10px 14px;background:rgba(255,179,71,0.08);border:1px solid rgba(255,179,71,0.25);border-radius:8px;font-size:0.82rem;">
+<!-- ── 首次打开：活动提醒 + UID 填入（合并弹窗） ── -->
+<div id="first-visit-overlay" class="ds-guide-overlay">
+  <div class="ds-guide-box" style="max-height:90vh;overflow-y:auto;text-align:left;">
+    <h3 style="text-align:center;">🎲 欢迎来到骰子故事</h3>
+
+    <div class="ds-guide-section">
+      <h4>📋 开始前请确认</h4>
+      <p>① 在 <strong style="color:var(--gold-light);">7/1 ~ 7/31</strong> 期间，于 <strong style="color:var(--gold-light);">新手村</strong> 回复 <strong style="color:var(--gold-light);">至少 5 次</strong>。<br>
+      ② 或 <strong style="color:var(--gold-light);">被引用回复</strong> 后 <strong style="color:var(--gold-light);">回复该被引用</strong> 至少 1 次。<br>
+      ③ 登入后系统会自动统计你的回复与被引用数。</p>
+      <div style="margin-top:10px;padding:10px 14px;background:rgba(255,179,71,0.08);border:1px solid rgba(255,179,71,0.25);border-radius:8px;font-size:0.82rem;line-height:1.7;">
         💡 <strong style="color:#ffb347;">重要提醒：</strong>被引用后<strong style="color:var(--gold-light);">必须回复该被引用内容</strong>，系统才会搜寻到你的被引用纪录。
       </div>
     </div>
-    <button class="btn btn-primary" onclick="closeNewcomerGuide()" style="width:auto;padding:10px 32px;">我知道了</button>
+
+    <div class="ds-guide-section">
+      <h4>🔑 如何找到 UID 并自动填入</h4>
+      <p>1. 在 <a href="https://sstm.moe/" target="_blank" style="color:#7eb8ff">SSTM 论坛</a> 点右上角头像进入你的个人页面<br>
+      2. 复制浏览器网址列中的完整网址<br>
+      3. 贴到下方输入框，自动填入论坛 ID 与 UID</p>
+      <input id="urlFillInput" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#0f1729;color:#fff;font-size:14px;box-sizing:border-box;margin-top:8px;" placeholder="https://sstm.moe/profile/12345-username/">
+      <p id="urlFillErr" style="margin:8px 0 0;font-size:13px;color:#f87171;display:none"></p>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+      <button type="button" id="urlFillConfirmBtn" class="btn btn-primary" style="flex:1;" onclick="applyUrlFill()">确认填入</button>
+      <button type="button" id="urlFillSkipBtn" class="btn btn-ghost" style="flex:1;" onclick="hideUrlFillOverlay()">跳过，手动输入</button>
+    </div>
   </div>
 </div>
-
-<!-- v2.5 2026-07-01 新手活动引导弹窗：进入欢迎画面时提醒7/1~7/31新手村5回复或回复被引用条件，搜寻无结果也弹窗提醒 -->
+<script>
+(function bindFirstVisitOverlay_() {
+  function bind() {
+    document.getElementById('urlFillConfirmBtn')?.addEventListener('click', applyUrlFill);
+    document.getElementById('urlFillSkipBtn')?.addEventListener('click', hideUrlFillOverlay);
+    document.getElementById('urlFillInput')?.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') applyUrlFill();
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+</script>
 
 <!-- v1.3 2026-03-28 论坛抓取写入 GAS「论坛抓取记录_骰子故事」独立分页 -->
 <!-- v1.4 2026-04-04 离线模式浮动警告+下载游玩数据；骰子奖励写入 GAS「骰子故事奖励」分页（中文奖励名称） -->
@@ -4840,22 +4902,6 @@ window.__applyPortableSaveData=async function(data){
 <!-- v2.2 2026-06-06 登入封面全屏自适应；云端逐日可补差额更新；回复余数(localStorage)凑满5换正骰，显示于混合骰面板 -->
 <!-- v2.4 2026-06-20 触手勋章~5%无限重复；奖池：本期本地用户牌×1（抽后开启三叶/泷各自×1）、往期本地用户牌×1（可重复最多5次） -->
 <div id="dice-offline-warning" onclick="retryDiceCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
-<div id="urlFillOverlay" class="hidden" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center">
-  <div style="background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:24px;max-width:420px;width:90%;box-sizing:border-box">
-    <h3 style="margin:0 0 12px;color:#fff">自动填入账号</h3>
-    <p style="margin:0 0 12px;font-size:14px;color:#b0c4de;line-height:1.6">
-      1. 在 <a href="https://sstm.moe/" target="_blank" style="color:#7eb8ff">SSTM 论坛</a> 点右上角头像进入你的个人页面<br>
-      2. 复制浏览器网址列中的完整网址<br>
-      3. 贴到下方输入框
-    </p>
-    <input id="urlFillInput" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#0f1729;color:#fff;font-size:14px;box-sizing:border-box" placeholder="https://sstm.moe/profile/12345-username/">
-    <div style="margin-top:12px;display:flex;gap:10px">
-      <button id="urlFillConfirmBtn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#4a7cf7;color:#fff;font-size:14px;cursor:pointer">确认</button>
-      <button id="urlFillSkipBtn" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#94a3b8;font-size:14px;cursor:pointer">跳过，手动输入</button>
-    </div>
-    <p id="urlFillErr" style="margin:8px 0 0;font-size:13px;color:#f87171;display:none"></p>
-  </div>
-</div>
 </body>
 </html>
 
