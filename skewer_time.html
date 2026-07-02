@@ -124,6 +124,7 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#08172a;c
     <button id="btn-login" class="btn" style="width:100%" onclick="doLogin()">登入</button>
     <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="offlineMode()">离线模式</button>
     <div id="login-err" style="min-height:18px;color:#fda4af;margin-top:8px;font-size:.8rem"></div>
+    <div style="margin-top:8px"><a href="#" id="autoFillByUrlLink" style="color:#7eb8ff;font-size:13px;text-decoration:none">📋 从个人页面网址自动填入</a></div>
   </div>
 </div>
 
@@ -209,7 +210,7 @@ const GAS_URL="https://script.google.com/macros/s/AKfycbxtzW4wVTgHoVQ31DvqJdom0n
 const SHEET="串烧时光HTML";
 const FORUM_PROXY="https://sstm-raffle.vercel.app/Skewer-Time-proxy?url=";
 const FORUM_FETCH_MS=22000;
-const HM_HTML_VERSION="skewer‑v1.2‑2026‑06‑11";
+const HM_HTML_VERSION="skewer‑v1.2.1‑2026‑07‑02";
 const POKE_BULBASAUR_URL="https://play.pokemonshowdown.com/sprites/gen5/bulbasaur.png";
 const POKE_NAMES=[
   "bulbasaur","ivysaur","venusaur","charmander","charmeleon","charizard","squirtle","wartortle","blastoise",
@@ -547,13 +548,63 @@ openShop=async function(){
 };
 function renderShop(){const list=qs("shop-list");list.innerHTML="";const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));SHOP_ITEMS.forEach(it=>{const av=it.costType==="replies"?ar:ac;const owned=it.give&&it.give.bgSkin&&ownsBgSkin(it.give.bgSkin);const can=av>=it.cost&&!owned;const d=document.createElement("div");d.className="shop-item"+(owned?" owned":"");if(owned){d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:#94a3b8'>已拥有</div></div><button class='btn' disabled>已拥有</button>";}else{d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>花费 "+it.cost+" "+(it.costType==="replies"?"回复":"被引用")+"</div></div><button class='btn' "+(can?"":"disabled")+">购买</button>";d.querySelector("button").onclick=()=>buyItemDirect(it.id);}list.appendChild(d);});}function buyItemDirect(id){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;if(it.give&&it.give.bgSkin){if(ownsBgSkin(it.give.bgSkin)){alert("您已拥有该皮肤");return;}return buyItem(id,1);}return buyItemPrompt(id);}function buyItemPrompt(id){const it=SHOP_ITEMS.find(x=>x.id===id);if(it&&it.give&&it.give.bgSkin)return buyItemDirect(id);const q=prompt("数量","1");if(q===null)return;buyItem(id,Math.max(1,Math.min(99,parseInt(q,10)||1)));}
 function buyItem(id,qty){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0)),av=it.costType==="replies"?ar:ac,cost=it.cost*qty;if(av<cost){alert("数量不足");return;}if(it.costType==="replies")G.repliesSpent=(G.repliesSpent||0)+cost;else G.citationsSpent=(G.citationsSpent||0)+cost;if(it.give.undo)G.boosters.undo+=it.give.undo*qty;if(it.give.hint)G.boosters.hint+=it.give.hint*qty;if(it.give.add)G.boosters.add+=it.give.add*qty;if(it.give.reveal)G.boosters.reveal+=it.give.reveal*qty;if(it.give.ticket)G.tickets=(G.tickets||0)+it.give.ticket*qty;if(it.give.bgSkin){for(var _bi=0;_bi<qty;_bi++)grantBgSkin(it.give.bgSkin);if(!qs("ov-skin").classList.contains("hidden"))openSkin();}save();cloudSave();renderShop();updateShopCurrency();updateMenuStat();if(!qs("game").classList.contains("hidden"))renderAll();gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId:id,cost:String(cost),costType:it.costType,date:todayISO()});}
-window.addEventListener("DOMContentLoaded",()=>{load();normalize();const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;setTimeout(fffAutoLogin,200);renderIdHistory();const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;});
+window.addEventListener("DOMContentLoaded",()=>{load();normalize();const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;setTimeout(fffAutoLogin,200);document.getElementById('autoFillByUrlLink')?.addEventListener('click',function(e){e.preventDefault();showUrlFillOverlay();});document.getElementById('urlFillConfirmBtn')?.addEventListener('click',applyUrlFill);document.getElementById('urlFillSkipBtn')?.addEventListener('click',function(){hideUrlFillOverlay();});document.getElementById('urlFillInput')?.addEventListener('keydown',function(e){if(e.key==='Enter') applyUrlFill();});renderIdHistory();const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;});
+function parseProfileUrl(url){
+  var m=url.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+  if(!m) return null;
+  return {id:decodeURIComponent(m[2]), uid:m[1]};
+}
+function showUrlFillOverlay(){
+  var ov=document.getElementById('urlFillOverlay');
+  if(ov) ov.classList.remove('hidden');
+}
+function hideUrlFillOverlay(){
+  var ov=document.getElementById('urlFillOverlay');
+  if(ov) ov.classList.add('hidden');
+}
+function applyUrlFill(){
+  var inp=document.getElementById('urlFillInput');
+  var err=document.getElementById('urlFillErr');
+  if(!inp) return;
+  var url=inp.value.trim();
+  if(!url){
+    if(err){ err.textContent='请粘贴个人页面网址'; err.style.display=''; }
+    return;
+  }
+  var result=parseProfileUrl(url);
+  if(!result){
+    if(err){ err.textContent='网址格式错误，请贴入类似 https://sstm.moe/profile/12345-username/ 的网址'; err.style.display=''; }
+    return;
+  }
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(idEl) idEl.value=result.id;
+  if(uidEl) uidEl.value=result.uid;
+  if(err) err.style.display='none';
+  hideUrlFillOverlay();
+}
 /** 从论坛首页自动获取ID+UID */
 async function fffAutoLogin(){
   var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
   var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
   if(!idEl||!uidEl) return;
   if(idEl.value.trim()&&uidEl.value.trim()) return;
+  // 1) URL hash
+  var hash=location.hash||'';
+  if(hash.indexOf('auto-id=')>=0){
+    try{
+      var sp=new URLSearchParams(hash.replace(/^#/,''));
+      var hid=sp.get('auto-id');
+      var huid=sp.get('auto-uid');
+      if(hid&&huid){
+        if(!idEl.value.trim()) idEl.value=decodeURIComponent(hid);
+        if(!uidEl.value.trim()) uidEl.value=huid;
+        history.replaceState(null,'',location.pathname+location.search);
+        return;
+      }
+    }catch(e){}
+  }
+  // 2) proxy
   try{
     var html=await fffProxyGet('https://sstm.moe/');
     var doc=new DOMParser().parseFromString(html,'text/html');
@@ -566,7 +617,13 @@ async function fffAutoLogin(){
     if(!m) return;
     if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
     if(!uidEl.value.trim()) uidEl.value=m[1];
+    return;
   }catch(e){}
+  // 3) first visit popup
+  if(!localStorage.getItem('_urlFillShown')){
+    localStorage.setItem('_urlFillShown','1');
+    setTimeout(showUrlFillOverlay, 500);
+  }
 }
 </script>
 <script>
@@ -1196,5 +1253,21 @@ function gasReady(){return /^https?:\/\//.test(GAS_URL)&&GAS_URL.indexOf("__")<0
 </script>
 <div id="ds-version-badge" style="position:fixed;bottom:8px;right:10px;font-size:.7rem;opacity:.55;color:rgba(255,255,255,.5);z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)"></div>
 <div id="ds-connection-status" style="position:fixed;bottom:8px;left:10px;font-size:.7rem;z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)"></div>
+<div id="urlFillOverlay" class="hidden" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center">
+  <div style="background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:24px;max-width:420px;width:90%;box-sizing:border-box">
+    <h3 style="margin:0 0 12px;color:#fff">自动填入账号</h3>
+    <p style="margin:0 0 12px;font-size:14px;color:#b0c4de;line-height:1.6">
+      1. 在 <a href="https://sstm.moe/" target="_blank" style="color:#7eb8ff">SSTM 论坛</a> 点右上角头像进入你的个人页面<br>
+      2. 复制浏览器网址列中的完整网址<br>
+      3. 贴到下方输入框
+    </p>
+    <input id="urlFillInput" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#0f1729;color:#fff;font-size:14px;box-sizing:border-box" placeholder="https://sstm.moe/profile/12345-username/">
+    <div style="margin-top:12px;display:flex;gap:10px">
+      <button id="urlFillConfirmBtn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#4a7cf7;color:#fff;font-size:14px;cursor:pointer">确认</button>
+      <button id="urlFillSkipBtn" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#94a3b8;font-size:14px;cursor:pointer">跳过，手动输入</button>
+    </div>
+    <p id="urlFillErr" style="margin:8px 0 0;font-size:13px;color:#f87171;display:none"></p>
+  </div>
+</div>
 </body>
 </html>

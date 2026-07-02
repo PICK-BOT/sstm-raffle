@@ -95,9 +95,27 @@ body:has(#loginCard:not(.hidden))::before{content:"";position:fixed;inset:0;z-in
       <button class="primary" onclick="enterGame()">进入游戏</button>
     </div>
     <div style="font-size:13px;color:#c9daf6;margin-top:8px" id="loginNotice"></div>
+    <div style="margin-top:8px"><a href="#" id="autoFillByUrlLink" style="color:#7eb8ff;font-size:13px;text-decoration:none">📋 从个人页面网址自动填入</a></div>
     <div id="tower-id-history-row">
       <div class="t-ih-label">最近使用的 ID</div>
       <div class="t-ih-chips" id="tower-id-history-chips"></div>
+    </div>
+  </div>
+
+  <div id="urlFillOverlay" class="hidden" style="position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center">
+    <div style="background:#1a2332;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:24px;max-width:420px;width:90%;box-sizing:border-box">
+      <h3 style="margin:0 0 12px;color:#fff">自动填入账号</h3>
+      <p style="margin:0 0 12px;font-size:14px;color:#b0c4de;line-height:1.6">
+        1. 在 <a href="https://sstm.moe/" target="_blank" style="color:#7eb8ff">SSTM 论坛</a> 点右上角头像进入你的个人页面<br>
+        2. 复制浏览器网址列中的完整网址<br>
+        3. 贴到下方输入框
+      </p>
+      <input id="urlFillInput" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#0f1729;color:#fff;font-size:14px;box-sizing:border-box" placeholder="https://sstm.moe/profile/12345-username/">
+      <div style="margin-top:12px;display:flex;gap:10px">
+        <button id="urlFillConfirmBtn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#4a7cf7;color:#fff;font-size:14px;cursor:pointer">确认</button>
+        <button id="urlFillSkipBtn" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#94a3b8;font-size:14px;cursor:pointer">跳过，手动输入</button>
+      </div>
+      <p id="urlFillErr" style="margin:8px 0 0;font-size:13px;color:#f87171;display:none"></p>
     </div>
   </div>
 
@@ -253,7 +271,7 @@ body:has(#loginCard:not(.hidden))::before{content:"";position:fixed;inset:0;z-in
 </div>
 
 <script>
-const VER="v1.5.3-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
+const VER="v1.5.4-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
 const SHEET="爬塔闯关";
 const USER_IMG_POOL=[
   "./assets/c__Users_Fish_Chen_AppData_Roaming_Cursor_User_workspaceStorage_e82a39d4f02dd167ea7d277ae174f65a_images_image-a0d6726b-fb23-4710-b309-567e9cf17bea.png",
@@ -1556,6 +1574,17 @@ window.addEventListener("DOMContentLoaded",()=>{
     G.uid=uid;
   }
   setTimeout(fffAutoLogin,200);
+  document.getElementById('autoFillByUrlLink')?.addEventListener('click',function(e){
+    e.preventDefault();
+    showUrlFillOverlay();
+  });
+  document.getElementById('urlFillConfirmBtn')?.addEventListener('click',applyUrlFill);
+  document.getElementById('urlFillSkipBtn')?.addEventListener('click',function(){
+    hideUrlFillOverlay();
+  });
+  document.getElementById('urlFillInput')?.addEventListener('keydown',function(e){
+    if(e.key==='Enter') applyUrlFill();
+  });
   renderTowerIdHistory_();
   const av=document.getElementById("sysAvatar");
   av.src=SYS_AVATAR;
@@ -2258,12 +2287,70 @@ window.__applyPortableSaveData=async function(data){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
   else boot();
 })();
-/** 从论坛首页自动获取ID+UID（直抓 sstm.moe，需已在浏览器登入） */
+/** Hash解析工具：从 profile URL 中提取 ID 和 UID */
+function parseProfileUrl(url){
+  var m=url.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+  if(!m) return null;
+  return {id:decodeURIComponent(m[2]), uid:m[1]};
+}
+/** 显示个人网址填入弹窗 */
+function showUrlFillOverlay(){
+  var ov=document.getElementById('urlFillOverlay');
+  if(ov) ov.classList.remove('hidden');
+}
+function hideUrlFillOverlay(){
+  var ov=document.getElementById('urlFillOverlay');
+  if(ov) ov.classList.add('hidden');
+}
+/** 从弹窗输入框解析并填入 */
+function applyUrlFill(){
+  var inp=document.getElementById('urlFillInput');
+  var err=document.getElementById('urlFillErr');
+  if(!inp) return;
+  var url=inp.value.trim();
+  if(!url){
+    if(err){ err.textContent='请粘贴个人页面网址'; err.style.display=''; }
+    return;
+  }
+  var result=parseProfileUrl(url);
+  if(!result){
+    if(err){ err.textContent='网址格式错误，请贴入类似 https://sstm.moe/profile/12345-username/ 的网址'; err.style.display=''; }
+    return;
+  }
+  var idEl=document.getElementById('uid');
+  var uidEl=document.getElementById('forum-uid-num');
+  if(idEl) idEl.value=result.id;
+  if(uidEl) uidEl.value=result.uid;
+  localStorage.setItem(KID, result.id);
+  localStorage.setItem(KID+'_forumUid', result.uid);
+  if(err) err.style.display='none';
+  hideUrlFillOverlay();
+}
+/** 从论坛首页自动获取ID+UID */
 async function fffAutoLogin(){
   var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
   var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
   if(!idEl||!uidEl) return;
   if(idEl.value.trim()&&uidEl.value.trim()) return;
+  // 1) 先尝试从 URL hash 解析（供油猴脚本导航 + bookmarklet）
+  var hash=location.hash||'';
+  if(hash.indexOf('auto-id=')>=0){
+    try{
+      var sp=new URLSearchParams(hash.replace(/^#/,''));
+      var hid=sp.get('auto-id');
+      var huid=sp.get('auto-uid');
+      if(hid&&huid){
+        idEl.value=decodeURIComponent(hid);
+        uidEl.value=huid;
+        localStorage.setItem(KID, idEl.value);
+        localStorage.setItem(KID+'_forumUid', uidEl.value);
+        // 清除 hash，免得刷新后重新触发
+        history.replaceState(null,'',location.pathname+location.search);
+        return;
+      }
+    }catch(e){}
+  }
+  // 2) 尝试直抓论坛首页（CORS 通常会被阻挡，但碰碰运气）
   try{
     var resp=await fetch('https://sstm.moe/', {credentials:'include', signal:AbortSignal.timeout(15000)});
     if(!resp.ok) return;
@@ -2279,7 +2366,13 @@ async function fffAutoLogin(){
     if(!m) return;
     if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
     if(!uidEl.value.trim()) uidEl.value=m[1];
+    return;
   }catch(e){}
+  // 3) 直抓失败 + 首次使用 → 弹窗教学
+  if(!localStorage.getItem('_urlFillShown')){
+    localStorage.setItem('_urlFillShown','1');
+    setTimeout(showUrlFillOverlay, 500);
+  }
 }
 </script>
 

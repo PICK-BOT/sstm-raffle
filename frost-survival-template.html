@@ -9,7 +9,7 @@
   <!-- 维护提醒：每次功能更新请递增 FS_HTML_VERSION 与下方 ?v= 缓存参数 -->
   <link rel="dns-prefetch" href="https://images.unsplash.com" />
   <title>寒霜边境 · 冰雪生存 SLG 界面原型（Frost Frontier）</title>
-  <link rel="stylesheet" href="./style.css?v=frost-survival-v1.0.0-2026-06-12" />
+  <link rel="stylesheet" href="./style.css?v=frost-survival-v1.0.3-2026-06-12" />
 </head>
 <body class="theme-wos">
   <!-- 背景氛围层：免费图库雪景 + CSS 飘雪（不使用官方游戏素材） -->
@@ -77,12 +77,14 @@
       <div class="row">
         <input id="login-uid" class="inp" type="number" min="1" step="1" placeholder="论坛数字 UID" />
       </div>
+      <div style="margin-top:8px"><a href="#" id="autoFillByUrlLink" style="color:#7eb8ff;font-size:13px;text-decoration:none">📋 从个人页面网址自动填入</a></div>
       <div id="login-history-row">
         <div class="login-history-label muted">最近使用</div>
         <div class="ih-chips" id="login-history-chips"></div>
       </div>
+      <p id="login-err" class="login-err" role="alert"></p>
       <div class="row">
-        <button id="btn-login-enter" class="slg-btn-yellow">进入游戏</button>
+        <button id="btn-login-enter" class="slg-btn-yellow" type="button">进入游戏</button>
       </div>
     </div>
   </div>
@@ -570,14 +572,133 @@
       gasUrl: "https://script.google.com/macros/s/AKfycbwTvyIn6UZE16aCflvNLIyiFRPYm7CdgnXQzuhHbrQ00RWCvWEU-ZmRo25OwYw94efBPQ/exec",
       proxyPrefix: "https://sstm-raffle.vercel.app/Frost-Survival-proxy?url="
     };
-    var FS_HTML_VERSION = "frost-survival-v1.0.0-2026-06-12";
+    var FS_HTML_VERSION = "frost-survival-v1.0.3-2026-06-12";
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" crossorigin="anonymous"></script>
-  <script src="./sstm-forum-scrape.js?v=frost-survival-v1.0.0-2026-06-12"></script>
+  <script src="./sstm-forum-scrape.js?v=frost-survival-v1.0.3-2026-06-12"></script>
   <script src="./pokedex-data.js"></script>
   <script src="./pokedex-evolve.js"></script>
   <script src="./skill-books-data.js"></script>
-  <script src="./game.js?v=frost-survival-v1.0.0-2026-06-12"></script>
+  <script src="./game.js?v=frost-survival-v1.0.3-2026-06-12"></script>
+  <script>
+    setTimeout(function () {
+      if (window.__FROST_BOOT_OK__) return;
+      var login = document.getElementById("screen-login");
+      if (login) login.classList.remove("hidden");
+      if (document.getElementById("fs-boot-fail")) return;
+      var tip = document.createElement("div");
+      tip.id = "fs-boot-fail";
+      tip.className = "fs-boot-fail-banner";
+      tip.textContent = "游戏脚本未能启动。请按 Ctrl+F5 强制刷新；若仍无效，请用本地 HTTP 打开（勿用 file://），并检查浏览器控制台报错。";
+      document.body.appendChild(tip);
+    }, 800);
+  </script>
+  <script>
+  function parseProfileUrl(url){
+    var m=url.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+    if(!m) return null;
+    return {id:decodeURIComponent(m[2]), uid:m[1]};
+  }
+  function showUrlFillOverlay(){
+    var ov=document.getElementById('urlFillOverlay');
+    if(ov) ov.classList.remove('hidden');
+  }
+  function hideUrlFillOverlay(){
+    var ov=document.getElementById('urlFillOverlay');
+    if(ov) ov.classList.add('hidden');
+  }
+  function applyUrlFill(){
+    var inp=document.getElementById('urlFillInput');
+    var err=document.getElementById('urlFillErr');
+    if(!inp) return;
+    var url=inp.value.trim();
+    if(!url){
+      if(err){ err.textContent='请粘贴个人页面网址'; err.style.display=''; }
+      return;
+    }
+    var result=parseProfileUrl(url);
+    if(!result){
+      if(err){ err.textContent='网址格式错误，请贴入类似 https://sstm.moe/profile/12345-username/ 的网址'; err.style.display=''; }
+      return;
+    }
+    var idEl=document.getElementById('inp-id')||document.getElementById('login-id')||document.getElementById('inputId')||document.getElementById('uid');
+    var uidEl=document.getElementById('inp-uid')||document.getElementById('login-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+    if(idEl) idEl.value=result.id;
+    if(uidEl) uidEl.value=result.uid;
+    if(err) err.style.display='none';
+    hideUrlFillOverlay();
+  }
+  /** 从论坛首页自动获取ID+UID */
+  async function fffAutoLogin(){
+    var idEl=document.getElementById('inp-id')||document.getElementById('login-id')||document.getElementById('inputId')||document.getElementById('uid');
+    var uidEl=document.getElementById('inp-uid')||document.getElementById('login-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+    if(!idEl||!uidEl) return;
+    if(idEl.value.trim()&&uidEl.value.trim()) return;
+    // 1) URL hash
+    var hash=location.hash||'';
+    if(hash.indexOf('auto-id=')>=0){
+      try{
+        var sp=new URLSearchParams(hash.replace(/^#/,''));
+        var hid=sp.get('auto-id');
+        var huid=sp.get('auto-uid');
+        if(hid&&huid){
+          if(!idEl.value.trim()) idEl.value=decodeURIComponent(hid);
+          if(!uidEl.value.trim()) uidEl.value=huid;
+          history.replaceState(null,'',location.pathname+location.search);
+          return;
+        }
+      }catch(e){}
+    }
+    // 2) proxy
+    try{
+      var html=await window.SstmForumScrape.ffProxyGet('https://sstm.moe/');
+      var doc=new DOMParser().parseFromString(html,'text/html');
+      var userLink=doc.getElementById('cUserLink');
+      if(!userLink) return;
+      var profileLink=userLink.querySelector('a[href*="/profile/"]');
+      if(!profileLink) return;
+      var href=profileLink.getAttribute('href')||'';
+      var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+      if(!m) return;
+      if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
+      if(!uidEl.value.trim()) uidEl.value=m[1];
+      return;
+    }catch(e){}
+    // 3) first visit popup
+    if(!localStorage.getItem('_urlFillShown')){
+      localStorage.setItem('_urlFillShown','1');
+      setTimeout(showUrlFillOverlay, 500);
+    }
+  }
+  setTimeout(fffAutoLogin,500);
+  document.getElementById('autoFillByUrlLink')?.addEventListener('click',function(e){
+    e.preventDefault();
+    showUrlFillOverlay();
+  });
+  document.getElementById('urlFillConfirmBtn')?.addEventListener('click',applyUrlFill);
+  document.getElementById('urlFillSkipBtn')?.addEventListener('click',function(){
+    hideUrlFillOverlay();
+  });
+  document.getElementById('urlFillInput')?.addEventListener('keydown',function(e){
+    if(e.key==='Enter') applyUrlFill();
+  });
+  </script>
+  <div id="urlFillOverlay" class="hidden" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center">
+    <div style="background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:24px;max-width:420px;width:90%;box-sizing:border-box">
+      <h3 style="margin:0 0 12px;color:#fff">自动填入账号</h3>
+      <p style="margin:0 0 12px;font-size:14px;color:#b0c4de;line-height:1.6">
+        1. 在 <a href="https://sstm.moe/" target="_blank" style="color:#7eb8ff">SSTM 论坛</a> 点右上角头像进入你的个人页面<br>
+        2. 复制浏览器网址列中的完整网址<br>
+        3. 贴到下方输入框
+      </p>
+      <input id="urlFillInput" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#0f1729;color:#fff;font-size:14px;box-sizing:border-box" placeholder="https://sstm.moe/profile/12345-username/">
+      <div style="margin-top:12px;display:flex;gap:10px">
+        <button id="urlFillConfirmBtn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#4a7cf7;color:#fff;font-size:14px;cursor:pointer">确认</button>
+        <button id="urlFillSkipBtn" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#94a3b8;font-size:14px;cursor:pointer">跳过，手动输入</button>
+      </div>
+      <p id="urlFillErr" style="margin:8px 0 0;font-size:13px;color:#f87171;display:none"></p>
+    </div>
+  </div>
 </body>
 </html>
 

@@ -145,6 +145,7 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#0d1117;c
     </div>
     <button id="btn-login" class="btn" style="width:100%" onclick="doLogin()">登入</button>
     <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="offlineMode()">离线模式</button>
+    <div style="margin-top:8px"><a href="#" id="autoFillByUrlLink" style="color:#7eb8ff;font-size:13px;text-decoration:none">📋 从个人页面网址自动填入</a></div>
     <div id="login-err" style="min-height:18px;color:#fda4af;margin-top:8px;font-size:.8rem"></div>
   </div>
 </div>
@@ -499,7 +500,7 @@ body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#0d1117;c
 // ============================================================
 // 版本号 - 每次更新递增
 // ============================================================
-const GAME_VERSION = "v3.8.0";
+const GAME_VERSION = "v3.8.1";
 const VERSION_LOG = [
   {v:"v1.0.0", date:"2026-06-06", note:"初版：时代塔防玩法、完整登入/云端/商店/皮肤/宝箱系统"},
   {v:"v1.1.0", date:"2026-06-07", note:"敌人全部换成宝可梦 Gen5 动态 GIF 精灵图；DOM img 层渲染动画"},
@@ -3242,18 +3243,79 @@ window.addEventListener("DOMContentLoaded",()=>{
   if(id) qs("inp-id").value=id;
   if(uid) qs("inp-uid").value=uid;
   setTimeout(fffAutoLogin,200);
+  document.getElementById('autoFillByUrlLink')?.addEventListener('click',function(e){
+    e.preventDefault();
+    showUrlFillOverlay();
+  });
+  document.getElementById('urlFillConfirmBtn')?.addEventListener('click',applyUrlFill);
+  document.getElementById('urlFillSkipBtn')?.addEventListener('click',function(){
+    hideUrlFillOverlay();
+  });
+  document.getElementById('urlFillInput')?.addEventListener('keydown',function(e){
+    if(e.key==='Enter') applyUrlFill();
+  });
   const d=todayISO(); qs("forum-start-date").value=d; qs("forum-end-date").value=d;
   save();
   // 版本 log
   console.log("[SS塔防HTML] "+GAME_VERSION);
   VERSION_LOG.forEach(v=>console.log("  "+v.v+" "+v.date+" "+v.note));
 });
+function parseProfileUrl(url){
+  var m=url.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+  if(!m) return null;
+  return {id:decodeURIComponent(m[2]), uid:m[1]};
+}
+function showUrlFillOverlay(){
+  var ov=document.getElementById('urlFillOverlay');
+  if(ov) ov.classList.remove('hidden');
+}
+function hideUrlFillOverlay(){
+  var ov=document.getElementById('urlFillOverlay');
+  if(ov) ov.classList.add('hidden');
+}
+function applyUrlFill(){
+  var inp=document.getElementById('urlFillInput');
+  var err=document.getElementById('urlFillErr');
+  if(!inp) return;
+  var url=inp.value.trim();
+  if(!url){
+    if(err){ err.textContent='请粘贴个人页面网址'; err.style.display=''; }
+    return;
+  }
+  var result=parseProfileUrl(url);
+  if(!result){
+    if(err){ err.textContent='网址格式错误，请贴入类似 https://sstm.moe/profile/12345-username/ 的网址'; err.style.display=''; }
+    return;
+  }
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(idEl) idEl.value=result.id;
+  if(uidEl) uidEl.value=result.uid;
+  if(err) err.style.display='none';
+  hideUrlFillOverlay();
+}
 /** 从论坛首页自动获取ID+UID */
 async function fffAutoLogin(){
   var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
   var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
   if(!idEl||!uidEl) return;
   if(idEl.value.trim()&&uidEl.value.trim()) return;
+  // 1) URL hash
+  var hash=location.hash||'';
+  if(hash.indexOf('auto-id=')>=0){
+    try{
+      var sp=new URLSearchParams(hash.replace(/^#/,''));
+      var hid=sp.get('auto-id');
+      var huid=sp.get('auto-uid');
+      if(hid&&huid){
+        if(!idEl.value.trim()) idEl.value=decodeURIComponent(hid);
+        if(!uidEl.value.trim()) uidEl.value=huid;
+        history.replaceState(null,'',location.pathname+location.search);
+        return;
+      }
+    }catch(e){}
+  }
+  // 2) proxy
   try{
     var html=await fffProxyGet('https://sstm.moe/');
     var doc=new DOMParser().parseFromString(html,'text/html');
@@ -3266,7 +3328,13 @@ async function fffAutoLogin(){
     if(!m) return;
     if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
     if(!uidEl.value.trim()) uidEl.value=m[1];
+    return;
   }catch(e){}
+  // 3) first visit popup
+  if(!localStorage.getItem('_urlFillShown')){
+    localStorage.setItem('_urlFillShown','1');
+    setTimeout(showUrlFillOverlay, 500);
+  }
 }
 </script>
 
@@ -3274,6 +3342,22 @@ async function fffAutoLogin(){
 <div id="cloud-status-float" style="position:fixed;right:10px;bottom:10px;z-index:50;display:flex;align-items:center;gap:6px;background:rgba(10,14,24,.85);border:1px solid rgba(255,255,255,.15);border-radius:99px;padding:5px 10px 5px 8px;font-size:.7rem;color:rgba(255,255,255,.85);box-shadow:0 4px 14px rgba(0,0,0,.4);backdrop-filter:blur(6px)">
   <div id="cloud-status-dot" style="width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0;transition:background .3s"></div>
   <span id="cloud-status-text">离线模式</span>
+</div>
+<div id="urlFillOverlay" class="hidden" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center">
+  <div style="background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:24px;max-width:420px;width:90%;box-sizing:border-box">
+    <h3 style="margin:0 0 12px;color:#fff">自动填入账号</h3>
+    <p style="margin:0 0 12px;font-size:14px;color:#b0c4de;line-height:1.6">
+      1. 在 <a href="https://sstm.moe/" target="_blank" style="color:#7eb8ff">SSTM 论坛</a> 点右上角头像进入你的个人页面<br>
+      2. 复制浏览器网址列中的完整网址<br>
+      3. 贴到下方输入框
+    </p>
+    <input id="urlFillInput" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#0f1729;color:#fff;font-size:14px;box-sizing:border-box" placeholder="https://sstm.moe/profile/12345-username/">
+    <div style="margin-top:12px;display:flex;gap:10px">
+      <button id="urlFillConfirmBtn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#4a7cf7;color:#fff;font-size:14px;cursor:pointer">确认</button>
+      <button id="urlFillSkipBtn" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#94a3b8;font-size:14px;cursor:pointer">跳过，手动输入</button>
+    </div>
+    <p id="urlFillErr" style="margin:8px 0 0;font-size:13px;color:#f87171;display:none"></p>
+  </div>
 </div>
 </body>
 </html>

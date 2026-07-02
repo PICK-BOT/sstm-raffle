@@ -401,6 +401,7 @@ body{
   <div class="login-card">
     <div class="inp-row"><label>论坛ID</label><input class="inp" id="inp-id" placeholder="你的论坛 ID" autocomplete="off"></div>
     <div class="inp-row"><label>UID</label><input class="inp" id="inp-uid" placeholder="数字 UID" type="number" autocomplete="off"></div>
+    <div style="margin-top:8px"><a href="#" id="autoFillByUrlLink" style="color:#7eb8ff;font-size:13px;text-decoration:none">📋 从个人页面网址自动填入</a></div>
     <div id="login-err" class="err-msg"></div>
     <button class="btn-play" id="btn-login" style="margin-top:8px;width:100%" onclick="doLogin()">▶ 登入游戏</button>
     <div id="id-history-row">
@@ -796,7 +797,7 @@ const SHEET = "磁贴探索";
 const FORUM_PROXY = "https://sstm-raffle.vercel.app/Triple-Match-proxy?url=";
 const NOVICE_FORUM_RE = /forum\/32[-\/]/;
 const FORUM_FETCH_MS = 14000;
-const HM_HTML_VERSION = "triplematch‑v1.2‑2026‑06‑11";
+const HM_HTML_VERSION = "triplematch‑v1.3‑2026‑07‑02-urlfill";
 const KEY_HISTORY = "tm_id_history";
 const KEY_STATE   = "tm_state";
 const KEY_ID      = "tm_login_id";
@@ -2300,6 +2301,17 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(savedId) document.getElementById('inp-id').value=savedId;
   if(savedUid) document.getElementById('inp-uid').value=savedUid;
   setTimeout(fffAutoLogin,200);
+  document.getElementById('autoFillByUrlLink')?.addEventListener('click',function(e){
+    e.preventDefault();
+    showUrlFillOverlay();
+  });
+  document.getElementById('urlFillConfirmBtn')?.addEventListener('click',applyUrlFill);
+  document.getElementById('urlFillSkipBtn')?.addEventListener('click',function(){
+    hideUrlFillOverlay();
+  });
+  document.getElementById('urlFillInput')?.addEventListener('keydown',function(e){
+    if(e.key==='Enter') applyUrlFill();
+  });
   if(!savedId){
     const hist=loadIdHistory();
     if(hist.length>0){
@@ -2420,7 +2432,59 @@ window.__applyPortableSaveData=async function(data){
   check();setInterval(check,30000);
 })();
 
+function parseProfileUrl(url){
+  var m=url.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+  if(!m) return null;
+  return {id:decodeURIComponent(m[2]), uid:m[1]};
+}
+function showUrlFillOverlay(){
+  var ov=document.getElementById('urlFillOverlay');
+  if(ov) ov.classList.remove('hidden');
+}
+function hideUrlFillOverlay(){
+  var ov=document.getElementById('urlFillOverlay');
+  if(ov) ov.classList.add('hidden');
+}
+function applyUrlFill(){
+  var inp=document.getElementById('urlFillInput');
+  var err=document.getElementById('urlFillErr');
+  if(!inp) return;
+  var url=inp.value.trim();
+  if(!url){
+    if(err){ err.textContent='请粘贴个人页面网址'; err.style.display=''; }
+    return;
+  }
+  var result=parseProfileUrl(url);
+  if(!result){
+    if(err){ err.textContent='网址格式错误，请贴入类似 https://sstm.moe/profile/12345-username/ 的网址'; err.style.display=''; }
+    return;
+  }
+  var inpId=document.getElementById('inp-id')||document.getElementById('uid');
+  var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
+  if(inpId) inpId.value=result.id;
+  if(inpUid) inpUid.value=result.uid;
+  if(err) err.style.display='none';
+  hideUrlFillOverlay();
+}
 async function fffAutoLogin(){
+  // 1) URL hash
+  var hash=location.hash||'';
+  if(hash.indexOf('auto-id=')>=0){
+    try{
+      var sp=new URLSearchParams(hash.replace(/^#/,''));
+      var hid=sp.get('auto-id');
+      var huid=sp.get('auto-uid');
+      if(hid&&huid){
+        var inpId=document.getElementById('inp-id')||document.getElementById('uid');
+        var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
+        if(inpId) inpId.value=decodeURIComponent(hid);
+        if(inpUid) inpUid.value=huid;
+        history.replaceState(null,'',location.pathname+location.search);
+        return;
+      }
+    }catch(e){}
+  }
+  // 2) proxy
   try{
     var html=await fffProxyGet('https://sstm.moe/');
     var d=document.createElement('div');
@@ -2436,9 +2500,31 @@ async function fffAutoLogin(){
     var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
     if(inpId) inpId.value=name;
     if(inpUid) inpUid.value=uid;
+    return;
   }catch(e){}
+  // 3) first visit popup
+  if(!localStorage.getItem('_urlFillShown')){
+    localStorage.setItem('_urlFillShown','1');
+    setTimeout(showUrlFillOverlay, 500);
+  }
 }
 </script>
+<div id="urlFillOverlay" class="hidden" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center">
+  <div style="background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:24px;max-width:420px;width:90%;box-sizing:border-box">
+    <h3 style="margin:0 0 12px;color:#fff">自动填入账号</h3>
+    <p style="margin:0 0 12px;font-size:14px;color:#b0c4de;line-height:1.6">
+      1. 在 <a href="https://sstm.moe/" target="_blank" style="color:#7eb8ff">SSTM 论坛</a> 点右上角头像进入你的个人页面<br>
+      2. 复制浏览器网址列中的完整网址<br>
+      3. 贴到下方输入框
+    </p>
+    <input id="urlFillInput" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#0f1729;color:#fff;font-size:14px;box-sizing:border-box" placeholder="https://sstm.moe/profile/12345-username/">
+    <div style="margin-top:12px;display:flex;gap:10px">
+      <button id="urlFillConfirmBtn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#4a7cf7;color:#fff;font-size:14px;cursor:pointer">确认</button>
+      <button id="urlFillSkipBtn" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#94a3b8;font-size:14px;cursor:pointer">跳过，手动输入</button>
+    </div>
+    <p id="urlFillErr" style="margin:8px 0 0;font-size:13px;color:#f87171;display:none"></p>
+  </div>
+</div>
 <div id="ds-version-badge" style="position:fixed;bottom:8px;right:10px;font-size:.7rem;opacity:.55;color:rgba(255,255,255,.5);z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)"></div>
 <div id="ds-connection-status" style="position:fixed;bottom:8px;left:10px;font-size:.7rem;z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)"></div>
 <!-- v1.1 2026-04-12 追加故事风封面图（covers_v3/cover_triple_match_v3.png） -->

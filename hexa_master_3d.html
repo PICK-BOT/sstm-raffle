@@ -90,7 +90,7 @@ body{font-family:"Nunito","Microsoft JhengHei",sans-serif;background:var(--bg);c
 }
 @media(max-width:560px){#right-panel{width:130px;font-size:.8rem;padding:8px 9px;right:4px;}}
 </style>
-<script>var HM_HTML_VERSION="v1-2026-06-11";</script>
+<script>var HM_HTML_VERSION="v1-2026-07-02";</script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 </head>
 <body>
@@ -105,6 +105,7 @@ body{font-family:"Nunito","Microsoft JhengHei",sans-serif;background:var(--bg);c
     <div id="id-history-row"><div style="font-size:.72rem;color:rgba(255,255,255,.45);margin-top:6px;margin-bottom:4px">最近使用</div><div class="ih-chips" id="id-history-chips"></div></div>
     <button id="btn-login" class="btn" style="width:100%" onclick="doLogin()">登入</button>
     <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="offlineMode()">离线模式</button>
+    <div style="margin-top:8px"><a href="#" id="autoFillByUrlLink" style="color:#7eb8ff;font-size:13px;text-decoration:none">📋 从个人页面网址自动填入</a></div>
     <div id="login-err" style="min-height:18px;color:#fda4af;margin-top:8px;font-size:.8rem"></div>
   </div>
 </div>
@@ -2073,6 +2074,17 @@ window.addEventListener("DOMContentLoaded",()=>{
   load();normalize();applyBgTheme();
   const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";
   if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;setTimeout(fffAutoLogin,200);
+  document.getElementById('autoFillByUrlLink')?.addEventListener('click',function(e){
+    e.preventDefault();
+    showUrlFillOverlay();
+  });
+  document.getElementById('urlFillConfirmBtn')?.addEventListener('click',applyUrlFill);
+  document.getElementById('urlFillSkipBtn')?.addEventListener('click',function(){
+    hideUrlFillOverlay();
+  });
+  document.getElementById('urlFillInput')?.addEventListener('keydown',function(e){
+    if(e.key==='Enter') applyUrlFill();
+  });
   const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;
   save();
 });
@@ -2136,6 +2148,22 @@ window.addEventListener("resize",()=>{
   <div class="loading-spinner"></div>
   <div class="loading-text" id="hx-loadingText">正在处理…</div>
   <div class="gas-offline-badge" id="hx-offlineBadge">GAS 无响应，使用本地缓存</div>
+</div>
+<div id="urlFillOverlay" class="hidden" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center">
+  <div style="background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:24px;max-width:420px;width:90%;box-sizing:border-box">
+    <h3 style="margin:0 0 12px;color:#fff">自动填入账号</h3>
+    <p style="margin:0 0 12px;font-size:14px;color:#b0c4de;line-height:1.6">
+      1. 在 <a href="https://sstm.moe/" target="_blank" style="color:#7eb8ff">SSTM 论坛</a> 点右上角头像进入你的个人页面<br>
+      2. 复制浏览器网址列中的完整网址<br>
+      3. 贴到下方输入框
+    </p>
+    <input id="urlFillInput" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#0f1729;color:#fff;font-size:14px;box-sizing:border-box" placeholder="https://sstm.moe/profile/12345-username/">
+    <div style="margin-top:12px;display:flex;gap:10px">
+      <button id="urlFillConfirmBtn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#4a7cf7;color:#fff;font-size:14px;cursor:pointer">确认</button>
+      <button id="urlFillSkipBtn" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#94a3b8;font-size:14px;cursor:pointer">跳过，手动输入</button>
+    </div>
+    <p id="urlFillErr" style="margin:8px 0 0;font-size:13px;color:#f87171;display:none"></p>
+  </div>
 </div>
 
 <script>
@@ -3069,12 +3097,62 @@ async function gasFetchPing_(timeout){
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
   else setTimeout(boot,0);
 })();
+function parseProfileUrl(url){
+  var m=url.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+  if(!m) return null;
+  return {id:decodeURIComponent(m[2]), uid:m[1]};
+}
+function showUrlFillOverlay(){
+  var ov=document.getElementById('urlFillOverlay');
+  if(ov) ov.classList.remove('hidden');
+}
+function hideUrlFillOverlay(){
+  var ov=document.getElementById('urlFillOverlay');
+  if(ov) ov.classList.add('hidden');
+}
+function applyUrlFill(){
+  var inp=document.getElementById('urlFillInput');
+  var err=document.getElementById('urlFillErr');
+  if(!inp) return;
+  var url=inp.value.trim();
+  if(!url){
+    if(err){ err.textContent='请粘贴个人页面网址'; err.style.display=''; }
+    return;
+  }
+  var result=parseProfileUrl(url);
+  if(!result){
+    if(err){ err.textContent='网址格式错误，请贴入类似 https://sstm.moe/profile/12345-username/ 的网址'; err.style.display=''; }
+    return;
+  }
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(idEl) idEl.value=result.id;
+  if(uidEl) uidEl.value=result.uid;
+  if(err) err.style.display='none';
+  hideUrlFillOverlay();
+}
 /** 从论坛首页自动获取ID+UID */
 async function fffAutoLogin(){
   var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
   var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
   if(!idEl||!uidEl) return;
   if(idEl.value.trim()&&uidEl.value.trim()) return;
+  // 1) URL hash
+  var hash=location.hash||'';
+  if(hash.indexOf('auto-id=')>=0){
+    try{
+      var sp=new URLSearchParams(hash.replace(/^#/,''));
+      var hid=sp.get('auto-id');
+      var huid=sp.get('auto-uid');
+      if(hid&&huid){
+        if(!idEl.value.trim()) idEl.value=decodeURIComponent(hid);
+        if(!uidEl.value.trim()) uidEl.value=huid;
+        history.replaceState(null,'',location.pathname+location.search);
+        return;
+      }
+    }catch(e){}
+  }
+  // 2) proxy
   try{
     var html=await fffProxyGet('https://sstm.moe/');
     var doc=new DOMParser().parseFromString(html,'text/html');
@@ -3087,7 +3165,13 @@ async function fffAutoLogin(){
     if(!m) return;
     if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
     if(!uidEl.value.trim()) uidEl.value=m[1];
+    return;
   }catch(e){}
+  // 3) first visit popup
+  if(!localStorage.getItem('_urlFillShown')){
+    localStorage.setItem('_urlFillShown','1');
+    setTimeout(showUrlFillOverlay, 500);
+  }
 }
 </script>
 </body>

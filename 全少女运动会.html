@@ -1,0 +1,2143 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>全少女运动会</title>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0d1117;--accent:#58a6ff;--gold:#f0c000;--shadow:0 4px 20px rgba(0,0,0,.5)}
+html,body{height:100%;width:100%;overflow:hidden}
+body{background:var(--bg);font-family:'Nunito',sans-serif;color:#e6edf3;overflow:hidden;display:flex;flex-direction:column;align-items:center}
+.screen{position:fixed;inset:0;width:100%;height:100%;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10}
+.screen.hidden{display:none}
+/* ── Team Colors ── */
+:root{--c-genmu:#e74c3c;--c-maho:#9b59b6;--c-pretty:#f1c40f;--c-yusha:#3498db}
+.t-genmu{color:var(--c-genmu)}.t-maho{color:var(--c-maho)}.t-pretty{color:var(--c-pretty)}.t-yusha{color:var(--c-yusha)}
+.bg-genmu{background:var(--c-genmu)}.bg-maho{background:var(--c-maho)}.bg-pretty{background:var(--c-pretty)}.bg-yusha{background:var(--c-yusha)}
+.b-genmu{border-color:var(--c-genmu)}.b-maho{border-color:var(--c-maho)}.b-pretty{border-color:var(--c-pretty)}.b-yusha{border-color:var(--c-yusha)}
+/* ── LOGIN ── */
+#screen-login{background:radial-gradient(ellipse at 50% 0%,#1a2332 0%,#0d1117 70%)}
+.login-card{background:rgba(255,255,255,.06);border:1px solid rgba(88,166,255,.25);border-radius:18px;padding:22px 18px;max-width:360px;width:94%;margin-top:12px;backdrop-filter:blur(8px)}
+.login-title{font-size:1.8rem;font-weight:900;text-align:center;margin-bottom:4px;background:linear-gradient(135deg,#58a6ff,#f0c000);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.login-sub{font-size:.82rem;color:rgba(255,255,255,.45);text-align:center;margin-bottom:16px}
+.inp-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.inp-row label{min-width:52px;font-size:.82rem;color:rgba(255,255,255,.55)}
+.inp{flex:1;padding:9px 12px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.15);border-radius:10px;color:#e6edf3;font-size:.88rem;outline:none;font-family:'Nunito',sans-serif}
+.inp:focus{border-color:var(--accent)}
+.err-msg{color:#f87171;font-size:.78rem;min-height:16px;margin-bottom:6px;text-align:center}
+.ih-label{font-size:.7rem;color:rgba(255,255,255,.35);margin-top:8px;margin-bottom:4px}
+.ih-chips{display:flex;flex-wrap:wrap;gap:5px}
+.ih-chip-wrap{display:inline-flex;align-items:center;gap:2px;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);border-radius:18px;padding:2px 2px 2px 8px}
+.ih-chip{border:none;padding:2px 5px;border-radius:12px;font-size:.74rem;cursor:pointer;background:transparent;color:var(--accent);font-family:inherit}
+.ih-chip:hover{background:rgba(88,166,255,.12)}
+.ih-x{width:16px;height:16px;padding:0;border:none;border-radius:50%;cursor:pointer;background:rgba(255,80,80,.3);color:#fff;font-size:.6rem;font-weight:700}
+/* ── TEAM SELECT ── */
+#screen-team{background:radial-gradient(ellipse at 50% 0%,#1a2332 0%,#0d1117 70%);justify-content:flex-start;padding-top:32px}
+.st-title{font-size:1.5rem;font-weight:900;margin-bottom:2px}
+.st-sub{font-size:.8rem;color:rgba(255,255,255,.5);margin-bottom:16px}
+.team-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(400px,94vw)}
+.team-card{border-radius:14px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);padding:12px;cursor:pointer;transition:all .15s;overflow:hidden}
+.team-card:active{transform:scale(.96)}
+.team-card.selected{background:rgba(255,255,255,.1);border-width:2.5px}
+.team-card .tc-name{font-size:.95rem;font-weight:800;margin-bottom:4px;text-align:center}
+.team-card .tc-emoji{font-size:1.8rem;text-align:center;margin-bottom:4px}
+.team-card .tc-members{font-size:.65rem;color:rgba(255,255,255,.55);text-align:center;line-height:1.5}
+/* ── MENU (Event Select) ── */
+#screen-menu{background:radial-gradient(ellipse at 50% 0%,#1a2332 0%,#0d1117 70%);justify-content:flex-start;padding-top:28px}
+.m-top{width:min(420px,94vw);display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+.m-team-badge{padding:3px 10px;border-radius:14px;font-size:.72rem;font-weight:800;border:1.5px solid}
+.m-title{font-size:1.4rem;font-weight:900;text-align:center;margin-bottom:2px;background:linear-gradient(135deg,#58a6ff,#f0c000);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.m-uid{font-size:.7rem;color:rgba(255,255,255,.35);margin-bottom:10px;text-align:center}
+.m-stats{display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;justify-content:center;width:min(420px,94vw)}
+.m-stat{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:5px 10px;text-align:center;min-width:80px;flex:1}
+.m-stat-num{font-size:1rem;font-weight:800}
+.m-stat-label{font-size:.62rem;color:rgba(255,255,255,.45)}
+.event-grid{display:flex;flex-direction:column;gap:9px;width:min(420px,94vw);flex:1;min-height:0;overflow-y:auto;padding-bottom:16px}
+.event-card{border-radius:14px;border:1.5px solid rgba(255,255,255,.06);background:rgba(255,255,255,.04);padding:12px 14px;cursor:pointer;transition:all .12s;display:flex;align-items:center;gap:12px}
+.event-card:active{transform:scale(.98)}
+.event-card .ec-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
+.event-card .ec-info{flex:1}
+.event-card .ec-name{font-size:.88rem;font-weight:800;margin-bottom:1px}
+.event-card .ec-desc{font-size:.65rem;color:rgba(255,255,255,.45)}
+.event-card .ec-score{font-size:.82rem;font-weight:800;text-align:right;min-width:50px}
+/* ── GAME (Event View) ── */
+#screen-game{background:radial-gradient(ellipse at 50% 0%,#1a2332 0%,#0d1117 70%);padding:0;overflow:hidden;height:100dvh;max-height:100dvh;justify-content:flex-start;align-items:stretch}
+#g-topbar{width:100%;display:flex;align-items:center;justify-content:space-between;padding:9px 13px 5px;background:rgba(0,0,0,.25);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
+#g-back{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);color:#e6edf3;font-size:1rem;cursor:pointer;flex-shrink:0}
+#g-title{font-size:.88rem;font-weight:800;text-align:center;flex:1}
+#g-info{display:flex;gap:14px;padding:6px 13px;background:rgba(0,0,0,.15);flex-shrink:0;justify-content:center;flex-wrap:wrap}
+#g-info .gi-item{text-align:center}
+#g-info .gi-num{font-size:1rem;font-weight:800}
+#g-info .gi-label{font-size:.62rem;color:rgba(255,255,255,.45)}
+#g-visual{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:10px;position:relative}
+#g-visual canvas{display:block;background:rgba(0,0,0,.2);border-radius:14px;border:1.5px solid rgba(255,255,255,.06);width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain}
+/* Ranking bar chart */
+#g-ranking{flex-shrink:0;padding:6px 13px 8px;width:100%}
+.gr-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:.68rem}
+.gr-row .gr-name{width:56px;text-align:right;font-weight:700;flex-shrink:0}
+.gr-row .gr-bar-wrap{flex:1;height:14px;background:rgba(255,255,255,.06);border-radius:7px;overflow:hidden}
+.gr-row .gr-bar{height:100%;border-radius:7px;transition:width .5s;min-width:0;position:relative}
+.gr-row .gr-val{width:36px;text-align:left;font-weight:700;flex-shrink:0;font-size:.65rem}
+#g-controls{flex-shrink:0;display:flex;gap:8px;padding:8px 13px 12px;width:100%;border-top:1px solid rgba(255,255,255,.06)}
+.g-btn{flex:1;padding:11px 6px;border-radius:12px;border:none;font-size:.78rem;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;transition:transform .08s;display:flex;flex-direction:column;align-items:center;gap:2px}
+.g-btn:active{transform:scale(.95)}
+.g-btn:disabled{opacity:.35;cursor:not-allowed}
+.g-btn .gb-icon{font-size:1.2rem}
+.g-btn .gb-detail{font-size:.6rem;font-weight:400;opacity:.7}
+.g-btn.reply{background:linear-gradient(135deg,#2ea043,#1a5f2e);color:#fff;box-shadow:0 3px 0 #0d421e}
+.g-btn.cite{background:linear-gradient(135deg,#1f6feb,#0d419d);color:#fff;box-shadow:0 3px 0 #0a2d6e}
+/* ── loading mask ── */
+#loading-mask{display:none;position:fixed;inset:0;z-index:999;background:rgba(13,17,23,.9);flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.loading-spinner{width:36px;height:36px;border:3px solid rgba(88,166,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading-text{color:rgba(255,255,255,.55);font-size:.86rem}
+/* ── overlay (confirm dialog) ── */
+.overlay{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px}
+.overlay.show{display:flex!important}
+.ov-card{background:linear-gradient(160deg,#1a2332,#0d1117);border:1px solid rgba(88,166,255,.2);border-radius:22px;padding:24px 22px;max-width:340px;width:100%;text-align:center}
+.ov-title{font-size:1.2rem;font-weight:900;margin-bottom:8px}
+.ov-body{font-size:.84rem;color:rgba(255,255,255,.6);margin-bottom:16px;line-height:1.6}
+.ov-btns{display:flex;gap:10px;justify-content:center}
+.ov-btn{padding:10px 20px;border-radius:50px;font-size:.84rem;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;border:none;transition:transform .1s}
+.ov-btn:active{transform:scale(.95)}
+.ov-btn.primary{background:linear-gradient(135deg,#58a6ff,#1f6feb);color:#fff;box-shadow:0 3px 0 #0d419d}
+.ov-btn.secondary{background:rgba(255,255,255,.08);color:#e6edf3;border:1.5px solid rgba(255,255,255,.12)}
+/* ── offline bar ── */
+#offline-bar{display:none;position:fixed;bottom:10px;right:10px;z-index:999;background:rgba(180,40,40,.9);border:1px solid #e55;color:#fdd;padding:7px 12px;border-radius:10px;font-size:.74rem;cursor:pointer;text-align:center;line-height:1.5}
+/* ── notifications ── */
+.notif{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:300;background:rgba(30,50,80,.92);border:1px solid rgba(88,166,255,.3);border-radius:12px;padding:9px 18px;font-size:.82rem;font-weight:700;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s}
+.notif.show{opacity:1}
+/* ── avatars ── */
+.avatar{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:900;color:#fff;flex-shrink:0}
+.avatar-sm{width:22px;height:22px;font-size:.55rem}
+/* ── forum overlay ── */
+.forum-section{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 11px;margin-bottom:9px}
+.forum-section .fs-title{font-size:.75rem;color:rgba(255,255,255,.6);margin-bottom:6px}
+.forum-section .inp-row{margin-bottom:5px}
+.forum-section .inp-row:last-of-type{margin-bottom:0}
+.forum-section .inp-row label{min-width:52px;font-size:.78rem;color:rgba(255,255,255,.55)}
+.ov-body .forum-stat{display:flex;justify-content:space-between;padding:3px 0;font-size:.78rem;color:rgba(255,255,255,.55)}
+.ov-body .forum-stat span:last-child{font-weight:800;color:#e6edf3}
+/* ── Responsive ── */
+@media(max-width:420px){
+  .team-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .team-card{padding:8px}
+  .event-card{padding:10px 12px}
+  .event-card .ec-icon{width:38px;height:38px;font-size:1.2rem}
+  .m-title{font-size:1.2rem}
+  .login-title{font-size:1.5rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ RANKING OVERLAY ═══ -->
+<div id="ranking-overlay" class="overlay" style="z-index:90">
+  <div class="ov-card" style="max-width:420px;max-height:86vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
+      <div class="ov-title" style="margin:0">🏆 全队伍总排名</div>
+      <button onclick="closeRanking()" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:1rem">×</button>
+    </div>
+    <div id="rank-list" style="display:flex;flex-direction:column;gap:8px;font-size:.82rem"></div>
+    <button class="ov-btn secondary" style="width:100%;margin-top:10px" onclick="refreshRanking()">🔄 刷新排名</button>
+  </div>
+</div>
+
+<!-- ═══ BOX OVERLAY ═══ -->
+<div id="box-overlay" class="overlay" style="z-index:95">
+  <div class="ov-card" style="max-width:360px;text-align:center">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
+      <div class="ov-title" style="margin:0">🎁 抽奖箱</div>
+      <button onclick="closeBox()" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:1rem">×</button>
+    </div>
+    <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:12px;margin-bottom:12px;font-size:.82rem;line-height:1.9">
+      <div>📦 可用箱子：<b id="bx-count">0</b></div>
+      <div>📊 今日已获得：<b id="bx-today">0</b> / <b id="bx-daily-limit">10</b></div>
+    </div>
+    <div id="bx-chest" style="font-size:4.5rem;cursor:pointer;padding:18px 0;transition:transform .15s;user-select:none" onclick="doOpenBox()">🎁</div>
+    <div style="font-size:.7rem;color:rgba(255,255,255,.4);margin-bottom:10px">点击箱子打开</div>
+    <div id="bx-result" style="min-height:36px;font-size:.85rem;font-weight:700;transition:opacity .3s"></div>
+    <div id="bx-history" style="margin-top:12px;font-size:.72rem;text-align:left;color:rgba(255,255,255,.5);max-height:120px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- ═══ LOADING MASK ═══ -->
+<div id="loading-mask"><div class="loading-spinner"></div><div id="loading-text">载入中...</div></div>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="screen-login" class="screen">
+  <div class="login-title">全少女运动会</div>
+  <div class="login-sub">输入论坛 ID 与 UID 开始游戏</div>
+  <div class="login-card">
+    <div class="inp-row"><label>ID</label><input id="inp-id" class="inp" placeholder="例如 fishball" autocomplete="off"></div>
+    <div class="inp-row"><label>UID</label><input id="inp-uid" class="inp" placeholder="例如 123456" type="number" autocomplete="off"></div>
+    <div id="login-err" class="err-msg"></div>
+    <div class="ih-label">最近使用</div>
+    <div id="login-history" class="ih-chips"></div>
+    <div style="margin-top:12px"><button id="btn-login" class="ov-btn primary" style="width:100%;padding:12px">开始游戏</button></div>
+    <div style="margin-top:8px"><a href="#" id="autoFillByUrlLink" style="color:#7eb8ff;font-size:13px;text-decoration:none">📋 从个人页面网址自动填入</a></div>
+  </div>
+</div>
+
+<!-- ═══ TEAM SELECT ═══ -->
+<div id="screen-team" class="screen hidden">
+  <div class="st-title">选择队伍</div>
+  <div class="st-sub">你只能选择一次，加入后无法更改</div>
+  <div id="team-grid" class="team-grid"></div>
+  <div style="margin-top:14px;display:flex;gap:10px">
+    <button id="btn-team-confirm" class="ov-btn primary" style="display:none" disabled>确认加入</button>
+  </div>
+</div>
+
+<!-- ═══ EVENT MENU ═══ -->
+<div id="screen-menu" class="screen hidden">
+  <div class="m-title">全少女运动会</div>
+  <div class="m-top">
+    <span id="m-team-badge" class="m-team-badge"></span>
+    <span id="m-uid-label" class="m-uid"></span>
+  </div>
+  <div id="m-stats" class="m-stats">
+    <div class="m-stat"><div id="m-reply" class="m-stat-num t-genmu">0</div><div class="m-stat-label">回复数</div></div>
+    <div class="m-stat"><div id="m-cite" class="m-stat-num t-maho">0</div><div class="m-stat-label">被引用数</div></div>
+  </div>
+  <div id="event-grid" class="event-grid"></div>
+  <div style="padding-bottom:12px;display:flex;gap:8px;width:min(420px,94vw)">
+    <button id="m-refresh" class="ov-btn secondary" style="flex:1;font-size:.72rem">🔄 刷新论坛数据</button>
+    <button id="m-cloud" class="ov-btn secondary" style="flex:1;font-size:.72rem">☁️ 刷新云端排名</button>
+    <button id="m-rank" class="ov-btn secondary" style="flex:0;font-size:.7rem;padding:10px 8px" onclick="openRanking()">🏆排名</button>
+    <button id="m-box" class="ov-btn secondary" style="flex:0;font-size:.7rem;padding:10px 8px" onclick="openBox()">🎁<span id="m-box-cnt" style="font-weight:800">0</span></button>
+    <button id="m-save" class="ov-btn secondary" style="flex:0;font-size:.7rem;padding:10px 8px" onclick="downloadGameData()">📥存档</button>
+    <button id="m-load" class="ov-btn secondary" style="flex:0;font-size:.7rem;padding:10px 8px" onclick="importGameSaveData_()">📤读档</button>
+    <button id="m-logout" class="ov-btn secondary" style="flex:0;font-size:.7rem;padding:10px 10px">↩</button>
+  </div>
+</div>
+
+<!-- ═══ GAME (Event View) ═══ -->
+<div id="screen-game" class="screen hidden">
+  <div id="g-topbar">
+    <button id="g-back">←</button>
+    <div id="g-title">项目名称</div>
+    <div id="g-team-badge" style="font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid rgba(255,255,255,.2);white-space:nowrap">-</div>
+  </div>
+  <div id="g-info">
+    <div class="gi-item"><div id="gi-my-score" class="gi-num">0</div><div class="gi-label">我的贡献</div></div>
+    <div class="gi-item"><div id="gi-my-rank" class="gi-num">-</div><div class="gi-label">排名</div></div>
+    <div class="gi-item"><div id="gi-reply" class="gi-num">0</div><div class="gi-label">剩余回复</div></div>
+    <div class="gi-item"><div id="gi-cite" class="gi-num">0</div><div class="gi-label">剩余引用</div></div>
+    <div class="gi-item" style="display:none" id="gi-fetch-row"><div id="gi-fetch-time" class="gi-num" style="font-size:.7rem">-</div><div class="gi-label">上次抓取</div></div>
+    <div class="gi-item" style="cursor:pointer" id="gi-cloud-btn" onclick="gameRefreshCloud()" title="手动刷新云端排名">
+      <div class="gi-num" style="font-size:.7rem">☁️</div>
+      <div class="gi-label">刷新云端</div>
+    </div>
+  </div>
+  <div id="g-visual">
+    <canvas id="g-canvas"></canvas>
+  </div>
+  <div id="g-ranking"></div>
+  <div id="g-controls">
+    <button id="g-btn-reply" class="g-btn reply">
+      <span class="gb-icon">🔁</span>
+      <span>消耗回复(5)</span>
+      <span class="gb-detail" id="g-detail-reply">+1</span>
+    </button>
+    <button id="g-btn-cite" class="g-btn cite">
+      <span class="gb-icon">🔁</span>
+      <span>消耗引用(1)</span>
+      <span class="gb-detail" id="g-detail-cite">+1</span>
+    </button>
+    <button id="g-btn-forum" class="g-btn" style="background:linear-gradient(135deg,#58a6ff,#1f6feb);color:#fff;box-shadow:0 3px 0 #0d419d;flex:0.7">
+      <span class="gb-icon">📋</span>
+      <span>论坛抓取</span>
+      <span class="gb-detail">设定日期区间</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ OFFLINE BAR ═══ -->
+<div id="offline-bar">⚠️ 离线模式 · 点击重试</div>
+
+<!-- ═══ NOTIFICATION ═══ -->
+<div id="notif" class="notif"></div>
+
+<!-- ═══ FORUM OVERLAY ═══ -->
+<div id="forum-overlay" class="overlay" style="z-index:90">
+  <div class="ov-card" style="max-width:380px;max-height:86vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
+      <div class="ov-title" style="margin:0">📋 论坛数据抓取</div>
+      <button onclick="closeForumOverlay()" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:1rem">×</button>
+    </div>
+    <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:9px 13px;margin-bottom:12px;font-size:.82rem;line-height:1.9">
+      <div>🔑 论坛 ID：<b id="fo-id">-</b></div>
+      <div>🆔 UID：<b id="fo-uid">-</b></div>
+      <div>📝 回复数：<b id="fo-reply">0</b></div>
+      <div>💬 被引用数：<b id="fo-cite">0</b></div>
+      <div style="font-size:.72rem;color:rgba(255,255,255,.5)">上次抓取：<span id="fo-last">尚未抓取</span></div>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 11px;margin-bottom:9px">
+      <div style="font-size:.75rem;color:rgba(255,255,255,.6);margin-bottom:6px">抓取区间</div>
+      <div class="inp-row" style="margin-bottom:5px"><label style="min-width:52px">开始</label><input class="inp" id="forum-start-date" type="date"></div>
+      <div class="inp-row" style="margin-bottom:0"><label style="min-width:52px">结束</label><input class="inp" id="forum-end-date" type="date"></div>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 11px;margin-bottom:10px">
+      <div style="font-size:.75rem;color:rgba(255,255,255,.6);margin-bottom:6px">手动输入（自动抓取失败时使用）</div>
+      <div class="inp-row" style="margin-bottom:3px"><label style="min-width:52px">回复</label><input class="inp" id="fo-manual-reply" type="number" placeholder="0"></div>
+      <div class="inp-row" style="margin-bottom:0"><label style="min-width:52px">引用</label><input class="inp" id="fo-manual-cite" type="number" placeholder="0"></div>
+      <button class="ov-btn secondary" style="width:100%;margin-top:5px;font-size:.78rem;padding:7px" id="fo-btn-manual">📝 套用手动输入</button>
+    </div>
+    <button class="ov-btn secondary" style="width:100%;margin-top:4px" id="fo-btn-fetch">🔄 抓取论坛数据</button>
+    <button class="ov-btn secondary" style="width:100%;margin-top:7px;border-color:rgba(251,191,36,.4);color:#fbbf24" id="fo-btn-fast">⚡ 快速抓取（不验引用）</button>
+    <button class="ov-btn secondary" style="width:100%;margin-top:7px" id="fo-btn-close">关闭</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// 全少女运动会 v1.0.0
+// ══════════════════════════════════════════
+
+// ── Config ──
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw48lSy8ZioEtmjvyF00Dlatg6QgDbvli4p_00HGaEpZnlDUL2OEi0Wxgyk6eXuaLPnFw/exec";
+const CF_PROXY = "https://sstm-raffle.vercel.app/candy-proxy?url="; // Cloudflare Worker 代理（可选）
+const VERCEL_PROXY_BASE = ""; // 空字串 = 同域名（html 放在 Vercel + vercel.json proxy），否则填写完整域名如 "https://xxx.vercel.app"
+const SHEET = "全少女运动会";
+const GAME_VERSION = "v1.3.1";
+const CANDY_SAVE_XLSX_PASSWORD = "sstm";
+const POLL_INTERVAL = 30000; // 30s
+const MAX_SAVE_RETRY = 3;
+const FORUM_FETCH_MS = 35000;
+const NOVICE_FORUM_RE = /forum\/32[-\/]/;
+const _ctIsFileOrigin = (location.protocol === "file:");
+const _ctIsGithubOrigin = /\.github\.io$/i.test(location.hostname || "");
+
+// ── fetch 备用池（优先 GAS 云端代理，其次 codetabs 等）──
+const FORUM_PROXY_POOL = [
+  { url: "https://api.codetabs.com/v1/proxy?quest=",                type:"prefix", rpm:10, nullOrigin:true },
+  { url: "https://corsproxy.io/?url=",                              type:"prefix", rpm:8,  nullOrigin:true },
+  { url: "https://proxy.cors.sh/",                                  type:"prefix", rpm:5,  nullOrigin:true },
+  { url: "https://thingproxy.freeboard.io/fetch/",                  type:"prefix", rpm:4,  nullOrigin:false },
+];
+const _ctProxyState = {};
+FORUM_PROXY_POOL.forEach(p => { _ctProxyState[p.url] = { count:0, windowStart:Date.now(), banUntil:0 }; });
+let _bestProxyIdx = 0;
+function _ctPickProxy() {
+  const now = Date.now();
+  const pool = _ctIsFileOrigin ? FORUM_PROXY_POOL.filter(p => p.nullOrigin) : FORUM_PROXY_POOL;
+  const order = [];
+  for (let i = 0; i < pool.length; i++) order.push(pool[(_bestProxyIdx + i) % pool.length]);
+  for (const p of order) {
+    const st = _ctProxyState[p.url];
+    if (st.banUntil > now) continue;
+    if (now - st.windowStart > 60000) { st.count = 0; st.windowStart = now; }
+    if (st.count < p.rpm) return p;
+  }
+  return order[0] || pool[0];
+}
+function _ctBanProxy(url, sec) {
+  const st = _ctProxyState[url];
+  if (st) st.banUntil = Date.now() + (sec || 15000);
+}
+function _ctBuildProxyTarget(proxy, targetUrl) {
+  return proxy.url + encodeURIComponent(targetUrl);
+}
+async function _ctParseResp(proxy, resp) {
+  const text = await resp.text();
+  if (proxy.type === "json") { try { const j = JSON.parse(text); return j.contents || text; } catch(e) { return text; } }
+  return text;
+}
+
+// ── Teams ──
+const TEAMS = {
+  genmu: {
+    id: 'genmu', name: '幻想乡队', emoji: '⛩️', color: '#e74c3c',
+    members: [
+      { name: '博丽灵梦', emoji: '⛩️', color: '#e74c3c' },
+      { name: '雾雨魔理沙', emoji: '🧹', color: '#ff6b35' },
+      { name: '爱丽丝', emoji: '🪆', color: '#d4a0ff' },
+      { name: '东风谷早苗', emoji: '🌿', color: '#2ecc71' },
+    ]
+  },
+  maho: {
+    id: 'maho', name: '魔法战队', emoji: '✨', color: '#9b59b6',
+    members: [
+      { name: '鹿目圆', emoji: '🎀', color: '#ff6b9d' },
+      { name: '晓美焰', emoji: '⏳', color: '#2c3e50' },
+      { name: '美树沙耶香', emoji: '🎵', color: '#3498db' },
+      { name: '佐仓杏子', emoji: '🍎', color: '#e74c3c' },
+    ]
+  },
+  pretty: {
+    id: 'pretty', name: '光美团队', emoji: '💖', color: '#f1c40f',
+    members: [
+      { name: '安娜美华', emoji: '👑', color: '#f39c12' },
+      { name: '美翔舞', emoji: '🦋', color: '#e74c3c' },
+      { name: '夏木玲', emoji: '🔥', color: '#e67e22' },
+      { name: '梦原希美', emoji: '🌟', color: '#f1c40f' },
+    ]
+  },
+  yusha: {
+    id: 'yusha', name: '勇者部队', emoji: '⚔️', color: '#3498db',
+    members: [
+      { name: '结城友奈', emoji: '🌸', color: '#ff6b9d' },
+      { name: '东乡美森', emoji: '🏹', color: '#2ecc71' },
+      { name: '犬吠埼风', emoji: '🌪️', color: '#1abc9c' },
+      { name: '三好夏凛', emoji: '❄️', color: '#3498db' },
+    ]
+  }
+};
+const TEAM_KEYS = Object.keys(TEAMS);
+
+// ── Events ──
+const EVENTS = [
+  { key: 'run', name: '耐力慢跑赛', icon: '🏃', desc: '五回复跑一米', color: '#2ecc71', btn: 'reply', unit: 'm' },
+  { key: 'pitch', name: '无限投球赛', icon: '⚾', desc: '五回复投一球', color: '#e67e22', btn: 'reply', unit: '球' },
+  { key: 'jump', name: '极限跳高赛', icon: '📏', desc: '一引用高一厘米', color: '#9b59b6', btn: 'cite', unit: 'cm' },
+  { key: 'dive', name: '潜水探测赛', icon: '🤿', desc: '一引用深一厘米', color: '#3498db', btn: 'cite', unit: 'cm' },
+];
+const EVENT_MAP = {}; EVENTS.forEach(e => EVENT_MAP[e.key] = e);
+
+// ── State ──
+let G = {
+  id: '', uid: '', team: '',
+  scoreRun: 0, scorePitch: 0, scoreJump: 0, scoreDive: 0,
+  replies: 0, citations: 0,
+  repliesSpent: 0, citationsSpent: 0,
+  lastFetch: '',
+  forumDays: {},
+  boxes: 0, boxToday: 0, boxDate: '',
+  boxHistory: [],
+  coins: 0, tickets: 0,
+  boosters: {hammer:0, lollipop:0, fish:0},
+};
+let cloudScores = { genmu: { run:0, pitch:0, jump:0, dive:0 }, maho: { run:0, pitch:0, jump:0, dive:0 }, pretty: { run:0, pitch:0, jump:0, dive:0 }, yusha: { run:0, pitch:0, jump:0, dive:0 } };
+let currentEvent = 'run';
+let isOnline = true;
+let pollTimer = null;
+let _saveRetry = 0;
+let _isSaving = false;
+
+// ── GAS Communication ──
+function gasBeacon(params) {
+  const url = GAS_URL + '?' + Object.entries(params).map(([k,v])=>k+'='+encodeURIComponent(String(v))).join('&');
+  const img = new Image();
+  img.src = url + '&_t=' + Date.now();
+  setTimeout(() => { if (img) img.src = ''; }, 10000);
+}
+
+function gasJsonp(params) {
+  return new Promise((resolve, reject) => {
+    const id = 'gjp_' + Math.random().toString(36).slice(2, 8);
+    const url = GAS_URL + '?' + Object.entries(params).map(([k,v])=>k+'='+encodeURIComponent(String(v))).join('&') + '&callback=_' + id;
+    window['_' + id] = function(res) {
+      delete window['_' + id];
+      const s = document.getElementById(id);
+      if (s) s.remove();
+      resolve(res);
+    };
+    const s = document.createElement('script');
+    s.id = id;
+    s.src = url;
+    s.onerror = () => { delete window['_' + id]; s.remove(); reject(new Error('jsonp_err')); };
+    setTimeout(() => { if (window['_' + id]) { delete window['_' + id]; s.remove(); reject(new Error('timeout')); } }, 15000);
+    document.head.appendChild(s);
+  });
+}
+
+// ── Cloud Save / Load ──
+async function cloudSave() {
+  if (_isSaving) return;
+  _isSaving = true;
+  try {
+    const sj = JSON.stringify({
+      team: G.team, scoreRun: G.scoreRun, scorePitch: G.scorePitch,
+      scoreJump: G.scoreJump, scoreDive: G.scoreDive,
+      replies: G.replies, citations: G.citations,
+      repliesSpent: G.repliesSpent, citationsSpent: G.citationsSpent,
+      forumDays: G.forumDays,
+    });
+    gasBeacon({ action: 'save', id: G.id, uid: G.uid, state_json: sj, date: today() });
+    _saveRetry = 0;
+  } finally { _isSaving = false; }
+}
+
+async function cloudLoad() {
+  try {
+    const res = await gasJsonp({ action: 'load', id: G.id });
+    if (!res.ok) return null;
+    return res.data;
+  } catch(e) { return null; }
+}
+
+async function cloudLoadAll() {
+  try {
+    const res = await gasJsonp({ action: 'load_all_scores' });
+    if (res.ok) {
+      cloudScores = res.teams;
+      return { teams: res.teams, players: res.players || [] };
+    }
+    return null;
+  } catch(e) { return null; }
+}
+
+// ── Login helpers ──
+function today() {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function getLoginHistory() {
+  try { return JSON.parse(localStorage.getItem('gs_login_hist') || '[]'); } catch(e) { return []; }
+}
+function addLoginHistory(id, uid) {
+  const h = getLoginHistory().filter(x => !(x.id === id && x.uid === uid));
+  h.unshift({ id, uid, ts: Date.now() });
+  if (h.length > 10) h.length = 10;
+  localStorage.setItem('gs_login_hist', JSON.stringify(h));
+}
+
+// ── Notification ──
+let notifTimer = null;
+function showNotif(msg, ok) {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.style.borderColor = ok ? 'rgba(46,160,67,.4)' : 'rgba(248,81,73,.4)';
+  el.classList.add('show');
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── Loading ──
+function showLoading(msg) {
+  document.getElementById('loading-text').textContent = msg || '载入中...';
+  document.getElementById('loading-mask').style.display = 'flex';
+}
+function hideLoading() {
+  document.getElementById('loading-mask').style.display = 'none';
+}
+
+// ═══════════════════════════════════
+//  SCREEN MANAGEMENT
+// ═══════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('hidden');
+}
+
+// ═══════════════════════════════════
+//  LOGIN
+// ═══════════════════════════════════
+function renderLoginHistory() {
+  const h = getLoginHistory();
+  const el = document.getElementById('login-history');
+  if (!h.length) { el.innerHTML = '<span style="font-size:.7rem;color:rgba(255,255,255,.25)">无记录</span>'; return; }
+  el.innerHTML = h.map((x,i) =>
+    `<span class="ih-chip-wrap">` +
+      `<button class="ih-chip" data-idx="${i}">${escHtml(x.id)}</button>` +
+      `<button class="ih-x" data-idx="${i}">✕</button></span>`
+  ).join('');
+  el.querySelectorAll('.ih-chip').forEach(b => {
+    b.onclick = () => {
+      const h2 = getLoginHistory();
+      const e = h2[parseInt(b.dataset.idx)];
+      if (e) { document.getElementById('inp-id').value = e.id; document.getElementById('inp-uid').value = e.uid; }
+    };
+  });
+  el.querySelectorAll('.ih-x').forEach(b => {
+    b.onclick = () => {
+      const idx = parseInt(b.dataset.idx);
+      const h2 = getLoginHistory();
+      h2.splice(idx, 1);
+      localStorage.setItem('gs_login_hist', JSON.stringify(h2));
+      renderLoginHistory();
+    };
+  });
+}
+
+function escHtml(s) { return String(s).replace(/[&<>"]/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]; }); }
+
+async function doLogin() {
+  const id = document.getElementById('inp-id').value.trim();
+  const uid = document.getElementById('inp-uid').value.trim();
+  if (!id || !uid) { document.getElementById('login-err').textContent = '请输入 ID 与 UID'; return; }
+  document.getElementById('login-err').textContent = '';
+  showLoading('登入中...');
+  G.id = id;
+  G.uid = uid;
+  addLoginHistory(id, uid);
+  renderLoginHistory();
+  // Try load from cloud
+  const data = await cloudLoad();
+  if (data && data.state_json) {
+    try {
+      const sj = JSON.parse(data.state_json);
+      G.team = sj.team || '';
+      G.scoreRun = sj.scoreRun || 0;
+      G.scorePitch = sj.scorePitch || 0;
+      G.scoreJump = sj.scoreJump || 0;
+      G.scoreDive = sj.scoreDive || 0;
+      G.replies = sj.replies || 0;
+      G.citations = sj.citations || 0;
+      G.repliesSpent = sj.repliesSpent || 0;
+      G.citationsSpent = sj.citationsSpent || 0;
+      G.lastFetch = sj.lastFetch || '';
+      G.forumDays = sj.forumDays || {};
+      G.boxes = sj.boxes || 0;
+      G.boxToday = sj.boxToday || 0;
+      G.boxDate = sj.boxDate || '';
+      G.boxHistory = Array.isArray(sj.boxHistory) ? sj.boxHistory : [];
+      G.coins = sj.coins || 0;
+      G.tickets = sj.tickets || 0;
+      G.boosters = (sj.boosters && typeof sj.boosters==='object') ? sj.boosters : {hammer:0,lollipop:0,fish:0};
+    } catch(e) {}
+  }
+  // Also load from localStorage as fallback
+  const local = loadLocal();
+  if (local && (!data || !data.state_json)) {
+    Object.assign(G, local);
+  }
+  hideLoading();
+  if (!G.team) {
+    renderTeamSelect();
+    showScreen('screen-team');
+  } else {
+    enterMenu();
+  }
+}
+
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem('gs_state_' + G.id);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function saveLocal() {
+  try {
+    localStorage.setItem('gs_state_' + G.id, JSON.stringify(G));
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════
+//  TEAM SELECT
+// ═══════════════════════════════════
+let selectedTeam = '';
+
+function renderTeamSelect() {
+  const grid = document.getElementById('team-grid');
+  grid.innerHTML = TEAM_KEYS.map(k => {
+    const t = TEAMS[k];
+    return `<div class="team-card b-${k}" data-team="${k}">
+      <div class="tc-emoji">${t.emoji}</div>
+      <div class="tc-name t-${k}">${t.name}</div>
+      <div class="tc-members">${t.members.map(m => m.emoji + m.name).join(' · ')}</div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('.team-card').forEach(c => {
+    c.onclick = () => {
+      grid.querySelectorAll('.team-card').forEach(cc => cc.classList.remove('selected'));
+      c.classList.add('selected');
+      selectedTeam = c.dataset.team;
+      const btn = document.getElementById('btn-team-confirm');
+      btn.style.display = 'inline-block';
+      btn.disabled = false;
+    };
+  });
+  document.getElementById('btn-team-confirm').onclick = async () => {
+    if (!selectedTeam) return;
+    G.team = selectedTeam;
+    saveLocal();
+    await cloudSave();
+    showNotif('已加入 ' + TEAMS[selectedTeam].name, true);
+    enterMenu();
+  };
+}
+
+// ═══════════════════════════════════
+//  MENU (Event Select)
+// ═══════════════════════════════════
+function enterMenu() {
+  updateMenuUI();
+  showScreen('screen-menu');
+  startPolling();
+}
+
+function updateMenuUI() {
+  if (typeof G.coins !== 'number') G.coins = 0;
+  if (typeof G.tickets !== 'number') G.tickets = 0;
+  if (typeof G.boosters !== 'object' || !G.boosters) G.boosters = {hammer:0,lollipop:0,fish:0};
+  if (typeof G.boxes !== 'number') G.boxes = 0;
+  document.getElementById('m-box-cnt').textContent = G.boxes;
+  const t = TEAMS[G.team];
+  if (t) {
+    const badge = document.getElementById('m-team-badge');
+    badge.textContent = t.emoji + ' ' + t.name;
+    badge.style.color = t.color;
+    badge.style.borderColor = t.color;
+  }
+  document.getElementById('m-uid-label').textContent = G.id + ' · v' + GAME_VERSION;
+  const av=_calcForumAvail();
+  document.getElementById('m-reply').textContent = av.replies;
+  document.getElementById('m-cite').textContent = av.citations;
+  const grid = document.getElementById('event-grid');
+  grid.innerHTML = EVENTS.map(e => {
+    const teamScore = G.team ? (cloudScores[G.team] || {})[e.key] || 0 : 0;
+    const myContribution = G[e.key === 'run' ? 'scoreRun' : e.key === 'pitch' ? 'scorePitch' : e.key === 'jump' ? 'scoreJump' : 'scoreDive'] || 0;
+    return `<div class="event-card" data-event="${e.key}">
+      <div class="ec-icon" style="background:${e.color}22;border:1.5px solid ${e.color}55">${e.icon}</div>
+      <div class="ec-info">
+        <div class="ec-name">${e.name}</div>
+        <div class="ec-desc">${e.desc} · 我贡献了 ${myContribution}${e.unit}</div>
+      </div>
+      <div class="ec-score" style="color:${e.color}">${teamScore}${e.unit}</div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('.event-card').forEach(c => {
+    c.onclick = () => {
+      currentEvent = c.dataset.event;
+      enterEvent(currentEvent);
+    };
+  });
+  document.getElementById('m-refresh').onclick = openForumOverlay;
+  document.getElementById('m-cloud').onclick = refreshCloudScores;
+  document.getElementById('m-logout').onclick = () => { stopPolling(); showScreen('screen-login'); };
+}
+
+// ═══════════════════════════════════
+//  EVENT GAME SCREEN
+// ═══════════════════════════════════
+let _animFrame = null;
+
+function enterEvent(eventKey) {
+  const ev = EVENT_MAP[eventKey];
+  if (!ev) return;
+  currentEvent = eventKey;
+  document.getElementById('g-title').textContent = ev.icon + ' ' + ev.name;
+  document.getElementById('g-back').onclick = () => { stopAnim(); showScreen('screen-menu'); updateMenuUI(); };
+  const badge = document.getElementById('g-team-badge');
+  const t = TEAMS[G.team];
+  if (t) { badge.textContent = t.emoji + ' ' + t.name; badge.style.color = t.color; badge.style.borderColor = t.color; }
+  else { badge.textContent = '未选择'; badge.style.color = '#888'; badge.style.borderColor = '#555'; }
+  updateEventUI();
+  showScreen('screen-game');
+  startPolling();
+  startAnim(eventKey);
+}
+
+function updateEventUI() {
+  const ev = EVENT_MAP[currentEvent];
+  if (!ev) return;
+  const scoreKey = 'score' + ev.key.charAt(0).toUpperCase() + ev.key.slice(1);
+  const myScore = G[scoreKey] || 0;
+  document.getElementById('gi-my-score').textContent = myScore + ev.unit;
+  const av=_calcForumAvail();
+  document.getElementById('gi-reply').textContent = av.replies;
+  document.getElementById('gi-cite').textContent = av.citations;
+  // ranking
+  const teamKey = G.team;
+  if (teamKey && cloudScores[teamKey]) {
+    const sorted = TEAM_KEYS.map(k => ({ key: k, score: (cloudScores[k] || {})[currentEvent] || 0 })).sort((a,b) => b.score - a.score);
+    const rank = sorted.findIndex(s => s.key === teamKey) + 1;
+    document.getElementById('gi-my-rank').textContent = '#' + rank;
+  } else {
+    document.getElementById('gi-my-rank').textContent = '-';
+  }
+  // ranking bar
+  const rankEl = document.getElementById('g-ranking');
+  const maxScore = Math.max(...TEAM_KEYS.map(k => (cloudScores[k] || {})[currentEvent] || 0), 1);
+  rankEl.innerHTML = TEAM_KEYS.map(k => {
+    const t = TEAMS[k];
+    const score = (cloudScores[k] || {})[currentEvent] || 0;
+    const pct = maxScore > 0 ? (score / maxScore * 100) : 0;
+    return `<div class="gr-row">
+      <span class="gr-name t-${k}">${t.emoji}</span>
+      <div class="gr-bar-wrap"><div class="gr-bar bg-${k}" style="width:${pct}%"></div></div>
+      <span class="gr-val t-${k}">${score}</span>
+    </div>`;
+  }).join('');
+  // last fetch indicator
+  const fr = document.getElementById('gi-fetch-row');
+  if (G.lastFetch) {
+    fr.style.display = 'block';
+    document.getElementById('gi-fetch-time').textContent = G.lastFetch;
+  } else {
+    fr.style.display = 'none';
+  }
+  // buttons
+  const replyBtn = document.getElementById('g-btn-reply');
+  const citeBtn = document.getElementById('g-btn-cite');
+  const forumBtn = document.getElementById('g-btn-forum');
+  const rIcon = replyBtn.querySelector('.gb-icon');
+  const cIcon = citeBtn.querySelector('.gb-icon');
+  const rDet = document.getElementById('g-detail-reply');
+  const cDet = document.getElementById('g-detail-cite');
+  rIcon.textContent = ev.icon;
+  cIcon.textContent = ev.icon;
+  rDet.textContent = '+1' + ev.unit;
+  cDet.textContent = '+1' + ev.unit;
+  const av2=_calcForumAvail();
+  replyBtn.disabled = av2.replies < 5;
+  citeBtn.disabled = av2.citations < 1;
+  replyBtn.onclick = () => consumeReply(ev);
+  citeBtn.onclick = () => consumeCite(ev);
+  forumBtn.onclick = openForumOverlay;
+}
+
+// ── Box System ── (比照 hello_town3)
+const BOX_DAILY_LIMIT = 10;
+const BOX_COINS_PER = 10;        // 金币每次 +10
+const BOX_TICKET_PER = 1;        // 挑战卷每次 +1
+const BOX_COINS_CAP = 5000;      // 金币超 5000 → 流向高级
+const BOX_TICKET_CAP = 200;      // 挑战卷超 200 → 流向高级
+const BOX_WEIGHT = {
+  coins:  0.35,   // 金币
+  ticket: 0.25,   // 挑战卷
+  booster:0.34,   // 道具
+  premium:0.06,   // 高级奖励(金币+挑战卷)
+};
+
+function earnBox() {
+  const today = getDateStr();
+  if (G.boxDate !== today) { G.boxDate = today; G.boxToday = 0; }
+  if (G.boxToday >= BOX_DAILY_LIMIT) return;
+  G.boxes = (G.boxes || 0) + 1;
+  G.boxToday = (G.boxToday || 0) + 1;
+}
+
+function doOpenBox() {
+  if (!G.boxes || G.boxes < 1) { showNotif('没有可打开的箱子', false); return; }
+  G.boxes--;
+  let coinsDelta = 0, ticketDelta = 0;
+  const boosterTypes = ['hammer','lollipop','fish'];
+  const boosterNames = {'hammer':'🔨锤子','lollipop':'🍭棒棒糖','fish':'🐟鱼鱼'};
+  let boosterGot = null;
+
+  // 阈值判断
+  const preCoins = G.coins || 0;
+  const preTickets = G.tickets || 0;
+  let wCoins = BOX_WEIGHT.coins;
+  let wTicket = BOX_WEIGHT.ticket;
+  let wPremium = BOX_WEIGHT.premium;
+  if (preCoins > BOX_COINS_CAP) { wPremium += wCoins; wCoins = 0; }
+  if (preTickets > BOX_TICKET_CAP) { wPremium += wTicket; wTicket = 0; }
+
+  const options = [
+    {k:'coins',  w:wCoins},
+    {k:'ticket', w:wTicket},
+    {k:'booster',w:BOX_WEIGHT.booster},
+    {k:'premium',w:wPremium},
+  ].filter(o=>o.w>0);
+  const sumW = options.reduce((a,o)=>a+o.w,0) || 1;
+  let r = Math.random() * sumW;
+  let chosen = null;
+  for (const o of options) { r -= o.w; if (r <= 0) { chosen = o.k; break; } }
+  if (!chosen) chosen = options[options.length-1].k;
+
+  let label = '';
+  if (chosen === 'coins') {
+    G.coins = preCoins + BOX_COINS_PER;
+    coinsDelta = BOX_COINS_PER;
+    label = '🪙 金币 +' + BOX_COINS_PER;
+  } else if (chosen === 'ticket') {
+    G.tickets = preTickets + BOX_TICKET_PER;
+    ticketDelta = BOX_TICKET_PER;
+    label = '🎫 挑战卷 +' + BOX_TICKET_PER;
+  } else if (chosen === 'booster') {
+    const bt = boosterTypes[Math.floor(Math.random() * boosterTypes.length)];
+    G.boosters[bt] = (G.boosters[bt] || 0) + 1;
+    boosterGot = bt;
+    label = '🎁 道具：' + boosterNames[bt] + ' ×1';
+  } else { // premium
+    G.coins = preCoins + BOX_COINS_PER;
+    G.tickets = preTickets + BOX_TICKET_PER;
+    coinsDelta = BOX_COINS_PER;
+    ticketDelta = BOX_TICKET_PER;
+    label = '⭐ 高级：金币+' + BOX_COINS_PER + ' 挑战卷+' + BOX_TICKET_PER;
+  }
+
+  G.boxHistory = G.boxHistory || [];
+  G.boxHistory.unshift(label);
+  if (G.boxHistory.length > 20) G.boxHistory.length = 20;
+  saveLocal();
+  cloudSave();
+  updateBoxUI();
+  updateMenuUI();
+  const el = document.getElementById('bx-result');
+  el.textContent = '🎉 ' + label;
+  el.style.opacity = '1';
+  const chest = document.getElementById('bx-chest');
+  chest.style.transform = 'scale(1.2)';
+  setTimeout(() => { chest.style.transform = 'scale(1)'; }, 200);
+}
+
+function openBox() {
+  updateBoxUI();
+  document.getElementById('box-overlay').classList.add('show');
+  document.getElementById('box-overlay').style.display = 'flex';
+  document.getElementById('bx-result').textContent = '';
+  document.getElementById('bx-result').style.opacity = '0';
+}
+
+function closeBox() {
+  document.getElementById('box-overlay').classList.remove('show');
+  document.getElementById('box-overlay').style.display = 'none';
+}
+
+function updateBoxUI() {
+  const today = getDateStr();
+  if (G.boxDate !== today) { G.boxDate = today; G.boxToday = 0; }
+  document.getElementById('bx-count').textContent = G.boxes || 0;
+  document.getElementById('bx-today').textContent = G.boxToday || 0;
+  document.getElementById('bx-daily-limit').textContent = BOX_DAILY_LIMIT;
+  document.getElementById('m-box-cnt').textContent = G.boxes || 0;
+  const hist = document.getElementById('bx-history');
+  const h = G.boxHistory || [];
+  hist.innerHTML = h.length ? h.map(l => '<div>• ' + l + '</div>').join('') : '<div style="color:rgba(255,255,255,.3)">尚未开过箱子</div>';
+}
+
+// ── Ranking ──
+function openRanking() {
+  refreshRanking();
+  document.getElementById('ranking-overlay').classList.add('show');
+  document.getElementById('ranking-overlay').style.display = 'flex';
+}
+
+function closeRanking() {
+  document.getElementById('ranking-overlay').classList.remove('show');
+  document.getElementById('ranking-overlay').style.display = 'none';
+}
+
+function refreshRanking() {
+  const list = document.getElementById('rank-list');
+  const entries = TEAM_KEYS.map(k => {
+    const t = TEAMS[k];
+    const sc = ['run','pitch','jump','dive'].reduce((sum, e) => sum + (cloudScores[k]?.[e] || 0), 0);
+    return { key:k, name:t.name, emoji:t.emoji, color:t.color, score:sc };
+  });
+  entries.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
+  const maxScore = entries[0]?.score || 1;
+  list.innerHTML = entries.map((e, i) => {
+    const pct = (e.score / maxScore * 100).toFixed(0);
+    const medals = ['🥇','🥈','🥉'];
+    const rank = i < 3 ? medals[i] : '#' + (i+1);
+    const isMe = G.team === e.key ? 'background:rgba(88,166,255,.15);border-color:' + e.color : '';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);' + isMe + '">' +
+      '<span style="width:24px;text-align:center;font-weight:900;font-size:.75rem">' + rank + '</span>' +
+      '<span>' + e.emoji + '</span>' +
+      '<span style="font-weight:700;color:' + e.color + ';flex:1">' + e.name + '</span>' +
+      '<span style="font-weight:800;font-size:.85rem">' + e.score + '</span>' +
+      '<div style="width:50px;height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden">' +
+      '<div style="height:100%;width:' + pct + '%;background:' + e.color + ';border-radius:3px"></div></div></div>';
+  }).join('');
+}
+
+async function consumeReply(ev) {
+  const av=_calcForumAvail();
+  if (av.replies < 5) { showNotif('回复数不足（需要 5）', false); return; }
+  const scoreKey = 'score' + ev.key.charAt(0).toUpperCase() + ev.key.slice(1);
+  G.repliesSpent += 5;
+  G[scoreKey] += 1;
+  earnBox();
+  saveLocal();
+  updateEventUI();
+  updateMenuUI();
+  showLoading('正在写入云端...');
+  await cloudSave();
+  hideLoading();
+  showNotif('消耗 5 回复 · ' + ev.name + '+1' + ev.unit, true);
+  showLoading('正在读取云端排行...');
+  await refreshCloudScores();
+  hideLoading();
+}
+
+async function consumeCite(ev) {
+  const av=_calcForumAvail();
+  if (av.citations < 1) { showNotif('被引用数不足（需要 1）', false); return; }
+  const scoreKey = 'score' + ev.key.charAt(0).toUpperCase() + ev.key.slice(1);
+  G.citationsSpent += 1;
+  G[scoreKey] += 1;
+  earnBox();
+  saveLocal();
+  updateEventUI();
+  updateMenuUI();
+  showLoading('正在写入云端...');
+  await cloudSave();
+  hideLoading();
+  showNotif('消耗 1 引用 · ' + ev.name + '+1' + ev.unit, true);
+  showLoading('正在读取云端排行...');
+  await refreshCloudScores();
+  hideLoading();
+}
+
+// ── Canvas Animation ──
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function startAnim(eventKey) {
+  stopAnim();
+  const canvas = document.getElementById('g-canvas');
+  const ctx = canvas.getContext('2d');
+  resizeCanvas(canvas);
+  const ev = EVENT_MAP[eventKey];
+  const playerTeam = G.team;
+  let frame = 0;
+
+  function draw() {
+    resizeCanvas(canvas);
+    const w = canvas.width, h = canvas.height;
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+    const myScore = G[eventKey === 'run' ? 'scoreRun' : eventKey === 'pitch' ? 'scorePitch' : eventKey === 'jump' ? 'scoreJump' : 'scoreDive'] || 0;
+
+    switch (eventKey) {
+      case 'run': drawRun(ctx, cw, ch, myScore, cloudScores, eventKey, playerTeam, frame); break;
+      case 'pitch': drawPitch(ctx, cw, ch, myScore, cloudScores, eventKey, playerTeam, frame); break;
+      case 'jump': drawJump(ctx, cw, ch, myScore, cloudScores, eventKey, playerTeam, frame); break;
+      case 'dive': drawDive(ctx, cw, ch, myScore, cloudScores, eventKey, playerTeam, frame); break;
+    }
+    frame++;
+    _animFrame = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function stopAnim() {
+  if (_animFrame) { cancelAnimationFrame(_animFrame); _animFrame = null; }
+}
+
+function resizeCanvas(canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+}
+
+// ── 4-Team Bar Chart Base ──
+function _drawTeamBars(ctx, cw, ch, scores, maxScore, playerTeam, frame, decorate) {
+  const N = TEAM_KEYS.length;
+  const marginL = cw * 0.07, marginR = cw * 0.07;
+  const marginT = ch * 0.16, marginB = ch * 0.16;
+  const gap = cw * 0.025;
+  const usableW = cw - marginL - marginR;
+  const barW = Math.max((usableW - (N - 1) * gap) / N, 12);
+  const barMaxH = Math.max(ch - marginT - marginB, 20);
+  const overallMax = Math.max(maxScore, 1);
+
+  for (let i = 0; i < N; i++) {
+    const tk = TEAM_KEYS[i];
+    const t = TEAMS[tk];
+    const score = scores[tk] || 0;
+    const bx = marginL + i * (barW + gap);
+    const barH = Math.min((score / overallMax) * barMaxH, barMaxH);
+    const by = marginT + (barMaxH - barH);
+    const isPlayer = tk === playerTeam;
+
+    // Bar background (unfilled)
+    ctx.fillStyle = 'rgba(255,255,255,.04)';
+    ctx.beginPath();
+    ctx.roundRect(bx, marginT, barW, barMaxH, 4);
+    ctx.fill();
+
+    // Filled bar
+    const grad = ctx.createLinearGradient(bx, by + barH, bx, by);
+    grad.addColorStop(0, t.color + '44');
+    grad.addColorStop(1, t.color);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, barW, barH, [barW/3, barW/3, 0, 0]);
+    ctx.fill();
+
+    // Bar border
+    ctx.strokeStyle = t.color + '66';
+    ctx.lineWidth = isPlayer ? 2 : 1;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, barW, barH, [barW/3, barW/3, 0, 0]);
+    ctx.stroke();
+
+    // Event-specific decoration
+    if (decorate) decorate(ctx, bx, by, barW, barH, marginT, barMaxH, tk, t, score, isPlayer, frame);
+
+    // Team emoji + arrow
+    const eFont = clamp(barW * 0.55, 14, 28);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.font = eFont + 'px sans-serif';
+    ctx.fillText(t.emoji, bx + barW / 2, marginT - 4);
+
+    if (isPlayer) {
+      const arrowBob = Math.sin(frame * 0.1) * 3;
+      ctx.font = Math.round(eFont * 0.75) + 'px sans-serif';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('⬆', bx + barW / 2, marginT - 6 - eFont * 0.7 + arrowBob);
+    }
+
+    // Score label
+    const sFont = clamp(barW * 0.4, 10, 16);
+    ctx.textBaseline = 'top';
+    ctx.font = 'bold ' + sFont + 'px Nunito, sans-serif';
+    ctx.fillStyle = t.color;
+    ctx.fillText(score, bx + barW / 2, marginT + barMaxH + 4);
+
+    // Team name
+    const nFont = clamp(barW * 0.32, 8, 13);
+    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    ctx.font = nFont + 'px Nunito, sans-serif';
+    ctx.fillText(t.name, bx + barW / 2, marginT + barMaxH + sFont + 8);
+  }
+}
+
+function _decoRun(ctx, bx, by, barW, barH, marginT, barMaxH, tk, t, score, isPlayer, frame) {
+  // Track marks on unfilled area
+  ctx.fillStyle = 'rgba(255,255,255,.08)';
+  for (let j = 0; j < 6; j++) {
+    const my = marginT + (j / 6) * barMaxH;
+    if (my < by || my > by + barH) {
+      ctx.fillRect(bx + 2, my, barW - 4, 1);
+    }
+  }
+  // Runner emoji on top of bar
+  const bobY = Math.sin(frame * 0.08 + (TEAM_KEYS.indexOf(tk) * 1.5)) * 3;
+  ctx.font = Math.round(barW * 0.5) + 'px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  if (barH > 6) {
+    ctx.fillText('🏃', bx + barW / 2, by + barH - 4 + bobY);
+  }
+}
+
+function _decoPitch(ctx, bx, by, barW, barH, marginT, barMaxH, tk, t, score, isPlayer, frame) {
+  // Scattered balls inside filled area
+  if (barH > 10) {
+    const bf = Math.round(barW * 0.35);
+    ctx.font = bf + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const cnt = Math.min(Math.ceil(score / 5), 6);
+    for (let j = 0; j < cnt; j++) {
+      const angle = (j / Math.max(cnt, 1)) * Math.PI + frame * 0.02;
+      const rx = bx + barW / 2 + Math.cos(angle + TEAM_KEYS.indexOf(tk)) * barW * 0.25;
+      const ry = by + barH - 8 - Math.sin(angle) * barH * 0.3;
+      ctx.fillText('⚾', rx, ry);
+    }
+  }
+}
+
+function _decoJump(ctx, bx, by, barW, barH, marginT, barMaxH, tk, t, score, isPlayer, frame) {
+  // Height markers
+  ctx.fillStyle = 'rgba(255,255,255,.06)';
+  ctx.lineWidth = 0.5;
+  for (let j = 1; j < 6; j++) {
+    const my = marginT + (j / 6) * barMaxH;
+    ctx.beginPath();
+    ctx.moveTo(bx, my);
+    ctx.lineTo(bx + barW, my);
+    ctx.strokeStyle = 'rgba(255,255,255,.06)';
+    ctx.stroke();
+  }
+  // Jump arrow
+  if (barH > 8) {
+    const jumpOff = Math.abs(Math.sin(frame * 0.06 + TEAM_KEYS.indexOf(tk))) * clamp(barW * 0.25, 6, 16);
+    ctx.font = Math.round(barW * 0.4) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('📏', bx + barW / 2, by + barH - 4 - jumpOff);
+  }
+}
+
+function _decoDive(ctx, bx, by, barW, barH, marginT, barMaxH, tk, t, score, isPlayer, frame) {
+  // Water lines in unfilled area
+  ctx.fillStyle = 'rgba(100,180,255,.06)';
+  for (let j = 0; j < 6; j++) {
+    const my = marginT + (j / 6) * barMaxH;
+    if (my < by || my > by + barH) {
+      ctx.fillRect(bx + 2, my, barW - 4, 1.5);
+    }
+  }
+  // Bubbles
+  if (barH > 8) {
+    const cnt = 2 + Math.floor(Math.sin(frame * 0.05 + TEAM_KEYS.indexOf(tk)) * 0.5);
+    ctx.font = Math.round(barW * 0.3) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let j = 0; j < cnt; j++) {
+      const bx2 = bx + barW * 0.2 + ((frame * 3 + j * 47) % Math.round(barW * 0.6));
+      const by2 = by + barH - 6 - ((frame * 2 + j * 31) % Math.max(barH, 1));
+      ctx.globalAlpha = 0.3 + Math.sin(frame * 0.08 + j) * 0.15;
+      ctx.fillText('🫧', bx2, by2);
+    }
+    ctx.globalAlpha = 1;
+    // Diver
+    ctx.font = Math.round(barW * 0.42) + 'px sans-serif';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('🤿', bx + barW / 2, by + 6);
+  }
+}
+
+function drawRun(ctx, cw, ch, myScore, eData, eventKey, playerTeam, frame) {
+  const scores = {}; TEAM_KEYS.forEach(k => { scores[k] = eData[k]?.[eventKey] || 0; });
+  const maxS = Math.max(...Object.values(scores), 1);
+  _drawTeamBars(ctx, cw, ch, scores, maxS, playerTeam, frame, _decoRun);
+}
+function drawPitch(ctx, cw, ch, myScore, eData, eventKey, playerTeam, frame) {
+  const scores = {}; TEAM_KEYS.forEach(k => { scores[k] = eData[k]?.[eventKey] || 0; });
+  const maxS = Math.max(...Object.values(scores), 1);
+  _drawTeamBars(ctx, cw, ch, scores, maxS, playerTeam, frame, _decoPitch);
+}
+function drawJump(ctx, cw, ch, myScore, eData, eventKey, playerTeam, frame) {
+  const scores = {}; TEAM_KEYS.forEach(k => { scores[k] = eData[k]?.[eventKey] || 0; });
+  const maxS = Math.max(...Object.values(scores), 1);
+  _drawTeamBars(ctx, cw, ch, scores, maxS, playerTeam, frame, _decoJump);
+}
+function drawDive(ctx, cw, ch, myScore, eData, eventKey, playerTeam, frame) {
+  const scores = {}; TEAM_KEYS.forEach(k => { scores[k] = eData[k]?.[eventKey] || 0; });
+  const maxS = Math.max(...Object.values(scores), 1);
+  _drawTeamBars(ctx, cw, ch, scores, maxS, playerTeam, frame, _decoDive);
+}
+
+// ═══════════════════════════════════
+//  FORUM SCRAPE（完整复制自 candy_crush）
+// ══════════════════════════════════════════
+let _forumFetching = false;
+
+function _proxyOkText_(text){
+  return text && text.length > 80 && (text.indexOf("<") >= 0 || /profile|ipsQuote|cProfileContent/i.test(text));
+}
+async function _gasProxyGet(url){
+  const data = await gasJsonp({ action: "fetch_url", url: url }, FORUM_FETCH_MS);
+  const text = (data && (data.html || data.contents)) || "";
+  if(_proxyOkText_(text)) return text;
+  throw new Error((data && data.error) || "gas_proxy_empty");
+}
+async function _proxyJsonpGet(url, timeout){
+  return new Promise((resolve,reject)=>{
+    const bustUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
+    const cb="ao_cb_"+Date.now()+"_"+Math.floor(Math.random()*9999);
+    const tid=setTimeout(()=>{cleanup();reject(new Error("jsonp_timeout"));},timeout||FORUM_FETCH_MS);
+    function cleanup(){
+      clearTimeout(tid);
+      try{delete window[cb];}catch(e){}
+      const sc=document.getElementById(cb+"_s");if(sc)sc.remove();
+    }
+    window[cb]=(data)=>{
+      cleanup();
+      const text=data&&data.contents;
+      if(_proxyOkText_(text)) resolve(text);
+      else reject(new Error("empty_jsonp"));
+    };
+    const s=document.createElement("script");
+    s.id=cb+"_s";
+    s.referrerPolicy="no-referrer";
+    s.src="https://api.allorigins.win/get?url="+encodeURIComponent(bustUrl)+"&callback="+cb;
+    s.onerror=()=>{cleanup();reject(new Error("jsonp_load_fail"));};
+    document.head.appendChild(s);
+  });
+}
+async function fffProxyGet(url, noCache){
+  if(!noCache){
+    const sk="ctfff_"+url;
+    const hit=sessionStorage.getItem(sk);
+    if(hit) return hit;
+  }
+  let lastErr=null;
+  const ways=[
+    ["GAS", ()=>_gasProxyGet(url)],
+    ["Vercel", async()=>{
+      const base=VERCEL_PROXY_BASE||"";
+      const pu=base+"/girls games-proxy?url="+encodeURIComponent(url);
+      const resp=await fetch(pu,{referrerPolicy:"no-referrer",credentials:"omit",signal:AbortSignal.timeout(FORUM_FETCH_MS)});
+      if(!resp.ok) throw new Error("HTTP_"+resp.status);
+      const j=await resp.json();
+      if(j.ok&&j.html&&_proxyOkText_(j.html)) return j.html;
+      throw new Error("vercel_bad_response");
+    }],
+    ["codetabs", async()=>{
+      const resp=await fetch(CF_PROXY+encodeURIComponent(url),{referrerPolicy:"no-referrer",credentials:"omit",signal:AbortSignal.timeout(FORUM_FETCH_MS)});
+      if(!resp.ok) throw new Error("HTTP_"+resp.status);
+      const text=await resp.text();
+      if(_proxyOkText_(text)) return text;
+      throw new Error("empty_response");
+    }],
+    ["allorigins-jsonp", ()=>_proxyJsonpGet(url)],
+  ];
+  for(const [name, fn] of ways){
+    try{
+      const text=await fn();
+      if(!noCache&&url.includes("controller=profile")){
+        try{sessionStorage.setItem("ctfff_"+url,text);}catch(e){}
+      }
+      return text;
+    }catch(e){
+      lastErr=e;
+      console.warn("[proxy] "+name+" FAIL:",e.message||e);
+    }
+  }
+  const pool=_ctIsFileOrigin?FORUM_PROXY_POOL.filter(p=>p.nullOrigin):FORUM_PROXY_POOL;
+  const targetUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
+  const tried=new Set();
+  for(let attempt=0;attempt<pool.length*2;attempt++){
+    const proxy=_ctPickProxy();
+    const key=proxy.url+"|"+targetUrl;
+    if(tried.has(key)) continue;
+    tried.add(key);
+    const st=_ctProxyState[proxy.url];
+    if(Date.now()-st.windowStart>60000){st.count=0;st.windowStart=Date.now();}
+    st.count++;
+    if(st.count>=proxy.rpm) await new Promise(r=>setTimeout(r,800));
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),FORUM_FETCH_MS);
+    try{
+      const resp=await fetch(_ctBuildProxyTarget(proxy,targetUrl),{signal:ctrl.signal,referrerPolicy:"no-referrer",credentials:"omit"});
+      clearTimeout(tid);
+      if(resp.status===403||resp.status===429){_ctBanProxy(proxy.url,20000);lastErr=new Error("HTTP_"+resp.status);continue;}
+      if(!resp.ok){lastErr=new Error("HTTP_"+resp.status);continue;}
+      const text=await _ctParseResp(proxy,resp);
+      if(_proxyOkText_(text)){
+        const idx=pool.findIndex(p=>p.url===proxy.url);
+        if(idx>=0) _bestProxyIdx=idx;
+        if(!noCache&&url.includes("controller=profile")){
+          try{sessionStorage.setItem("ctfff_"+url,text);}catch(e){}
+        }
+        return text;
+      }
+      lastErr=new Error("empty_response");
+    }catch(e){
+      clearTimeout(tid);
+      lastErr=e;
+      if(e.name==="AbortError"||/403|429|408/.test(String(e.message))) _ctBanProxy(proxy.url,20000);
+      console.warn("[proxy] "+proxy.url.slice(8,36)+" FAIL:",e.message||e);
+    }
+  }
+  const hint=_ctIsFileOrigin?"（本地 file:// 建议改用 GitHub Pages）":(_ctIsGithubOrigin?"（中转站均失败；请在 GAS 部署 fetch_url 代理）":"");
+  throw lastErr||new Error("所有中转站均不可用"+hint);
+}
+
+// ── Slug ──
+async function fffGetSlug(uid){
+  const ck = "gs_slug_" + uid;
+  try { const hit = localStorage.getItem(ck); if (hit) return hit; } catch(e) {}
+  const html = await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id=" + uid);
+  let slug = null;
+  const m0 = String(html).match(/\/profile\/(\d+-[^\/\"'?#\s<]+)/);
+  if (m0 && m0[1].startsWith(uid + "-")) slug = m0[1];
+  if (!slug) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    for (const a of doc.querySelectorAll("a[href]")) {
+      const href = a.getAttribute("href") || "";
+      const m = href.match(/\/profile\/(\d+-[^\/\?#"]+)/);
+      if (m && m[1].startsWith(uid + "-")) { slug = m[1]; break; }
+    }
+  }
+  if (!slug) throw new Error("无法获取 slug，请确认 UID 正确");
+  try { localStorage.setItem(ck, slug); } catch(e) {}
+  return slug;
+}
+
+// ── LocalStorage cache helpers ──
+function incKey_(uid,startDate,sfx){ return "gsInc_"+uid+"_"+startDate+(sfx||""); }
+function pageIdxKey_(slug){ return "gs_pageidx_"+slug; }
+function loadPageIdx_(slug){ try{return JSON.parse(localStorage.getItem(pageIdxKey_(slug))||"{}");}catch(e){return{};} }
+function savePageIdx_(slug,idx){ try{localStorage.setItem(pageIdxKey_(slug),JSON.stringify(idx));}catch(e){} }
+function loadInc_(uid,sd,sfx){ try{return JSON.parse(localStorage.getItem(incKey_(uid,sd,sfx))||"null");}catch(e){return null;} }
+function saveInc_(uid,sd,sfx,data){ try{localStorage.setItem(incKey_(uid,sd,sfx),JSON.stringify(data));}catch(e){} }
+
+// ── Scrape functions ──
+async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
+  const opts=scrapeOpts||{};
+  const onProgress=typeof opts.onProgress==="function"?opts.onProgress:function(){};
+  const maxPages=Number(opts.maxPages)>0?Number(opts.maxPages):60;
+  let citeBudget;
+  if(opts.maxCitationChecks===0) citeBudget=0;
+  else if(opts.maxCitationChecks==null) citeBudget=Number.POSITIVE_INFINITY;
+  else citeBudget=Number.isFinite(Number(opts.maxCitationChecks))?Number(opts.maxCitationChecks):16;
+  const sTs=startDate?new Date(startDate+"T00:00:00").getTime():0;
+  const eTs=endDate?new Date(endDate+"T23:59:59").getTime():Date.now();
+  const prev=loadInc_(uid,startDate,keySuffix);
+  const lastTs=prev?(prev.lastTs||0):0;
+  let replies=prev?(prev.replies||0):0;
+  const citedIds=new Set(prev?(prev.citations||[]):[]);
+  const ccKey="gscc_"+uid;
+  let cache; try{cache=new Map(Object.entries(JSON.parse(localStorage.getItem(ccKey)||"{}")));}catch(e){cache=new Map();}
+  const pageIdx=loadPageIdx_(slug);
+  const pkeys=Object.keys(pageIdx).map(x=>parseInt(x,10)).filter(n=>Number.isFinite(n)&&n>0).sort((a,b)=>a-b);
+  let page=1,done=false,newLastTs=lastTs;
+  if(endDate && pkeys.length){
+    for(const p of pkeys){
+      const ts=new Date(pageIdx[p]).getTime();
+      if(!Number.isFinite(ts)||ts<=0) continue;
+      const pd=new Date(ts).toISOString().slice(0,10);
+      if(pd>endDate) page=p; else break;
+    }
+    if(page>1) onProgress("已根据缓存跳到第 "+page+" 页附近");
+  }
+  let pageCount=0;
+  while(!done){
+    if(page>maxPages){ onProgress("达到本轮页数上限 "+maxPages+" 页"); break; }
+    pageCount=page;
+    onProgress("正在抓取论坛数据...第 "+page+" 页（区间 "+startDate+" ~ "+endDate+"）");
+    const url=page===1
+      ?"https://sstm.moe/profile/"+slug+"/content/?type=forums_topic_post&change_section=1"
+      :"https://sstm.moe/profile/"+slug+"/content/page/"+page+"/?type=forums_topic_post";
+    const html=await fffProxyGet(url,true);
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const items=doc.querySelectorAll("ol.cProfileContent > li");
+    if(!items.length) break;
+    try{
+      const ft=doc.querySelector("ol.cProfileContent > li time[datetime]");
+      const dt=ft?ft.getAttribute("datetime"):"";
+      if(dt){ pageIdx[page]=dt; savePageIdx_(slug,pageIdx); }
+    }catch(e){}
+    let foundInRange=false; const toCheck=[];
+    for(const item of items){
+      const te=item.querySelector("time[datetime]"); if(!te) continue;
+      const ts=new Date(te.getAttribute("datetime")).getTime();
+      if(!Number.isFinite(ts)) continue;
+      if(ts>eTs) continue;
+      if(ts<sTs){done=true;break;}
+      if(lastTs>0&&ts<=lastTs){done=true;break;}
+      foundInRange=true;
+      if(ts>newLastTs) newLastTs=ts;
+      const fa=item.querySelector("p.ipsType_light a[href]");
+      if(!fa||!NOVICE_FORUM_RE.test(fa.getAttribute("href")||"")) continue;
+      replies++;
+      const bq=item.querySelector(".ipsQuote");
+      if(!bq) continue;
+      const c2=bq.getAttribute("data-ipsquote-contentcommentid");
+      const t2=bq.getAttribute("data-ipsquote-contentid");
+      if(c2&&t2) toCheck.push({cid:c2,tid:t2});
+    }
+    if(toCheck.length){
+      const need=[];
+      for(const x of toCheck){
+        if(citeBudget<=0) break;
+        if(citedIds.has(x.cid)) continue;
+        if(cache.has(x.cid)){ if(cache.get(x.cid)) citedIds.add(x.cid); continue; }
+        if(citeBudget!==Number.POSITIVE_INFINITY) citeBudget-=1;
+        need.push(x);
+      }
+      const CITE_CONC=5;
+      for(let i=0;i<need.length;i+=CITE_CONC){
+        const chunk=need.slice(i,i+CITE_CONC);
+        onProgress("第 "+page+" 页验证被引用 "+Math.min(i+CITE_CONC,need.length)+"/"+need.length+"...");
+        await Promise.all(chunk.map(async (x)=>{
+          try{
+            const qUrl="https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid;
+            const qHtml=await fffProxyGet(qUrl,true);
+            if(!NOVICE_FORUM_RE.test(qHtml)){cache.set(x.cid,false);return;}
+            const qDoc=new DOMParser().parseFromString(qHtml,"text/html");
+            const el=qDoc.querySelector("article#elComment_"+x.cid);
+            if(!el){cache.set(x.cid,false);return;}
+            const qs=el.querySelectorAll('.ipsQuote[data-ipsquote-userid="'+uid+'"]');
+            const ok=Array.from(qs).some(q=>!q.parentElement.closest(".ipsQuote"));
+            cache.set(x.cid,ok); if(ok)citedIds.add(x.cid);
+          }catch(e){cache.set(x.cid,false);}
+        }));
+        if(i+CITE_CONC<need.length) await new Promise(r=>setTimeout(r,120));
+      }
+    }
+    if(done) break;
+    const next=doc.querySelector("li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel='next']");
+    if(!next) break;
+    page++;
+    await new Promise(r=>setTimeout(r,72));
+  }
+  try{localStorage.setItem(ccKey,JSON.stringify(Object.fromEntries(cache)));}catch(e){}
+  saveInc_(uid,startDate,keySuffix,{lastTs:newLastTs,replies,citations:[...citedIds]});
+  return{replies,citations:citedIds.size,pageCount};
+}
+
+async function fffScrapeByDay_(uid,slug,startDate,endDate,scrapeOpts){
+  const opts=scrapeOpts||{};
+  const onProgress=typeof opts.onProgress==='function'?opts.onProgress:()=>{};
+  const maxPages=Number(opts.maxPages)>0?Number(opts.maxPages):60;
+  let citeBudget;
+  if(opts.maxCitationChecks===0) citeBudget=0;
+  else if(opts.maxCitationChecks==null) citeBudget=Number.POSITIVE_INFINITY;
+  else citeBudget=Number.isFinite(Number(opts.maxCitationChecks))?Number(opts.maxCitationChecks):16;
+
+  const sTs=startDate?new Date(startDate+'T00:00:00').getTime():0;
+  const eTs=endDate  ?new Date(endDate  +'T23:59:59').getTime():Date.now();
+
+  let replies=0;
+  const citedIds=new Set();
+  const byDay={};
+  function addDay_(day,type,cid){
+    if(!byDay[day]) byDay[day]={replies:0,citations:0,citedIds:[]};
+    if(type==='replies') byDay[day].replies++;
+    if(type==='citations'&&cid&&!byDay[day].citedIds.includes(cid))
+      byDay[day].citedIds.push(cid);
+  }
+
+  const ccKey='gscc_'+uid;
+  let cache; try{cache=new Map(Object.entries(JSON.parse(localStorage.getItem(ccKey)||'{}')));}catch(e){cache=new Map();}
+  const pageIdx=loadPageIdx_(slug);
+  const pkeys=Object.keys(pageIdx).map(x=>parseInt(x,10)).filter(n=>Number.isFinite(n)&&n>0).sort((a,b)=>a-b);
+  let page=1,done=false;
+  if(endDate&&pkeys.length){
+    for(const p of pkeys){
+      const ts=new Date(pageIdx[p]).getTime();
+      if(!Number.isFinite(ts)||ts<=0) continue;
+      if(new Date(ts).toISOString().slice(0,10)>endDate) page=p; else break;
+    }
+    if(page>1) onProgress('已根据缓存跳到第 '+page+' 页附近');
+  }
+  let pageCount=0;
+
+  while(!done){
+    if(page>maxPages){ onProgress('达到页数上限 '+maxPages+' 页'); break; }
+    pageCount=page;
+    onProgress('正在读取第 '+page+' 页（回复:'+replies+' 被引用:'+citedIds.size+'）...');
+    const url=page===1
+      ?'https://sstm.moe/profile/'+slug+'/content/?type=forums_topic_post&change_section=1'
+      :'https://sstm.moe/profile/'+slug+'/content/page/'+page+'/?type=forums_topic_post';
+    const html=await fffProxyGet(url,true);
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    const items=doc.querySelectorAll('ol.cProfileContent > li');
+    if(!items.length) break;
+    try{
+      const ft=doc.querySelector('ol.cProfileContent > li time[datetime]');
+      if(ft){ pageIdx[page]=ft.getAttribute('datetime'); savePageIdx_(slug,pageIdx); }
+    }catch(e){}
+    const toCheck=[];
+    for(const item of items){
+      const te=item.querySelector('time[datetime]'); if(!te) continue;
+      const ts=new Date(te.getAttribute('datetime')).getTime();
+      if(!Number.isFinite(ts)) continue;
+      if(ts>eTs) continue;
+      if(ts<sTs){ done=true; break; }
+      const day=new Date(ts).toISOString().slice(0,10);
+      const fa=item.querySelector('p.ipsType_light a[href]');
+      if(!fa||!NOVICE_FORUM_RE.test(fa.getAttribute('href')||'')) continue;
+      replies++; addDay_(day,'replies');
+      const bq=item.querySelector('.ipsQuote');
+      if(!bq) continue;
+      const c2=bq.getAttribute('data-ipsquote-contentcommentid');
+      const t2=bq.getAttribute('data-ipsquote-contentid');
+      if(c2&&t2) toCheck.push({cid:c2,tid:t2,day});
+    }
+    if(toCheck.length){
+      const need=[];
+      for(const x of toCheck){
+        if(citeBudget<=0) break;
+        if(citedIds.has(x.cid)) continue;
+        if(cache.has(x.cid)){ if(cache.get(x.cid)){citedIds.add(x.cid);addDay_(x.day,'citations',x.cid);} continue; }
+        if(citeBudget!==Number.POSITIVE_INFINITY) citeBudget--;
+        need.push(x);
+      }
+      const CONC=5;
+      for(let i=0;i<need.length;i+=CONC){
+        const chunk=need.slice(i,i+CONC);
+        onProgress('第 '+page+' 页验证引用 '+(i+1)+'–'+Math.min(i+CONC,need.length)+'/'+need.length+'（被引用:'+citedIds.size+'）...');
+        const results=await Promise.all(chunk.map(async x=>{
+          try{
+            const qUrl='https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id='+x.tid+'&content_commentid='+x.cid;
+            const qHtml=await fffProxyGet(qUrl,true);
+            if(!NOVICE_FORUM_RE.test(qHtml)){cache.set(x.cid,false);return false;}
+            const qDoc=new DOMParser().parseFromString(qHtml,'text/html');
+            const el=qDoc.querySelector('article#elComment_'+x.cid);
+            if(!el){cache.set(x.cid,false);return false;}
+            const qs=el.querySelectorAll('.ipsQuote[data-ipsquote-userid="'+uid+'"]');
+            const ok=Array.from(qs).some(q=>!q.parentElement.closest('.ipsQuote'));
+            cache.set(x.cid,ok); return ok;
+          }catch(e){cache.set(x.cid,false);return false;}
+        }));
+        chunk.forEach((x,j)=>{ if(results[j]){citedIds.add(x.cid);addDay_(x.day,'citations',x.cid);} });
+        if(i+CONC<need.length) await new Promise(r=>setTimeout(r,150));
+      }
+    }
+    if(done) break;
+    const next=doc.querySelector('li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel="next"]');
+    if(!next) break;
+    page++;
+    await new Promise(r=>setTimeout(r,72));
+  }
+  try{localStorage.setItem(ccKey,JSON.stringify(Object.fromEntries(cache)));}catch(e){}
+  return{replies,citations:citedIds.size,byDay,pageCount};
+}
+
+// ── Helper functions ──
+function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function normDateISO_(v){
+  if(!v) return '';
+  const s=String(v).trim();
+  const m=s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if(m) return m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2);
+  const d=new Date(s); if(!isNaN(d.getTime())) return d.toISOString().slice(0,10);
+  return s;
+}
+function _dateRange_(sd,ed){
+  const days=[];
+  const cur=new Date(sd+'T12:00:00'); const end=new Date(ed+'T12:00:00');
+  while(cur<=end){ days.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+  return days;
+}
+function _calcForumAvail(){
+  if(!G.forumDays||typeof G.forumDays!=='object')
+    return {replies:0,citations:0,rawReplies:0,rawCitations:0};
+  let totalReplies=0;
+  const allCitedIds=new Set();
+  Object.values(G.forumDays).forEach(d=>{
+    totalReplies+=(d.replies||0);
+    (d.citedIds||[]).forEach(id=>allCitedIds.add(id));
+  });
+  return {
+    replies    : Math.max(0,totalReplies-(G.repliesSpent||0)),
+    citations  : Math.max(0,allCitedIds.size-(G.citationsSpent||0)),
+    rawReplies : totalReplies,
+    rawCitations: allCitedIds.size
+  };
+}
+function _migrateToForumDays_(){
+  if(!G.forumDays||typeof G.forumDays!=='object') G.forumDays={};
+  if(Object.keys(G.forumDays).length>0) return;
+}
+function _resolveForumId_(){
+  const gid=String(G.id||"").trim();
+  if(gid&&gid!=="访客") return gid;
+  return "";
+}
+function _resolveForumUid_(){
+  const gu=parseInt(G.uid,10);
+  if(gu>0) return gu;
+  return 0;
+}
+function _applyForumIdentity_(){
+  const fid=_resolveForumId_(), uid=_resolveForumUid_();
+  if(fid) G.id=fid;
+  if(uid>0) G.uid=uid;
+  return {id:fid,uid};
+}
+
+// ── Cloud activity API ──
+async function _fetchActivityFromCloud_(uid,startDate,endDate){
+  if(!uid) return [];
+  try{
+    const d=await gasJsonp({sheet:SHEET,action:'activity_fetch',uid:String(uid),startDate:startDate||'',endDate:endDate||''},12000);
+    return (d&&d.ok&&d.rows)?d.rows:[];
+  }catch(e){ return []; }
+}
+function _logActivityToCloud_(uid,date,replies,citations){
+  if(!uid||!date) return;
+  try{
+    fetch(GAS_URL,{
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sheet:SHEET,type:'activity_log',
+        uid:String(uid),date:normDateISO_(date),
+        replies:parseInt(replies,10)||0,
+        citations:parseInt(citations,10)||0})
+    }).catch(function(){});
+  }catch(e){}
+}
+function _logActivityByDayToCloud_(uid,netByDay){
+  Object.entries(netByDay||{}).forEach(([date,counts])=>{
+    _logActivityToCloud_(uid,date,counts.replies,counts.citations);
+  });
+}
+
+// ── Main entry point ──
+async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
+  if(_forumFetching){
+    if(showAlert) showNotif('正在抓取中，请稍候...',false); return false;
+  }
+  const ident=_applyForumIdentity_();
+  if(!ident.uid){
+    if(showAlert) showNotif('请先登入并输入有效 UID 后再抓取。',false); return false;
+  }
+  _forumFetching=true;
+  showLoading('正在准备抓取...');
+  try{
+    const uid=ident.uid;
+    const slug=await fffGetSlug(uid);
+    const sd=startDate||todayISO();
+    const ed=endDate||sd;
+  if(!G.forumDays||typeof G.forumDays!=='object') G.forumDays={};
+  if(typeof G.boxes!=='number') G.boxes=0;
+  if(typeof G.boxToday!=='number') G.boxToday=0;
+  if(typeof G.boxDate!=='string') G.boxDate='';
+  if(!Array.isArray(G.boxHistory)) G.boxHistory=[];
+  if(typeof G.coins!=='number') G.coins=0;
+  if(typeof G.tickets!=='number') G.tickets=0;
+  if(typeof G.boosters!=='object'||!G.boosters) G.boosters={hammer:0,lollipop:0,fish:0};
+    _migrateToForumDays_();
+
+    showLoading('正在抓取 '+sd+' ~ '+ed+'...');
+    const raw=await fffScrapeByDay_(uid,slug,sd,ed,{
+      onProgress:(msg)=>showLoading(msg),
+      maxPages     :Number(opt&&opt.maxPages)||60,
+      maxCitationChecks:(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:16
+    });
+
+    // Merge into G.forumDays
+    Object.entries(raw.byDay||{}).forEach(([day,counts])=>{
+      const citedIds=counts.citedIds||[];
+      const old=G.forumDays[day]||{replies:0,citedIds:[]};
+      const mergedCited=[...new Set([...(old.citedIds||[]),...citedIds])];
+      G.forumDays[day]={
+        replies  :Math.max(counts.replies,old.replies),
+        citedIds :mergedCited,
+        fetchedAt:new Date().toISOString()
+      };
+    });
+
+    // Persist to cloud
+    _logActivityByDayToCloud_(uid,raw.byDay);
+
+    // Sync G.replies / G.citations
+    const av=_calcForumAvail();
+    G.replies=av.rawReplies; G.citations=av.rawCitations;
+    G.lastFetch=today();
+    saveLocal();
+    await cloudSave();
+
+    gasBeacon({sheet:SHEET,action:'forum_fetch',id:G.id,uid:String(uid),
+      replies:String(av.rawReplies),citations:String(av.rawCitations),
+      netReplies:String(raw.replies),netCitations:String(raw.citations),
+      startDate:sd,endDate:ed,date:today()});
+
+    updateMenuUI();
+    if(!document.getElementById('screen-game').classList.contains('hidden')) updateEventUI();
+    _updateForumOverlayStats();
+
+    if(showAlert){
+      showNotif('✅ 抓取完成！区间 '+sd+' ~ '+ed+' · 翻阅 '+(raw.pageCount||1)+' 页 · 回复: +'+raw.replies+' · 被引用: +'+raw.citations+' · 累计回复: '+av.replies+' · 累计引用: '+av.citations,true);
+    }
+    return true;
+  }catch(e){
+    if(showAlert) showNotif('⚠️ 抓取失败：'+e.message,false);
+    return false;
+  }finally{
+    _forumFetching=false;
+    hideLoading();
+  }
+}
+
+// ── Public wrappers ──
+async function fetchForumData(showAlert,startDate,endDate){
+  return fetchForumDataCustom(showAlert,startDate,endDate,{maxPages:60,maxCitationChecks:Number.POSITIVE_INFINITY});
+}
+async function refreshForumData(){
+  const sd=(document.getElementById('forum-start-date')||{}).value||'';
+  const ed=(document.getElementById('forum-end-date')||{}).value||'';
+  if(sd&&ed&&new Date(sd)>new Date(ed)){showNotif('开始日期不能晚于结束日期',false);return;}
+  await fetchForumData(true,sd||undefined,ed||undefined);
+}
+async function refreshForumDataFast(){
+  const sd=(document.getElementById('forum-start-date')||{}).value||'';
+  const ed=(document.getElementById('forum-end-date')||{}).value||'';
+  if(sd&&ed&&new Date(sd)>new Date(ed)){showNotif('开始日期不能晚于结束日期',false);return;}
+  await fetchForumDataCustom(true,sd||undefined,ed||undefined,{maxPages:30,maxCitationChecks:0});
+}
+
+// ── Manual input ──
+function applyManualForumInput_uid_(uid,date,replies,citations){
+  if(!uid||!date) return;
+  if(!G.forumDays||typeof G.forumDays!=='object') G.forumDays={};
+  const d=normDateISO_(date);
+  const old=G.forumDays[d]||{replies:0,citedIds:[]};
+  const newR=Math.max(parseInt(replies,10)||0, old.replies);
+  const newC=Math.max(parseInt(citations,10)||0, (old.citedIds||[]).length);
+  const citedIds=Array.from({length:newC},(_,i)=>'manual_'+d+'_'+i);
+  G.forumDays[d]={replies:newR,citedIds,fetchedAt:new Date().toISOString(),manual:true};
+  _logActivityToCloud_(uid,d,newR,newC);
+  const av=_calcForumAvail();
+  G.replies=av.rawReplies; G.citations=av.rawCitations;
+  saveLocal();
+  cloudSave();
+}
+async function applyManualForumInput(){
+  const uid=parseInt(G.uid,10);
+  if(!uid){showNotif('没有有效的 UID',false);return;}
+  const replies=parseInt(document.getElementById('fo-manual-reply').value,10)||0;
+  const citations=parseInt(document.getElementById('fo-manual-cite').value,10)||0;
+  if(replies<=0&&citations<=0){showNotif('请输入回复数和被引用数',false);return;}
+  applyManualForumInput_uid_(uid,today(),replies,citations);
+  _updateForumOverlayStats();
+  updateMenuUI();
+  if(!document.getElementById('screen-game').classList.contains('hidden')) updateEventUI();
+  showNotif('已套用手动输入 · 回复 '+G.replies+' · 引用 '+G.citations,true);
+}
+
+// ── Overlay UI ──
+function openForumOverlay(){
+  document.getElementById('fo-id').textContent=G.id||'-';
+  document.getElementById('fo-uid').textContent=G.uid||'-';
+  _updateForumOverlayStats();
+  const d=today();
+  const sd=document.getElementById('forum-start-date');
+  const ed=document.getElementById('forum-end-date');
+  if(!sd.value) sd.value=d;
+  if(!ed.value) ed.value=d;
+  document.getElementById('forum-overlay').classList.add('show');
+}
+function closeForumOverlay(){
+  document.getElementById('forum-overlay').classList.remove('show');
+}
+function _updateForumOverlayStats(){
+  const av=_calcForumAvail();
+  document.getElementById('fo-reply').textContent=av.rawReplies;
+  document.getElementById('fo-cite').textContent=av.rawCitations;
+  document.getElementById('fo-last').textContent=G.lastFetch||'尚未抓取';
+}
+
+// ═══════════════════════════════════
+//  CLOUD SCORE REFRESH / POLLING
+// ═══════════════════════════════════
+function gameRefreshCloud() {
+  showLoading('刷新云端...');
+  refreshCloudScores().then(() => hideLoading());
+}
+async function refreshCloudScores() {
+  const res = await cloudLoadAll();
+  if (res) {
+    cloudScores = res.teams;
+    updateMenuUI();
+    if (!document.getElementById('screen-game').classList.contains('hidden')) updateEventUI();
+  }
+}
+
+// ── Save / Load Archive (比照 candy_crush 机制) ──
+async function downloadGameData(){
+  if(typeof ExcelJS==='undefined'){
+    alert('Excel 组件未加载，请刷新页面后重试');
+    return;
+  }
+  try{
+    const av=_calcForumAvail();
+    const team=TEAMS[G.team];
+    const rows=[
+      ['类别','项目','数值'],
+      ['基本','论坛ID',G.id],
+      ['基本','UID',String(G.uid||'')],
+      ['基本','队伍',team?team.name:'未选择'],
+      ['基本','导出时间',new Date().toLocaleString('zh-TW')],
+      ['比赛','耐力慢跑',G.scoreRun||0],
+      ['比赛','无限投球',G.scorePitch||0],
+      ['比赛','极限跳高',G.scoreJump||0],
+      ['比赛','潜水探测',G.scoreDive||0],
+      ['论坛资源','回复数（累计）',G.replies||0],
+      ['论坛资源','被引用数（累计）',G.citations||0],
+      ['论坛资源','已花费回复数',G.repliesSpent||0],
+      ['论坛资源','已花费被引用数',G.citationsSpent||0],
+      ['论坛资源','可用回复数',av.replies],
+      ['论坛资源','可用被引用数',av.citations],
+      ['论坛逐日',JSON.stringify(G.lastFetch||''),'']
+    ];
+    Object.keys(G.forumDays||{}).sort().forEach(day=>{
+      const d=G.forumDays[day];
+      rows.push(['论坛逐日',day,'回复:'+(d.replies||0)+' 被引用:'+(d.citedIds||[]).length]);
+    });
+    rows.push(['导出信息','游戏版本',GAME_VERSION]);
+    rows.push(['__HTML_GAME_SAVE__','game','sports_fest']);
+    rows.push(['__HTML_GAME_SAVE__','version',GAME_VERSION]);
+    rows.push(['__HTML_GAME_SAVE__','saved_at',new Date().toISOString()]);
+    rows.push(['__HTML_GAME_SAVE__','state_json',JSON.stringify(G)]);
+
+    const wb=new ExcelJS.Workbook();
+    wb.creator='全少女运动会';
+    const ws=wb.addWorksheet('游玩存档');
+    rows.forEach(r=>ws.addRow(r));
+    ws.getColumn(1).width=16;
+    ws.getColumn(2).width=24;
+    ws.getColumn(3).width=52;
+    ws.eachRow(row=>{row.eachCell(cell=>{cell.protection={locked:true};});});
+    await ws.protect(CANDY_SAVE_XLSX_PASSWORD,{
+      selectLockedCells:true,selectUnlockedCells:false,
+      formatCells:false,formatColumns:false,formatRows:false,
+      insertColumns:false,insertRows:false,insertHyperlinks:false,
+      deleteColumns:false,deleteRows:false,
+      sort:false,autoFilter:false,pivotTables:false
+    });
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='sports-fest-'+G.id+'-'+todayISO()+'.xlsx';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){
+    console.error(e);
+    alert('存档导出失败：'+(e.message||e));
+  }
+}
+
+window.__applyPortableSaveData = async function(data){
+  if(!data||typeof data!=='object') throw new Error('bad_save');
+  const keepId=G.id, keepUid=G.uid, keepTeam=G.team;
+  Object.assign(G,data);
+  if(keepId) G.id=keepId;
+  if(keepUid) G.uid=keepUid;
+  if(keepTeam) G.team=keepTeam;
+  if(!G.forumDays||typeof G.forumDays!=='object') G.forumDays={};
+  saveLocal();
+  try{await cloudSave();}catch(e){console.warn('cloud save after import',e);}
+  updateMenuUI();
+  if(!document.getElementById('screen-game').classList.contains('hidden')) updateEventUI();
+};
+(function(){
+  var MARK='__HTML_GAME_SAVE__';
+  function parseCsv(text){
+    text=String(text||'').replace(/^\uFEFF/,'');
+    var rows=[],row=[],cell='',q=false;
+    for(var i=0;i<text.length;i++){
+      var ch=text[i],nx=text[i+1];
+      if(q){
+        if(ch==='"'&&nx==='"'){cell+='"';i++;}
+        else if(ch==='"') q=false;
+        else cell+=ch;
+      }else{
+        if(ch==='"') q=true;
+        else if(ch===','){row.push(cell);cell='';}
+        else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+        else if(ch!=='\r') cell+=ch;
+      }
+    }
+    row.push(cell);rows.push(row);
+    return rows;
+  }
+  function readPayload(text){
+    var raw=String(text||'').replace(/^\uFEFF/,'').trim();
+    if(raw.charAt(0)==='{') return JSON.parse(raw);
+    var rows=parseCsv(text);
+    for(var i=0;i<rows.length;i++){
+      if(rows[i][0]===MARK&&rows[i][1]==='state_json') return JSON.parse(rows[i][2]||'{}');
+    }
+    throw new Error('save_json_not_found');
+  }
+  window.importGameSaveData_=function(){
+    var input=document.createElement('input');
+    input.type='file';
+    input.accept='.xlsx,.csv,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/json';
+    input.onchange=function(){
+      var file=input.files&&input.files[0];
+      if(!file) return;
+      var name=String(file.name||'').toLowerCase();
+      if(name.endsWith('.xlsx')){
+        if(typeof ExcelJS==='undefined'){alert('Excel 组件未加载，请刷新页面后重试');return;}
+        var reader=new FileReader();
+        reader.onload=function(){
+          Promise.resolve().then(async function(){
+            if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+            var wb=new ExcelJS.Workbook();
+            await wb.xlsx.load(reader.result);
+            var ws=wb.worksheets[0];
+            if(!ws) throw new Error('xlsx_empty');
+            var data=null;
+            ws.eachRow(function(row){
+              if(row.getCell(1).value===MARK&&row.getCell(2).value==='state_json'){
+                data=JSON.parse(String(row.getCell(3).value||'{}'));
+              }
+            });
+            if(!data) throw new Error('save_json_not_found');
+            return window.__applyPortableSaveData(data);
+          }).then(function(){
+            alert('读档完成！本机记录已复原，并已尝试同步到云端。');
+          }).catch(function(e){
+            console.error(e);
+            alert('读档失败：请选择本游戏「📥 存档」导出的 Excel 文件。');
+          });
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+      }
+      var reader=new FileReader();
+      reader.onload=function(){
+        Promise.resolve().then(function(){
+          if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+          return window.__applyPortableSaveData(readPayload(reader.result));
+        }).then(function(){
+          alert('读档完成！本机记录已复原，并已尝试同步到云端。');
+        }).catch(function(e){
+          console.error(e);
+          alert('读档失败：请选择本游戏「📥 存档」导出的 Excel 文件。');
+        });
+      };
+      reader.readAsText(file,'utf-8');
+    };
+    input.click();
+  };
+})();
+
+function startPolling() {
+  stopPolling();
+  pollTimer = setInterval(refreshCloudScores, POLL_INTERVAL);
+  // Also do initial refresh
+  refreshCloudScores();
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+// ═══════════════════════════════════
+//  OFFLINE DETECTION
+// ═══════════════════════════════════
+function checkOnline() {
+  const was = isOnline;
+  isOnline = navigator.onLine;
+  const bar = document.getElementById('offline-bar');
+  if (!isOnline) {
+    bar.style.display = 'block';
+  } else {
+    bar.style.display = 'none';
+    if (!was) { showNotif('网络已恢复', true); }
+  }
+}
+window.addEventListener('online', checkOnline);
+window.addEventListener('offline', checkOnline);
+document.getElementById('offline-bar').onclick = () => { if (navigator.onLine) { document.getElementById('offline-bar').style.display = 'none'; showNotif('已连线', true); } };
+
+// ═══════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════
+document.getElementById('btn-login').onclick = doLogin;
+document.getElementById('inp-id').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('inp-uid').focus(); });
+document.getElementById('inp-uid').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// Forum overlay buttons
+document.getElementById('fo-btn-fetch').onclick = refreshForumData;
+document.getElementById('fo-btn-fast').onclick = refreshForumDataFast;
+document.getElementById('fo-btn-close').onclick = closeForumOverlay;
+document.getElementById('fo-btn-manual').onclick = applyManualForumInput;
+
+renderLoginHistory();
+// Check for saved credentials
+const hist = getLoginHistory();
+if (hist.length) {
+  document.getElementById('inp-id').value = hist[0].id;
+  document.getElementById('inp-uid').value = hist[0].uid;
+}
+setTimeout(fffAutoLogin,200);
+document.getElementById('autoFillByUrlLink')?.addEventListener('click',function(e){
+  e.preventDefault();
+  showUrlFillOverlay();
+});
+document.getElementById('urlFillConfirmBtn')?.addEventListener('click',applyUrlFill);
+document.getElementById('urlFillSkipBtn')?.addEventListener('click',function(){
+  hideUrlFillOverlay();
+});
+document.getElementById('urlFillInput')?.addEventListener('keydown',function(e){
+  if(e.key==='Enter') applyUrlFill();
+});
+
+// roundRect polyfill for Canvas
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    if (!Array.isArray(r)) r = [r, r, r, r];
+    const [tl, tr, br, bl] = r.map(v => Math.min(v || 0, Math.min(w, h) / 2));
+    this.moveTo(x + tl, y);
+    this.lineTo(x + w - tr, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + tr);
+    this.lineTo(x + w, y + h - br);
+    this.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+    this.lineTo(x + bl, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - bl);
+    this.lineTo(x, y + tl);
+    this.quadraticCurveTo(x, y, x + tl, y);
+    this.closePath();
+  };
+}
+
+// File protocol warning
+if (location.protocol === 'file:') {
+  console.warn('⚠️ 以 file:// 开启 — fetch() 将受 CORS 限制，论坛自动抓取可能失败。');
+  console.warn('   建议改用 GitHub Pages 或其他静态托管。');
+}
+console.log('全少女运动会 ' + GAME_VERSION + ' loaded. Teams:', TEAM_KEYS.length, 'Events:', EVENTS.length);
+function parseProfileUrl(url){
+  var m=url.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+  if(!m) return null;
+  return {id:decodeURIComponent(m[2]), uid:m[1]};
+}
+function showUrlFillOverlay(){
+  var ov=document.getElementById('urlFillOverlay');
+  if(ov) ov.classList.remove('hidden');
+}
+function hideUrlFillOverlay(){
+  var ov=document.getElementById('urlFillOverlay');
+  if(ov) ov.classList.add('hidden');
+}
+function applyUrlFill(){
+  var inp=document.getElementById('urlFillInput');
+  var err=document.getElementById('urlFillErr');
+  if(!inp) return;
+  var url=inp.value.trim();
+  if(!url){
+    if(err){ err.textContent='请粘贴个人页面网址'; err.style.display=''; }
+    return;
+  }
+  var result=parseProfileUrl(url);
+  if(!result){
+    if(err){ err.textContent='网址格式错误，请贴入类似 https://sstm.moe/profile/12345-username/ 的网址'; err.style.display=''; }
+    return;
+  }
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(idEl) idEl.value=result.id;
+  if(uidEl) uidEl.value=result.uid;
+  if(err) err.style.display='none';
+  hideUrlFillOverlay();
+}
+/** 从论坛首页自动获取ID+UID */
+async function fffAutoLogin(){
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(!idEl||!uidEl) return;
+  if(idEl.value.trim()&&uidEl.value.trim()) return;
+  // 1) URL hash
+  var hash=location.hash||'';
+  if(hash.indexOf('auto-id=')>=0){
+    try{
+      var sp=new URLSearchParams(hash.replace(/^#/,''));
+      var hid=sp.get('auto-id');
+      var huid=sp.get('auto-uid');
+      if(hid&&huid){
+        if(!idEl.value.trim()) idEl.value=decodeURIComponent(hid);
+        if(!uidEl.value.trim()) uidEl.value=huid;
+        history.replaceState(null,'',location.pathname+location.search);
+        return;
+      }
+    }catch(e){}
+  }
+  // 2) proxy
+  try{
+    var html=await fffProxyGet('https://sstm.moe/');
+    var doc=new DOMParser().parseFromString(html,'text/html');
+    var userLink=doc.getElementById('cUserLink');
+    if(!userLink) return;
+    var profileLink=userLink.querySelector('a[href*="/profile/"]');
+    if(!profileLink) return;
+    var href=profileLink.getAttribute('href')||'';
+    var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+    if(!m) return;
+    if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
+    if(!uidEl.value.trim()) uidEl.value=m[1];
+    return;
+  }catch(e){}
+  // 3) first visit popup
+  if(!localStorage.getItem('_urlFillShown')){
+    localStorage.setItem('_urlFillShown','1');
+    setTimeout(showUrlFillOverlay, 500);
+  }
+}
+</script>
+<div id="urlFillOverlay" class="hidden" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center">
+  <div style="background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:24px;max-width:420px;width:90%;box-sizing:border-box">
+    <h3 style="margin:0 0 12px;color:#fff">自动填入账号</h3>
+    <p style="margin:0 0 12px;font-size:14px;color:#b0c4de;line-height:1.6">
+      1. 在 <a href="https://sstm.moe/" target="_blank" style="color:#7eb8ff">SSTM 论坛</a> 点右上角头像进入你的个人页面<br>
+      2. 复制浏览器网址列中的完整网址<br>
+      3. 贴到下方输入框
+    </p>
+    <input id="urlFillInput" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#0f1729;color:#fff;font-size:14px;box-sizing:border-box" placeholder="https://sstm.moe/profile/12345-username/">
+    <div style="margin-top:12px;display:flex;gap:10px">
+      <button id="urlFillConfirmBtn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#4a7cf7;color:#fff;font-size:14px;cursor:pointer">确认</button>
+      <button id="urlFillSkipBtn" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#94a3b8;font-size:14px;cursor:pointer">跳过，手动输入</button>
+    </div>
+    <p id="urlFillErr" style="margin:8px 0 0;font-size:13px;color:#f87171;display:none"></p>
+  </div>
+</div>
+</body>
+</html>
