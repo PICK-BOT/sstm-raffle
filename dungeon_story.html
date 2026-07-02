@@ -116,8 +116,11 @@
 #dg-id-history-row{margin-top:10px;text-align:center;display:none}
 #dg-id-history-row .dg-ih-label{font-size:0.72rem;color:#c9daf6;margin-bottom:6px}
 .dg-ih-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
-.dg-ih-chip{padding:4px 12px;border-radius:16px;font-size:0.78rem;cursor:pointer;background:rgba(74,153,153,0.2);border:1px solid #4a9;color:#c9daf6;font-family:inherit}
-.dg-ih-chip:hover{background:rgba(74,153,153,0.45);color:#fff}
+.dg-ih-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 8px 4px 12px;border-radius:16px;font-size:0.78rem;background:rgba(74,153,153,0.2);border:1px solid #4a9;color:#c9daf6;font-family:inherit}
+.dg-ih-chip-txt{cursor:pointer;flex:1}
+.dg-ih-chip-txt:hover{color:#fff}
+.dg-ih-del{cursor:pointer;font-size:0.72rem;color:#aaa;padding:0 2px;border:none;background:none;font-family:inherit;line-height:1;flex-shrink:0}
+.dg-ih-del:hover{color:#f88}
 /* sstm-login-cover */
 body:has(#loginCard:not(.hidden)){min-height:100vh}
 body:has(#loginCard:not(.hidden))::before{content:"";position:fixed;inset:0;z-index:-1;background-image:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,.58)),url('https://s.sstmlt.com/img/2026/05/17/dungeon_story09a8564b3393d020.jpeg');background-size:cover;background-position:center;background-repeat:no-repeat}
@@ -1682,7 +1685,7 @@ async function enterGame(){
   if(!forumUid||isNaN(forumUid)){ document.getElementById("loginNotice").textContent="请先输入论坛数字 UID（用于论坛抓取）。"; return; }
   G.uid=uid; G.forumUid=forumUid;
   localStorage.setItem("dg_uid_forum",String(forumUid));
-  saveDungeonIdHistory_(uid);
+  saveDungeonIdHistory_(uid, G.forumUid||0);
   document.getElementById("hello").textContent="玩家："+uid+" (UID:"+forumUid+")";
   show("loginCard",false); show("menuCard",true); show("recordCard",false); show("gameCard",false);
   setNotice("");
@@ -4484,6 +4487,7 @@ window.addEventListener("DOMContentLoaded",()=>{
       G.uid=_savedId;
     }
   })();
+  setTimeout(fffAutoLogin,200);
 
   // 键盘移动：方向键/WSAD
   window.addEventListener("keydown",(e)=>{
@@ -4569,32 +4573,85 @@ async function logForumFetchToGAS_(opts){
   }catch(e){ console.warn('GAS forum fetch log failed', e); }
 }
 
-const DG_ID_HISTORY_KEY_='dungeonStoryIdHistory_v1';
+const DG_ID_HISTORY_KEY_='dungeonStoryIdHistory_v2';
 const DG_ID_HISTORY_MAX_=5;
-function loadDungeonIdHistory_(){try{return JSON.parse(localStorage.getItem(DG_ID_HISTORY_KEY_))||[]}catch(e){return[]}}
-function saveDungeonIdHistory_(id){
+const DG_UID_MAP_KEY_='dungeonIdUidMap_v1';  // id→forumUid 独立映射
+function loadDungeonIdHistory_(){
+  try{
+    // 先读 v2
+    var r=JSON.parse(localStorage.getItem(DG_ID_HISTORY_KEY_));
+    if(Array.isArray(r)&&r.length>0) return r;
+    // 迁移 v1（纯字串数组）→ v2 {id,forumUid}
+    var old=JSON.parse(localStorage.getItem('dungeonStoryIdHistory_v1'));
+    if(!Array.isArray(old)||!old.length) return [];
+    var uidMap=dungeonLoadUidMap_();
+    var migrated=old.map(function(x){
+      var id=String(x.id||x);
+      var fuid=parseInt(x.forumUid||uidMap[id]||0,10)||0;
+      return {id:id,forumUid:fuid};
+    });
+    localStorage.setItem(DG_ID_HISTORY_KEY_,JSON.stringify(migrated));
+    localStorage.removeItem('dungeonStoryIdHistory_v1');
+    return migrated;
+  }catch(e){return[];}
+}
+function dungeonLoadUidMap_(){try{return JSON.parse(localStorage.getItem(DG_UID_MAP_KEY_))||{};}catch(e){return{};}}
+function dungeonSaveUidMap_(id,fuid){try{const m=dungeonLoadUidMap_();m[String(id)]=parseInt(fuid,10)||0;localStorage.setItem(DG_UID_MAP_KEY_,JSON.stringify(m));}catch(e){}}
+function saveDungeonIdHistory_(id,forumUid){
   if(!id)return;
-  let hist=loadDungeonIdHistory_().filter(x=>String(x)!==String(id));
-  hist.unshift(String(id));
+  const fuid=parseInt(forumUid||G.forumUid||0,10)||0;
+  const entry={id:String(id),forumUid:fuid};
+  dungeonSaveUidMap_(id,fuid);  // 同时写入独立映射
+  let hist=loadDungeonIdHistory_().filter(x=>(x.id||String(x))!==entry.id);
+  hist.unshift(entry);
   if(hist.length>DG_ID_HISTORY_MAX_)hist=hist.slice(0,DG_ID_HISTORY_MAX_);
-  try{localStorage.setItem(DG_ID_HISTORY_KEY_,JSON.stringify(hist))}catch(e){}
+  try{localStorage.setItem(DG_ID_HISTORY_KEY_,JSON.stringify(hist));}catch(e){}
   renderDungeonIdHistory_();
 }
 function renderDungeonIdHistory_(){
   const hist=loadDungeonIdHistory_();
+  const uidMap=dungeonLoadUidMap_();
   const row=document.getElementById('dg-id-history-row');
   const chips=document.getElementById('dg-id-history-chips');
   if(!row||!chips)return;
   if(!hist.length){row.style.display='none';return;}
   row.style.display='block';
   chips.innerHTML='';
-  hist.forEach(id=>{
-    const btn=document.createElement('button');
-    btn.type='button';
-    btn.className='dg-ih-chip';
-    btn.textContent=id;
-    btn.onclick=()=>{const inp=document.getElementById('uid');if(inp)inp.value=id;};
-    chips.appendChild(btn);
+  hist.forEach(function(entry){
+    const id=entry.id||String(entry);
+    // 优先用 entry.forumUid，再查独立映射表兜底
+    const fuid=parseInt(entry.forumUid,10)||parseInt(uidMap[id],10)||0;
+    // chip 外层 span
+    var chip=document.createElement('span');
+    chip.className='dg-ih-chip';
+    // 文字区（点击带入）
+    var txt=document.createElement('span');
+    txt.className='dg-ih-chip-txt';
+    txt.textContent=fuid?id+' ('+fuid+')':id;
+    txt.title='点击带入：ID='+id+(fuid?' | UID='+fuid:'（无 UID 记录）');
+    txt.onclick=function(){
+      var inp=document.getElementById('uid');
+      var inp2=document.getElementById('forum-uid-num');
+      if(inp) inp.value=id;
+      if(inp2) inp2.value=fuid||'';
+    };
+    // 删除钮
+    var del=document.createElement('button');
+    del.type='button';
+    del.className='dg-ih-del';
+    del.textContent='×';
+    del.title='移除此记录';
+    del.onclick=function(e){
+      e.stopPropagation();
+      var h=loadDungeonIdHistory_().filter(function(x){return (x.id||String(x))!==id;});
+      try{localStorage.setItem(DG_ID_HISTORY_KEY_,JSON.stringify(h));}catch(ex){}
+      chip.remove();
+      var remaining=chips.querySelectorAll('.dg-ih-chip');
+      if(!remaining.length){row.style.display='none';}
+    };
+    chip.appendChild(txt);
+    chip.appendChild(del);
+    chips.appendChild(chip);
   });
 }
 function logDungeonActivityToGAS_(uid,date,replies,citations){
@@ -5086,6 +5143,25 @@ window.__applyPortableSaveData=async function(data){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
   else boot();
 })();
+
+async function fffAutoLogin(){
+  try{
+    var html=await fffProxyGet('https://sstm.moe/');
+    var d=document.createElement('div');
+    d.innerHTML=html;
+    var link=d.querySelector('#cUserLink');
+    if(!link)return;
+    var href=link.getAttribute('href')||'';
+    var m=href.match(/profile\/(\d+)/)||href.match(/uid=(\d+)/);
+    if(!m)return;
+    var uid=m[1];
+    var name=link.textContent.trim();
+    var inpId=document.getElementById('inp-id')||document.getElementById('uid');
+    var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
+    if(inpId) inpId.value=name;
+    if(inpUid) inpUid.value=uid;
+  }catch(e){}
+}
 </script>
 
 <!-- ===== FORUM FETCH OVERLAYS ===== -->

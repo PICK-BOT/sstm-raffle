@@ -1214,10 +1214,30 @@ window.addEventListener("DOMContentLoaded",()=>{
   load();normalize();applyBgTheme();
   const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";
   if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;
+  setTimeout(fffAutoLogin,200);
   const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;renderIdHistory();
   save();
 });
 window.addEventListener("resize",()=>{if(!qs("game").classList.contains("hidden")){assignBoardLayout();renderAll();}});
+
+async function fffAutoLogin(){
+  try{
+    var html=await fffProxyGet('https://sstm.moe/');
+    var d=document.createElement('div');
+    d.innerHTML=html;
+    var link=d.querySelector('#cUserLink');
+    if(!link)return;
+    var href=link.getAttribute('href')||'';
+    var m=href.match(/profile\/(\d+)/)||href.match(/uid=(\d+)/);
+    if(!m)return;
+    var uid=m[1];
+    var name=link.textContent.trim();
+    var inpId=document.getElementById('inp-id')||document.getElementById('uid');
+    var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
+    if(inpId) inpId.value=name;
+    if(inpUid) inpUid.value=uid;
+  }catch(e){}
+}
 </script>
 
 <!-- ===== DS‑STYLE OVERLAY STYLES ===== -->

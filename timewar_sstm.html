@@ -1,0 +1,3279 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>SS塔防 · HTML v3.8.0</title>
+<style>
+/* ===== 版本记录 =====
+  v1.0.0 - 2026-06-06 初版：时代塔防玩法、完整登入/云端/商店/皮肤/宝箱系统
+  v1.1.0 - 2026-06-07 敌人全部换成宝可梦 Gen5 动态 GIF 精灵图；DOM img 层渲染动画
+  v1.2.0 - 2026-06-07 修正：单位改宝可梦背面图、敌人红色遮罩、难度等差渐增、点击放置修正
+  v1.3.0 - 2026-06-07 碰撞伤害、敌方城堡、强化菜单取代章节、打怪得食物、移除倍率按钮
+  v1.4.0 - 2026-06-07 关卡以宝可梦地区城镇/道路命名；通关得宝箱
+  v1.5.0 - 2026-06-07 彻底移除倍率残留；城堡改用DOM显示；全功能确认修复
+  v1.6.0 - 2026-06-07 GAS连线修复；双方城堡血量+攻城机制；玩法介绍更新
+  v1.7.0 - 2026-06-07 友军单位可主动前进攻击敌堡；全界面简体化；取消入场费；GAS全面对接；论坛抓取登入修复
+  v1.8.0 - 2026-06-07 更新论坛抓取代理列表（2026年可用）；加入自建 Cloudflare Workers 代理
+  v1.9.0 - 2026-06-08 修复论坛抓取登入检测；强化无上限+城堡HP强化；取消挑战卷；更新玩法说明；版本记录独立滚动
+  v2.0.0 - 2026-06-08 怪物波次数量改为=关卡数（第N关每波N只）；删除时代切换说明；全文字简体化
+  v2.1.0 - 2026-06-08 出兵改为选择路线（固定从城堡出发）；关卡失败按击杀数给予金币（不超过通关奖励）
+  v2.2.0 - 2026-06-08 BOSS名称改用DOM显示避免被精灵图遮挡；复活时怪物与友军重置回各自城堡重新出发
+  v2.3.0 - 2026-06-08 复活时保留已完成波次（不再重置回第1波）；修正非全屏时战场只显示3排的版面错误
+  v2.4.0 - 2026-06-08 真正修正战场只显示3排问题：调整初始化顺序，确保所有UI区块渲染完成、布局稳定后才计算canvas尺寸
+  v2.5.0 - 2026-06-08 修正复活时遇到BOSS波误判通关的bug，复活后BOSS与对应行友军会重新出发对打；改用JS动态量测视口高度，彻底解决第4排显示不全问题
+  v2.6.0 - 2026-06-08 修正复活后单位/BOSS坐标跟棋盘格线脱节导致乱跑的问题：复活时强制重新校准canvas尺寸，所有坐标统一用最新格线重新计算
+  v2.7.0 - 2026-06-08 修正失败安慰奖重复发放的bug：复活后再次死亡只会按"新增"击杀数发奖，不会把之前已经领过的部分再发一次
+  v2.8.0 - 2026-06-08 复活时完整保留死亡瞬间场上所有存活单位（敌我双方不限数量），各自回到城堡重新出发，不再只处理单一BOSS与单一友军
+  v2.9.0 - 2026-06-08 修正首次打开网页进入关卡时棋盘只显示3排的bug（浏览器地址栏收起的过渡时间比单帧延迟更长，需多重保险重新校正）；所有兵种召唤食物消耗下修为一半
+===== */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#facc15;--cyan:#22d3ee;--teal:#14b8a6;--rose:#fb7185;
+  --ink:#111827;--panel:rgba(12,18,32,.85);
+  --hp-bar:#22c55e;--enemy-bar:#ef4444;
+}
+body{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;background:#0d1117;color:#fff;overflow:hidden;height:100dvh;height:calc(var(--vh,1vh) * 100)}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background-size:cover;background-position:center;transition:background .4s}
+/* v2.3.0：游戏画面需要让 #game-field 撑满剩余空间，不能用 justify-content:center（会在内容超高时裁切底部行），改为从顶部开始排列 */
+#game.screen{justify-content:flex-start;overflow:hidden;height:100dvh;height:calc(var(--vh,1vh) * 100)}
+.hidden{display:none!important}
+.title{font-size:2.1rem;font-weight:900;color:#fff;text-shadow:0 2px 16px rgba(0,0,0,.7);letter-spacing:.04em}
+.sub{font-size:.85rem;color:rgba(255,255,255,.75);margin:8px 0 14px}
+.card{background:var(--panel);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:14px;box-shadow:0 18px 48px rgba(0,0,0,.35);backdrop-filter:blur(8px)}
+.inp{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-size:.95rem}
+.inp:focus{outline:none;border-color:var(--cyan)}
+.btn{border:none;border-radius:10px;padding:10px 14px;background:linear-gradient(135deg,#0f766e,#0891b2);color:#fff;font-weight:800;cursor:pointer;font-size:.9rem;transition:opacity .15s,transform .1s}
+.btn:hover:not(:disabled){opacity:.88;transform:translateY(-1px)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:30}
+.ov-card{width:min(370px,94vw);text-align:center}
+.shop-list{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow-y:auto}
+.shop-item{display:flex;gap:8px;align-items:center;padding:9px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1)}
+/* ===== STATUS BAR ===== */
+#top-bar{width:100%;max-width:900px;display:flex;gap:8px;align-items:center;padding:6px 10px;flex-shrink:0}
+#era-label{flex:1;text-align:center;font-weight:900;font-size:.9rem}
+/* ===== GAME FIELD ===== */
+#game-field{flex:1 1 auto;min-height:0;width:100%;max-width:900px;position:relative;overflow:hidden;border-radius:12px;margin:0 6px}
+#field-canvas{width:100%;height:100%;display:block}
+/* ===== UNIT TRAY ===== */
+#unit-tray{width:100%;max-width:900px;padding:6px 8px;display:flex;gap:8px;align-items:center;flex-shrink:0}
+.unit-card{flex:1;border-radius:12px;border:2px solid rgba(255,255,255,.22);background:rgba(5,9,20,.7);padding:6px 4px;text-align:center;cursor:pointer;transition:all .15s;position:relative;min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.unit-card:hover:not(.locked):not(.cooldown){border-color:var(--cyan);background:rgba(34,211,238,.15)}
+.unit-card.selected{border-color:var(--gold);background:rgba(250,204,21,.18);box-shadow:0 0 14px rgba(250,204,21,.4)}
+.unit-card.locked{opacity:.4;cursor:not-allowed}
+.unit-card.cooldown{opacity:.65;cursor:not-allowed}
+.unit-icon{font-size:1.6rem;line-height:1}
+.unit-name{font-size:.66rem;color:rgba(255,255,255,.8);font-weight:700}
+.unit-cost{font-size:.7rem;color:var(--gold);font-weight:900}
+.unit-cd{position:absolute;inset:0;border-radius:10px;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:900;color:var(--cyan)}
+/* ===== BOTTOM BOOSTERS ===== */
+#boosters{width:100%;max-width:900px;display:flex;gap:6px;padding:4px 8px;flex-shrink:0}
+.bbtn{flex:1;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;padding:6px 3px;font-weight:800;cursor:pointer;font-size:.75rem;line-height:1.3}
+/* ===== PROGRESS ===== */
+#prog-wrap{width:100%;max-width:900px;height:5px;background:rgba(255,255,255,.13);border-radius:99px;overflow:hidden;flex-shrink:0}
+#prog-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--gold),var(--teal),var(--cyan));transition:width .3s}
+/* ===== FOOD BAR ===== */
+#food-bar{width:100%;max-width:900px;display:flex;align-items:center;gap:6px;padding:3px 10px;flex-shrink:0;font-size:.82rem}
+#food-fill-wrap{flex:1;height:8px;background:rgba(255,255,255,.13);border-radius:99px;overflow:hidden}
+#food-fill{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#86efac);transition:width .25s}
+/* ===== CHAPTER ===== */
+.chapter{width:min(860px,95vw);margin-top:8px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.chapter .bar{height:7px;background:rgba(255,255,255,.13);border-radius:99px;overflow:hidden;flex:1;min-width:80px}
+.chapter .fill{height:100%;background:linear-gradient(90deg,#facc15,#14b8a6)}
+@media(max-width:640px){
+  .title{font-size:1.5rem}
+  #top-bar{padding:4px 6px;gap:5px}
+  #unit-tray{gap:4px;padding:4px 5px}
+  .unit-card{min-height:64px}
+  .unit-icon{font-size:1.3rem}
+  .unit-name{font-size:.58rem}
+  .unit-cost{font-size:.62rem}
+  .bbtn{font-size:.68rem;padding:5px 2px}
+}
+/* ===== HP BARS on canvas overlay ===== */
+#hp-overlay{position:absolute;inset:0;pointer-events:none}
+/* ===== 城堡 DOM 元素 ===== */
+#ally-castle{position:absolute;left:0;top:0;width:var(--cw,80px);height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:5}
+#ally-castle .castle-icon{font-size:clamp(24px,6vw,48px);line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.7))}
+#ally-castle .castle-hp{width:80%;height:6px;background:rgba(0,0,0,.5);border-radius:99px;overflow:hidden;margin-top:4px}
+#ally-castle .castle-hp-fill{height:100%;border-radius:99px;transition:width .2s}
+#ally-castle .castle-label{font-size:.6rem;color:rgba(255,255,255,.8);font-weight:800;margin-top:2px}
+#enemy-castle{position:absolute;right:0;top:0;width:var(--cw,80px);height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:5;background:rgba(160,0,0,.22)}
+#enemy-castle .castle-icon{font-size:clamp(24px,6vw,48px);line-height:1;filter:drop-shadow(0 2px 8px rgba(255,60,60,.5))}
+#enemy-castle .castle-label{font-size:.6rem;color:rgba(255,160,160,.95);font-weight:800;margin-top:4px;letter-spacing:.05em}
+#enemy-castle .castle-flag{font-size:.65rem;color:#fca5a5;animation:flagWave .8s ease-in-out infinite alternate}
+@keyframes flagWave{from{transform:rotate(-5deg)}to{transform:rotate(5deg)}}
+/* ===== CONN STATUS ===== */
+#conn-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0}
+#conn-dot.online{background:#22c55e}
+/* ===== POKEMON SPRITES OVERLAY ===== */
+#sprite-layer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+/* 敌人精灵（正面，有红色遮罩） */
+.poke-sprite{position:absolute;transform:translate(-50%,-50%);image-rendering:pixelated;filter:drop-shadow(0 2px 4px rgba(0,0,0,.7));transition:left .016s linear,top .016s linear}
+.poke-sprite::after{content:'';position:absolute;inset:0;background:rgba(220,0,0,.10);border-radius:4px;pointer-events:none}
+.poke-sprite.boss{filter:drop-shadow(0 0 8px #fbbf24) drop-shadow(0 2px 4px rgba(0,0,0,.8));animation:bossGlow .8s ease-in-out infinite alternate}
+@keyframes bossGlow{from{filter:drop-shadow(0 0 6px #fbbf24) drop-shadow(0 2px 4px rgba(0,0,0,.8))}to{filter:drop-shadow(0 0 14px #f59e0b) drop-shadow(0 2px 4px rgba(0,0,0,.8))}}
+.poke-sprite.dead{animation:pokeDie .4s ease-out forwards}
+@keyframes pokeDie{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-100%) scale(0.3)}}
+/* 敌人红色遮罩 wrapper */
+.poke-enemy-wrap{position:absolute;transform:translate(-50%,-50%);pointer-events:none;image-rendering:pixelated}
+.poke-enemy-wrap img{display:block;image-rendering:pixelated}
+.poke-enemy-wrap::after{content:'';position:absolute;inset:0;background:rgba(220,0,0,.10);pointer-events:none}
+.poke-enemy-wrap.boss-wrap::after{content:'';position:absolute;inset:0;background:rgba(255,80,0,.13);pointer-events:none}
+.poke-enemy-wrap.dead-wrap{animation:pokeDie .4s ease-out forwards}
+.boss-name-label{position:absolute;transform:translate(-50%,-100%);background:rgba(0,0,0,.72);color:#fbbf24;font-size:.68rem;font-weight:900;padding:1px 7px;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:6;border:1px solid rgba(251,191,36,.4)}
+/* 友方单位精灵（背面，蓝色轮廓） */
+.poke-unit-wrap{position:absolute;transform:translate(-50%,-50%);pointer-events:none;image-rendering:pixelated}
+.poke-unit-wrap img{display:block;image-rendering:pixelated;filter:drop-shadow(0 0 3px #22d3ee88)}
+.poke-hp-bar{position:absolute;transform:translateX(-50%);height:5px;border-radius:3px;overflow:hidden;background:rgba(0,0,0,.55);pointer-events:none}
+.poke-hp-fill{height:100%;border-radius:3px;transition:width .1s}
+#conn-label{font-size:.72rem;color:rgba(255,255,255,.7)}
+</style>
+</head>
+<body>
+
+<!-- ========== LOGIN ========== -->
+<div id="login" class="screen">
+  <div class="title">SS塔防</div>
+  <div class="sub">穿越时代 · 守护文明 · 击败入侵者</div>
+  <div class="card" style="width:min(360px,92vw)">
+    <input id="inp-id" class="inp" placeholder="论坛ID" style="margin-bottom:8px">
+    <input id="inp-uid" class="inp" placeholder="UID" type="number" style="margin-bottom:8px">
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+      <div id="conn-dot"></div><div id="conn-label">未连线</div>
+    </div>
+    <button id="btn-login" class="btn" style="width:100%" onclick="doLogin()">登入</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="offlineMode()">离线模式</button>
+    <div id="login-err" style="min-height:18px;color:#fda4af;margin-top:8px;font-size:.8rem"></div>
+  </div>
+</div>
+
+<!-- ========== MENU ========== -->
+<div id="menu" class="screen hidden">
+  <div class="title">SS塔防</div>
+  <div id="menu-stat" class="sub">-</div>
+  <div id="menu-lootbox-info" style="font-size:.82rem;color:rgba(255,255,255,.85);margin-bottom:4px;text-align:center;min-height:20px"></div>
+  <div id="menu-lootbox-btn-row" style="margin-bottom:10px;text-align:center"></div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;justify-content:center">
+    <button class="btn" onclick="startLatest()">开始</button>
+    <button class="btn" onclick="openShop()">商店</button>
+    <button class="btn" onclick="downloadData_()">📥 存档</button>
+    <button class="btn" onclick="openSkin()">皮肤</button>
+    <button class="btn" style="background:linear-gradient(135deg,#1d4ed8,#7c3aed)" onclick="openGuide()">📖 玩法介绍</button>
+    <button class="btn" style="background:linear-gradient(135deg,#7c3aed,#db2777)" onclick="openUpgrade()">⚔️ 强化</button>
+  </div>
+  <div class="card" style="width:min(860px,95vw)">
+    <div style="font-weight:800;margin-bottom:8px">关卡（无限）</div>
+    <div id="lvlist" style="display:grid;grid-template-columns:repeat(10,1fr);gap:6px"></div>
+  </div>
+  <div id="upgrade-card" class="card" style="width:min(860px,95vw);margin-top:8px"></div>
+</div>
+
+<!-- ========== GAME ========== -->
+<div id="game" class="screen hidden" style="padding:4px 0;gap:3px;box-sizing:border-box">
+  <div id="top-bar">
+    <button class="btn" style="padding:7px 10px" onclick="backMenu()">←</button>
+    <div id="era-label">第1关</div>
+    <div class="card" style="padding:5px 10px;font-size:.82rem">🪙 <b id="g-coins">0</b></div>
+    <div style="display:flex;align-items:center;gap:4px;font-size:.72rem;padding:0 4px">
+      <div id="g-conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ef4444;flex-shrink:0"></div>
+      <span id="g-conn-lbl" style="color:rgba(255,255,255,.6)">离线</span>
+    </div>
+  </div>
+  <div id="prog-wrap"><div id="prog-fill"></div></div>
+  <div id="food-bar">
+    <span>🍖</span>
+    <div id="food-fill-wrap"><div id="food-fill"></div></div>
+    <span id="food-txt" style="font-size:.75rem;color:var(--gold);font-weight:800">0/0</span>
+    <span id="wave-txt" style="font-size:.75rem;color:rgba(255,255,255,.65);margin-left:4px"></span>
+  </div>
+  <div id="game-field">
+    <canvas id="field-canvas"></canvas>
+    <!-- 友方城堡（左） -->
+    <div id="ally-castle">
+      <div class="castle-icon">🏰</div>
+      <div class="castle-hp"><div id="ally-hp-fill" class="castle-hp-fill" style="width:100%;background:#22c55e"></div></div>
+      <div class="castle-label" id="ally-hp-label">100/100</div>
+    </div>
+    <!-- 敌方城堡（右） -->
+    <div id="enemy-castle">
+      <div class="castle-icon">🏯</div>
+      <div class="castle-hp" style="width:80%;height:6px;background:rgba(0,0,0,.5);border-radius:99px;overflow:hidden;margin-top:4px">
+        <div id="enemy-castle-hp-fill" style="height:100%;width:100%;background:#ef4444;border-radius:99px;transition:width .2s"></div>
+      </div>
+      <div id="enemy-castle-hp-label" class="castle-label" style="color:#fca5a5">-/-</div>
+      <div class="castle-flag">⚑</div>
+    </div>
+    <div id="sprite-layer"></div>
+    <div id="click-layer" style="position:absolute;inset:0;cursor:crosshair;z-index:10" onclick="onFieldClick(event)"></div>
+    <div id="hp-overlay"></div>
+  </div>
+  <div id="unit-tray"></div>
+  <div id="boosters">
+    <button class="bbtn" onclick="doBoostFood()">🍖 <span id="bv-food">0</span><br>补食物</button>
+    <button class="bbtn" onclick="doBoostSpeed()">⚡ <span id="bv-speed">0</span><br>加速</button>
+    <button class="bbtn" onclick="doBoostBomb()">💣 <span id="bv-bomb">0</span><br>轰炸</button>
+    <button class="bbtn" onclick="doBoostShield()">🛡 <span id="bv-shield">0</span><br>护盾</button>
+    <button class="bbtn" onclick="openShop()">🛒<br>购买</button>
+  </div>
+</div>
+
+<!-- ========== WIN ========== -->
+<div id="ov-win" class="ov hidden">
+  <div class="card ov-card">
+    <div style="font-size:1.8rem">🎉</div>
+    <div style="font-weight:900;font-size:1.2rem;margin:6px 0">🎉 关卡征服！</div>
+    <div id="win-body" style="font-size:.86rem;color:rgba(255,255,255,.75);margin-bottom:10px"></div>
+    <button class="btn" style="width:100%" onclick="nextLevel()">下一关</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="backMenu()">返回菜单</button>
+  </div>
+</div>
+
+<!-- ========== LOSE ========== -->
+<div id="ov-lose" class="ov hidden">
+  <div class="card" style="width:min(360px,93vw);text-align:center">
+    <div style="font-size:1.8rem">😵</div>
+    <div style="font-weight:900;font-size:1.2rem;margin:6px 0">基地沦陷</div>
+    <div id="lose-body" style="font-size:.86rem;color:rgba(255,255,255,.75);margin-bottom:10px"></div>
+    <div id="revive-section" style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px;margin-bottom:10px">
+      <div style="font-weight:800;font-size:.88rem;margin-bottom:8px">💊 复活选项（重置战场，双方从城堡重新出发）</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" style="flex:1;min-width:120px;background:linear-gradient(135deg,#b45309,#dc2626);font-size:.82rem" onclick="doRevive('coins')">
+          🪙 消耗金币复活<br><span id="revive-coin-cost" style="font-weight:400;font-size:.75rem"></span>
+        </button>
+        <button class="btn" style="flex:1;min-width:120px;background:linear-gradient(135deg,#1d4ed8,#6d28d9);font-size:.82rem" onclick="doRevive('replies')">
+          📝 消耗回复数复活<br><span style="font-weight:400;font-size:.75rem">花费 5 回复数</span>
+        </button>
+      </div>
+    </div>
+    <button class="btn" style="width:100%" onclick="restartLevel()">重新挑战</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:#1f2937" onclick="backMenu()">返回菜单</button>
+  </div>
+</div>
+
+<!-- ========== SHOP ========== -->
+<div id="ov-shop" class="ov hidden">
+  <div class="card" style="width:min(430px,94vw);max-height:88vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b>🛒 商店</b><button class="btn" onclick="closeShop()">关闭</button></div>
+    <div style="font-size:.8rem;margin-bottom:8px">📝回复 <b id="sh-replies">0</b> · 💬被引用 <b id="sh-cites">0</b></div>
+    <div id="forum-status" style="font-size:.78rem;color:#93c5fd;min-height:18px;margin-bottom:6px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><input id="forum-start-date" class="inp" type="date"><input id="forum-end-date" class="inp" type="date"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn" style="flex:1" onclick="refreshForumData()">抓取论坛</button><button class="btn" style="flex:1;background:#1f2937" onclick="refreshForumDataFast()">快速抓取</button></div>
+    <div id="shop-list" class="shop-list"></div>
+  </div>
+</div>
+
+<!-- ========== SKIN ========== -->
+<div id="ov-skin" class="ov hidden">
+  <div class="card" style="width:min(360px,92vw)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>🎨 皮肤</b><button class="btn" onclick="closeSkin()">关闭</button></div>
+    <div id="skin-list" class="shop-list"></div>
+  </div>
+</div>
+
+<!-- ========== GUIDE ========== -->
+<!-- ========== 快速通关菜单（仿玩法介绍风格） ========== -->
+<div id="ov-quickclear" class="ov hidden">
+  <div class="card" style="width:min(420px,94vw);max-height:90vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b style="font-size:1.05rem">🚀 快速通关</b>
+      <button class="btn" onclick="closeQuickClear()">关闭</button>
+    </div>
+    <div id="qc-lvname" style="font-size:.86rem;color:#93c5fd;margin-bottom:10px;font-weight:800"></div>
+    <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:10px;margin-bottom:12px;font-size:.8rem;color:rgba(255,255,255,.8)">
+      <p style="margin-bottom:4px">该关已通关，可消耗 <b style="color:#fbbf24">回复数</b> 直接获得通关奖励，不需要重新作战。</p>
+      <p>消耗比例 <b>1 回复数 = 1 次快速通关</b>，可一次输入数量批量结算。</p>
+    </div>
+    <div style="font-size:.8rem;color:rgba(255,255,255,.7);margin-bottom:6px">
+      当前可用回复数：<b id="qc-replies" style="color:#fbbf24">0</b>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+      <input id="qc-count" type="number" min="1" value="1" class="inp" style="flex:1" oninput="updateQuickClearPreview()">
+      <button class="btn" style="padding:8px 10px" onclick="setQuickClearMax()">全部</button>
+    </div>
+    <div id="qc-preview" style="font-size:.8rem;color:rgba(255,255,255,.65);margin-bottom:14px;background:rgba(255,255,255,.05);border-radius:8px;padding:8px 10px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1;background:linear-gradient(135deg,#0f766e,#0891b2)" onclick="confirmQuickClear()">🚀 确认快速通关</button>
+      <button class="btn" style="flex:1;background:#1f2937" onclick="restartFromQuickClear()">🎮 重新挑战</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 困难模式解锁菜单（仿玩法介绍风格） ========== -->
+<div id="ov-hardmode" class="ov hidden">
+  <div class="card" style="width:min(440px,94vw);max-height:90vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b style="font-size:1.05rem">🔥 困难模式</b>
+      <button class="btn" onclick="closeHardMode()">关闭</button>
+    </div>
+    <div id="hm-lvname" style="font-size:.86rem;color:#f87171;margin-bottom:10px;font-weight:800"></div>
+    <div id="hm-body" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:10px;margin-bottom:14px;font-size:.82rem;color:rgba(255,255,255,.85);line-height:1.7"></div>
+    <div id="hm-buttons" style="display:flex;gap:8px"></div>
+  </div>
+</div>
+
+<!-- ========== ov-guide ========== -->
+<div id="ov-guide" class="ov hidden">
+
+  <div class="card" style="width:min(520px,96vw);max-height:90vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div>
+        <b style="font-size:1.05rem">📖 玩法介绍</b>
+        <span id="guide-version" style="font-size:.7rem;color:rgba(255,255,255,.45);margin-left:8px"></span>
+      </div>
+      <button class="btn" onclick="qs('ov-guide').classList.add('hidden')">关闭</button>
+    </div>
+
+    <div style="font-size:.84rem;line-height:1.8;color:rgba(255,255,255,.9)">
+
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:4px;font-size:.9rem">🎯 游戏目标</div>
+      <p style="margin-bottom:10px;background:rgba(255,255,255,.06);padding:8px 10px;border-radius:8px">
+        击破右侧 <b>敌方城堡 🏯</b>，阻止敌方单位摧毁左侧 <b>我方城堡 🏰</b>。<br>
+        每波敌人消灭后进入下一波，所有波次清场后远程单位自动攻击敌方城堡。<br>
+        敌方城堡HP归零 → <b style="color:#22c55e">通关 🎉</b>　我方城堡HP归零 → <b style="color:#ef4444">失败 💀</b><br>
+        <span style="font-size:.78rem;color:rgba(255,255,255,.55)">失败时仍会依击杀敌人数量获得少量金币安慰奖（不超过通关奖励）</span>
+      </p>
+
+      <div style="font-weight:900;color:#fbbf24;margin-bottom:6px;font-size:.9rem">🪙 金币 / ⭐ 星星怎么取得？</div>
+      <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:.8rem">
+        <p style="margin-bottom:5px"><b style="color:#fbbf24">🪙 金币来源：</b></p>
+        <p style="margin-bottom:3px">• 关卡通关奖励（50 + 关卡数×6，再依「奖励强化」等级加成）</p>
+        <p style="margin-bottom:3px">• 关卡失败安慰奖（按击杀数量给予，不超过通关奖励）</p>
+        <p style="margin-bottom:3px">• 快速通关（消耗回复数换取通关奖励）</p>
+        <p style="margin-bottom:6px">• 强化菜单用回复数/被引用数兑换金币</p>
+        <p style="margin-bottom:5px"><b style="color:#a78bfa">⭐ 星星来源：</b></p>
+        <p style="margin-bottom:3px">• 关卡通关评级（依击杀率、道具使用、城堡剩余HP评定1~4星，每星=1颗⭐）</p>
+        <p>• 强化菜单用回复数/被引用数兑换星星</p>
+      </div>
+
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:6px;font-size:.9rem">🏗️ 基本操作</div>
+      <div style="background:rgba(255,255,255,.06);padding:8px 10px;border-radius:8px;margin-bottom:10px">
+        <p style="margin-bottom:4px">① 底部点选单位卡片（选中后光标变十字）</p>
+        <p style="margin-bottom:4px">② 点击战场任意一排，选择出兵路线（消耗食物 🍖）</p>
+        <p style="margin-bottom:4px">③ 单位固定从我方城堡出发，沿选定路线自动前进</p>
+        <p style="margin-bottom:4px">④ 遇到敌人会停下互相攻击，击退/打死敌人后才能继续前进</p>
+        <p>⑤ 打倒敌人获得食物，沿途无阻挡时持续推进直达敌方城堡</p>
+      </div>
+
+      <div style="font-weight:900;color:#facc15;margin-bottom:6px;font-size:.9rem">⚔️ 我方单位（地区初始宝可梦，可训练进化）</div>
+      <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:10px;margin-bottom:10px;font-size:.8rem">
+        <p style="margin-bottom:5px">• 士兵图样随所在地区切换：<b>关都/城都/丰缘/神奥/卡洛斯</b>，初始皆为该地区未进化形态</p>
+        <p style="margin-bottom:5px">• 5个职业槓位：🗡️战士（近战坦）/🏹弓手（远程）/🔮法师（溅射）/🛡️骑士（超坦,Lv.5解锁）/🧙大法师（强力法术,Lv.10解锁）</p>
+        <p>• 每个单位都带有真实宝可梦属性，攻击时会套用属性克制加成或减伤</p>
+      </div>
+
+      <div style="font-weight:900;color:#a78bfa;margin-bottom:6px;font-size:.9rem">🔮 属性克制系统</div>
+      <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:.8rem">
+        <p style="margin-bottom:4px">• 完整套用宝可梦18属性克制表：<span style="color:#fbbf24">效果绝佳 2倍</span> / 效果一般 1倍 / <span style="color:#94a3b8">效果不好 0.5倍</span> / <span style="color:#64748b">没有效果 0倍</span></p>
+        <p style="margin-bottom:4px">• 例：水属性战士打地面/岩石系敌人会造成2倍伤害；打草属性敌人则减半</p>
+        <p>• 命中时会显示飘字提示属性克制结果</p>
+      </div>
+
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:6px;font-size:.9rem">🧬 士兵进化</div>
+      <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:.8rem">
+        <p style="margin-bottom:4px">• 强化菜单「🧬士兵进化」分页：消耗 🪙 金币训练经验值</p>
+        <p style="margin-bottom:4px">• 经验值满足等级要求后自动进化为下一阶形态（图样、属性同步更新）</p>
+        <p style="margin-bottom:4px">• 各地区每个职业皆有专属进化链，进化阶段越高、战力越强</p>
+        <p>• <b style="color:#fbbf24">各地区等级独立计算</b>：切换地区时士兵会变成该地区的初始宝可梦、等级重新从Lv.1开始计算；但回到原本练过的地区时，等级与进化阶段会完整保留（例如关都杰尼龟练到Lv16，去城都会变成Lv1小锯鳄，之后回关都时杰尼龟还是Lv16/卡咪龟）</p>
+      </div>
+
+      <div style="font-weight:900;color:#fb7185;margin-bottom:6px;font-size:.9rem">👹 敌方单位（宝可梦正面图＋红色遮罩）</div>
+      <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:.8rem">
+        <p>• 从右侧 🏯 城堡出发，向左行进攻击我方城堡</p>
+        <p>• 碰到我方单位停下并进入近战（双方扣血）</p>
+        <p>• 冲破防线后会停在我方城堡前持续攻城</p>
+        <p>• <b style="color:#fbbf24">👑 BOSS</b> 于最终波登场，血量与伤害大幅提升</p>
+      </div>
+
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:6px;font-size:.9rem">🛠️ 道具</div>
+      <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:.8rem">
+        <p>🍖 <b>补食物</b>：立即补充100食物</p>
+        <p>⚡ <b>加速</b>：游戏速度x2，持续10秒</p>
+        <p>💣 <b>轰炸</b>：场上所有敌人受到大量伤害</p>
+        <p>🛡 <b>护盾</b>：我方城堡无敌8秒（敌人无法攻城）</p>
+      </div>
+
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:6px;font-size:.9rem">⚔️ 强化菜单</div>
+      <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:.8rem">
+        <p>• 消耗 🪙 金币 或 ⭐ 星星 升级士兵攻击/HP、食物速率、起始食物、<b>食物上限</b>、子弹速度、射程、战场移动速度</p>
+        <p>• <b>战场移动速度</b>：提升敌我双方移动速度，加快关卡破关节奏</p>
+        <p>• <b>食物上限</b>：提升关卡中食物的最大可累积量，能一次部署更多/更贵的单位</p>
+        <p>• 菜单中可用 📝 回复数 / 💬 被引用数 兑换金币或星星</p>
+      </div>
+
+      <div style="font-weight:900;color:#f87171;margin-bottom:6px;font-size:.9rem">⚠️ 奖励强化（高风险高回报）</div>
+      <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:.8rem">
+        <p style="margin-bottom:4px">• 强化菜单内的独立分类，加强敌方各项数据：<b>敌方波次 / 敌方血量 / 敌方攻击力 / BOSS数量 / 敌方城堡HP</b></p>
+        <p style="margin-bottom:4px">• 每升一级敌人就更强、关卡更难打，但通关时的 🪙 金币奖励倍率也会同步提升（5项强化等级总和 × 8% 加成）</p>
+        <p style="margin-bottom:4px">• <b style="color:#fca5a5">🔒 敌方城堡HP有 5:1 比例限制</b>：必须先把其他4项（波次/血量/攻击力/BOSS数量）都升到「(城堡HP当前等级+1)×5」级，才能让城堡HP再升一级（例如城堡HP要从Lv0升到Lv1，前4项必须先都到Lv5）</p>
+        <p>• 想冲高金币产出可以投资这里，但要先确保自己的战力跟得上敌方强度</p>
+      </div>
+
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:6px;font-size:.9rem">🌍 关卡与地区</div>
+      <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:.8rem">
+        <p>• 关卡以宝可梦各地区城镇/道路命名（关都→城都→丰缘→神奥→卡洛斯，共141关循环）</p>
+        <p>• 我方士兵图样随所在地区自动切换为对应地区的初始宝可梦</p>
+        <p>• 首次通关必得 🎁 宝箱，重复通关50%机率得箱</p>
+        <p>• 已通关关卡可以无限重复挑战，无需消耗任何道具</p>
+        <p>• <b>🚀 快速通关</b>：点击已通关关卡可消耗回复数直接获得通关奖励，支持输入数量一次批量结算（1回复数=1次）</p>
+      </div>
+
+      <div style="font-weight:900;color:#f87171;margin-bottom:6px;font-size:.9rem">🔥 困难模式</div>
+      <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:.8rem">
+        <p style="margin-bottom:4px">• 某地区<b>全部关卡通关</b>后，回到该地区任一已通关关卡点击，即可选择解锁困难模式</p>
+        <p style="margin-bottom:4px">• 解锁条件需「该地区」全通关：例如关都全部40关通关才能解锁困难模式，城都全部34关通关才能解锁城都困难模式（互相独立）</p>
+        <p style="margin-bottom:4px">• 困难模式特点：怪物 <b style="color:#fbbf24">血量翻倍</b>，出兵数量改为 <b style="color:#fbbf24">等差级数</b> 递增（一波比一波多）</p>
+        <p style="margin-bottom:4px">• 已解锁困难模式的关卡，外围会显示 <b style="color:#ef4444">红色光晕</b> 标记</p>
+        <p>• 困难模式 <b style="color:#22c55e">首次通关获得2个宝箱</b>，重复通关不会再获得额外宝箱</p>
+      </div>
+
+      <div style="font-weight:900;color:#22d3ee;margin-bottom:6px;font-size:.9rem">☁️ 云端与离线</div>
+      <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:8px 10px;font-size:.8rem">
+        <p>• 登入时自动连线 Google Apps Script 云端同步存档</p>
+        <p>• 连线失败自动进入离线模式（存档保存于本机）</p>
+        <p>• 商店「抓取论坛」功能可统计回复数与被引用数</p>
+      </div>
+
+      <div style="margin-top:12px">
+        <div style="font-weight:800;font-size:.82rem;margin-bottom:6px;color:#22d3ee">📋 版本更新记录</div>
+        <div id="guide-version-log" style="max-height:140px;overflow-y:auto;padding:8px 10px;border-radius:8px;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.18);font-size:.74rem;color:rgba(255,255,255,.6);line-height:1.9;scrollbar-width:thin;scrollbar-color:#22d3ee44 transparent"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== UPGRADE ========== -->
+<div id="ov-upgrade" class="ov hidden">
+  <div class="card" style="width:min(480px,96vw);max-height:90vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b style="font-size:1.05rem">⚔️ 强化菜单</b>
+      <button class="btn" onclick="closeUpgrade()">关闭</button>
+    </div>
+    <div id="up-currency" style="font-size:.82rem;color:rgba(255,255,255,.75);margin-bottom:10px"></div>
+    <div style="font-size:.78rem;color:#93c5fd;margin-bottom:8px">💡 使用回复数 / 被引用数购买金币或星星</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn" style="font-size:.78rem;padding:6px 10px" onclick="buyCurrency('coins_r',20,10)">🪙+20 (10回复)</button>
+      <button class="btn" style="font-size:.78rem;padding:6px 10px" onclick="buyCurrency('coins_r',60,25)">🪙+60 (25回复)</button>
+      <button class="btn" style="font-size:.78rem;padding:6px 10px" onclick="buyCurrency('coins_c',50,5)">🪙+50 (5引用)</button>
+      <button class="btn" style="font-size:.78rem;padding:6px 10px" onclick="buyCurrency('stars_r',5,15)">⭐+5 (15回复)</button>
+      <button class="btn" style="font-size:.78rem;padding:6px 10px" onclick="buyCurrency('stars_c',10,8)">⭐+10 (8引用)</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:8px">
+      <button id="up-tab-stats" class="btn" style="flex:1;font-size:.82rem" onclick="switchUpgradeTab('stats')">📊 数值强化</button>
+      <button id="up-tab-evolve" class="btn" style="flex:1;font-size:.82rem;background:#1f2937" onclick="switchUpgradeTab('evolve')">🧬 士兵进化</button>
+    </div>
+    <div id="up-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div id="evolve-list" style="display:none;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+
+<!-- ========== LOOTBOX ========== -->
+<div id="ov-lootbox" class="ov hidden">
+  <div class="card" style="width:min(420px,94vw);max-height:88vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b>🎁 开宝箱</b>
+      <button class="btn" onclick="closeLootBox()">关闭</button>
+    </div>
+    <div style="font-size:.82rem;color:rgba(255,255,255,.75);margin-bottom:10px">
+      当前宝箱：<b id="lb-count">0</b> 个<br>
+      <span style="font-size:.75rem;color:rgba(255,255,255,.55)">
+        奖励：节操x30 · 羽毛x10 · 30天本期勋章 · 30天字母勋章（稀有）<br>
+        节操满5000或羽毛满2000时，对应奖励替换为30天字母勋章
+      </span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn" style="flex:1;background:linear-gradient(135deg,#7c3aed,#a21caf)" onclick="doOpenLootBox(1)">开 1 个</button>
+      <button class="btn" style="flex:1;background:linear-gradient(135deg,#b45309,#dc2626)" onclick="doOpenLootBox(10)">开 10 个</button>
+      <button class="btn" style="flex:1;background:linear-gradient(135deg,#065f46,#0369a1)" onclick="doOpenLootBoxAll()">全部开</button>
+    </div>
+    <div id="lb-result" style="font-size:.85rem;color:#fde68a;min-height:24px;text-align:center;margin-bottom:10px"></div>
+    <div style="font-size:.8rem;color:rgba(255,255,255,.7);border-top:1px solid rgba(255,255,255,.12);padding-top:10px">
+      <div style="font-weight:800;margin-bottom:6px">📊 奖励累计</div>
+      <div id="lb-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 版本号 - 每次更新递增
+// ============================================================
+const GAME_VERSION = "v3.8.0";
+const VERSION_LOG = [
+  {v:"v1.0.0", date:"2026-06-06", note:"初版：时代塔防玩法、完整登入/云端/商店/皮肤/宝箱系统"},
+  {v:"v1.1.0", date:"2026-06-07", note:"敌人全部换成宝可梦 Gen5 动态 GIF 精灵图；DOM img 层渲染动画"},
+  {v:"v1.2.0", date:"2026-06-07", note:"修正：单位改宝可梦背面图、敌人红色遮罩、难度等差渐增、点击放置修正"},
+  {v:"v1.3.0", date:"2026-06-07", note:"碰撞伤害、敌方城堡、强化菜单取代章节、打怪得食物、移除倍率按钮"},
+  {v:"v1.4.0", date:"2026-06-07", note:"关卡以宝可梦地区城镇/道路命名；通关得宝箱"},
+  {v:"v1.5.0", date:"2026-06-07", note:"彻底移除倍率残留；城堡改用DOM显示；全功能确认修复"},
+  {v:"v1.6.0", date:"2026-06-07", note:"GAS连线修复；双方城堡血量+攻城机制；玩法介绍更新"},
+  {v:"v1.7.0", date:"2026-06-07", note:"友军单位可主动前进攻击敌堡；全界面简体化；取消入场费；GAS全面对接；论坛抓取登入修复"},
+  {v:"v1.8.0", date:"2026-06-07", note:"更新论坛抓取代理列表（2026年可用）；加入自建 Cloudflare Workers 代理"},
+  {v:"v1.9.0", date:"2026-06-08", note:"修复论坛抓取登入检测；强化无上限+城堡HP强化；取消挑战卷；更新玩法说明；版本记录独立滚动"},
+  {v:"v2.0.0", date:"2026-06-08", note:"怪物波次数量改为=关卡数（第N关每波N只）；删除时代切换说明；全文字简体化"},
+  {v:"v2.1.0", date:"2026-06-08", note:"出兵改为选择路线（固定从城堡出发）；关卡失败按击杀数给予金币（不超过通关奖励）"},
+  {v:"v2.2.0", date:"2026-06-08", note:"BOSS名称改用DOM显示避免被精灵图遮挡；复活时怪物与友军重置回各自城堡重新出发"},
+  {v:"v2.3.0", date:"2026-06-08", note:"复活时保留已完成波次（不再重置回第1波）；修正非全屏时战场只显示3排的版面错误"},
+  {v:"v2.4.0", date:"2026-06-08", note:"真正修正战场只显示3排问题：调整初始化顺序，确保所有UI区块渲染完成、布局稳定后才计算canvas尺寸"},
+  {v:"v2.5.0", date:"2026-06-08", note:"修正复活时遇到BOSS波误判通关的bug，复活后BOSS与对应行友军会重新出发对打；改用JS动态量测视口高度，彻底解决第4排显示不全问题"},
+  {v:"v2.6.0", date:"2026-06-08", note:"修正复活后单位/BOSS坐标跟棋盘格线脱节导致乱跑的问题：复活时强制重新校准canvas尺寸，所有坐标统一用最新格线重新计算"},
+  {v:"v2.7.0", date:"2026-06-08", note:"修正失败安慰奖重复发放的bug：复活后再次死亡只会按\"新增\"击杀数发奖，不会把之前已经领过的部分再发一次"},
+  {v:"v2.8.0", date:"2026-06-08", note:"复活时完整保留死亡瞬间场上所有存活单位（敌我双方不限数量），各自回到城堡重新出发，不再只处理单一BOSS与单一友军"},
+  {v:"v2.9.0", date:"2026-06-08", note:"修正首次打开网页进入关卡时棋盘只显示3排的bug（浏览器地址栏收起的过渡时间比单帧延迟更长，需多重保险重新校正）；所有兵种召唤食物消耗下修为一半"},
+  {v:"v3.0.0", date:"2026-06-08", note:"敌人战斗加入宝可梦18属性克制系统（效果绝佳/不好/没有效果）；我方士兵随关卡地区切换为对应地区初始宝可梦（关都/城都/丰缘/神奥/卡洛斯），并新增士兵进化系统（消耗金币训练经验值，等级达标自动进化）；强化菜单新增战场移动速度强化；已通关关卡可消耗1回复数快速通关"},
+  {v:"v3.1.0", date:"2026-06-08", note:"快速通关改为DOM弹窗，支持批量输入数量一次结算；新增困难模式系统（地区全通关后解锁，怪物血量翻倍+等差级数出怪，解锁关卡外围显示红色光晕，困难模式首通获得2个宝箱，重复通关不再给箱）"},
+  {v:"v3.2.0", date:"2026-06-08", note:"修复快速通关弹窗内重新挑战按钮无反应的bug（执行顺序问题，与回复数无关）；手动重新挑战不再误判消耗回复数；游戏全名改为SS塔防；更新登入封面图；预设皮肤改为依玩家通关进度所在地区自动切换（关都/城都/丰缘/神奥/卡洛斯）；商店购买皮肤全面替换为10种新风格背景"},
+  {v:"v3.3.0", date:"2026-06-08", note:"修正棋盘第一行怪物血量条/BOSS名称被裁切看不见的问题（改为智能避让，离顶部太近时显示在精灵下方），不影响棋盘格线渲染；新增返乡活跃度逐日记录系统（论坛抓取时同步比对云端逐日数据，仅写入净增量，避免重复计入）；新增右下角云端连线状态浮动指示器，跨所有画面常驻显示"},
+  {v:"v3.4.0", date:"2026-06-08", note:"新增GAS自身代理(fetch_url action)作为论坛抓取最优先代理，与candy_crush.html架构一致，透过UrlFetchApp直接抓取sstm.moe更稳定可靠；其余公共CORS代理池保留作为备援"},
+  {v:"v3.5.0", date:"2026-06-08", note:"修复论坛抓取无法正常工作的根本原因：slug获取改为完整比照candy_crush.html，要求slug必须以UID-开头才采用并提供DOM遍历fallback（避免抓到页面上其他用户/广告连结导致的错误slug）；被引用验证改用真正DOM解析(article#elComment_X + 排除嵌套引用)取代简单正则比对；内容校验加入_proxyOkText_严格判断，避免误判代理错误页为成功"},
+  {v:"v3.6.0", date:"2026-06-08", note:"完整比照candy_crush.html改为GAS单一通道抓取（移除所有公共CORS代理池，因为那些都已失效），失败时改为同通道内重试3次；抓取过程加强页数与累计回复/被引用数的即时进度显示"},
+  {v:"v3.7.0", date:"2026-06-08", note:"修正进化提示误判：现在只在真正跨过宝可梦进化等级门槛时才会跳出进化通知，而非每次升级都提示；强化菜单新增「食物上限」可强化关卡中食物最大累积量；新增「奖励强化」分类（敌方波次/血量/攻击力/BOSS数量/敌方城堡HP），强化等级越高敌人越强但通关金币奖励倍率也越高；玩法介绍补充金币与星星的完整取得方式说明"},
+  {v:"v3.8.0", date:"2026-06-08", note:"敌方城堡HP强化新增5:1比例限制，必须先把敌方波次/血量/攻击力/BOSS数量4项都升到(城堡HP等级+1)×5级才能再升城堡HP一级，强化菜单UI会显示锁定状态与所需条件；士兵经验值改为按「地区+职业」分开存储，切换地区后士兵图样/等级会变成该地区独立计算，回到原本练过的地区时等级与进化阶段会完整保留"}
+];
+
+// ============================================================
+// 关卡名称：宝可梦地区城镇 + 道路（依序循环）
+// 关都(1-35) → 城都(36-70) → 丰缘(71-105) → 神奥(106-140) → 卡洛斯(141+循环)
+// ============================================================
+const LEVEL_NAMES = [
+  // ── 关都地区（Kanto）──
+  "关都·真红市",       // 1
+  "关都·1号道路",      // 2
+  "关都·青磁市",       // 3
+  "关都·2号道路",      // 4
+  "关都·月桂镇",       // 5
+  "关都·3号道路",      // 6
+  "关都·深灰市",       // 7
+  "关都·4号道路",      // 8
+  "关都·枯叶市",       // 9
+  "关都·5号道路",      // 10
+  "关都·6号道路",      // 11
+  "关都·常磐森林",     // 12
+  "关都·常青市",       // 13
+  "关都·7号道路",      // 14
+  "关都·玉虹市",       // 15
+  "关都·8号道路",      // 16
+  "关都·9号道路",      // 17
+  "关都·10号道路",     // 18
+  "关都·浅红市",       // 19
+  "关都·11号道路",     // 20
+  "关都·12号道路",     // 21
+  "关都·金黄市",       // 22
+  "关都·13号道路",     // 23
+  "关都·14号道路",     // 24
+  "关都·15号道路",     // 25
+  "关都·紫苑镇",       // 26
+  "关都·16号道路",     // 27
+  "关都·17号道路",     // 28
+  "关都·18号道路",     // 29
+  "关都·橙华市",       // 30
+  "关都·19号道路",     // 31
+  "关都·20号道路",     // 32
+  "关都·洗翠市",       // 33
+  "关都·21号道路",     // 34
+  "关都·22号道路",     // 35
+  "关都·23号道路",     // 36
+  "关都·24号道路",     // 37
+  "关都·25号道路",     // 38
+  "关都·石英高原",     // 39
+  "关都·冠军之路",     // 40
+  // ── 城都地区（Johto）──
+  "城都·若叶镇",       // 41
+  "城都·29号道路",     // 42
+  "城都·30号道路",     // 43
+  "城都·桐岛镇",       // 44
+  "城都·31号道路",     // 45
+  "城都·32号道路",     // 46
+  "城都·紫木市",       // 47
+  "城都·33号道路",     // 48
+  "城都·34号道路",     // 49
+  "城都·35号道路",     // 50
+  "城都·缘朱市",       // 51
+  "城都·36号道路",     // 52
+  "城都·37号道路",     // 53
+  "城都·桧皮镇",       // 54
+  "城都·38号道路",     // 55
+  "城都·39号道路",     // 56
+  "城都·满金市",       // 57
+  "城都·40号道路",     // 58
+  "城都·卡吉镇",       // 59
+  "城都·41号道路",     // 60
+  "城都·桔梗市",       // 61
+  "城都·42号道路",     // 62
+  "城都·43号道路",     // 63
+  "城都·湛蓝市",       // 64
+  "城都·44号道路",     // 65
+  "城都·45号道路",     // 66
+  "城都·烟墨市",       // 67
+  "城都·46号道路",     // 68
+  "城都·白银山",       // 69
+  "城都·26号道路",     // 70
+  "城都·27号道路",     // 71
+  "城都·28号道路",     // 72
+  "城都·石英高原",     // 73
+  "城都·冠军之路",     // 74
+  // ── 丰缘地区（Hoenn）──
+  "丰缘·小梗镇",       // 75
+  "丰缘·101号道路",    // 76
+  "丰缘·金木市",       // 77
+  "丰缘·102号道路",    // 78
+  "丰缘·常盘市",       // 79
+  "丰缘·103号道路",    // 80
+  "丰缘·104号道路",    // 81
+  "丰缘·岩石隧道",     // 82
+  "丰缘·琴平市",       // 83
+  "丰缘·105号道路",    // 84
+  "丰缘·106号道路",    // 85
+  "丰缘·107号道路",    // 86
+  "丰缘·108号道路",    // 87
+  "丰缘·莲叶镇",       // 88
+  "丰缘·109号道路",    // 89
+  "丰缘·橙桔市",       // 90
+  "丰缘·110号道路",    // 91
+  "丰缘·苔条市",       // 92
+  "丰缘·111号道路",    // 93
+  "丰缘·112号道路",    // 94
+  "丰缘·花木市",       // 95
+  "丰缘·113号道路",    // 96
+  "丰缘·雪丝镇",       // 97
+  "丰缘·114号道路",    // 98
+  "丰缘·115号道路",    // 99
+  "丰缘·水汀市",       // 100
+  "丰缘·冠军之路",     // 101
+  // ── 神奥地区（Sinnoh）──
+  "神奥·双叶镇",       // 102
+  "神奥·201号道路",    // 103
+  "神奥·繁荣镇",       // 104
+  "神奥·202号道路",    // 105
+  "神奥·金平市",       // 106
+  "神奥·203号道路",    // 107
+  "神奥·204号道路",    // 108
+  "神奥·苍响市",       // 109
+  "神奥·205号道路",    // 110
+  "神奥·湖边小镇",     // 111
+  "神奥·206号道路",    // 112
+  "神奥·遮那市",       // 113
+  "神奥·207号道路",    // 114
+  "神奥·永盘市",       // 115
+  "神奥·208号道路",    // 116
+  "神奥·奥金市",       // 117
+  "神奥·冠军之路",     // 118
+  // ── 卡洛斯地区（Kalos）──
+  "卡洛斯·玛奇草镇",  // 119
+  "卡洛斯·1号道路",    // 120
+  "卡洛斯·3号道路",    // 121
+  "卡洛斯·沙拿市",     // 122
+  "卡洛斯·4号道路",    // 123
+  "卡洛斯·苇霭市",     // 124
+  "卡洛斯·6号道路",    // 125
+  "卡洛斯·7号道路",    // 126
+  "卡洛斯·幽巧市",     // 127
+  "卡洛斯·8号道路",    // 128
+  "卡洛斯·9号道路",    // 129
+  "卡洛斯·涟漪市",     // 130
+  "卡洛斯·10号道路",   // 131
+  "卡洛斯·11号道路",   // 132
+  "卡洛斯·克蕾贝特市", // 133
+  "卡洛斯·12号道路",   // 134
+  "卡洛斯·13号道路",   // 135
+  "卡洛斯·珊瑚市",     // 136
+  "卡洛斯·14号道路",   // 137
+  "卡洛斯·15号道路",   // 138
+  "卡洛斯·水花市",     // 139
+  "卡洛斯·16号道路",   // 140
+  "卡洛斯·冠军之路",   // 141
+];
+
+// 取得关卡名称（超出就循环加轮次）
+function getLevelName(lv){
+  const total = LEVEL_NAMES.length;
+  if(lv <= total) return LEVEL_NAMES[lv-1];
+  // 超出后循环，标记第几轮
+  const round = Math.floor((lv-1)/total)+1;
+  const name  = LEVEL_NAMES[(lv-1)%total];
+  return name+" (第"+round+"轮)";
+}
+
+// ============================================================
+// 常数设定
+// ============================================================
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxZ21KaeHwaV3oBO8fJmA1TnMRqRS8PPJWiNWhQqwBw1eGyCihiBaZObA-ryaqixQK5/exec";
+const SHEET = "SS塔防HTML";
+// ── 论坛抓取代理（v3.6.0：完整比照candy_crush.html，只用GAS单一通道，移除所有失效的公共CORS代理）──
+// GAS 透过 UrlFetchApp 在Google服务器端直接抓取 sstm.moe，云端直抓最稳定可靠
+const FORUM_FETCH_MS = 25000;
+const KEY_STATE = "tw_state", KEY_ID = "tw_id", KEY_UID = "tw_uid";
+const LOOT_MAX_JIECAO = 5000, LOOT_MAX_FEATHER = 2000;
+
+// v3.2.0：封面图（登入画面背景）
+const COVER_IMG_URL = "https://s.sstmlt.com/img/2026/06/23/timewar_sstm75e1641227ea4976.jpeg";
+
+// v3.2.0：地区预设皮肤 — 依玩家通关进度所在地区自动切换（玩家无法主动选择，只能用商店购买的皮肤覆盖）
+const REGION_SKINS = {
+  kanto:  {id:"region_kanto",  name:"关都地区",   url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-c29eb9d0ae47670c.jpeg"},
+  johto:  {id:"region_johto",  name:"城都地区",   url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-5b254d83c0282afe.jpeg"},
+  hoenn:  {id:"region_hoenn",  name:"丰缘地区",   url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-aea3112704226d05.jpeg"},
+  sinnoh: {id:"region_sinnoh", name:"神奥地区",   url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-9970bc5400e17e39.jpeg"},
+  kalos:  {id:"region_kalos",  name:"卡洛斯地区", url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-27d726caba2a64d4.jpeg"},
+};
+// 依玩家目前最高已解锁关卡所在地区，取得对应的预设皮肤
+function getAutoRegionSkin(){
+  const maxLv = Math.max(...(G.unlocked||[1]));
+  const regionIdx = getRegionIdx(maxLv);
+  const region = REGIONS[regionIdx];
+  return REGION_SKINS[region.id] || REGION_SKINS.kanto;
+}
+
+// v3.2.0：商店购买皮肤（10种风格背景，玩家主动选购后可切换）
+const BG_SKINS = {
+  default:  {id:"default",  name:"预设（依地区自动）", url:""}, // 特殊值：实际显示时改用 getAutoRegionSkin()
+  ruins:    {id:"ruins",    name:"古代废墟神殿",   url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-8ccd6d6c1b63b401.jpeg"},
+  desert:   {id:"desert",   name:"沙漠绿洲遗迹",   url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-87e30979ccce0d47.jpeg"},
+  aurora:   {id:"aurora",   name:"极光雪原",       url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-080e398f75635076.jpeg"},
+  volcano:  {id:"volcano",  name:"熔岩火山",       url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-b037ae941a16b0f3.jpeg"},
+  cyberpunk:{id:"cyberpunk",name:"赛博朋克都市夜景",url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-f5f4a151957de31f.jpeg"},
+  sakura:   {id:"sakura",   name:"樱花庭院",       url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-4cf0e6501d9d966f.jpeg"},
+  mysticforest:{id:"mysticforest",name:"魔法森林夜景",url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-01a7962c80f65d77.jpeg"},
+  spacestation:{id:"spacestation",name:"太空站舷窗",   url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-2cdf0ce776497303.jpeg"},
+  storm:    {id:"storm",    name:"暴风雨海岸",     url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-2f6fcb3c65b848a3.jpeg"},
+  glacier:  {id:"glacier",  name:"极地冰川洞穴",   url:"https://s.sstmlt.com/img/2026/06/23/timewar_sstm-2c3ff3372bc382cb.jpeg"},
+};
+const SKINS = Object.values(BG_SKINS);
+
+const SHOP_ITEMS = [
+  {id:"food",   name:"补食物x1",  costType:"replies",   cost:8,  give:{food:1}},
+  {id:"speed",  name:"加速x1",    costType:"replies",   cost:10, give:{speed:1}},
+  {id:"bomb",   name:"轰炸x1",    costType:"replies",   cost:15, give:{bomb:1}},
+  {id:"shield", name:"护盾x1",    costType:"replies",   cost:15, give:{shield:1}},
+  {id:"skin_ruins",        name:"背景：古代废墟神殿",     costType:"replies", cost:25, give:{bgSkin:"ruins"}},
+  {id:"skin_desert",       name:"背景：沙漠绿洲遗迹",     costType:"replies", cost:25, give:{bgSkin:"desert"}},
+  {id:"skin_aurora",       name:"背景：极光雪原",         costType:"replies", cost:30, give:{bgSkin:"aurora"}},
+  {id:"skin_volcano",      name:"背景：熔岩火山",         costType:"replies", cost:30, give:{bgSkin:"volcano"}},
+  {id:"skin_cyberpunk",    name:"背景：赛博朋克都市夜景", costType:"replies", cost:35, give:{bgSkin:"cyberpunk"}},
+  {id:"skin_sakura",       name:"背景：樱花庭院",         costType:"replies", cost:25, give:{bgSkin:"sakura"}},
+  {id:"skin_mysticforest", name:"背景：魔法森林夜景",     costType:"replies", cost:30, give:{bgSkin:"mysticforest"}},
+  {id:"skin_spacestation", name:"背景：太空站舷窗",       costType:"replies", cost:35, give:{bgSkin:"spacestation"}},
+  {id:"skin_storm",        name:"背景：暴风雨海岸",       costType:"replies", cost:28, give:{bgSkin:"storm"}},
+  {id:"skin_glacier",      name:"背景：极地冰川洞穴",     costType:"replies", cost:32, give:{bgSkin:"glacier"}},
+];
+
+// ============================================================
+// 游戏状态
+// ============================================================
+let G = {
+  id:"", uid:0,
+  replies:0, citations:0, repliesSpent:0, citationsSpent:0,
+  coins:0, tickets:0, stars:0,
+  chapter:1, chapterItems:0,
+  unlocked:[1], cleared:[],
+  skin:"default", ownedBgSkins:["default"], bgSkin:"default",
+  boosters:{food:3, speed:2, bomb:2, shield:2},
+  lootBoxes:0, jieCao:0, feather:0, medal30:0, letterMedal30:0, lootBoxesTotal:0,
+  universe:1
+};
+
+// ============================================================
+// 工具函式
+// ============================================================
+const qs = id => document.getElementById(id);
+const todayISO = () => new Date().toISOString().slice(0,10);
+function gasReady(){return /^https?:\/\//.test(GAS_URL) && GAS_URL.indexOf("__") < 0;}
+function gasBeacon(p){
+  if(!gasReady()) return;
+  const u = GAS_URL + "?" + new URLSearchParams({...p, game:"timewar_html", version:GAME_VERSION, _t:Date.now()});
+  const i = new Image(); i.referrerPolicy = "no-referrer"; i.src = u;
+}
+function gasJsonp(params, timeout=12000){
+  if(!gasReady()) return Promise.resolve({ok:false, offline:true});
+  return new Promise((res, rej) => {
+    const cb = "tw_cb_" + Math.random().toString(36).slice(2);
+    const s = document.createElement("script");
+    const t = setTimeout(() => { cleanup(); rej(new Error("timeout")); }, timeout);
+    function cleanup(){ clearTimeout(t); delete window[cb]; if(s.parentNode) s.remove(); }
+    window[cb] = d => { cleanup(); res(d||{}); };
+    // GAS 需要加 &callback= 参数才会输出 JSONP
+    const url = GAS_URL + "?" + new URLSearchParams({
+      ...params,
+      game:"timewar_html",
+      version:GAME_VERSION,
+      callback:cb,
+      _t:Date.now()
+    });
+    s.crossOrigin = "anonymous";
+    s.src = url;
+    s.onerror = () => { cleanup(); rej(new Error("script_load_error")); };
+    document.head.appendChild(s);
+  });
+}
+
+// 用 fetch no-cors 做快速 ping（不读回应，只确认 GAS 有回应）
+async function gasFetchPing(timeout=6000){
+  if(!gasReady()) return false;
+  try{
+    const ctrl = new AbortController();
+    const tid = setTimeout(()=>ctrl.abort(), timeout);
+    // no-cors：浏览器不让我们读回应，但 GAS 有收到就表示连线正常
+    await fetch(GAS_URL+"?action=ping&game=timewar_html&_t="+Date.now(), {
+      mode:"no-cors", signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    return true;
+  }catch(e){ return false; }
+}
+
+// v3.3.0：POST 写入（用于活跃度逐日记录，fire-and-forget 不等回应）
+function gasPost(body){
+  if(!gasReady()) return;
+  fetch(GAS_URL, {
+    method:"POST", mode:"no-cors",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({...body, game:"timewar_html", version:GAME_VERSION})
+  }).catch(e => console.warn("[SS塔防] gasPost fail", e));
+}
+
+// v3.3.0：日期区间生成（含首尾），用于逐日记录比对
+function dateRangeISO_(startDate, endDate){
+  const out = [];
+  const d = new Date(startDate+"T00:00:00"), end = new Date(endDate+"T00:00:00");
+  if(isNaN(d) || isNaN(end)) return out;
+  while(d <= end){
+    out.push(d.toISOString().slice(0,10));
+    d.setDate(d.getDate()+1);
+  }
+  return out;
+}
+function save(){ localStorage.setItem(KEY_STATE, JSON.stringify(G)); }
+function load(){
+  try { Object.assign(G, JSON.parse(localStorage.getItem(KEY_STATE)||"{}")); } catch(e){}
+  ensureOwnedBgSkins();
+}
+function normalize(){
+  if(!G.boosters) G.boosters = {food:0,speed:0,bomb:0,shield:0};
+  ["food","speed","bomb","shield"].forEach(k => G.boosters[k] = Math.max(0, Number(G.boosters[k]||0)));
+  ["coins","tickets","stars","chapter","chapterItems","replies","citations",
+   "repliesSpent","citationsSpent","lootBoxes","jieCao","feather","medal30","letterMedal30","lootBoxesTotal","universe"
+  ].forEach(k => G[k] = Math.max(0, Number(G[k]||0)));
+  // 保护 id/uid：若 G 中没有则从 localStorage 补回
+  if(!G.id)  { const v = localStorage.getItem(KEY_ID);  if(v) G.id  = v; }
+  if(!G.uid) { const v = localStorage.getItem(KEY_UID); if(v) G.uid = parseInt(v,10)||0; }
+  if(!G.universe) G.universe = 1;
+  if(!G.upgrades) G.upgrades = {};
+  if(!G.unitExp) G.unitExp = {}; // v3.8.0：改为按地区分开存储 {regionId: {warrior:0, archer:0, ...}}
+  if(!G.hardModeUnlocked) G.hardModeUnlocked = []; // v3.1.0：已解锁困难模式的关卡列表
+  if(!G.hardModeCleared)  G.hardModeCleared  = []; // v3.1.0：已通关困难模式的关卡列表（用于宝箱判定）
+  if(!G.unlocked||!G.unlocked.length) G.unlocked = [1];
+  if(!G.cleared) G.cleared = [];
+  ensureOwnedBgSkins();
+  if(!G.twInit){ G.coins = (G.coins||0) + 600; G.twInit = true; }
+}
+async function cloudSave(){
+  if(!G.id) return;
+  try {
+    await gasJsonp({sheet:SHEET, action:"save", id:G.id, uid:String(G.uid),
+      coins:String(G.coins||0), version:GAME_VERSION,
+      unlocked_count:String((G.unlocked||[]).length),
+      cleared_count:String((G.cleared||[]).length),
+      state_json:JSON.stringify(G), date:todayISO()}, 12000);
+  } catch(e){}
+}
+async function cloudLoad(id){
+  try { const d = await gasJsonp({sheet:SHEET, action:"load", id}, 16000); return d.data||null; }
+  catch(e){ return null; }
+}
+function bgStyleFromUrl(url){
+  return "linear-gradient(rgba(0,0,0,.5),rgba(0,0,0,.5)),url('"+url+"') center/cover no-repeat";
+}
+function ensureOwnedBgSkins(){
+  if(!G.ownedBgSkins||!Array.isArray(G.ownedBgSkins)) G.ownedBgSkins = ["default"];
+  if(!G.ownedBgSkins.includes("default")) G.ownedBgSkins.unshift("default");
+}
+function ownsBgSkin(id){ ensureOwnedBgSkins(); return id==="default"||G.ownedBgSkins.includes(id); }
+function grantBgSkin(id){ ensureOwnedBgSkins(); if(id&&!G.ownedBgSkins.includes(id)) G.ownedBgSkins.push(id); }
+function getBgSkinDef(){
+  const id = G.bgSkin||"default";
+  // v3.2.0：default 槓位改为依玩家通关进度所在地区自动切换背景
+  if(id === "default") return getAutoRegionSkin();
+  return BG_SKINS[id]||getAutoRegionSkin();
+}
+
+let _isOnline = false;
+function setOnlineStatus(online){
+  _isOnline = online;
+  ["conn-dot","g-conn-dot"].forEach(id => {
+    const el = qs(id); if(el){ el.className = online?"online":""; el.style.background = online?"#22c55e":"#ef4444"; }
+  });
+  ["conn-label","g-conn-lbl"].forEach(id => {
+    const el = qs(id); if(el) el.textContent = online?"云端已连线":"离线模式";
+  });
+  // v3.3.0：右下角常驻浮动指示器同步更新
+  const dot = qs("cloud-status-dot"), txt = qs("cloud-status-text");
+  if(dot) dot.style.background = online ? "#22c55e" : "#ef4444";
+  if(txt) txt.textContent = online ? "☁️ 云端正在连线" : "离线模式";
+}
+// v3.3.0：连线中过渡态（仅影响右下角浮动指示器的文字与黄色提示色，不影响其它两处的最终在线/离线状态）
+function setCloudConnecting(){
+  const dot = qs("cloud-status-dot"), txt = qs("cloud-status-text");
+  if(dot) dot.style.background = "#fbbf24";
+  if(txt) txt.textContent = "☁️ 连线中…";
+}
+
+function show(id){ ["login","menu","game"].forEach(x=>qs(x).classList.add("hidden")); qs(id).classList.remove("hidden"); }
+
+function applyBgTheme(){
+  const skin = getBgSkinDef();
+  const skinBg = bgStyleFromUrl(skin.url);
+  const coverBg = bgStyleFromUrl(COVER_IMG_URL); // v3.2.0：新封面图
+  const loginEl = qs("login"); if(loginEl) loginEl.style.background = coverBg;
+  ["menu","game"].forEach(id => { const el = qs(id); if(el) el.style.background = skinBg; });
+}
+
+// ============================================================
+// 宝箱
+// ============================================================
+function lootBoxPull(){
+  let wJC=50,wF=30,wM=15,wL=5;
+  if((G.jieCao||0)>=LOOT_MAX_JIECAO){ wL+=wJC; wJC=0; }
+  if((G.feather||0)>=LOOT_MAX_FEATHER){ wL+=wF; wF=0; }
+  const total=wJC+wF+wM+wL, r=Math.random()*total;
+  if(r<wJC){ G.jieCao=Math.min(LOOT_MAX_JIECAO,(G.jieCao||0)+30); return{type:"jieCao",label:"节操 +30"}; }
+  if(r<wJC+wF){ G.feather=Math.min(LOOT_MAX_FEATHER,(G.feather||0)+10); return{type:"feather",label:"羽毛 +10"}; }
+  if(r<wJC+wF+wM){ G.medal30=(G.medal30||0)+1; return{type:"medal30",label:"30天本期勋章 x1"}; }
+  G.letterMedal30=(G.letterMedal30||0)+1; return{type:"letterMedal30",label:"30天字母勋章 x1 ✨"};
+}
+function doOpenLootBox(n){
+  const boxes=Math.min(n,G.lootBoxes||0);
+  if(boxes<=0){ qs("lb-result").textContent="宝箱不足！"; return; }
+  const results=[]; for(let i=0;i<boxes;i++){ G.lootBoxes--; results.push(lootBoxPull()); }
+  const tally={}; results.forEach(r=>{tally[r.label]=(tally[r.label]||0)+1;});
+  const lines=Object.entries(tally).map(([k,v])=>v>1?k.replace(/x1$/,"x"+v):k);
+  qs("lb-result").textContent = "获得："+lines.join("、");
+  save(); cloudSave();
+  gasJsonp({sheet:SHEET,action:"lootbox_open",id:G.id,uid:String(G.uid),
+    count:String(boxes),results:JSON.stringify(tally),
+    jieCao:String(G.jieCao||0),feather:String(G.feather||0),
+    medal30:String(G.medal30||0),letterMedal30:String(G.letterMedal30||0),
+    date:todayISO()}).catch(()=>{});
+  renderLootBoxOverlay(); updateMenuStat();
+}
+function doOpenLootBoxAll(){
+  const n=G.lootBoxes||0;
+  if(n<=0){ qs("lb-result").textContent="目前没有宝箱。"; return; }
+  if(n>10&&!confirm("确定一次开 "+n+" 个？")) return;
+  doOpenLootBox(n);
+}
+function renderLootBoxOverlay(){
+  const el=qs("lb-count"); if(el) el.textContent=G.lootBoxes||0;
+  const sm=qs("lb-summary");
+  if(sm) sm.innerHTML=[
+    ["🎭 节操",(G.jieCao||0)+"/"+LOOT_MAX_JIECAO],
+    ["🪶 羽毛",(G.feather||0)+"/"+LOOT_MAX_FEATHER],
+    ["🏅 本期勋章(30天)",G.medal30||0],
+    ["✨ 字母勋章(30天)",G.letterMedal30||0]
+  ].map(([k,v])=>"<div style='color:rgba(255,255,255,.7)'>"+k+"</div><div style='font-weight:800'>"+v+"</div>").join("");
+}
+function openLootBox(){ qs("lb-result").textContent=""; renderLootBoxOverlay(); qs("ov-lootbox").classList.remove("hidden"); }
+function closeLootBox(){ qs("ov-lootbox").classList.add("hidden"); }
+function openGuide(){
+  qs("ov-guide").classList.remove("hidden");
+  const gv=qs("guide-version"); if(gv) gv.textContent=GAME_VERSION;
+  const gl=qs("guide-version-log");
+  if(gl){
+    // 倒序显示（最新在最上面），每条独立行
+    const items = [...VERSION_LOG].reverse();
+    gl.innerHTML = items.map(v=>
+      `<div style="border-bottom:1px solid rgba(255,255,255,.06);padding:3px 0">
+        <span style="color:#22d3ee;font-weight:800">${v.v}</span>
+        <span style="color:rgba(255,255,255,.4);margin:0 4px">${v.date}</span>
+        ${v.note}
+      </div>`
+    ).join("");
+  }
+}
+
+// ============================================================
+// 强化菜单（取代章节/倍率）
+// ============================================================
+// 升级定义：id, name, desc, maxLv, costType("coins"/"stars"), costBase, costScale, effect
+const UPGRADE_DEFS = [
+  // 无上限（maxLv:Infinity）：费用按等级指数增长
+  {id:"unitAtk",   name:"⚔️ 士兵攻击力",  desc:"所有士兵攻击+15%/级",    maxLv:Infinity, costType:"coins", costBase:80,  costScale:1.5},
+  {id:"unitHp",    name:"🛡 士兵血量",    desc:"所有士兵HP+20%/级",       maxLv:Infinity, costType:"coins", costBase:80,  costScale:1.5},
+  {id:"castleHp",  name:"🏰 我方城堡HP", desc:"我方城堡最大HP+50/级",     maxLv:Infinity, costType:"coins", costBase:100, costScale:1.4},
+  {id:"foodRate",  name:"🍖 食物速率",    desc:"食物累积速度+0.8/级",      maxLv:Infinity, costType:"coins", costBase:60,  costScale:1.4},
+  {id:"initFood",  name:"🥩 起始食物",    desc:"开局食物+20/级",            maxLv:Infinity, costType:"stars", costBase:3,   costScale:1.3},
+  {id:"foodCap",   name:"🍱 食物上限",    desc:"关卡中食物上限+30/级",      maxLv:Infinity, costType:"coins", costBase:55,  costScale:1.35},
+  {id:"gameSpd",   name:"⚡ 子弹速度",    desc:"子弹速度+10%/级",           maxLv:Infinity, costType:"stars", costBase:4,   costScale:1.4},
+  {id:"foodKill",  name:"🍗 猎食效率",    desc:"击杀获食物+20%/级",         maxLv:Infinity, costType:"coins", costBase:50,  costScale:1.3},
+  {id:"atkRange",  name:"🏹 攻击射程",    desc:"弓手/法师射程+10%/级",      maxLv:Infinity, costType:"stars", costBase:5,   costScale:1.5},
+  {id:"moveSpd",   name:"🏃 战场移动速度",desc:"敌我双方移动速度+8%/级，加快关卡破关速度", maxLv:Infinity, costType:"coins", costBase:70,  costScale:1.45},
+  // v3.7.0：奖励强化 —— 加强敌方各项数据，通关时获得更多金币奖励（每项强化等级都会累加进通关奖励倍率）
+  {id:"enemyWave",     name:"🌊 敌方波次",     desc:"每关额外+1波次，通关奖励倍率提升",       maxLv:Infinity, costType:"coins", category:"reward", costBase:90,  costScale:1.5},
+  {id:"enemyHp",       name:"💪 敌方血量",     desc:"敌人血量+25%/级，通关奖励倍率提升",       maxLv:Infinity, costType:"coins", category:"reward", costBase:90,  costScale:1.5},
+  {id:"enemyAtk",      name:"🗡️ 敌方攻击力",  desc:"敌人攻击+20%/级，通关奖励倍率提升",       maxLv:Infinity, costType:"coins", category:"reward", costBase:90,  costScale:1.5},
+  {id:"enemyBossNum",  name:"👑 BOSS数量",     desc:"最终波额外+1只BOSS，通关奖励倍率提升",    maxLv:Infinity, costType:"coins", category:"reward", costBase:150, costScale:1.6},
+  {id:"enemyCastleHp", name:"🏯 敌方城堡HP",   desc:"敌方城堡HP+30%/级，通关奖励倍率提升",     maxLv:Infinity, costType:"coins", category:"reward", costBase:90,  costScale:1.5},
+];
+function getUpLv(id){ return (G.upgrades||{})[id]||0; }
+function getUpCost(def){
+  const lv = getUpLv(def.id);
+  const raw = def.costBase * Math.pow(def.costScale, lv);
+  // 超过999万就用科学计数显示，内部计算上限999999999
+  return Math.min(999999999, Math.ceil(raw));
+}
+function formatCost(n){
+  if(n >= 1e8) return (n/1e8).toFixed(1)+"亿";
+  if(n >= 1e4) return (n/1e4).toFixed(1)+"万";
+  return String(n);
+}
+function getUpEffect(id){
+  const lv = getUpLv(id);
+  const fx = {
+    unitAtk:  1 + lv*0.15,
+    unitHp:   1 + lv*0.20,
+    castleHp: lv*50,          // 每级+50城堡HP（叠加值）
+    foodRate: lv*0.8,
+    initFood: lv*20,
+    foodCap:  lv*30,          // v3.7.0：每级+30食物上限（叠加值）
+    gameSpd:  1 + lv*0.10,
+    foodKill: 1 + lv*0.20,
+    atkRange: 1 + lv*0.10,
+    moveSpd:  1 + lv*0.08,    // 敌我双方移动速度倍率，加快关卡破关速度
+    // v3.7.0：敌方强度强化 —— 强化等级越高，敌人越强，通关奖励倍率也越高
+    enemyWave:    lv,               // 每级额外+1波次
+    enemyHp:      1 + lv*0.25,      // 每级敌人血量+25%
+    enemyAtk:     1 + lv*0.20,      // 每级敌人攻击+20%
+    enemyBossNum: lv,               // 每级最终波额外+1只BOSS
+    enemyCastleHp:1 + lv*0.30,      // 每级敌方城堡HP+30%
+  };
+  return fx[id] !== undefined ? fx[id] : 1;
+}
+// v3.7.0：依「敌方强度强化」总等级计算通关奖励倍率（5项强化等级总和 × 8%加成，越强奖励越高）
+function getRewardMultiplier(){
+  const ids = ["enemyWave","enemyHp","enemyAtk","enemyBossNum","enemyCastleHp"];
+  const totalLv = ids.reduce((s,id)=>s+getUpLv(id), 0);
+  return 1 + totalLv * 0.08;
+}
+function openUpgrade(){
+  if(!G.upgrades) G.upgrades={};
+  renderUpgradeMenu();
+  switchUpgradeTab("stats");
+  qs("ov-upgrade").classList.remove("hidden");
+}
+function closeUpgrade(){ qs("ov-upgrade").classList.add("hidden"); }
+
+// v3.0.0：强化菜单分页切换（数值强化 / 士兵进化）
+function switchUpgradeTab(tab){
+  const statsTab = qs("up-tab-stats"), evolveTab = qs("up-tab-evolve");
+  const statsList = qs("up-list"), evolveList = qs("evolve-list");
+  if(tab === "evolve"){
+    statsTab.style.background = "#1f2937";
+    evolveTab.style.background = "linear-gradient(135deg,#7c3aed,#db2777)";
+    statsList.style.display = "none";
+    evolveList.style.display = "flex";
+    renderEvolveMenu();
+  } else {
+    statsTab.style.background = "linear-gradient(135deg,#0f766e,#0891b2)";
+    evolveTab.style.background = "#1f2937";
+    statsList.style.display = "flex";
+    evolveList.style.display = "none";
+  }
+}
+
+// v3.0.0：士兵进化菜单 — 消耗金币给经验值，等级达标自动进化
+function renderEvolveMenu(){
+  const el = qs("evolve-list"); if(!el) return;
+  // 取得当前（或最高已解锁关卡所在）地区，用于显示进化图样预览
+  const previewLv = _gameRunning ? _gameLevel : Math.max(...(G.unlocked||[1]));
+  const regionIdx = getRegionIdx(previewLv);
+  const region = REGIONS[regionIdx];
+  el.innerHTML = `<div style="font-size:.76rem;color:#93c5fd;margin-bottom:4px">
+    当前地区：${region.emoji} ${region.name} ｜ 消耗金币训练经验值，等级达到进化要求会自动进化为下一阶形态
+  </div>
+  <div style="font-size:.7rem;color:rgba(255,255,255,.5);margin-bottom:8px">
+    💡 各地区士兵等级独立计算：切换到其他地区会重新从Lv.1开始，但回到本地区时等级会保留原本进度
+  </div>`;
+  UNIT_ROLES.forEach(role => {
+    const lvUnit = getUnitLevel(role.id, region.id);
+    const exp = getUnitExpInLevel(role.id, region.id);
+    const stage = getEvoStage(region.id, role.id, lvUnit);
+    const nextLv = getNextEvoLv(region.id, role.id, lvUnit);
+    const isMaxStage = (nextLv === null);
+    const typeStr = typesLabel(stage.types);
+    const trainCost10 = 10 * EXP_COST_PER_POINT;
+    const trainCost50 = 50 * EXP_COST_PER_POINT;
+    const d = document.createElement("div");
+    d.style.cssText = "background:rgba(255,255,255,.07);border-radius:10px;padding:10px;border:1px solid rgba(255,255,255,.12);display:flex;gap:10px;align-items:center";
+    d.innerHTML = `
+      <img src="${POKE_BASE_BACK}${stage.sprite}.gif" style="width:44px;height:auto;image-rendering:pixelated;filter:drop-shadow(0 0 4px #22d3ee66)">
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <b style="font-size:.88rem">${role.costRole}：${stage.name}</b>
+          <span style="font-size:.7rem;color:rgba(255,255,255,.5)">Lv.${lvUnit}</span>
+        </div>
+        <div style="font-size:.7rem;color:#93c5fd;margin-bottom:4px">属性：${typeStr}</div>
+        ${isMaxStage
+          ? `<div style="font-size:.72rem;color:#fbbf24">✨ 已达最终进化形态</div>`
+          : `<div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-bottom:4px">下一阶需 Lv.${nextLv}（经验 ${exp}/${EXP_PER_LEVEL}）</div>
+             <div style="height:5px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden;margin-bottom:6px">
+               <div style="height:100%;width:${Math.round(exp/EXP_PER_LEVEL*100)}%;background:linear-gradient(90deg,#22d3ee,#7c3aed);border-radius:99px"></div>
+             </div>`}
+        <div style="display:flex;gap:6px">
+          <button class="btn" style="flex:1;padding:5px 8px;font-size:.74rem" onclick="trainUnitExp('${role.id}',10)">训练+10经验 (🪙${trainCost10})</button>
+          <button class="btn" style="flex:1;padding:5px 8px;font-size:.74rem" onclick="trainUnitExp('${role.id}',50)">训练+50经验 (🪙${trainCost50})</button>
+        </div>
+      </div>`;
+    el.appendChild(d);
+  });
+}
+function buyCurrency(type, amount, cost){
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  const ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  if(type==="coins_r"){
+    if(ar<cost){ alert("回复数不足！需要 "+cost+" 回复"); return; }
+    G.repliesSpent=(G.repliesSpent||0)+cost; G.coins=(G.coins||0)+amount;
+  } else if(type==="coins_c"){
+    if(ac<cost){ alert("被引用不足！需要 "+cost+" 被引用"); return; }
+    G.citationsSpent=(G.citationsSpent||0)+cost; G.coins=(G.coins||0)+amount;
+  } else if(type==="stars_r"){
+    if(ar<cost){ alert("回复数不足！需要 "+cost+" 回复"); return; }
+    G.repliesSpent=(G.repliesSpent||0)+cost; G.stars=(G.stars||0)+amount;
+  } else if(type==="stars_c"){
+    if(ac<cost){ alert("被引用不足！需要 "+cost+" 被引用"); return; }
+    G.citationsSpent=(G.citationsSpent||0)+cost; G.stars=(G.stars||0)+amount;
+  }
+  save(); cloudSave(); updateMenuStat(); renderUpgradeMenu();
+  alert("购买成功！");
+}
+function doUpgrade(id){
+  if(!G.upgrades) G.upgrades={};
+  const def=UPGRADE_DEFS.find(d=>d.id===id); if(!def) return;
+  const lv=getUpLv(id);
+  if(lv>=def.maxLv){ alert("已达最高等级！"); return; }
+  // v3.8.0：敌方城堡HP强化必须先让另4项敌方强化都达到5:1比例的等级才能再升1级
+  // 即：城堡HP要升到Lv(n+1)，前4项（敌方波次/血量/攻击力/BOSS数量）都必须先达到 Lv((n+1)*5)
+  if(id === "enemyCastleHp"){
+    const gateIds = ["enemyWave","enemyHp","enemyAtk","enemyBossNum"];
+    const requiredLv = (lv+1) * 5;
+    const notReady = gateIds.filter(gid => getUpLv(gid) < requiredLv);
+    if(notReady.length > 0){
+      const names = notReady.map(gid => (UPGRADE_DEFS.find(d=>d.id===gid)||{}).name || gid);
+      alert("🏯 敌方城堡HP需保持 5:1 比例！\n要升到 Lv."+(lv+1)+"，以下强化必须先达到 Lv."+requiredLv+"：\n"+names.join("、"));
+      return;
+    }
+  }
+  const cost=getUpCost(def);
+  if(def.costType==="coins"){
+    if((G.coins||0)<cost){ alert("金币不足！需要 "+cost+" 🪙"); return; }
+    G.coins=Math.max(0,(G.coins||0)-cost);
+  } else {
+    if((G.stars||0)<cost){ alert("星星不足！需要 "+cost+" ⭐"); return; }
+    G.stars=Math.max(0,(G.stars||0)-cost);
+  }
+  G.upgrades[id]=(lv+1);
+  save(); cloudSave(); updateMenuStat(); renderUpgradeMenu();
+  gasJsonp({sheet:SHEET,action:"game_start",id:G.id,uid:String(G.uid||0),
+    info:"upgrade:"+id+"→Lv"+(lv+1),date:todayISO()}).catch(()=>{});
+}
+function renderUpgradeMenu(){
+  const el=qs("up-list"); if(!el) return;
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  const ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  const curr=qs("up-currency");
+  if(curr) curr.innerHTML="🪙 "+( G.coins||0)+" · ⭐ "+(G.stars||0)+" · 📝 "+ar+" 回复 · 💬 "+ac+" 被引用";
+  el.innerHTML="";
+
+  const normalDefs = UPGRADE_DEFS.filter(d => d.category !== "reward");
+  const rewardDefs  = UPGRADE_DEFS.filter(d => d.category === "reward");
+
+  function renderOne(def){
+    const lv=getUpLv(def.id), cost=getUpCost(def), maxed=(lv>=def.maxLv);
+    // v3.8.0：敌方城堡HP的5:1比例锁定检查
+    let gateLocked = false, gateText = "";
+    if(def.id === "enemyCastleHp"){
+      const gateIds = ["enemyWave","enemyHp","enemyAtk","enemyBossNum"];
+      const requiredLv = (lv+1) * 5;
+      const notReady = gateIds.filter(gid => getUpLv(gid) < requiredLv);
+      if(notReady.length > 0){
+        gateLocked = true;
+        gateText = "需先将其他4项达到 Lv."+requiredLv;
+      }
+    }
+    const canBuy=(def.costType==="coins"?(G.coins||0)>=cost:(G.stars||0)>=cost)&&!maxed&&!gateLocked;
+    const pct=Math.round((lv/def.maxLv)*100);
+    const d=document.createElement("div");
+    d.style.cssText="background:rgba(255,255,255,.07);border-radius:10px;padding:10px;border:1px solid rgba(255,255,255,.12)";
+    const isInf = def.maxLv === Infinity;
+    const lvLabel = isInf ? ("Lv."+lv+" (无上限)") : ("Lv."+lv+"/"+def.maxLv);
+    const barPct  = isInf ? Math.min(100,(lv%10)*10) : pct;
+    d.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div>
+          <b style="font-size:.9rem">${def.name}</b>
+          <span style="font-size:.7rem;color:rgba(255,255,255,.45)">${lvLabel}</span>
+        </div>
+        <button class="btn" style="padding:5px 12px;font-size:.8rem;${canBuy?"":"opacity:.45"}" ${canBuy?"":"disabled"} onclick="doUpgrade('${def.id}')">
+          ${maxed?"已满级":gateLocked?"🔒 未解锁":`升级 ${def.costType==="coins"?"🪙":"⭐"}${formatCost(cost)}`}
+        </button>
+      </div>
+      <div style="font-size:.75rem;color:rgba(255,255,255,.6);margin-bottom:5px">${def.desc}${isInf?" · 无上限":""}</div>
+      ${gateLocked ? `<div style="font-size:.7rem;color:#fca5a5;margin-bottom:5px">🔒 ${gateText}（5:1 比例限制）</div>` : ""}
+      <div style="height:5px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden">
+        <div style="height:100%;width:${barPct}%;background:linear-gradient(90deg,#facc15,#14b8a6);border-radius:99px;transition:width .3s"></div>
+      </div>`;
+    el.appendChild(d);
+  }
+
+  normalDefs.forEach(renderOne);
+
+  if(rewardDefs.length){
+    const rewardMult = getRewardMultiplier();
+    const sep = document.createElement("div");
+    sep.style.cssText = "margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25)";
+    sep.innerHTML = `<b style="font-size:.85rem;color:#f87171">⚠️ 奖励强化（高风险高回报）</b>
+      <div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:3px">加强敌方各项数据，通关时获得更多金币奖励（当前奖励倍率 <b style="color:#fbbf24">x${rewardMult.toFixed(2)}</b>）</div>`;
+    el.appendChild(sep);
+    rewardDefs.forEach(renderOne);
+  }
+}
+function renderUpgradeCard(){
+  const el=qs("upgrade-card"); if(!el) return;
+  const total=UPGRADE_DEFS.reduce((s,d)=>s+getUpLv(d.id),0);
+  const totalMax=UPGRADE_DEFS.reduce((s,d)=>s+d.maxLv,0);
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center">
+    <div><b>⚔️ 强化进度</b> <span style="font-size:.75rem;color:rgba(255,255,255,.6)">${total}/${totalMax} 点</span></div>
+    <button class="btn" style="padding:6px 14px" onclick="openUpgrade()">升级</button>
+  </div>
+  <div style="margin-top:6px;height:6px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden">
+    <div style="height:100%;width:${Math.round(total/totalMax*100)}%;background:linear-gradient(90deg,#7c3aed,#db2777);border-radius:99px"></div>
+  </div>`;
+}
+// ============================================================
+// v3.1.0：困难模式系统 — 地区全通关后解锁该地区困难模式
+// ============================================================
+function isRegionFullyCleared(regionIdx){
+  const region = REGIONS[regionIdx]; if(!region) return false;
+  for(let lv = region.lvStart; lv <= region.lvEnd; lv++){
+    if(!G.cleared.includes(lv)) return false;
+  }
+  return true;
+}
+function isHardModeUnlocked(lv){
+  return (G.hardModeUnlocked||[]).includes(lv);
+}
+function isHardModeCleared(lv){
+  return (G.hardModeCleared||[]).includes(lv);
+}
+// 检查某关是否「可以」解锁困难模式（其所在地区已全通关，且本关已通关）
+function canUnlockHardMode(lv){
+  if(!G.cleared.includes(lv)) return false;
+  const regionIdx = getRegionIdx(lv);
+  return isRegionFullyCleared(regionIdx);
+}
+
+function renderLvList(){
+  const wrap=qs("lvlist"); wrap.innerHTML="";
+  const max=Math.max(...G.unlocked);
+  for(let i=1;i<=Math.max(40,max+5);i++){
+    const cleared=G.cleared.includes(i);
+    const hardUnlocked = isHardModeUnlocked(i);
+    const b=document.createElement("button"); b.className="btn"; b.style.padding="5px";
+    b.textContent=cleared?("🏆"+i):i;
+    b.title=getLevelName(i) + (hardUnlocked ? "（困难模式已解锁）" : "");
+    if(i>max) b.disabled=true;
+    // v3.1.0：困难模式已解锁的关卡外围加红色光晕
+    if(hardUnlocked){
+      b.style.boxShadow = "0 0 10px 2px rgba(239,68,68,.75), 0 0 2px rgba(239,68,68,.9) inset";
+      b.style.borderColor = "#ef4444";
+    }
+    b.onclick=()=>{
+      if(cleared){
+        // v3.0.0+v3.1.0：已通关关卡点击时，提供「重新挑战」「快速通关」或「困难模式」选择
+        openLevelClearedMenu(i);
+      } else {
+        startGame(i);
+      }
+    };
+    wrap.appendChild(b);
+  }
+}
+
+// v3.1.0：已通关关卡点击后的统一入口 — 先判断是否能开放困难模式选项
+function openLevelClearedMenu(lv){
+  if(canUnlockHardMode(lv) && !isHardModeUnlocked(lv)){
+    openHardModeUnlock(lv);
+  } else if(isHardModeUnlocked(lv)){
+    openLevelClearedChoiceWithHard(lv);
+  } else {
+    openQuickClearChoice(lv);
+  }
+}
+
+// ============================================================
+// 困难模式解锁弹窗
+// ============================================================
+let _hmLevel = null;
+function openHardModeUnlock(lv){
+  _hmLevel = lv;
+  const region = REGIONS[getRegionIdx(lv)];
+  qs("hm-lvname").textContent = "「"+getLevelName(lv)+"」"+" — "+region.emoji+region.name+"地区已全部通关！";
+  qs("hm-body").innerHTML =
+    "<p style='margin-bottom:6px'>🎉 恭喜！你已经通关 <b>"+region.name+"</b> 地区的所有关卡，可以为本关解锁 <b style='color:#f87171'>困难模式</b>。</p>"+
+    "<p style='margin-bottom:6px'>困难模式特点：</p>"+
+    "<p style='margin-bottom:3px'>• 怪物 <b style='color:#fbbf24'>血量翻倍</b></p>"+
+    "<p style='margin-bottom:3px'>• 出兵数量改为 <b style='color:#fbbf24'>等差级数</b> 出怪（更密集的攻势）</p>"+
+    "<p style='margin-bottom:3px'>• 解锁后首次通关困难模式可获得 <b style='color:#22c55e'>2个宝箱</b>（普通仅1个）</p>"+
+    "<p>• 解锁的关卡外围会显示 <b style='color:#ef4444'>红色光晕</b> 标记</p>";
+  qs("hm-buttons").innerHTML =
+    "<button class='btn' style='flex:1;background:linear-gradient(135deg,#b91c1c,#7c2d12)' onclick='confirmUnlockHardMode()'>🔥 解锁困难模式</button>"+
+    "<button class='btn' style='flex:1;background:#1f2937' onclick='closeHardMode()'>暂不解锁</button>";
+  qs("ov-hardmode").classList.remove("hidden");
+}
+function confirmUnlockHardMode(){
+  if(_hmLevel === null) return;
+  if(!G.hardModeUnlocked) G.hardModeUnlocked = [];
+  if(!G.hardModeUnlocked.includes(_hmLevel)) G.hardModeUnlocked.push(_hmLevel);
+  save(); cloudSave();
+  gasJsonp({sheet:SHEET,action:"game_start",id:G.id,uid:String(G.uid||0),
+    info:"hard_mode_unlock:第"+_hmLevel+"关", date:todayISO()}).catch(()=>{});
+  closeHardMode();
+  renderLvList();
+  alert("🔥 困难模式已解锁！「"+getLevelName(_hmLevel)+"」现在可以挑战困难版本。");
+}
+function closeHardMode(){ qs("ov-hardmode").classList.add("hidden"); _hmLevel = null; }
+
+// 已解锁困难模式的关卡，点击后提供三选项：普通快速通关 / 困难模式作战 / 普通重新挑战
+function openLevelClearedChoiceWithHard(lv){
+  _hmLevel = lv;
+  const region = REGIONS[getRegionIdx(lv)];
+  const hardCleared = isHardModeCleared(lv);
+  qs("hm-lvname").textContent = "「"+getLevelName(lv)+"」"+region.emoji+region.name+" · 困难模式已解锁";
+  qs("hm-body").innerHTML =
+    "<p style='margin-bottom:6px'>该关卡已解锁困难模式（怪物血量翻倍，出兵数量等差级数增加）。</p>"+
+    "<p>"+(hardCleared
+      ? "困难模式已通关过，重复挑战不会再获得额外宝箱。"
+      : "<b style='color:#22c55e'>首次通关困难模式可获得 2 个宝箱！</b>")+"</p>";
+  qs("hm-buttons").innerHTML =
+    "<button class='btn' style='flex:1;background:linear-gradient(135deg,#b91c1c,#7c2d12)' onclick='startHardModeGame()'>🔥 困难模式作战</button>"+
+    "<button class='btn' style='flex:1;background:#1f2937' onclick='closeHardMode();openQuickClearChoice("+lv+")'>📜 一般选项</button>";
+  qs("ov-hardmode").classList.remove("hidden");
+}
+function startHardModeGame(){
+  const lv = _hmLevel;
+  closeHardMode();
+  startGame(lv, true);
+}
+
+// ============================================================
+// 快速通关菜单（DOM弹窗版，支持批量数量输入）
+// ============================================================
+let _qcLevel = null;
+function openQuickClearChoice(lv){
+  _qcLevel = lv;
+  const ar = Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  qs("qc-lvname").textContent = "「"+getLevelName(lv)+"」已通关";
+  qs("qc-replies").textContent = ar;
+  qs("qc-count").value = 1;
+  updateQuickClearPreview();
+  qs("ov-quickclear").classList.remove("hidden");
+}
+function closeQuickClear(){ qs("ov-quickclear").classList.add("hidden"); _qcLevel = null; }
+// v3.1.1：修复「重新挑战」点击无反应的bug —— 先保存关卡号，再关闭弹窗（避免_qcLevel被清空成null）
+// 需求：手动重新挑战通关不消耗任何回复数，只有「快速通关」才消耗
+function restartFromQuickClear(){
+  const lv = _qcLevel;
+  closeQuickClear();
+  if(lv !== null) startGame(lv, false);
+}
+function setQuickClearMax(){
+  const ar = Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  qs("qc-count").value = Math.max(1, ar);
+  updateQuickClearPreview();
+}
+function updateQuickClearPreview(){
+  if(_qcLevel === null) return;
+  const ar = Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  let n = parseInt(qs("qc-count").value, 10) || 1;
+  n = Math.max(1, n);
+  const reward = Math.floor(50 + _qcLevel*6);
+  const totalReward = reward * n;
+  const canAfford = n <= ar;
+  qs("qc-preview").innerHTML =
+    "消耗 <b style='color:#fbbf24'>"+n+"</b> 回复数 → 快速通关 <b style='color:#22c55e'>"+n+"</b> 次<br>"+
+    "预计获得：<b style='color:#fbbf24'>"+totalReward+" 🪙</b>（每次"+reward+"🪙）"+
+    (canAfford ? "" : "<br><span style='color:#f87171'>⚠️ 回复数不足！</span>");
+}
+function confirmQuickClear(){
+  if(_qcLevel === null) return;
+  let n = parseInt(qs("qc-count").value, 10) || 1;
+  n = Math.max(1, n);
+  const ar = Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  if(n > ar){ alert("回复数不足！当前可用 "+ar+" 回复数。"); return; }
+  doQuickClear(_qcLevel, n);
+  closeQuickClear();
+}
+function doQuickClear(lv, count){
+  count = Math.max(1, count||1);
+  const ar = Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  if(ar < count){ alert("回复数不足！"); return; }
+  G.repliesSpent = (G.repliesSpent||0) + count;
+  const reward = Math.floor(50 + lv*6);
+  const stars = 3; // 快速通关固定给3星（不计实战表现）
+  let totalReward = 0, totalBoxes = 0;
+  for(let i=0;i<count;i++){
+    totalReward += reward;
+    G.stars = (G.stars||0) + stars;
+    // 重复通关50%机率得宝箱（与正常通关规则一致）
+    if(Math.random() < 0.5) totalBoxes++;
+  }
+  G.coins = (G.coins||0) + totalReward;
+  if(totalBoxes > 0){ G.lootBoxes=(G.lootBoxes||0)+totalBoxes; G.lootBoxesTotal=(G.lootBoxesTotal||0)+totalBoxes; }
+  save(); cloudSave();
+  gasJsonp({sheet:SHEET,action:"level_clear",id:G.id,uid:String(G.uid),
+    level:String(lv),stars:String(stars),score:"0",score_need:"0",
+    boosters_used:"0",revive_count:"0",super_clears:"0",
+    coin_reward:String(totalReward),coins_total:String(G.coins||0),
+    info:"quick_clear_x"+count, date:todayISO()}).catch(()=>{});
+  updateMenuStat(); renderLvList(); renderUpgradeCard();
+  alert("🚀 快速通关「"+getLevelName(lv)+"」x"+count+" 次！\n获得 "+totalReward+" 🪙"+(totalBoxes>0?" · 🎁 宝箱 x"+totalBoxes:""));
+}
+function startLatest(){ startGame(Math.max(...G.unlocked)); }
+function updateMenuStat(){
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  const ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  qs("menu-stat").textContent="📝 "+ar+" · 💬 "+ac+" · 🪙 "+(G.coins||0)+" · ⭐ "+(G.stars||0)+" · "+GAME_VERSION;
+  const lb=qs("menu-lootbox-info");
+  if(lb) lb.innerHTML="🎁 宝箱：<b>"+(G.lootBoxes||0)+"</b> 个 ｜ 节操 "+(G.jieCao||0)+"/5000 · 羽毛 "+(G.feather||0)+"/2000 · 本期勋章 "+(G.medal30||0)+" · 字母勋章 "+(G.letterMedal30||0);
+  const btnRow=qs("menu-lootbox-btn-row");
+  if(btnRow){
+    const n=G.lootBoxes||0;
+    if(n>0){
+      btnRow.innerHTML="<button class='btn' style='background:linear-gradient(135deg,#92400e,#dc2626);font-size:.82rem;padding:7px 18px' onclick='openLootBox()'>🎁 开宝箱（"+n+"个）</button>"
+        +(n>=10?"&nbsp;<button class='btn' style='background:linear-gradient(135deg,#065f46,#0369a1);font-size:.82rem;padding:7px 14px' onclick='doOpenLootBox(10)'>开10个</button>":"")
+        +(n>=1?"&nbsp;<button class='btn' style='background:linear-gradient(135deg,#1e1b4b,#7c3aed);font-size:.82rem;padding:7px 14px' onclick='doOpenLootBoxAll()'>全开</button>":"");
+    } else {
+      btnRow.innerHTML="<span style='font-size:.78rem;color:rgba(255,255,255,.4)'>🎁 暂无宝箱，完成章节项目可获得</span>";
+    }
+  }
+}
+
+// ============================================================
+// 皮肤
+// ============================================================
+function applySkin(id){
+  if(!ownsBgSkin(id)){ alert("SS塔防：此皮肤尚未解锁，请先至商店购买。"); return; }
+  G.skin=id; G.bgSkin=id; save(); cloudSave(); applyBgTheme();
+  if(!qs("ov-skin").classList.contains("hidden")) openSkin();
+}
+function openSkin(){
+  const list=qs("skin-list"); list.innerHTML="";
+  SKINS.forEach(s=>{
+    // v3.2.0：default 槓位预览图改用当前自动判定的地区皮肤
+    const b = (s.id === "default") ? getAutoRegionSkin() : (BG_SKINS[s.id]||BG_SKINS.default);
+    const d=document.createElement("div"); d.className="shop-item";
+    const labelName = (s.id === "default") ? ("预设（"+getAutoRegionSkin().name.replace("地区","")+"地区）") : s.name;
+    d.innerHTML="<img src='"+b.url+"' style='width:48px;height:34px;object-fit:cover;border-radius:6px;margin-right:8px'><div style='flex:1'><b>"+labelName+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>"+(ownsBgSkin(s.id)?(G.skin===s.id?"使用中":"点击使用"):"🛒 去商店解锁")+"</div></div><button class='btn'>"+(G.skin===s.id?"使用中":"使用")+"</button>";
+    d.querySelector("button").onclick=()=>applySkin(s.id);
+    list.appendChild(d);
+  });
+  qs("ov-skin").classList.remove("hidden");
+}
+function closeSkin(){ qs("ov-skin").classList.add("hidden"); }
+
+// ============================================================
+// 商店
+// ============================================================
+function openShop(){ renderShop(); updateShopCurrency(); qs("ov-shop").classList.remove("hidden"); }
+function closeShop(){ qs("ov-shop").classList.add("hidden"); }
+function updateShopCurrency(){
+  qs("sh-replies").textContent=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  qs("sh-cites").textContent=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+}
+function renderShop(){
+  const list=qs("shop-list"); list.innerHTML="";
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)), ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  SHOP_ITEMS.forEach(it=>{
+    const av=it.costType==="replies"?ar:ac;
+    const owned=it.give&&it.give.bgSkin&&ownsBgSkin(it.give.bgSkin);
+    const can=av>=it.cost&&!owned;
+    const d=document.createElement("div"); d.className="shop-item"+(owned?" owned":"");
+    if(owned){
+      d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:#94a3b8'>已拥有</div></div><button class='btn' disabled>已拥有</button>";
+    } else {
+      d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>花费 "+it.cost+" "+(it.costType==="replies"?"回复":"被引用")+"</div></div><button class='btn' "+(can?"":"disabled")+">购买</button>";
+      d.querySelector("button").onclick=()=>buyItemDirect(it.id);
+    }
+    list.appendChild(d);
+  });
+}
+function buyItemDirect(id){
+  const it=SHOP_ITEMS.find(x=>x.id===id); if(!it) return;
+  if(it.give&&it.give.bgSkin){ if(ownsBgSkin(it.give.bgSkin)){ alert("已拥有此皮肤"); return; } return buyItem(id,1); }
+  const q=prompt("数量","1"); if(q===null) return;
+  buyItem(id, Math.max(1,Math.min(99,parseInt(q,10)||1)));
+}
+function buyItem(id, qty){
+  const it=SHOP_ITEMS.find(x=>x.id===id); if(!it) return;
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)), ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));
+  const av=it.costType==="replies"?ar:ac, cost=it.cost*qty;
+  if(av<cost){ alert("数量不足"); return; }
+  if(it.costType==="replies") G.repliesSpent=(G.repliesSpent||0)+cost;
+  else G.citationsSpent=(G.citationsSpent||0)+cost;
+  if(it.give.food)   G.boosters.food  +=it.give.food  *qty;
+  if(it.give.speed)  G.boosters.speed +=it.give.speed *qty;
+  if(it.give.bomb)   G.boosters.bomb  +=it.give.bomb  *qty;
+  if(it.give.shield) G.boosters.shield+=it.give.shield*qty;
+  if(it.give.ticket) G.tickets=(G.tickets||0)+it.give.ticket*qty;
+  if(it.give.bgSkin){ for(let i=0;i<qty;i++) grantBgSkin(it.give.bgSkin); if(!qs("ov-skin").classList.contains("hidden")) openSkin(); }
+  save(); cloudSave(); renderShop(); updateShopCurrency(); updateMenuStat();
+  if(!qs("game").classList.contains("hidden")) updateBoosterUI();
+  gasJsonp({sheet:SHEET,action:"shop_buy",id:G.id,uid:String(G.uid||0),
+    itemId:id,item:id,cost:String(cost),costType:it.costType,cost_type:it.costType,
+    date:todayISO()}).catch(()=>{});
+}
+
+// ============================================================
+// 存档汇出
+// ============================================================
+function downloadData_(){
+  save();
+  const rows=[["项目","数值"],["论坛ID",G.id],["UID",G.uid],["金币",G.coins||0],
+    ["星星",G.stars||0],["宇宙",G.universe||1],
+    ["回复数",G.replies||0],["被引用数",G.citations||0],
+    ["挑战卷",G.tickets||0],["已解锁关卡",(G.unlocked||[]).join(" ")],
+    ["已通关关卡",(G.cleared||[]).join(" ")],["皮肤",G.skin||"default"],
+    ["版本",GAME_VERSION],["下载时间",new Date().toLocaleString("zh-TW")]];
+  __appendPortableSaveRows(rows,"timewar",G);
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}), url=URL.createObjectURL(blob), a=document.createElement("a");
+  a.href=url; a.download="timewar-"+(G.id||"player")+".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+window.__applyPortableSaveData=async function(data){
+  if(!data||typeof data!=="object") throw new Error("bad_save");
+  Object.assign(G,data);
+  try{normalize();}catch(e){}
+  try{if(G.id)localStorage.setItem(KEY_ID,G.id);if(G.uid!=null)localStorage.setItem(KEY_UID,String(G.uid));}catch(e){}
+  save(); try{await cloudSave();}catch(e){}
+  try{updateMenuStat();renderUpgradeCard();renderLvList();}catch(e){}
+};
+(function(){
+  const MARK="__HTML_GAME_SAVE__";
+  window.__appendPortableSaveRows=function(rows,game,state){
+    try{rows.push([MARK,"game",game||""]);rows.push([MARK,"version",GAME_VERSION]);rows.push([MARK,"saved_at",new Date().toISOString()]);rows.push([MARK,"state_json",JSON.stringify(state||{})]);}
+    catch(e){console.warn("save export failed",e);}return rows;
+  };
+  function parseCsv(text){text=String(text||"").replace(/^\uFEFF/,"");const rows=[];let row=[],cell="",q=false;for(let i=0;i<text.length;i++){const ch=text[i],nx=text[i+1];if(q){if(ch==='"'&&nx==='"'){cell+='"';i++;}else if(ch==='"')q=false;else cell+=ch;}else{if(ch==='"')q=true;else if(ch===","){row.push(cell);cell="";}else if(ch==="\n"){row.push(cell);rows.push(row);row=[];cell="";}else if(ch!=="\r")cell+=ch;}}row.push(cell);rows.push(row);return rows;}
+  function readPayload(text){const raw=String(text||"").replace(/^\uFEFF/,"").trim();if(raw.charAt(0)==="{")return JSON.parse(raw);const rows=parseCsv(text);for(let i=0;i<rows.length;i++){if(rows[i][0]===MARK&&rows[i][1]==="state_json")return JSON.parse(rows[i][2]||"{}");}throw new Error("save_json_not_found");}
+  window.importGameSaveData_=function(){
+    const input=document.createElement("input");input.type="file";input.accept=".csv,.json,text/csv,application/json";
+    input.onchange=function(){const file=input.files&&input.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(){Promise.resolve().then(function(){if(!window.__applyPortableSaveData)throw new Error("missing");const data=readPayload(reader.result);return window.__applyPortableSaveData(data);}).then(function(){alert("读档完成：记录已恢复，已尝试同步云端。");}).catch(function(e){alert("读档失败：请选择本游戏导出的 CSV。");});};reader.readAsText(file,"utf-8");};input.click();
+  };
+  window.__installPortableSaveImport=function(){
+    Array.prototype.forEach.call(document.querySelectorAll("button"),function(btn){
+      const oc=btn.getAttribute("onclick")||"";if(oc.indexOf("download")<0||btn.getAttribute("data-import-save-bound"))return;
+      btn.setAttribute("data-import-save-bound","1");
+      const b=document.createElement("button");b.type="button";b.className=btn.className||"";b.style.cssText=btn.style.cssText||"";b.textContent="📤 读取存档";b.onclick=window.importGameSaveData_;btn.insertAdjacentElement("afterend",b);
+    });
+  };
+  function boot(){window.__installPortableSaveImport();}
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot); else boot();
+})();
+
+// ============================================================
+// 登入
+// ============================================================
+async function doLogin(){
+  const id=qs("inp-id").value.trim(), uid=parseInt(qs("inp-uid").value.trim(),10);
+  const btn=qs("btn-login");
+  if(!id||!uid){ qs("login-err").textContent="请输入论坛ID与UID"; return; }
+  qs("login-err").textContent="连线测试中...";
+  const oldText=btn.textContent; btn.disabled=true; btn.textContent="连线中...";
+  setOnlineStatus(false);
+  setCloudConnecting(); // v3.3.0：右下角浮动指示器显示"连线中"过渡态
+  try {
+    G.id=id; G.uid=uid;
+    localStorage.setItem(KEY_ID,id); localStorage.setItem(KEY_UID,String(uid));
+    load(); normalize();
+
+    // Step1: fetch no-cors ping — 确认 GAS 是否可达
+    qs("login-err").textContent="正在连接云端...";
+    const reachable = await gasFetchPing(7000);
+    if(!reachable){
+      qs("login-err").textContent="⚠️ 云端无法连线，以离线模式进入";
+      setOnlineStatus(false);
+      setTimeout(()=>{ save(); enterMenu(); }, 1200);
+      return;
+    }
+
+    // Step2: JSONP 载入云端存档
+    qs("login-err").textContent="载入云端存档...";
+    try{
+      const cloudData = await cloudLoad(id);
+      if(cloudData && cloudData.state_json){
+        try{ Object.assign(G, JSON.parse(cloudData.state_json)); G.id=id; G.uid=uid; normalize(); }catch(e){}
+      }
+      setOnlineStatus(true);
+      qs("login-err").textContent="";
+    }catch(e){
+      // JSONP 失败但 ping 成功 → 可能是新帐号，仍视为在线
+      setOnlineStatus(true);
+      qs("login-err").textContent="";
+    }
+
+    save(); cloudSave();
+    gasBeacon({sheet:SHEET,action:"login_log",id:G.id,uid:String(G.uid),version:GAME_VERSION,date:todayISO()});
+    enterMenu();
+  } catch(e){
+    qs("login-err").textContent="登入发生错误："+e.message;
+  } finally { btn.disabled=false; btn.textContent=oldText; }
+}
+function offlineMode(){
+  // 离线模式：从 localStorage 读取上次登入的 id/uid
+  const savedId  = localStorage.getItem(KEY_ID)  || "";
+  const savedUid = localStorage.getItem(KEY_UID)  || "0";
+  if(savedId)  G.id  = savedId;
+  if(savedUid) G.uid = parseInt(savedUid, 10) || 0;
+  load(); normalize();
+  // 确保 load() 不会覆盖掉 id/uid
+  if(savedId)  G.id  = savedId;
+  if(savedUid) G.uid = parseInt(savedUid, 10) || 0;
+  setOnlineStatus(false); enterMenu();
+}
+function enterMenu(){
+  applyBgTheme(); renderLvList(); renderUpgradeCard(); updateMenuStat(); show("menu");
+}
+function backMenu(){
+  stopGame();
+  qs("ov-win").classList.add("hidden"); qs("ov-lose").classList.add("hidden"); enterMenu();
+}
+
+// ============================================================
+// 论坛抓取
+// ============================================================
+function setForumStatus(s){ const el=qs("forum-status"); if(el) el.textContent=s||""; }
+
+// v3.5.0：比照 candy_crush.html 的内容校验 —— 要求长度足够且包含HTML标签或论坛特征字串，
+// 避免把代理自身的错误页（纯JSON错误、空白页等）误判为抓取成功
+function _proxyOkText_(text){
+  return text && text.length > 80 && (text.indexOf("<") >= 0 || /profile|ipsQuote|cProfileContent/i.test(text));
+}
+
+// v3.6.0：完整比照 candy_crush.html —— 只用 GAS 单一通道（云端 UrlFetchApp 直抓 sstm.moe），
+// 不再轮询任何公共CORS代理（codetabs/allorigins/corsproxy.io/自建workers等全部移除，因为都会失效）。
+// 单一通道没有备援，失败时改为同一通道内重试，并显示重试进度。
+const GAS_FETCH_RETRY = 3; // 单一通道重试次数
+async function fffProxyGet(url){
+  const targetUrl = url;
+  let lastErr = new Error("GAS抓取失败");
+  for(let attempt=1; attempt<=GAS_FETCH_RETRY; attempt++){
+    try{
+      if(attempt>1) setForumStatus("云端抓取重试中...（第"+attempt+"/"+GAS_FETCH_RETRY+"次）");
+      const data = await gasJsonp({action:"fetch_url", url:targetUrl}, FORUM_FETCH_MS);
+      const text = (data && (data.html || data.contents)) || "";
+      if(_proxyOkText_(text)) return text;
+      throw new Error((data && data.error) || "empty_response");
+    }catch(e){
+      lastErr = e;
+      console.warn("[GAS云端抓取] 第"+attempt+"次失败:", e.message);
+      if(attempt < GAS_FETCH_RETRY) await new Promise(r=>setTimeout(r, 600));
+    }
+  }
+  // GAS全失败 → 走Vercel备用
+  try{
+    setForumStatus("GAS抓取失败，尝试备用中转...");
+    const resp=await fetch("https://sstm-raffle.vercel.app/gal-proxy?url="+encodeURIComponent(targetUrl)+"&_bust="+Date.now(),{signal:AbortSignal.timeout(FORUM_FETCH_MS)});
+    if(resp.ok){
+      const text=await resp.text();
+      if(_proxyOkText_(text)) return text;
+    }
+  }catch(e2){lastErr=e2;}
+  throw new Error("云端抓取失败: "+String(lastErr&&lastErr.message||lastErr));
+}
+async function refreshForumData(){ setForumStatus("正在抓取..."); return fetchForumDataCustom(true); }
+async function refreshForumDataFast(){ setForumStatus("正在快速抓取..."); return fetchForumDataCustom(true,{maxPages:25,maxCitationChecks:0}); }
+// v3.3.0：查询云端该UID在区间内的逐日活跃度记录
+async function fetchActivityFromCloud_(uid, startDate, endDate){
+  if(!gasReady() || !uid) return [];
+  try{
+    const d = await gasJsonp({sheet:SHEET, action:"activity_fetch",
+      uid:String(uid), startDate:startDate||"", endDate:endDate||""}, 12000);
+    return (d && d.ok && d.rows) ? d.rows : [];
+  }catch(e){ console.warn("[SS塔防] activity_fetch fail", e); return []; }
+}
+// v3.3.0：合并本地抓取的逐日数据与云端已有记录 —— 新日期全额计入，已有日期仅补差额
+function mergeByDayWithCloud_(fullByDay, cloudRows, startDate, endDate){
+  const existing = {};
+  (cloudRows||[]).forEach(r => {
+    const d = String(r.date||"").trim();
+    if(d) existing[d] = {replies:r.replies||0, citations:r.citations||0};
+  });
+  const netByDay = {}; let netR = 0, netC = 0;
+  dateRangeISO_(startDate, endDate).forEach(d => {
+    const scraped = fullByDay[d] || {replies:0, citations:0};
+    const cloud = existing[d];
+    if(!cloud){
+      netByDay[d] = {replies:scraped.replies, citations:scraped.citations};
+      netR += scraped.replies; netC += scraped.citations; return;
+    }
+    const dR = Math.max(0, scraped.replies - cloud.replies);
+    const dC = Math.max(0, scraped.citations - cloud.citations);
+    if(dR<=0 && dC<=0) return; // 该日云端已有相同或更多记录，跳过避免重复计入
+    netByDay[d] = {replies:Math.max(scraped.replies, cloud.replies), citations:Math.max(scraped.citations, cloud.citations)};
+    netR += dR; netC += dC;
+  });
+  return {netByDay, netR, netC};
+}
+// v3.3.0：把逐日 map 逐笔写入云端活跃度记录表
+function logActivityByDayToCloud_(uid, netByDay){
+  Object.entries(netByDay||{}).forEach(([date, counts]) => {
+    gasPost({sheet:SHEET, type:"activity_log", uid:String(uid), date,
+      replies:counts.replies||0, citations:counts.citations||0});
+  });
+}
+
+async function fetchForumDataCustom(show,opt){
+  // 修复：不依赖 !G.uid（uid=0 时 falsy 但可能是有效值），改为字符串检测
+  const _gid  = String(G.id  || "").trim();
+  const _guid = String(G.uid || localStorage.getItem(KEY_UID) || "").trim();
+  if(!_gid){
+    alert("请先完成登入后再使用论坛抓取功能\n（在登录界面输入论坛ID与UID）");
+    return false;
+  }
+  if(!_guid || _guid === "0"){
+    alert("UID 无效，请重新登入并输入正确的 UID");
+    return false;
+  }
+  // 确保 G.uid 有值
+  if(!G.uid) G.uid = parseInt(_guid, 10);
+  const sd=qs("forum-start-date").value||todayISO(), ed=qs("forum-end-date").value||sd;
+  const startD=new Date(sd+"T00:00:00"), endD=new Date(ed+"T23:59:59");
+  function inRange_(d){return d instanceof Date&&!isNaN(d)&&d>=startD&&d<=endD;}
+  function parseItemDate_(it){const t=it.querySelector("time[datetime]")||it.querySelector("time");const dt=t&&(t.getAttribute("datetime")||t.textContent||"");const m=String(dt).match(/(\d{4})-(\d{2})-(\d{2})/);return m?new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00"):null;}
+  // v3.5.0：完整比照 candy_crush.html 的 slug 获取方式 ——
+  // 正则要求 \d+-用户名 格式，且必须验证 slug 以 "UID-" 开头才采用，
+  // 否则改用 DOM 遍历所有 <a> 连结逐一验证，避免抓到页面上其他用户/广告连结导致的错误 slug
+  async function getProfileSlug_(uid){
+    const ck = "ss_slug_" + uid;
+    try{ const hit = localStorage.getItem(ck); if(hit) return hit; }catch(e){}
+    setForumStatus("☁️ 云端查询用户资料中…");
+    const html = await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+uid);
+    let slug = null;
+    const m0 = String(html).match(/\/profile\/(\d+-[^\/\"'?#\s<]+)/);
+    if(m0 && m0[1].startsWith(uid+"-")) slug = m0[1];
+    if(!slug){
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      for(const a of doc.querySelectorAll("a[href]")){
+        const href = a.getAttribute("href") || "";
+        const m = href.match(/\/profile\/(\d+-[^\/\?#"]+)/);
+        if(m && m[1].startsWith(uid+"-")){ slug = m[1]; break; }
+      }
+    }
+    if(!slug) throw new Error("无法获取 slug，请确认 UID 正确");
+    try{ localStorage.setItem(ck, slug); }catch(e){}
+    return slug;
+  }
+
+  try{
+    const slug = await getProfileSlug_(String(G.uid));
+    let page=1,replies=0,cites=0,budget=(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:20,maxPages=(opt&&opt.maxPages)||60;
+    const byDay = {}; // v3.3.0：逐日累计 {date: {replies, citations}}
+    function addByDay_(date, r, c){
+      const key = date.toISOString().slice(0,10);
+      if(!byDay[key]) byDay[key] = {replies:0, citations:0};
+      byDay[key].replies += r; byDay[key].citations += c;
+    }
+    while(page<=maxPages){
+      // v3.6.0：抓取进度显示加入累计回复/被引用数，让玩家清楚目前进度
+      setForumStatus("☁️ 云端抓取第 "+page+" 页中…（已累计 📝"+replies+" 回复 / 💬"+cites+" 被引用）");
+      const u=page===1?"https://sstm.moe/profile/"+slug+"/content/?type=forums_topic_post&change_section=1":"https://sstm.moe/profile/"+slug+"/content/page/"+page+"/?type=forums_topic_post";
+      const html=await fffProxyGet(u),doc=new DOMParser().parseFromString(html,"text/html"),items=[...doc.querySelectorAll("ol.cProfileContent>li")];
+      if(!items.length) break; let allOlder=true,anyIn=false,arr=[];
+      items.forEach(it=>{const d=parseItemDate_(it);if(d&&d>=startD)allOlder=false;if(!d||!inRange_(d))return;anyIn=true;const a=it.querySelector("p.ipsType_light a[href]");if(a&&/forum\/32[-\/]/.test(a.getAttribute("href")||"")){replies++;addByDay_(d,1,0);}const bq=it.querySelector(".ipsQuote");if(bq){const cid=bq.getAttribute("data-ipsquote-contentcommentid"),tid=bq.getAttribute("data-ipsquote-contentid");if(cid&&tid)arr.push({cid,tid,date:d});}});
+      if(allOlder&&!anyIn) break;
+      const chk=arr.slice(0,Math.max(0,budget)); budget-=chk.length;
+      // v3.5.0：被引用验证改用真正的DOM解析（比照candy_crush.html），
+      // 找到对应的 article#elComment_X 评论元素，在其内查找该UID的引用，
+      // 且引用不能是嵌套在另一个引用内（避免转引/多层引用造成误判）
+      if(chk.length > 0) setForumStatus("☁️ 第 "+page+" 页：核实 "+chk.length+" 笔被引用中…（已累计 📝"+replies+" / 💬"+cites+"）");
+      for(let i=0;i<chk.length;i+=10){
+        setForumStatus("☁️ 第 "+page+" 页：核实被引用 "+Math.min(i+10,chk.length)+"/"+chk.length+"…（已累计 📝"+replies+" / 💬"+cites+"）");
+        await Promise.all(chk.slice(i,i+10).map(async x=>{
+        try{
+          const qUrl="https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid;
+          const qHtml=await fffProxyGet(qUrl);
+          if(!/forum\/32[-\/]/.test(qHtml)) return;
+          const qDoc=new DOMParser().parseFromString(qHtml,"text/html");
+          const el=qDoc.querySelector("article#elComment_"+x.cid);
+          if(!el) return;
+          const quoteEls=el.querySelectorAll('.ipsQuote[data-ipsquote-userid="'+G.uid+'"]');
+          const matched=Array.from(quoteEls).some(q=>!q.parentElement.closest(".ipsQuote"));
+          if(matched){ cites++; addByDay_(x.date,0,1); }
+        }catch(e){}
+      }));}
+      if(!doc.querySelector("li.ipsPagination_next:not(.ipsPagination_inactive) a,[rel='next']")) break;
+      page++; await new Promise(r=>setTimeout(r,24));
+    }
+    setForumStatus("☁️ 抓取完成，共 "+(page)+" 页，累计 📝"+replies+" 回复 / 💬"+cites+" 被引用");
+    G.replies=(Number(G.replies)||0)+replies; G.citations=(Number(G.citations)||0)+cites;
+    save(); cloudSave(); updateShopCurrency(); updateMenuStat();
+    gasJsonp({sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(G.uid),
+      replies:String(replies),citations:String(cites),
+      startDate:sd,endDate:ed,date:todayISO()}).catch(()=>{});
+
+    // v3.3.0：与云端逐日记录去重合并后，把净增量逐日写入「活跃度记录」分页
+    setForumStatus("正在同步云端逐日活跃度记录…");
+    const cloudRows = await fetchActivityFromCloud_(G.uid, sd, ed);
+    const {netByDay} = mergeByDayWithCloud_(byDay, cloudRows, sd, ed);
+    logActivityByDayToCloud_(G.uid, netByDay);
+
+    if(show) alert("抓取完成\n回复:"+replies+" 被引用:"+cites);
+    return true;
+  }catch(e){ setForumStatus("☁️ 云端抓取失败："+e.message); if(show) alert("云端抓取失败：\n"+e.message); return false; }
+}
+
+// ============================================================
+// ===== 核心游戏逻辑：时代塔防 =====
+// ============================================================
+
+// --- 时代定义（用于背景/敌人强度分级，4阶段循环） ---
+const ERAS = [
+  {id:0, name:"石器时代",    emoji:"🪨", color:"#92400e"},
+  {id:1, name:"中世纪",      emoji:"⚔️", color:"#1d4ed8"},
+  {id:2, name:"现代",        emoji:"🏙️", color:"#065f46"},
+  {id:3, name:"未来",        emoji:"🚀", color:"#7c3aed"},
+];
+
+// ============================================================
+// 宝可梦18属性克制表（标准规则，攻击方属性 → 防御方属性 → 倍率）
+// ============================================================
+const TYPE_CHART = {
+  normal:   {ghost:0, rock:0.5, steel:0.5},
+  fire:     {fire:0.5, water:0.5, grass:2, ice:2, bug:2, rock:0.5, dragon:0.5, steel:2},
+  water:    {fire:2, water:0.5, grass:0.5, ground:2, rock:2, dragon:0.5},
+  electric: {water:2, electric:0.5, grass:0.5, ground:0, flying:2, dragon:0.5},
+  grass:    {fire:0.5, water:2, grass:0.5, poison:0.5, ground:2, flying:0.5, bug:0.5, rock:2, dragon:0.5, steel:0.5},
+  ice:      {fire:0.5, water:0.5, grass:2, ice:0.5, ground:2, flying:2, dragon:2, steel:0.5},
+  fighting: {normal:2, ice:2, poison:0.5, flying:0.5, psychic:0.5, bug:0.5, rock:2, ghost:0, dark:2, steel:2, fairy:0.5},
+  poison:   {grass:2, poison:0.5, ground:0.5, rock:0.5, ghost:0.5, steel:0, fairy:2},
+  ground:   {fire:2, electric:2, grass:0.5, poison:2, flying:0, bug:0.5, rock:2, steel:2},
+  flying:   {electric:0.5, grass:2, fighting:2, bug:2, rock:0.5, steel:0.5},
+  psychic:  {fighting:2, poison:2, psychic:0.5, dark:0, steel:0.5},
+  bug:      {fire:0.5, grass:2, fighting:0.5, poison:0.5, flying:0.5, psychic:2, ghost:0.5, dark:2, steel:0.5, fairy:0.5},
+  rock:     {fire:2, ice:2, fighting:0.5, ground:0.5, flying:2, bug:2, steel:0.5},
+  ghost:    {normal:0, psychic:2, ghost:2, dark:0.5},
+  dragon:   {dragon:2, steel:0.5, fairy:0},
+  dark:     {fighting:0.5, psychic:2, ghost:2, dark:0.5, fairy:0.5},
+  steel:    {fire:0.5, water:0.5, electric:0.5, ice:2, rock:2, steel:0.5, fairy:2},
+  fairy:    {fire:0.5, fighting:2, poison:0.5, dragon:2, dark:2, steel:0.5},
+};
+const TYPE_NAMES_CN = {
+  normal:"一般", fire:"火", water:"水", electric:"电", grass:"草", ice:"冰",
+  fighting:"格斗", poison:"毒", ground:"地面", flying:"飞行", psychic:"超能",
+  bug:"虫", rock:"岩石", ghost:"幽灵", dragon:"龙", dark:"恶", steel:"钢", fairy:"妖精"
+};
+// 计算属性克制倍率（攻击方主属性 vs 防御方所有属性，倍率相乘）
+function getTypeEffectiveness(atkTypes, defTypes){
+  if(!atkTypes || !atkTypes.length || !defTypes || !defTypes.length) return 1;
+  const atkType = atkTypes[0];
+  let mult = 1;
+  defTypes.forEach(dt => {
+    const chart = TYPE_CHART[atkType];
+    if(chart && chart[dt] !== undefined) mult *= chart[dt];
+  });
+  return mult;
+}
+function typesLabel(types){
+  if(!types || !types.length) return "";
+  return types.map(t => TYPE_NAMES_CN[t]||t).join("/");
+}
+
+// ============================================================
+// 地区定义（5大地区，依关卡范围切换我方士兵图样，对应LEVEL_NAMES地区分布）
+// ============================================================
+const REGIONS = [
+  {id:"kanto",  name:"关都",   emoji:"🪨", lvStart:1,   lvEnd:40},
+  {id:"johto",  name:"城都",   emoji:"⚔️", lvStart:41,  lvEnd:74},
+  {id:"hoenn",  name:"丰缘",   emoji:"🏙️", lvStart:75,  lvEnd:101},
+  {id:"sinnoh", name:"神奥",   emoji:"❄️", lvStart:102, lvEnd:118},
+  {id:"kalos",  name:"卡洛斯", emoji:"🌸", lvStart:119, lvEnd:141},
+];
+function getRegionIdx(lv){
+  const total = 141;
+  const m = ((lv-1) % total) + 1; // 循环映射回1-141
+  for(let i=0;i<REGIONS.length;i++){
+    if(m >= REGIONS[i].lvStart && m <= REGIONS[i].lvEnd) return i;
+  }
+  return 0;
+}
+
+// --- 宝可梦 GIF 精灵图 base URL ---
+const POKE_BASE = "https://play.pokemonshowdown.com/sprites/gen5ani/";
+const POKE_BASE_BACK = "https://play.pokemonshowdown.com/sprites/gen5ani-back/";
+
+// ============================================================
+// 士兵职业基础数值（5职业，进化只换图样/属性/数值倍率，职业定位不变）
+// ============================================================
+const UNIT_ROLES = [
+  {id:"warrior",  costRole:"战士",   icon:"🗡️", cost:25,  baseHp:180, baseAtk:18, range:1.2, speed:0.6, atkRate:1.0, unlockLv:1,  size:52},
+  {id:"archer",   costRole:"弓手",   icon:"🏹", cost:40,  baseHp:80,  baseAtk:25, range:3.0, speed:0.8, atkRate:0.8, unlockLv:1,  size:50},
+  {id:"mage",     costRole:"法师",   icon:"🔮", cost:60,  baseHp:60,  baseAtk:35, range:2.5, speed:0.7, atkRate:1.2, splash:true, unlockLv:1,  size:52},
+  {id:"knight",   costRole:"骑士",   icon:"🛡️", cost:80,  baseHp:400, baseAtk:14, range:1.2, speed:0.4, atkRate:1.0, slow:true,   unlockLv:5,  size:58},
+  {id:"archmage", costRole:"大法师", icon:"🧙", cost:125, baseHp:100, baseAtk:80, range:4.0, speed:0.6, atkRate:2.5, splash:true,  unlockLv:10, size:56},
+];
+
+// ============================================================
+// 士兵进化链：[地区id][职业id] = {stages:[{sprite,name,types,lvReq}, ...]}
+// 第一阶为初始未进化形态（游戏开局即用），等级达到lvReq自动进化为下一阶
+// ============================================================
+const EVOLUTION_CHAINS = {
+  kanto: {
+    warrior:  {stages:[{sprite:"squirtle",   name:"杰尼龟",     types:["water"],            lvReq:1},
+                        {sprite:"wartortle",  name:"卡咪龟",     types:["water"],            lvReq:16},
+                        {sprite:"blastoise",  name:"水箭龟",     types:["water"],            lvReq:36}]},
+    archer:   {stages:[{sprite:"pidgey",     name:"波波",       types:["normal","flying"],  lvReq:1},
+                        {sprite:"pidgeotto",  name:"比比鸟",     types:["normal","flying"],  lvReq:18},
+                        {sprite:"pidgeot",    name:"大比鸟",     types:["normal","flying"],  lvReq:36}]},
+    mage:     {stages:[{sprite:"magnemite",  name:"小磁怪",     types:["electric","steel"], lvReq:1},
+                        {sprite:"magneton",   name:"三合一磁怪", types:["electric","steel"], lvReq:30}]},
+    knight:   {stages:[{sprite:"geodude",    name:"小拳石",     types:["rock","ground"],    lvReq:1},
+                        {sprite:"graveler",   name:"隆隆石",     types:["rock","ground"],    lvReq:25}]},
+    archmage: {stages:[{sprite:"gastly",     name:"鬼斯",       types:["ghost","poison"],   lvReq:1},
+                        {sprite:"haunter",    name:"鬼斯通",     types:["ghost","poison"],   lvReq:25},
+                        {sprite:"gengar",     name:"耿鬼",       types:["ghost","poison"],   lvReq:45}]},
+  },
+  johto: {
+    warrior:  {stages:[{sprite:"totodile",   name:"小锯鳄",     types:["water"],            lvReq:1},
+                        {sprite:"croconaw",   name:"蓝鳄",       types:["water"],            lvReq:18},
+                        {sprite:"feraligatr", name:"大力鳄",     types:["water"],            lvReq:30}]},
+    archer:   {stages:[{sprite:"ledyba",     name:"芭瓢虫",     types:["bug","flying"],     lvReq:1},
+                        {sprite:"ledian",     name:"安瓢虫",     types:["bug","flying"],     lvReq:18}]},
+    mage:     {stages:[{sprite:"girafarig",  name:"由基拉",     types:["normal","psychic"], lvReq:1},
+                        {sprite:"girafarig",  name:"由基拉·强化", types:["normal","psychic"], lvReq:30}]},
+    knight:   {stages:[{sprite:"lickitung",  name:"大舌头",     types:["normal"],           lvReq:1},
+                        {sprite:"lickitung",  name:"大舌头·强化", types:["normal"],          lvReq:25}]},
+    archmage: {stages:[{sprite:"absol",      name:"阿勃梭鲁",   types:["dark"],             lvReq:1},
+                        {sprite:"absol",      name:"阿勃梭鲁·强化",types:["dark"],           lvReq:30}]},
+  },
+  hoenn: {
+    warrior:  {stages:[{sprite:"treecko",    name:"木守宫",     types:["grass"],            lvReq:1},
+                        {sprite:"grovyle",    name:"森林蜗龙",   types:["grass"],            lvReq:16},
+                        {sprite:"sceptile",   name:"蜥蜴王",     types:["grass"],            lvReq:36}]},
+    archer:   {stages:[{sprite:"taillow",    name:"傲骨燕",     types:["normal","flying"],  lvReq:1},
+                        {sprite:"swellow",    name:"大王燕",     types:["normal","flying"],  lvReq:22}]},
+    mage:     {stages:[{sprite:"ralts",      name:"拉鲁拉丝",   types:["psychic","fairy"],  lvReq:1},
+                        {sprite:"kirlia",     name:"奇鲁莉安",   types:["psychic","fairy"],  lvReq:20}]},
+    knight:   {stages:[{sprite:"barboach",   name:"泥泥鳅",     types:["water","ground"],   lvReq:1},
+                        {sprite:"whiscash",   name:"圆陆鱼",     types:["water","ground"],   lvReq:30}]},
+    archmage: {stages:[{sprite:"shuppet",    name:"玩偶鬼",     types:["ghost"],            lvReq:1},
+                        {sprite:"banette",    name:"梦妖魔",     types:["ghost"],            lvReq:37}]},
+  },
+  sinnoh: {
+    warrior:  {stages:[{sprite:"piplup",     name:"波加曼",     types:["water"],            lvReq:1},
+                        {sprite:"prinplup",   name:"波多变形",   types:["water"],            lvReq:16},
+                        {sprite:"empoleon",   name:"帝王拿波",   types:["water","steel"],    lvReq:36}]},
+    archer:   {stages:[{sprite:"riolu",      name:"姆克儿",     types:["fighting"],         lvReq:1},
+                        {sprite:"lucario",    name:"李奥路",     types:["fighting","steel"], lvReq:30}]},
+    mage:     {stages:[{sprite:"lunatone",   name:"月石",       types:["rock","psychic"],   lvReq:1},
+                        {sprite:"lunatone",   name:"月石·强化",   types:["rock","psychic"],  lvReq:30}]},
+    knight:   {stages:[{sprite:"glameow",    name:"紫罗兰猫",   types:["normal"],           lvReq:1},
+                        {sprite:"purugly",    name:"愤怒猫",     types:["normal"],           lvReq:20}]},
+    archmage: {stages:[{sprite:"murkrow",    name:"黑暗鸦",     types:["dark","flying"],    lvReq:1},
+                        {sprite:"murkrow",    name:"黑暗鸦·强化", types:["dark","flying"],   lvReq:30}]},
+  },
+  kalos: {
+    warrior:  {stages:[{sprite:"froakie",    name:"呱呱泡蛙",   types:["water"],            lvReq:1},
+                        {sprite:"frogadier",  name:"呱呱蛙",     types:["water"],            lvReq:16},
+                        {sprite:"greninja",   name:"甲贺忍蛙",   types:["water","dark"],     lvReq:36}]},
+    archer:   {stages:[{sprite:"fletchling", name:"小箭雀",     types:["normal","flying"],  lvReq:1},
+                        {sprite:"fletchinder",name:"烈箭鸟",     types:["fire","flying"],    lvReq:17},
+                        {sprite:"talonflame", name:"烈箭鹰",     types:["fire","flying"],    lvReq:35}]},
+    mage:     {stages:[{sprite:"elgyem",     name:"长尾怪手",   types:["psychic"],          lvReq:1},
+                        {sprite:"beheeyem",   name:"念力土偶",   types:["psychic"],          lvReq:42}]},
+    knight:   {stages:[{sprite:"swirlix",    name:"三月兔",     types:["fairy"],            lvReq:1},
+                        {sprite:"swirlix",    name:"三月兔·强化", types:["fairy"],           lvReq:25}]},
+    archmage: {stages:[{sprite:"zorua",      name:"索罗亚",     types:["dark"],             lvReq:1},
+                        {sprite:"zoroark",    name:"索罗亚克",   types:["dark"],             lvReq:30}]},
+  },
+};
+
+// 取得某地区+职业当前等级对应的进化阶段数据
+function getEvoStage(regionId, roleId, lvUnit){
+  const chain = (EVOLUTION_CHAINS[regionId]||{})[roleId];
+  if(!chain) return {sprite:"substitute", name:"???", types:["normal"], lvReq:1};
+  let stage = chain.stages[0];
+  for(let i=0;i<chain.stages.length;i++){
+    if(lvUnit >= chain.stages[i].lvReq) stage = chain.stages[i];
+  }
+  return stage;
+}
+// 取得下一阶进化所需等级（若已是最终阶则返回null）
+function getNextEvoLv(regionId, roleId, lvUnit){
+  const chain = (EVOLUTION_CHAINS[regionId]||{})[roleId];
+  if(!chain) return null;
+  for(let i=0;i<chain.stages.length;i++){
+    if(chain.stages[i].lvReq > lvUnit) return chain.stages[i].lvReq;
+  }
+  return null;
+}
+
+// 动态生成 UNIT_DEFS：依目前关卡所在地区，组合职业基础值+当前进化阶段图样/属性
+function buildUnitDefs(regionIdx){
+  const region = REGIONS[regionIdx] || REGIONS[0];
+  return UNIT_ROLES.map(role => {
+    const lvUnit = getUnitLevel(role.id, region.id); // v3.8.0：该地区该职业士兵的独立等级
+    const stage = getEvoStage(region.id, role.id, lvUnit);
+    const nextLv = getNextEvoLv(region.id, role.id, lvUnit);
+    return {
+      id: role.id, sprite: stage.sprite, icon: role.icon, name: stage.name,
+      types: stage.types, cost: role.cost,
+      hp: role.baseHp, atk: role.baseAtk, range: role.range, speed: role.speed,
+      atkRate: role.atkRate, splash: role.splash||false, slow: role.slow||false,
+      unlockLv: role.unlockLv, size: role.size,
+      unitLevel: lvUnit, nextEvoLv: nextLv, regionId: region.id, roleId: role.id
+    };
+  });
+}
+
+// ============================================================
+// 士兵经验值/等级系统：消耗金币给经验值，经验值转等级，等级达到进化要求自动进化
+// v3.8.0：经验值改为按「地区+职业」分开存储，不同地区的同职业士兵各自独立计算等级
+// ============================================================
+const EXP_PER_LEVEL = 40;        // 每级所需经验值（固定值，简化为线性）
+const EXP_COST_PER_POINT = 3;    // 每点经验值消耗金币数
+
+function _ensureRegionExp(regionId){
+  if(!G.unitExp) G.unitExp = {};
+  if(!G.unitExp[regionId]) G.unitExp[regionId] = {warrior:0, archer:0, mage:0, knight:0, archmage:0};
+  return G.unitExp[regionId];
+}
+function getUnitLevel(roleId, regionId){
+  const rid = regionId || (REGIONS[_gameRunning ? _gameRegionIdx : getRegionIdx(Math.max(...(G.unlocked||[1])))]).id;
+  const exp = (_ensureRegionExp(rid))[roleId] || 0;
+  return 1 + Math.floor(exp / EXP_PER_LEVEL); // Lv1起算
+}
+function getUnitExpInLevel(roleId, regionId){
+  const rid = regionId || (REGIONS[_gameRunning ? _gameRegionIdx : getRegionIdx(Math.max(...(G.unlocked||[1])))]).id;
+  const exp = (_ensureRegionExp(rid))[roleId] || 0;
+  return exp % EXP_PER_LEVEL;
+}
+function giveUnitExp(roleId, amount, regionId){
+  const rid = regionId || (REGIONS[_gameRunning ? _gameRegionIdx : getRegionIdx(Math.max(...(G.unlocked||[1])))]).id;
+  const bucket = _ensureRegionExp(rid);
+  const before = getUnitLevel(roleId, rid);
+  bucket[roleId] = (bucket[roleId]||0) + amount;
+  const after = getUnitLevel(roleId, rid);
+  return after > before; // 是否升级
+}
+function trainUnitExp(roleId, points){
+  const cost = points * EXP_COST_PER_POINT;
+  if((G.coins||0) < cost){ alert("金币不足！需要 🪙"+cost); return false; }
+  G.coins -= cost;
+  const regionIdx = _gameRunning ? _gameRegionIdx : getRegionIdx(Math.max(...(G.unlocked||[1])));
+  const regionId = REGIONS[regionIdx].id;
+  // v3.7.0：进化提示只在「真正跨过进化门槛」时触发，不是每次升级都跳——
+  // 先记录训练前的图样阶段，训练后比对图样是否改变，才算真正进化
+  // v3.8.0：经验值按地区独立存储，所有 getUnitLevel/giveUnitExp 都明确带上 regionId
+  const beforeLv = getUnitLevel(roleId, regionId);
+  const beforeStage = getEvoStage(regionId, roleId, beforeLv);
+  giveUnitExp(roleId, points, regionId);
+  const afterLv = getUnitLevel(roleId, regionId);
+  const afterStage = getEvoStage(regionId, roleId, afterLv);
+  const didEvolve = beforeStage.sprite !== afterStage.sprite || beforeStage.name !== afterStage.name;
+  save(); cloudSave(); updateMenuStat();
+  if(typeof renderEvolveMenu === "function") renderEvolveMenu();
+  // v3.0.0：若正在游戏中训练，立即重建当前单位定义并刷新底部选兵栏，让进化即时生效
+  if(_gameRunning && _gameRegionIdx !== undefined){
+    _currentUnitDefs = buildUnitDefs(_gameRegionIdx);
+    if(typeof renderUnitTray === "function") renderUnitTray();
+    updateGameCoins();
+  }
+  if(didEvolve){
+    const role = UNIT_ROLES.find(r=>r.id===roleId);
+    showEvolveToast && showEvolveToast(role ? role.costRole : roleId, afterStage.name);
+  }
+  return true;
+}
+function showEvolveToast(roleName, newName){
+  alert("✨ "+roleName+" 升级进化为「"+newName+"」！");
+}
+
+// --- 敌人定义（每个敌人绑定宝可梦 Gen5 动态 GIF，types为真实宝可梦属性，用于属性克制计算）---
+// sprite: 宝可梦名称（对应 gen5ani/NAME.gif）
+// size: 显示尺寸(px) in canvas cell
+const ENEMY_TEMPLATES = [
+  // 石器时代怪物 — 原始系
+  {id:"goblin",   sprite:"caterpie",    name:"绿毛虫",  types:["bug"],              hp:80,  atk:8,  speed:1.4, reward:8,  size:48, era:0},
+  {id:"rattata",  sprite:"rattata",     name:"小拉达",  types:["normal"],           hp:100, atk:10, speed:1.6, reward:10, size:48, era:0},
+  {id:"orc",      sprite:"geodude",     name:"隆隆石",  types:["rock","ground"],    hp:200, atk:15, speed:0.8, reward:15, size:52, era:0},
+  {id:"slowpoke", sprite:"slowpoke",    name:"呆呆兽",  types:["water","psychic"],  hp:180, atk:12, speed:0.5, reward:12, size:52, era:0},
+  // 石器时代BOSS
+  {id:"dragon0",  sprite:"rhydon",      name:"犀牛王",  types:["ground","rock"],    hp:600, atk:40, speed:0.5, reward:40, size:72, era:0, boss:true},
+
+  // 中世纪怪物 — 毒/飞行系
+  {id:"zubat",    sprite:"zubat",       name:"超音蝠",  types:["poison","flying"],  hp:120, atk:14, speed:1.5, reward:12, size:50, era:1},
+  {id:"gengar",   sprite:"haunter",     name:"鬼斯通",  types:["ghost","poison"],   hp:160, atk:22, speed:1.1, reward:18, size:54, era:1},
+  {id:"witch",    sprite:"kadabra",     name:"胜利符",  types:["psychic"],          hp:150, atk:30, speed:1.0, reward:18, size:54, era:1},
+  {id:"knight_e", sprite:"machoke",     name:"豪力",    types:["fighting"],         hp:350, atk:20, speed:0.6, reward:22, size:58, era:1},
+  // 中世纪BOSS
+  {id:"dragon1",  sprite:"dragonair",   name:"哈克龙",  types:["dragon"],           hp:700, atk:45, speed:0.6, reward:45, size:78, era:1, boss:true},
+
+  // 现代怪物 — 电/钢系
+  {id:"magnemite", sprite:"magnemite",  name:"磁电子",  types:["electric","steel"], hp:130, atk:18, speed:1.2, reward:14, size:48, era:2},
+  {id:"robot",    sprite:"porygon",     name:"多边兽",  types:["normal"],           hp:200, atk:25, speed:1.0, reward:20, size:52, era:2},
+  {id:"electrode",sprite:"electrode",   name:"顽皮雷弹",types:["electric"],         hp:180, atk:28, speed:1.4, reward:22, size:52, era:2},
+  {id:"scyther",  sprite:"scyther",     name:"飞天螳螂",types:["bug","flying"],     hp:220, atk:32, speed:1.1, reward:24, size:56, era:2},
+  // 现代BOSS
+  {id:"dragon2",  sprite:"gyarados",    name:"暴鲤龙",  types:["water","flying"],   hp:850, atk:52, speed:0.7, reward:55, size:82, era:2, boss:true},
+
+  // 未来怪物 — 超能/龙系
+  {id:"alakazam", sprite:"alakazam",    name:"胡地",    types:["psychic"],          hp:160, atk:35, speed:1.2, reward:26, size:56, era:3},
+  {id:"ufo",      sprite:"porygon2",    name:"多边兽2", types:["normal"],           hp:250, atk:38, speed:1.0, reward:30, size:56, era:3},
+  {id:"mewtwo_s", sprite:"jolteon",     name:"雷伊布",  types:["electric"],         hp:200, atk:40, speed:1.5, reward:32, size:52, era:3},
+  {id:"dragonite",sprite:"dragonite",   name:"快龙",    types:["dragon","flying"],  hp:400, atk:42, speed:0.9, reward:38, size:64, era:3},
+  // 未来BOSS
+  {id:"mewtwo",   sprite:"mewtwo",      name:"超梦",    types:["psychic"],          hp:1200,atk:70, speed:0.8, reward:80, size:90, era:3, boss:true},
+];
+
+// --- 游戏全局变数 ---
+let _canvas, _ctx;
+let _W=800, _H=320;   // canvas 解析度（自适应后设定）
+const ROWS = 4;       // 几排路径
+const COLS = 10;      // 格子数
+let _cellW, _cellH;
+let _gameRunning = false;
+let _gamePaused = false;
+let _gameLevel = 1;
+let _gameEra = 0;
+let _gameRegionIdx = 0;        // 当前关卡所在地区index（依此切换士兵图样）
+let _hardModeActive = false;   // v3.1.0：本局是否为困难模式（怪物血量翻倍+等差出怪）
+let _currentUnitDefs = [];     // 动态生成的当前单位定义（含地区图样+进化阶段）
+let _gameUniverse = 1;
+let _food = 0, _maxFood = 200;
+let _foodRate = 3;   // 每秒食物
+let _baseHP = 100, _baseMaxHP = 100;
+let _enemyCastleHP = 200, _enemyCastleMaxHP = 200;
+let _shieldActive = false, _shieldTimer = 0;
+let _speedBoost = false, _speedTimer = 0;
+let _wave = 0, _maxWaves = 0;
+let _waveTimer = 0, _waveDelay = 3.0;
+let _waveActive = false;
+let _enemiesToSpawn = [];
+let _spawnTimer = 0;
+let _units = [];       // 放置的防守单位
+let _enemies = [];     // 场上敌人
+let _projectiles = []; // 飞弹
+let _particles = [];   // 特效
+let _selectedUnit = null;
+let _lastTime = 0;
+let _animFrame = null;
+let _boostersUsed = 0;
+let _totalKills = 0;
+let _rewardedKills = 0; // v2.7.0：记录上次结算安慰奖时的击杀数基准，避免复活后重复发放
+let _pendingReviveEnemies = []; // v2.8.0：死亡瞬间场上所有存活敌人的快照（不限数量），供复活时全部重新生成
+let _pendingReviveUnits   = []; // v2.8.0：死亡瞬间场上所有存活友军的快照（不限数量），供复活时全部重新生成
+let _maxWaveReached = 0;
+const CELL_PATH_COL = COLS; // 敌人从右侧进入
+const BASE_COL = -1;        // 基地在左侧
+
+// 单位冷却
+let _unitCooldowns = {}; // unitId -> remainSec
+
+function getEraIdx(lv){ return Math.min(3, Math.floor((lv-1)/10)); }
+function getLvInEra(lv){ return ((lv-1)%10)+1; }
+function entryCost(lv){ return 0; } // v1.7.0: 取消入场费
+
+// ============================================================
+// 开始游戏
+// ============================================================
+function startGame(lv, hardMode){
+  qs("ov-win").classList.add("hidden"); qs("ov-lose").classList.add("hidden");
+  _hardModeActive = !!hardMode; // 明确指定才开启困难模式，否则一律普通模式
+  _doStartGame(lv, 0);
+}
+function _doStartGame(lv, cost){
+  G.coins = Math.max(0,(G.coins||0)-cost);
+  _gameLevel = lv; _gameEra = getEraIdx(lv);
+  _gameRegionIdx = getRegionIdx(lv);          // v3.0.0：依关卡计算所在地区（关都/城都/丰缘/神奥/卡洛斯）
+  _currentUnitDefs = buildUnitDefs(_gameRegionIdx); // 动态生成当前地区+进化阶段的单位定义
+  _gameUniverse = G.universe||1;
+  if(!G.upgrades) G.upgrades={};
+  _food = 80 + getUpEffect("initFood"); _maxFood = 200 + getUpEffect("initFood")*0.5 + getUpEffect("foodCap");
+  _foodRate = 3 + lv*0.3 + getUpEffect("foodRate");
+  const castleBonus = getUpEffect("castleHp"); // 强化加成
+  _baseMaxHP = 100 + castleBonus;
+  _baseHP    = _baseMaxHP;
+  _enemyCastleHP = Math.floor((150 + lv*10) * getUpEffect("enemyCastleHp")); // v3.7.0：奖励强化-敌方城堡HP加成
+  _enemyCastleMaxHP = _enemyCastleHP;
+  _shieldActive=false; _shieldTimer=0; _speedBoost=false; _speedTimer=0;
+  _wave=0; _waveTimer=_waveDelay; _waveActive=false;
+  _units=[]; _enemies=[]; _projectiles=[]; _particles=[]; _enemiesToSpawn=[];
+  _boostersUsed=0; _totalKills=0; _rewardedKills=0; _maxWaveReached=0;
+  _unitCooldowns={};
+  _selectedUnit=null;
+  clearAllSprites();
+  _maxWaves = 5 + Math.floor(lv/2) + getUpEffect("enemyWave"); // v3.7.0：奖励强化-额外波次
+  if(!G.unlocked.includes(lv)) G.unlocked.push(lv);
+  // v1.7.0: game_start 只在首次进入该关卡时记录
+  if(!G.cleared.includes(lv)){
+    gasJsonp({sheet:SHEET,action:"game_start",id:G.id,uid:String(G.uid),
+      level:String(lv),info:ERAS[_gameEra].name,date:todayISO()}).catch(()=>{});
+  }
+  save(); cloudSave();
+  show("game"); applyBgTheme();
+  setRealVH(); // v2.5.0：画面切换瞬间重新校正一次真实视口高度
+  // v2.4.0：先渲染所有会影响版面高度的UI区块（unit-tray等），
+  // 让浏览器完成 layout 后，才计算canvas尺寸，
+  // 避免 #game-field 在 unit-tray 还是空的瞬间被量到错误（过大）的高度。
+  renderEraLabel();
+  renderUnitTray();
+  updateBoosterUI();
+  updateFoodUI();
+  updateCastleUI();
+  updateEnemyCastleUI();
+  updateGameCoins();
+  _gameRunning=true; _lastTime=performance.now();
+  if(_animFrame) cancelAnimationFrame(_animFrame);
+
+  // v2.9.0：多重保险初始化 canvas 尺寸 —
+  // 首次进入游戏时，浏览器地址栏可能还在收起的过渡动画中（通常需200-300ms），
+  // 单纯延迟一帧（约16ms）远远不够，必须多重延迟+重新校正才能确保量到最终稳定的高度。
+  requestAnimationFrame(() => {
+    setRealVH();
+    initCanvas();
+    _animFrame=requestAnimationFrame(gameLoop);
+    // 短延迟后再校正一次（地址栏收起动画通常在此时已完成）
+    setTimeout(() => { setRealVH(); resizeCanvas(); }, 350);
+    // 加一道更长的保险，应对极少数较慢的设备/浏览器
+    setTimeout(() => { setRealVH(); resizeCanvas(); }, 900);
+  });
+}
+function stopGame(){
+  _gameRunning=false;
+  if(_animFrame){ cancelAnimationFrame(_animFrame); _animFrame=null; }
+  clearAllSprites();
+}
+function restartLevel(){ startGame(_gameLevel, _hardModeActive); } // 重新挑战保留原难度
+function nextLevel(){ startGame(_gameLevel+1, false); } // 下一关默认普通模式
+
+// ============================================================
+// Canvas 初始化
+// ============================================================
+function initCanvas(){
+  _canvas = qs("field-canvas");
+  _ctx = _canvas.getContext("2d");
+  resizeCanvas();
+  // 点击由 #click-layer 处理（避免被 sprite-layer 挡住）
+}
+// 统一点击入口 — 绑在 #click-layer 上
+function onFieldClick(e){
+  if(!_gameRunning||!_selectedUnit) return;
+  const field = qs("game-field");
+  const rect = field.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const row = Math.floor(y/_cellH);
+  if(row<0||row>=ROWS) return;
+
+  const def = _currentUnitDefs.find(d=>d.id===_selectedUnit);
+  if(!def) return;
+  if(_food<def.cost){ showMsg("食物不足！需要 "+def.cost+" 🍖"); return; }
+  _food -= def.cost; updateFoodUI();
+
+  // v2.1.0：点击只决定路线（row），单位固定从我方城堡边界出发
+  const allyBoundary = _cellW * 0.92;
+  const hpMult = getUpEffect("unitHp");
+  const u = {
+    id: _selectedUnit+"_"+Date.now(),
+    def:def, col: 1, row,
+    x: allyBoundary, y: row*_cellH+_cellH/2,
+    hp: Math.floor(def.hp * hpMult), maxHp: Math.floor(def.hp * hpMult),
+    atkTimer: 0, target: null
+  };
+  _units.push(u);
+  createUnitSprite(u);
+  addParticle(u.x, u.y, "#22d3ee", 1.0);
+  showMsg(def.name+" 已从城堡出发，沿第"+(row+1)+"路前进！");
+  save();
+}
+function resizeCanvas(){
+  const field = qs("game-field");
+  const dpr = window.devicePixelRatio||1;
+  // v2.4.0：用 getBoundingClientRect 取得布局稳定后的精确尺寸（含小数点），
+  // 比 offsetWidth/offsetHeight 更不容易因四舍五入或reflow时机问题而量到错误数值
+  const rect = field.getBoundingClientRect();
+  _W = rect.width;
+  _H = rect.height;
+  _canvas.width = Math.round(_W*dpr); _canvas.height = Math.round(_H*dpr);
+  _canvas.style.width = _W+"px"; _canvas.style.height = _H+"px";
+  _ctx.scale(dpr, dpr);
+  _cellW = _W/COLS;
+  _cellH = _H/ROWS;
+}
+
+// ============================================================
+// 游戏主循环
+// ============================================================
+function gameLoop(now){
+  if(!_gameRunning){ return; }
+  const rawDt = Math.min((now-_lastTime)/1000, 0.08);
+  _lastTime = now;
+  const dt = (_speedBoost?2:1)*rawDt;
+
+  // 计时器
+  if(_shieldActive){ _shieldTimer-=dt; if(_shieldTimer<=0){ _shieldActive=false; _shieldTimer=0; } }
+  if(_speedBoost){ _speedTimer-=rawDt; if(_speedTimer<=0){ _speedBoost=false; _speedTimer=0; } }
+
+  // 食物累积
+  _food = Math.min(_maxFood, _food + _foodRate*dt);
+  updateFoodUI();
+  updateCastleUI();
+
+  // 单位冷却
+  Object.keys(_unitCooldowns).forEach(k=>{ _unitCooldowns[k]-=dt; if(_unitCooldowns[k]<=0) delete _unitCooldowns[k]; });
+
+  // 波次管理
+  if(!_waveActive){
+    _waveTimer -= dt;
+    if(_waveTimer<=0 && _wave<_maxWaves){
+      spawnWave();
+    }
+  }
+  if(_waveActive && _enemiesToSpawn.length>0){
+    _spawnTimer -= dt;
+    if(_spawnTimer<=0){
+      const e=_enemiesToSpawn.shift();
+      spawnEnemy(e);
+      _spawnTimer = 0.6;
+      if(_enemiesToSpawn.length===0) _waveActive=false;
+    }
+  }
+
+  // 敌人移动 + 碰撞
+  _enemies.forEach(en=>{
+    if(en.dead) return;
+    // 找同排有无友方单位挡路 — v2.6.0：直接用 en.row（不再用y反推，避免格高变化时算错排数）
+    const enRow = (en.row !== undefined) ? en.row : Math.round((en.y - _cellH*0.5) / _cellH);
+    const blocker = _units.find(u =>
+      u.hp > 0 &&
+      u.row === enRow &&
+      en.x - u.x > -_cellW*0.3 &&
+      en.x - u.x < _cellW*0.8
+    );
+    if(blocker){
+      // 双向碰撞：双方按各自攻击力每帧扣血
+      const eDmg = en.def.atk * dt * 1.2;
+      const uDmg = blocker.def.atk * 0.5 * dt;
+      blocker.hp = Math.max(0, blocker.hp - eDmg);
+      updateUnitSprite(blocker);
+      if(blocker.hp <= 0){
+        removeUnitSprite(blocker);
+        _units = _units.filter(u => u.id !== blocker.id);
+      }
+      en.hp = Math.max(0, en.hp - uDmg);
+      updateEnemySprite(en);
+      if(en.hp <= 0){ en.dead=true; removeEnemySprite(en); return; }
+      // 双方停下互打，均不前进
+      return;
+    }
+    // 到达友方城堡边界：停下持续攻击（不立即消失）
+    const allyBoundary = _cellW * 0.92;
+    if(en.x <= allyBoundary){
+      en.x = allyBoundary; // 卡在城堡前
+      updateEnemySprite(en);
+      if(!_shieldActive && !en.attackingCastle){
+        en.attackingCastle = true;
+        en.castleAtkTimer = 0;
+      }
+      if(en.attackingCastle){
+        en.castleAtkTimer = (en.castleAtkTimer||0) - dt;
+        if(en.castleAtkTimer <= 0){
+          en.castleAtkTimer = 1.2; // 每1.2秒攻击一次城堡
+          if(!_shieldActive){
+            _baseHP = Math.max(0, _baseHP - en.def.atk*0.8);
+            addParticle(_cellW*0.6, en.y, "#ef4444", 0.9);
+            updateCastleUI();
+            if(_baseHP<=0){ _baseHP=0; showLose(); return; }
+          }
+        }
+      }
+      return; // 停在城堡前，不再移动
+    }
+    en.x -= en.def.speed * dt * _cellW * 0.8 * getUpEffect("moveSpd");
+    updateEnemySprite(en);
+  });
+
+  // 单位移动 + 攻击
+  _units.forEach(u=>{
+    if(u.hp<=0) return;
+    const unitRow = u.row;
+    const enemyBoundary = _W - _cellW * 0.92; // 敌方城堡左边界
+
+    // 找同排最近的敌人（在单位右侧）— v2.6.0：直接用 en.row 比对，不再用y反推（避免格高变化时算错排数）
+    const rowEnemies = _enemies.filter(en =>
+      !en.dead &&
+      (en.row !== undefined ? en.row : Math.round((en.y - _cellH*0.5) / _cellH)) === unitRow &&
+      en.x > u.x - _cellW*0.3
+    ).sort((a,b) => a.x - b.x);
+
+    const nearestEnemy = rowEnemies[0];
+
+    // 判断是否停下（碰到敌人 或 到达敌方城堡）
+    const atEnemyCastle = u.x >= enemyBoundary;
+    const blockedByEnemy = nearestEnemy && (nearestEnemy.x - u.x) < _cellW * 0.8;
+
+    if(!atEnemyCastle && !blockedByEnemy){
+      // 前进（速度 = 单位行走速度，比敌人稍慢）
+      u.x += u.def.speed * 0.55 * dt * _cellW * 0.8 * getUpEffect("moveSpd");
+      u.x = Math.min(u.x, enemyBoundary);
+      u.col = Math.floor(u.x / _cellW);
+      // 同步精灵位置
+      const s = _unitSprites[u.id];
+      if(s){
+        s.wrap.style.left = u.x + "px";
+        s.hpBar.style.left = u.x + "px";
+      }
+    }
+
+    // 攻击计时
+    u.atkTimer -= dt;
+    if(u.atkTimer > 0) return;
+
+    const rangeBonus = (u.def.id==="archer"||u.def.id==="archmage"||u.def.id==="mage") ? getUpEffect("atkRange") : 1;
+    const attackRange = u.def.range * _cellW * rangeBonus + _cellW * 0.5;
+
+    // 射程内所有敌人
+    const inRangeEnemies = _enemies.filter(en =>
+      !en.dead &&
+      Math.abs(en.x - u.x) < attackRange &&
+      Math.abs(en.y - u.y) < _cellH * 1.5
+    );
+
+    if(inRangeEnemies.length > 0){
+      // 攻击最靠近自身的敌人
+      const tgt = inRangeEnemies.sort((a,b) => Math.abs(a.x-u.x) - Math.abs(b.x-u.x))[0];
+      u.atkTimer = u.def.atkRate;
+      // v3.0.0：套用宝可梦属性克制（我方士兵属性 vs 敌方怪物属性）
+      const typeMult = getTypeEffectiveness(u.def.types, tgt.def.types);
+      const baseDmg  = Math.floor(u.def.atk * getUpEffect("unitAtk"));
+      _projectiles.push({
+        x:u.x, y:u.y, tx:tgt.x, ty:tgt.y,
+        targetId:tgt.id, targetType:"enemy",
+        atk: Math.max(1, Math.floor(baseDmg * typeMult)),
+        typeMult: typeMult,
+        splash:u.def.splash||false, slow:u.def.slow||false,
+        speed: 400 * getUpEffect("gameSpd"),
+        icon:u.def.splash?"✨":"•"
+      });
+    } else if(atEnemyCastle && _enemyCastleHP > 0){
+      // 到达敌方城堡：近战也可以直接攻城（攻城不计属性克制，城堡无属性）
+      u.atkTimer = u.def.atkRate;
+      const atkDmg = Math.floor(u.def.atk * getUpEffect("unitAtk") * (u.def.splash ? 0.8 : 0.5));
+      _enemyCastleHP = Math.max(0, _enemyCastleHP - atkDmg);
+      addParticle(u.x + _cellW*0.3, u.y, "#fbbf24", 0.7);
+      updateEnemyCastleUI();
+      if(_enemyCastleHP <= 0){ _enemyCastleHP=0; showWin(); return; }
+    } else if(_enemyCastleHP > 0){
+      // 远程单位在射程外也往城堡方向射
+      const isRanged = (u.def.id==="archer"||u.def.id==="archmage"||u.def.id==="mage");
+      if(isRanged){
+        u.atkTimer = u.def.atkRate * 1.5;
+        _projectiles.push({
+          x:u.x, y:u.y, tx:_W-_cellW*0.5, ty:_H/2,
+          targetId:"enemy_castle", targetType:"castle",
+          atk: Math.floor(u.def.atk * getUpEffect("unitAtk") * 0.5),
+          splash:false, slow:false,
+          speed: 400 * getUpEffect("gameSpd"),
+          icon:"💥"
+        });
+      }
+    }
+  });
+
+  // 飞弹移动
+  _projectiles = _projectiles.filter(p=>{
+    if(p.targetType === "castle"){
+      // 飞向敌方城堡
+      const dx=p.tx-p.x, dy=p.ty-p.y, dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist < 16){
+        // 命中敌方城堡
+        _enemyCastleHP = Math.max(0, _enemyCastleHP - p.atk);
+        addParticle(p.tx, p.ty, "#fbbf24", 0.8);
+        updateEnemyCastleUI();
+        if(_enemyCastleHP <= 0){ _enemyCastleHP=0; showWin(); }
+        return false;
+      }
+      const spd=p.speed*dt;
+      p.x += dx/dist*spd; p.y += dy/dist*spd;
+      return true;
+    }
+    // 攻击普通敌人
+    const tgt=_enemies.find(e=>e.id===p.targetId&&!e.dead);
+    if(!tgt){ return false; }
+    const dx=tgt.x-p.x, dy=tgt.y-p.y, dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<12){
+      if(p.splash){
+        _enemies.filter(en=>!en.dead&&Math.abs(en.x-tgt.x)<_cellW*1.5).forEach(en=>{
+          damageEnemy(en, p.atk*0.7);
+        });
+      }
+      damageEnemy(tgt, p.atk);
+      if(p.slow) tgt.slowed = 1.5;
+      addParticle(tgt.x, tgt.y, p.splash?"#a78bfa":"#fbbf24", 0.5);
+      // v3.0.0：属性克制视觉反馈
+      if(p.typeMult !== undefined){
+        if(p.typeMult >= 2){ showTypeHint(tgt.x, tgt.y, "效果绝佳！", "#fbbf24"); }
+        else if(p.typeMult > 0 && p.typeMult < 1){ showTypeHint(tgt.x, tgt.y, "效果不好…", "#94a3b8"); }
+        else if(p.typeMult === 0){ showTypeHint(tgt.x, tgt.y, "没有效果", "#64748b"); }
+      }
+      return false;
+    }
+    const spd=p.speed*dt;
+    p.x += dx/dist*spd; p.y += dy/dist*spd;
+    return true;
+  });
+
+  // 清理死亡敌人（打怪得食物 + 金币）
+  _enemies.forEach(en=>{
+    if(en.dead&&!en.rewarded){
+      en.rewarded=true;
+      const foodGain = Math.ceil(en.def.reward * 0.5 * getUpEffect("foodKill"));
+      _food = Math.min(_maxFood, _food + foodGain);
+      G.coins=(G.coins||0)+Math.floor(en.def.reward*0.5);
+      _totalKills++;
+      // 显示食物获得
+      addParticle(en.x||_W/2, en.y||_H/2, "#86efac", 0.9);
+    }
+  });
+  _enemies = _enemies.filter(en=>!en.dead);
+
+  // 粒子
+  _particles=_particles.filter(p=>{ p.life-=dt; p.y-=dt*30; p.size*=0.95; return p.life>0; });
+
+  // 城堡UI同步
+  updateEnemyCastleUI();
+
+  // 通关判断：敌方城堡HP归零 OR 所有波次清场后敌方城堡也会被自动攻击
+  if(_enemyCastleHP <= 0){
+    showWin(); return;
+  }
+  // 备用通关：所有波次消灭、场上无敌、城堡未归零 → 视为通关（敌方撤退）
+  if(_wave>=_maxWaves && !_waveActive && _enemiesToSpawn.length===0 && _enemies.length===0){
+    _enemyCastleHP = 0; updateEnemyCastleUI(); showWin();
+    return;
+  }
+
+  updateGameCoins();
+  draw();
+  _animFrame=requestAnimationFrame(gameLoop);
+}
+
+// ============================================================
+// 波次生成
+// ============================================================
+function spawnWave(){
+  _wave++;
+  _maxWaveReached=Math.max(_maxWaveReached,_wave);
+  _waveActive=true; _spawnTimer=0.3;
+  const lv=_gameLevel, era=_gameEra;
+
+  // v2.0.0：每波出怪数量基准 = 关卡数（第1关每波1只，第2关每波2只...第N关每波N只）
+  // v3.1.0：困难模式改为等差级数出怪 — 第w波数量 = lv + (w-1)*lv（每波递增一个关卡数的步进）
+  const count = _hardModeActive ? (lv + (_wave - 1) * lv) : lv;
+  const isFinalWave = (_wave === _maxWaves);
+  const hpMult = (_hardModeActive ? 2 : 1) * getUpEffect("enemyHp");   // v3.1.0困难模式翻倍 + v3.7.0奖励强化加成
+  const atkMult = getUpEffect("enemyAtk"); // v3.7.0：奖励强化-敌方攻击力加成
+  const bossCount = 1 + getUpLv("enemyBossNum"); // 最终波BOSS数量 = 1 + 强化等级
+
+  // 按时代选怪
+  const pool = ENEMY_TEMPLATES.filter(e => {
+    if(e.boss) return false; // 普通池不含boss
+    return (e.era === undefined || e.era <= era);
+  });
+  const bossPool = ENEMY_TEMPLATES.filter(e =>
+    e.boss && (e.era === undefined || e.era === era)
+  );
+
+  _enemiesToSpawn = [];
+  // 普通怪：固定 count 只（困难模式为等差递增数量）
+  for(let i = 0; i < count; i++){
+    const tmpl = pool.length > 0 ? pool[Math.floor(Math.random()*pool.length)] : ENEMY_TEMPLATES[0];
+    const scale = 1 + lv*0.10 + (_gameUniverse-1)*0.25;
+    _enemiesToSpawn.push({
+      ...tmpl,
+      hp:     Math.floor(tmpl.hp * scale * hpMult),
+      atk:    Math.floor(tmpl.atk * scale * atkMult),
+      reward: Math.floor(tmpl.reward * scale),
+      row:    Math.floor(Math.random()*ROWS)
+    });
+  }
+  // 最终波额外加入BOSS（数量 = 1 + enemyBossNum强化等级，不扣减普通怪数量）
+  if(isFinalWave && bossPool.length > 0){
+    const scale = 1 + lv*0.10 + (_gameUniverse-1)*0.25;
+    for(let b=0; b<bossCount; b++){
+      const boss = bossPool[Math.floor(Math.random()*bossPool.length)];
+      _enemiesToSpawn.push({
+        ...boss,
+        hp:     Math.floor(boss.hp * scale * hpMult),
+        atk:    Math.floor(boss.atk * scale * atkMult),
+        reward: Math.floor(boss.reward * scale),
+        row:    Math.floor(Math.random()*ROWS)
+      });
+    }
+  }
+
+  showMsg((_hardModeActive?"🔥 ":"")+"第 "+_wave+"/"+_maxWaves+" 波！（"+_enemiesToSpawn.length+" 只）");
+  qs("wave-txt").textContent = (_hardModeActive?"🔥":"")+"第"+_wave+"/"+_maxWaves+"波";
+  // 波次之间间隔拉长
+  _waveTimer = 3.0 + _wave * 0.5;
+}
+// ============================================================
+// 宝可梦精灵图 DOM 管理
+// ============================================================
+const _spriteEls  = {}; // enemyId  -> {wrap, img, hpBar, hpFill, sz}
+const _unitSprites = {}; // unitId  -> {wrap, img, hpBar, hpFill, sz}
+
+function getSpriteLayer(){ return document.getElementById("sprite-layer"); }
+
+// ── 敌人精灵（正面 + 红色遮罩 wrapper） ──
+// v3.3.0：计算HP条/名称标签的安全Y位置 —— 若标准位置（精灵上方）会被裁切出#game-field顶部，
+// 则改为显示在精灵下方，避免第一行的敌人因上方空间不足而看不到血量条/名称
+function getSafeLabelTop(centerY, sz, offsetAbove, offsetBelow){
+  const topPos = centerY - sz * 0.55 - offsetAbove;
+  if(topPos < 4){ // 离容器顶部太近（含4px安全边距），改放精灵下方
+    return centerY + sz * 0.55 + (offsetBelow!==undefined?offsetBelow:offsetAbove);
+  }
+  return topPos;
+}
+
+function createEnemySprite(en){
+  const layer = getSpriteLayer(); if(!layer) return;
+  const sz = en.def.size || 52;
+
+  const wrap = document.createElement("div");
+  wrap.className = "poke-enemy-wrap" + (en.def.boss ? " boss-wrap" : "");
+  wrap.style.left  = en.x + "px";
+  wrap.style.top   = en.y + "px";
+  wrap.style.width  = sz + "px";
+  wrap.style.height = "auto";
+
+  const img = document.createElement("img");
+  img.src = POKE_BASE + en.def.sprite + ".gif";
+  img.alt = en.def.name;
+  img.style.width  = sz + "px";
+  img.style.height = "auto";
+  img.style.imageRendering = "pixelated";
+  img.onerror = () => { img.src = POKE_BASE + "substitute.gif"; };
+  wrap.appendChild(img);
+
+  const hpBar = document.createElement("div");
+  hpBar.className = "poke-hp-bar";
+  hpBar.style.width = Math.round(sz * 0.9) + "px";
+  hpBar.style.left  = en.x + "px";
+  hpBar.style.top   = getSafeLabelTop(en.y, sz, 8) + "px";
+  const hpFill = document.createElement("div");
+  hpFill.className = "poke-hp-fill";
+  hpFill.style.width = "100%";
+  hpFill.style.background = "#22c55e";
+  hpBar.appendChild(hpFill);
+
+  layer.appendChild(wrap);
+  layer.appendChild(hpBar);
+
+  // v2.2.0：BOSS 名称标签改用 DOM（避免被精灵图层遮挡）
+  // v3.3.0：第一行时改放精灵下方（避免上方空间不足被裁切），下方要错开HP条再往下一点
+  let bossLabel = null;
+  if(en.def.boss){
+    bossLabel = document.createElement("div");
+    bossLabel.className = "boss-name-label";
+    bossLabel.textContent = "👑 " + en.def.name;
+    bossLabel.style.left = en.x + "px";
+    bossLabel.style.top  = getSafeLabelTop(en.y, sz, 14, 24) + "px";
+    layer.appendChild(bossLabel);
+  }
+
+  _spriteEls[en.id] = {wrap, img, hpBar, hpFill, sz, bossLabel};
+}
+
+function updateEnemySprite(en){
+  const s = _spriteEls[en.id]; if(!s) return;
+  s.wrap.style.left = en.x + "px";
+  s.wrap.style.top  = en.y + "px";
+  const hpPct = Math.max(0, en.hp / en.maxHp);
+  s.hpBar.style.left = en.x + "px";
+  s.hpBar.style.top  = getSafeLabelTop(en.y, s.sz, 8) + "px";
+  s.hpFill.style.width = (hpPct * 100) + "%";
+  s.hpFill.style.background = hpPct > 0.5 ? "#22c55e" : hpPct > 0.25 ? "#f59e0b" : "#ef4444";
+  if(s.bossLabel){
+    s.bossLabel.style.left = en.x + "px";
+    s.bossLabel.style.top  = getSafeLabelTop(en.y, s.sz, 14, 24) + "px";
+  }
+}
+
+function removeEnemySprite(en){
+  const s = _spriteEls[en.id]; if(!s) return;
+  s.wrap.classList.add("dead-wrap");
+  s.hpBar.style.display = "none";
+  if(s.bossLabel) s.bossLabel.style.display = "none";
+  setTimeout(() => { s.wrap.remove(); s.hpBar.remove(); if(s.bossLabel) s.bossLabel.remove(); }, 450);
+  delete _spriteEls[en.id];
+}
+
+// ── 友方单位精灵（背面 gen5ani-back） ──
+function createUnitSprite(u){
+  const layer = getSpriteLayer(); if(!layer) return;
+  const sz = u.def.size || 52;
+
+  const wrap = document.createElement("div");
+  wrap.className = "poke-unit-wrap";
+  wrap.id = "usprite_" + u.id;
+  wrap.style.left  = u.x + "px";
+  wrap.style.top   = u.y + "px";
+  wrap.style.width  = sz + "px";
+
+  const img = document.createElement("img");
+  img.src = POKE_BASE_BACK + u.def.sprite + ".gif";
+  img.alt = u.def.name;
+  img.style.width  = sz + "px";
+  img.style.height = "auto";
+  img.style.imageRendering = "pixelated";
+  img.onerror = () => { img.src = POKE_BASE_BACK + "pikachu.gif"; };
+  wrap.appendChild(img);
+
+  const hpBar = document.createElement("div");
+  hpBar.className = "poke-hp-bar";
+  hpBar.style.width = Math.round(sz * 0.9) + "px";
+  hpBar.style.left  = u.x + "px";
+  hpBar.style.top   = (u.y + sz * 0.4) + "px";
+  hpBar.style.background = "rgba(0,0,0,.55)";
+  const hpFill = document.createElement("div");
+  hpFill.className = "poke-hp-fill";
+  hpFill.style.width = "100%";
+  hpFill.style.background = "#22d3ee";
+  hpBar.appendChild(hpFill);
+
+  layer.appendChild(wrap);
+  layer.appendChild(hpBar);
+  _unitSprites[u.id] = {wrap, img, hpBar, hpFill, sz};
+}
+
+function updateUnitSprite(u){
+  const s = _unitSprites[u.id]; if(!s) return;
+  const hpPct = Math.max(0, u.hp / u.maxHp);
+  s.hpBar.style.top = (u.y + s.sz * 0.4) + "px";
+  s.hpFill.style.width = (hpPct * 100) + "%";
+  s.hpFill.style.background = hpPct > 0.5 ? "#22d3ee" : hpPct > 0.25 ? "#f59e0b" : "#ef4444";
+}
+
+function removeUnitSprite(u){
+  const s = _unitSprites[u.id]; if(!s) return;
+  s.wrap.remove(); s.hpBar.remove();
+  delete _unitSprites[u.id];
+}
+
+function clearAllSprites(){
+  const layer = getSpriteLayer(); if(layer) layer.innerHTML = "";
+  Object.keys(_spriteEls).forEach(k => delete _spriteEls[k]);
+  Object.keys(_unitSprites).forEach(k => delete _unitSprites[k]);
+}
+
+function spawnEnemy(tmpl){
+  const row = tmpl.row;
+  // v2.8.0：若快照带有指定的残血HP（来自复活时还原），使用该数值；否则一般出怪走满血
+  const startHp    = (tmpl.reviveHp    !== undefined) ? tmpl.reviveHp    : tmpl.hp;
+  const startMaxHp = (tmpl.reviveMaxHp !== undefined) ? tmpl.reviveMaxHp : tmpl.hp;
+  const en = {
+    id:   "en_" + Date.now() + "_" + Math.random(),
+    def:  {...tmpl},
+    row:  row,                          // v2.6.0：记录逻辑行号，resize时直接用它重新计算y，不靠坐标反推
+    x:    _W - _cellW*0.95,
+    y:    row * _cellH + _cellH / 2,
+    hp:   startHp, maxHp: startMaxHp,
+    dead: false, rewarded: false, slowed: 0
+  };
+  _enemies.push(en);
+  createEnemySprite(en);
+}
+
+function damageEnemy(en, dmg){
+  en.hp -= dmg;
+  if(en.hp <= 0){ en.hp = 0; en.dead = true; removeEnemySprite(en); }
+  else { updateEnemySprite(en); }
+}
+
+// ============================================================
+// 绘图
+// ============================================================
+function draw(){
+  const ctx=_ctx;
+  ctx.clearRect(0,0,_W,_H);
+
+  // 背景格子
+  ctx.strokeStyle="rgba(255,255,255,.06)";
+  ctx.lineWidth=1;
+  for(let r=0;r<=ROWS;r++){ ctx.beginPath(); ctx.moveTo(0,r*_cellH); ctx.lineTo(_W,r*_cellH); ctx.stroke(); }
+  for(let c=0;c<=COLS;c++){ ctx.beginPath(); ctx.moveTo(c*_cellW,0); ctx.lineTo(c*_cellW,_H); ctx.stroke(); }
+
+  // 左侧友方基地背景（城堡DOM覆盖显示）
+  ctx.fillStyle=_shieldActive?"rgba(34,211,238,.25)":"rgba(30,60,120,.3)";
+  ctx.fillRect(0,0,_cellW*0.9,_H);
+  if(_shieldActive){
+    ctx.strokeStyle="rgba(34,211,238,.9)"; ctx.lineWidth=3;
+    ctx.strokeRect(1,1,_cellW*0.9-2,_H-2);
+  }
+
+  // 右侧入口红色背景（城堡图示由DOM castle-el显示）
+  ctx.fillStyle="rgba(180,0,0,.18)";
+  ctx.fillRect(_W - _cellW*0.9, 0, _cellW*0.9, _H);
+
+  // 选中格子高亮
+  if(_selectedUnit){
+    ctx.fillStyle="rgba(250,204,21,.12)";
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS-1;c++){
+        if(!_units.some(u=>u.col===c&&u.row===r)){
+          ctx.fillRect(c*_cellW+1,r*_cellH+1,_cellW-2,_cellH-2);
+        }
+      }
+    }
+    // 选中单位 highlight border
+    ctx.strokeStyle="rgba(250,204,21,.5)";
+    ctx.lineWidth=1.5;
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS-1;c++){
+        if(!_units.some(u=>u.col===c&&u.row===r)){
+          ctx.strokeRect(c*_cellW+1,r*_cellH+1,_cellW-2,_cellH-2);
+        }
+      }
+    }
+  }
+
+  // 已放置单位：画格子底色（精灵由 DOM 渲染）
+  _units.forEach(u=>{
+    if(u.hp<=0) return;
+    ctx.fillStyle="rgba(34,211,238,.08)";
+    ctx.fillRect(u.col*_cellW+1, u.row*_cellH+1, _cellW-2, _cellH-2);
+    ctx.strokeStyle="rgba(34,211,238,.35)";
+    ctx.lineWidth=1;
+    ctx.strokeRect(u.col*_cellW+1, u.row*_cellH+1, _cellW-2, _cellH-2);
+  });
+
+  // 敌人与 BOSS 名称标签皆由 DOM sprite-layer 渲染（v2.2.0 起不再用 canvas 绘制，避免被精灵图遮挡）
+
+  // 飞弹
+  ctx.font="12px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  _projectiles.forEach(p=>{ ctx.fillText(p.icon,p.x,p.y); });
+
+  // 粒子
+  _particles.forEach(p=>{
+    ctx.globalAlpha=Math.max(0,p.life);
+    ctx.font="bold "+Math.max(8,p.size*20)+"px serif";
+    ctx.fillStyle=p.color;
+    ctx.fillText("✦",p.x,p.y);
+  });
+  ctx.globalAlpha=1;
+}
+
+function addParticle(x,y,color,life){ _particles.push({x,y,color,life,size:1}); }
+
+// v3.0.0：属性克制飘字提示（DOM浮动文字，避免被canvas层级遮挡）
+let _typeHintPool = [];
+function showTypeHint(x, y, text, color){
+  const layer = getSpriteLayer(); if(!layer) return;
+  const el = document.createElement("div");
+  el.textContent = text;
+  el.style.cssText = "position:absolute;left:"+x+"px;top:"+(y-20)+"px;transform:translate(-50%,-50%);"
+    + "color:"+color+";font-weight:900;font-size:.72rem;text-shadow:0 1px 3px rgba(0,0,0,.8);"
+    + "pointer-events:none;z-index:8;transition:top .6s ease-out,opacity .6s ease-out;opacity:1";
+  layer.appendChild(el);
+  requestAnimationFrame(() => { el.style.top = (y-50)+"px"; el.style.opacity = "0"; });
+  setTimeout(() => el.remove(), 650);
+}
+
+// ============================================================
+// 讯息提示
+// ============================================================
+let _msgTimer=null;
+function showMsg(txt){
+  let el=document.getElementById("game-msg");
+  if(!el){ el=document.createElement("div"); el.id="game-msg"; el.style.cssText="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;font-weight:900;font-size:1.1rem;padding:10px 22px;border-radius:12px;z-index:25;pointer-events:none;text-align:center;border:1px solid rgba(255,255,255,.2)"; document.body.appendChild(el); }
+  el.textContent=txt; el.style.opacity="1";
+  clearTimeout(_msgTimer); _msgTimer=setTimeout(()=>{ el.style.opacity="0"; },1600);
+}
+
+// ============================================================
+// UI 更新
+// ============================================================
+function renderEraLabel(){
+  const era=ERAS[_gameEra];
+  const lvName=getLevelName(_gameLevel);
+  const hardBadge = _hardModeActive ? "<span style='background:#ef4444;color:#fff;font-size:.65rem;font-weight:900;padding:1px 6px;border-radius:6px;margin-left:6px'>🔥困难</span>" : "";
+  qs("era-label").innerHTML="<span style='color:"+era.color+";filter:brightness(1.5)'>"+era.emoji+"</span> <span style='font-size:.82rem;font-weight:900'>"+lvName+"</span>"+hardBadge+" <span style='font-size:.7rem;opacity:.6'>"+GAME_VERSION+"</span>";
+}
+function updateCastleUI(){
+  const pct = Math.max(0, _baseHP/_baseMaxHP);
+  const fill = document.getElementById("ally-hp-fill");
+  const label = document.getElementById("ally-hp-label");
+  if(fill){
+    fill.style.width = (pct*100)+"%";
+    fill.style.background = pct>0.5?"#22c55e":pct>0.25?"#f59e0b":"#ef4444";
+  }
+  if(label) label.textContent = Math.ceil(_baseHP)+"/"+_baseMaxHP;
+  // 更新城堡宽度CSS变数给DOM城堡用
+  const field=document.getElementById("game-field");
+  if(field) field.style.setProperty("--cw", Math.floor(_cellW*0.9)+"px");
+  // 护盾视觉
+  const ac=document.getElementById("ally-castle");
+  if(ac) ac.style.background=_shieldActive?"rgba(34,211,238,.2)":"transparent";
+}
+function updateEnemyCastleUI(){
+  const pct = Math.max(0, _enemyCastleHP / _enemyCastleMaxHP);
+  const el = document.getElementById("enemy-castle-hp-fill");
+  const lbl = document.getElementById("enemy-castle-hp-label");
+  if(el){
+    el.style.width = (pct*100)+"%";
+    el.style.background = pct>0.5?"#ef4444":pct>0.25?"#f59e0b":"#fbbf24";
+  }
+  if(lbl) lbl.textContent = Math.ceil(_enemyCastleHP)+"/"+_enemyCastleMaxHP;
+  // 城堡抖动效果（HP低时）
+  const ec = document.getElementById("enemy-castle");
+  if(ec) ec.style.opacity = pct>0?"1":"0.3";
+}
+function updateFoodUI(){
+  qs("food-fill").style.width=Math.min(100,(_food/_maxFood)*100)+"%";
+  qs("food-txt").textContent=Math.floor(_food)+"/"+_maxFood;
+}
+function updateGameCoins(){ qs("g-coins").textContent=G.coins||0; }
+function updateBoosterUI(){
+  qs("bv-food").textContent=G.boosters.food||0;
+  qs("bv-speed").textContent=G.boosters.speed||0;
+  qs("bv-bomb").textContent=G.boosters.bomb||0;
+  qs("bv-shield").textContent=G.boosters.shield||0;
+}
+function renderUnitTray(){
+  const tray=qs("unit-tray"); tray.innerHTML="";
+  _currentUnitDefs.forEach(def=>{
+    const locked=_gameLevel<(def.unlockLv||1);
+    const div=document.createElement("div");
+    div.className="unit-card"+(locked?" locked":"");
+    div.id="uc_"+def.id;
+    const canAfford=_food>=def.cost&&!locked;
+    // 用宝可梦背面图代替 emoji，加上属性标签与等级
+    const typeStr = typesLabel(def.types);
+    div.innerHTML=
+      "<img src='"+POKE_BASE_BACK+def.sprite+".gif' alt='"+def.name+"' style='width:36px;height:auto;image-rendering:pixelated;filter:drop-shadow(0 0 3px #22d3ee88)'>"
+      +"<div class='unit-name'>"+def.name+"</div>"
+      +"<div style='font-size:.6rem;color:#93c5fd'>"+typeStr+" · Lv."+def.unitLevel+"</div>"
+      +"<div class='unit-cost'>🍖"+def.cost+"</div>"
+      +(locked?"<div style='font-size:.6rem;color:#f87171'>Lv."+def.unlockLv+"解锁</div>":"");
+    if(!locked){
+      div.onclick=()=>{
+        if(_unitCooldowns[def.id]>0){ showMsg("冷却中…"); return; }
+        if(_food<def.cost){ showMsg("食物不足！需要 "+def.cost+" 🍖"); return; }
+        _selectedUnit=(_selectedUnit===def.id)?null:def.id;
+        renderUnitTray();
+        showMsg(_selectedUnit?("选择："+def.name+" → 点地图放置"):"取消选择");
+      };
+    }
+    if(_selectedUnit===def.id) div.classList.add("selected");
+    tray.appendChild(div);
+  });
+}
+
+// ============================================================
+// 道具（Boosters）
+// ============================================================
+function doBoostFood(){
+  if(!(G.boosters.food>0)){ openShop(); return; }
+  G.boosters.food--; _boostersUsed++;
+  _food=Math.min(_maxFood,_food+100); updateFoodUI();
+  save(); cloudSave(); updateBoosterUI();
+  addParticle(_W/2,_H/2,"#22c55e",1.2);
+  showMsg("🍖 补充食物 +100！");
+}
+function doBoostSpeed(){
+  if(!(G.boosters.speed>0)){ openShop(); return; }
+  G.boosters.speed--; _boostersUsed++;
+  _speedBoost=true; _speedTimer=10;
+  save(); cloudSave(); updateBoosterUI();
+  showMsg("⚡ 加速中！（10秒）");
+}
+function doBoostBomb(){
+  if(!(G.boosters.bomb>0)){ openShop(); return; }
+  G.boosters.bomb--; _boostersUsed++;
+  _enemies.forEach(en=>{ damageEnemy(en,300+_gameLevel*20); });
+  _enemies=_enemies.filter(en=>!en.dead);
+  save(); cloudSave(); updateBoosterUI();
+  addParticle(_W/2,_H/2,"#ef4444",1.5);
+  showMsg("💣 轰炸！");
+}
+function doBoostShield(){
+  if(!(G.boosters.shield>0)){ openShop(); return; }
+  G.boosters.shield--; _boostersUsed++;
+  _shieldActive=true; _shieldTimer=8;
+  save(); cloudSave(); updateBoosterUI(); updateCastleUI();
+  showMsg("🛡 护盾启动！（8秒）");
+}
+
+// ============================================================
+// 结算
+// ============================================================
+function showWin(){
+  stopGame();
+  const rewardMult = getRewardMultiplier(); // v3.7.0：奖励强化加成倍率
+  const reward=Math.floor((50+_gameLevel*6) * rewardMult);
+  let stars=3;
+  if(_boostersUsed>0) stars-=1;
+  if(_totalKills<(_maxWaves*3)) stars-=1;
+  if(_baseHP>70) stars+=1;
+  stars=Math.max(1,Math.min(4,stars));
+
+  if(!G.hardModeCleared) G.hardModeCleared = [];
+
+  let boxGain = 0;
+  if(_hardModeActive){
+    // v3.1.0：困难模式 — 首次通关给2个宝箱，重复通关不再给箱
+    const isFirstHardClear = !G.hardModeCleared.includes(_gameLevel);
+    if(isFirstHardClear){
+      G.hardModeCleared.push(_gameLevel);
+      boxGain = 2;
+    } else {
+      boxGain = 0;
+    }
+  } else {
+    // 普通模式：首次通关+1，重复通关50%机率
+    const isFirstClear = !G.cleared.includes(_gameLevel);
+    boxGain = isFirstClear ? 1 : (Math.random()<0.5?1:0);
+  }
+
+  const isFirstClear = !G.cleared.includes(_gameLevel);
+  if(isFirstClear) G.cleared.push(_gameLevel);
+  if(!G.unlocked.includes(_gameLevel+1)) G.unlocked.push(_gameLevel+1);
+  G.coins=(G.coins||0)+reward; G.stars=(G.stars||0)+stars;
+  if(boxGain>0){ G.lootBoxes=(G.lootBoxes||0)+boxGain; G.lootBoxesTotal=(G.lootBoxesTotal||0)+boxGain; }
+  save(); cloudSave();
+  gasJsonp({sheet:SHEET,action:"level_clear",id:G.id,uid:String(G.uid),
+    level:String(_gameLevel),stars:String(stars),score:String(_totalKills*10),
+    score_need:"0",boosters_used:String(_boostersUsed),revive_count:"0",
+    super_clears:"0",coin_reward:String(reward),coins_total:String(G.coins||0),
+    info:_hardModeActive?"hard_mode_clear":"normal_clear",
+    date:todayISO()}).catch(()=>{});
+  const starStr="⭐".repeat(stars)+"☆".repeat(Math.max(0,4-stars));
+  const lvName2=getLevelName(_gameLevel);
+  const hardTag = _hardModeActive ? "<span style='color:#f87171;font-weight:900'>🔥困难模式 · </span>" : "";
+  const rewardMultTag = rewardMult > 1 ? " <span style='color:#fbbf24;font-size:.75rem'>(奖励强化 x"+rewardMult.toFixed(2)+")</span>" : "";
+  qs("win-body").innerHTML=hardTag+"<b>"+lvName2+"</b> 完成！<br>奖励 "+reward+" 🪙"+rewardMultTag+" · "+starStr+"（"+stars+" 星）"+(boxGain>0?" · 🎁 宝箱 x"+boxGain:"")+"<br><span style='font-size:.78rem;color:rgba(255,255,255,.6)'>击杀 "+_totalKills+" 敌人"+(_boostersUsed?" · 道具 "+_boostersUsed+"次":"")+" · 基地HP "+_baseHP+"/"+_baseMaxHP+"</span>";
+  qs("ov-win").classList.remove("hidden");
+
+  // v3.0.0：第3关通关后，首次提示「快速通关」功能（已通关关卡可消耗1回复数直接结算）
+  if(_gameLevel >= 3 && !G.quickClearHintShown){
+    G.quickClearHintShown = true;
+    save();
+    setTimeout(() => {
+      alert("💡 小提示：已通关的关卡可以在关卡选单再次点击，\n消耗回复数即可「快速通关」（支持批量输入数量），直接获得通关奖励，不需要重新打过！");
+    }, 400);
+  }
+
+  // v3.1.0：检查是否刚好让该地区全通关，提示可解锁困难模式
+  if(isFirstClear){
+    const regionIdx = getRegionIdx(_gameLevel);
+    const region = REGIONS[regionIdx];
+    if(isRegionFullyCleared(regionIdx) && !isHardModeUnlocked(region.lvStart)){
+      setTimeout(() => {
+        alert("🎉 恭喜通关 "+region.emoji+region.name+" 地区全部关卡！\n现在可以回到该地区的关卡点击解锁「困难模式」了！");
+      }, 700);
+    }
+  }
+}
+function showLose(msg){
+  stopGame();
+  // v2.8.0：完整记录死亡瞬间场上所有存活的敌人与友军（不限数量），供复活时全部重新生成
+  _pendingReviveEnemies = _enemies.filter(en => !en.dead).map(en => ({
+    def: en.def, row: en.row, hp: en.hp, maxHp: en.maxHp
+  }));
+  _pendingReviveUnits = _units.filter(u => u.hp > 0).map(u => ({
+    def: u.def, row: u.row, hp: u.hp, maxHp: u.maxHp
+  }));
+  // v2.7.0：只用「本次死亡新增」的击杀数计算安慰奖，避免复活后重复发放已经领过的部分
+  const winReward    = Math.floor(50 + _gameLevel*6); // 该关通关奖励上限
+  const newKills      = Math.max(0, _totalKills - _rewardedKills); // 本次新增击杀数
+  const killReward    = Math.min(winReward, newKills * 3); // 每击杀1只给3金币
+  if(killReward > 0){
+    G.coins = (G.coins||0) + killReward;
+    _rewardedKills = _totalKills; // 更新基准点，避免下次复活死亡时重复计算这批击杀
+    save(); cloudSave();
+    gasJsonp({sheet:SHEET,action:"game_start",id:G.id,uid:String(G.uid||0),
+      info:"lose_reward:第"+_gameLevel+"关新增击杀"+newKills+"只 获得"+killReward+"金币（累计击杀"+_totalKills+"）",
+      date:todayISO()}).catch(()=>{});
+  }
+  qs("lose-body").innerHTML = (msg||"基地HP归零，防线崩溃！")
+    + (killReward>0 ? "<br><span style='color:#fbbf24;font-size:.82rem'>击杀 "+newKills+" 只敌人，获得 🪙 "+killReward+" 金币安慰奖</span>" : "<br><span style='color:rgba(255,255,255,.45);font-size:.78rem'>本次未击杀新敌人，无安慰奖</span>");
+  const coinCost=Math.min(300,_gameLevel*10);
+  const el=qs("revive-coin-cost"); if(el) el.textContent="花费 "+coinCost+" 🪙（当前 "+(G.coins||0)+"）";
+  const coinBtn=qs("ov-lose").querySelector("button[onclick=\"doRevive('coins')\"]");
+  const replyBtn=qs("ov-lose").querySelector("button[onclick=\"doRevive('replies')\"]");
+  const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+  if(coinBtn) coinBtn.disabled=(G.coins||0)<coinCost;
+  if(replyBtn) replyBtn.disabled=ar<5;
+  qs("ov-lose").classList.remove("hidden");
+}
+function doRevive(type){
+  // v2.6.0：复活前先强制重新校准canvas尺寸，避免暂停期间视口变化导致坐标脱节
+  setRealVH();
+  if(_canvas) resizeCanvas();
+  const coinCost=Math.min(300,_gameLevel*10);
+  if(type==="coins"){
+    if((G.coins||0)<coinCost){ alert("金币不足！需要 "+coinCost+" 金币"); return; }
+    G.coins=Math.max(0,(G.coins||0)-coinCost);
+  } else {
+    const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0));
+    if(ar<5){ alert("回复数不足！需要 5 回复数"); return; }
+    G.repliesSpent=(G.repliesSpent||0)+5;
+  }
+
+  // v2.8.0：复活时重置双方战场状态，死亡瞬间场上所有存活单位（敌我双方不限数量）
+  // 各自回到自己的城堡重新出发，而不是只处理单一BOSS或单一友军
+  // 1) 友军：先清空当前残留的单位精灵（位置已脱离棋盘，全部重新生成）
+  _units.forEach(u => removeUnitSprite(u));
+  _units = [];
+
+  // 2) 敌人：清除场上所有敌人精灵
+  _enemies.forEach(en => removeEnemySprite(en));
+  _enemies = [];
+  _enemiesToSpawn = [];
+  _projectiles = [];
+
+  // v2.8.0：把死亡瞬间记录的所有存活敌人，原样塞回出怪队列，从敌方城堡重新出发
+  const hadPendingEnemies = _pendingReviveEnemies.length > 0;
+  if(hadPendingEnemies){
+    _pendingReviveEnemies.forEach(snap => {
+      _enemiesToSpawn.push({ ...snap.def, row: snap.row, reviveHp: snap.hp, reviveMaxHp: snap.maxHp });
+    });
+    _waveActive = true;   // 仍在出怪状态，避免触发备用通关判断（全部清场=通关）
+    _spawnTimer = 0.3;    // 短暂延迟后依序生成
+  } else {
+    // 死亡瞬间场上没有敌人残留：保留已完成的波次进度，不重置回第1波，等下一波自然继续
+    _waveActive = false;
+    _spawnTimer = 0;
+  }
+  _waveTimer = 1.5;   // 短暂延迟后继续
+
+  // v2.8.0：把死亡瞬间记录的所有存活友军，原样重新部署在各自原本所在的行，从我方城堡重新出发
+  const allyBoundary = _cellW * 0.92;
+  _pendingReviveUnits.forEach((snap, idx) => {
+    const u = {
+      id: "revive_unit_"+Date.now()+"_"+idx,
+      def: snap.def, col: 1, row: snap.row,
+      x: allyBoundary, y: snap.row*_cellH+_cellH/2,
+      hp: snap.hp, maxHp: snap.maxHp,
+      atkTimer: 0, target: null
+    };
+    _units.push(u);
+    createUnitSprite(u);
+    addParticle(u.x, u.y, "#22d3ee", 1.0);
+  });
+
+  const hadPendingUnits = _pendingReviveUnits.length > 0;
+  _pendingReviveEnemies = [];
+  _pendingReviveUnits = [];
+
+  // 3) 双方城堡：友方HP回满，敌方城堡HP维持目前进度（不重置，保留玩家已造成的伤害）
+  _baseHP = _baseMaxHP;
+  _shieldActive = true; _shieldTimer = 5; // 复活后短暂无敌，避免立刻被偷塔
+
+  qs("ov-lose").classList.add("hidden");
+  updateCastleUI(); updateEnemyCastleUI();
+  save(); cloudSave();
+  gasJsonp({sheet:SHEET,action:"revive",id:G.id,uid:String(G.uid),
+    level:String(_gameLevel),type:type,revive_type:type,
+    coins_left:String(G.coins||0),date:todayISO()}).catch(()=>{});
+
+  if(hadPendingEnemies || hadPendingUnits){
+    showMsg("⚔️ 战场重置！双方残留单位重新从城堡出发对决！");
+  } else {
+    showMsg("⚔️ 战场重置！双方重新从城堡出发");
+  }
+
+  _gameRunning=true; _lastTime=performance.now();
+  _animFrame=requestAnimationFrame(gameLoop);
+}
+
+// ============================================================
+// 自适应 resize
+// ============================================================
+// v2.5.0：实测视口高度设为CSS变量，比 100dvh 在部分移动浏览器更精确可靠
+function setRealVH(){
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty("--vh", vh + "px");
+}
+setRealVH();
+window.addEventListener("orientationchange", () => { setRealVH(); setTimeout(setRealVH, 250); });
+
+let _oldW = 0;
+window.addEventListener("resize",()=>{
+  setRealVH();
+  if(!qs("game").classList.contains("hidden")&&_canvas){
+    _oldW = _W || 800;
+    resizeCanvas();
+    _units.forEach(u=>{
+      // v2.1.0：保持单位当前的横向进度比例，只重新计算 row 对应的 y 坐标
+      const xRatio = u.x / (_oldW || _W);
+      u.x = Math.min(xRatio * _W, _W - _cellW*0.92);
+      // v2.6.0：u.row 是逻辑上的"第几排"，直接用它重新计算y，不靠旧坐标反推（避免格高变化时算错排数）
+      u.y = u.row*_cellH+_cellH/2;
+      const s=_unitSprites[u.id];
+      if(s){ s.wrap.style.left=u.x+"px"; s.wrap.style.top=u.y+"px"; s.hpBar.style.left=u.x+"px"; s.hpBar.style.top=(u.y+s.sz*0.4)+"px"; }
+    });
+    _enemies.forEach(en=>{
+      // v2.6.0：敌人对象需记录逻辑行号 en.row，不要用「旧y ÷ 新格高」反推（旧逻辑在格高变化时会算错排数导致跳行/乱跑）
+      const logicalRow = (en.row !== undefined) ? en.row : Math.floor(en.y/_cellH);
+      en.row = logicalRow;
+      en.y = logicalRow*_cellH+_cellH/2;
+      updateEnemySprite(en);
+    });
+  }
+});
+
+// ============================================================
+// DOMContentLoaded
+// ============================================================
+window.addEventListener("DOMContentLoaded",()=>{
+  load(); normalize(); applyBgTheme();
+  const id=localStorage.getItem(KEY_ID)||"", uid=localStorage.getItem(KEY_UID)||"";
+  if(id) qs("inp-id").value=id;
+  if(uid) qs("inp-uid").value=uid;
+  setTimeout(fffAutoLogin,200);
+  const d=todayISO(); qs("forum-start-date").value=d; qs("forum-end-date").value=d;
+  save();
+  // 版本 log
+  console.log("[SS塔防HTML] "+GAME_VERSION);
+  VERSION_LOG.forEach(v=>console.log("  "+v.v+" "+v.date+" "+v.note));
+});
+/** 从论坛首页自动获取ID+UID */
+async function fffAutoLogin(){
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(!idEl||!uidEl) return;
+  if(idEl.value.trim()&&uidEl.value.trim()) return;
+  try{
+    var html=await fffProxyGet('https://sstm.moe/');
+    var doc=new DOMParser().parseFromString(html,'text/html');
+    var userLink=doc.getElementById('cUserLink');
+    if(!userLink) return;
+    var profileLink=userLink.querySelector('a[href*="/profile/"]');
+    if(!profileLink) return;
+    var href=profileLink.getAttribute('href')||'';
+    var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+    if(!m) return;
+    if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
+    if(!uidEl.value.trim()) uidEl.value=m[1];
+  }catch(e){}
+}
+</script>
+
+<!-- v3.3.0：右下角云端连线状态浮动指示器（跨所有画面常驻显示） -->
+<div id="cloud-status-float" style="position:fixed;right:10px;bottom:10px;z-index:50;display:flex;align-items:center;gap:6px;background:rgba(10,14,24,.85);border:1px solid rgba(255,255,255,.15);border-radius:99px;padding:5px 10px 5px 8px;font-size:.7rem;color:rgba(255,255,255,.85);box-shadow:0 4px 14px rgba(0,0,0,.4);backdrop-filter:blur(6px)">
+  <div id="cloud-status-dot" style="width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0;transition:background .3s"></div>
+  <span id="cloud-status-text">离线模式</span>
+</div>
+</body>
+</html>

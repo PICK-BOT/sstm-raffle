@@ -2072,7 +2072,7 @@ window.__applyPortableSaveData=async function(data){if(!data||typeof data!=="obj
 window.addEventListener("DOMContentLoaded",()=>{
   load();normalize();applyBgTheme();
   const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";
-  if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;
+  if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;setTimeout(fffAutoLogin,200);
   const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;
   save();
 });
@@ -3061,11 +3061,34 @@ async function gasFetchPing_(timeout){
     var id=localStorage.getItem('hm_id')||'',uid=localStorage.getItem('hm_uid')||'';
     if(id)document.getElementById('inp-id').value=id;
     if(uid)document.getElementById('inp-uid').value=uid;
+    if(!document.getElementById('inp-id').value.trim()||!document.getElementById('inp-uid').value.trim()){
+      setTimeout(fffAutoLogin,200);
+    }
     renderIdHistory_();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
   else setTimeout(boot,0);
 })();
+/** 从论坛首页自动获取ID+UID */
+async function fffAutoLogin(){
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(!idEl||!uidEl) return;
+  if(idEl.value.trim()&&uidEl.value.trim()) return;
+  try{
+    var html=await fffProxyGet('https://sstm.moe/');
+    var doc=new DOMParser().parseFromString(html,'text/html');
+    var userLink=doc.getElementById('cUserLink');
+    if(!userLink) return;
+    var profileLink=userLink.querySelector('a[href*="/profile/"]');
+    if(!profileLink) return;
+    var href=profileLink.getAttribute('href')||'';
+    var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+    if(!m) return;
+    if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
+    if(!uidEl.value.trim()) uidEl.value=m[1];
+  }catch(e){}
+}
 </script>
 </body>
 </html>

@@ -547,7 +547,27 @@ openShop=async function(){
 };
 function renderShop(){const list=qs("shop-list");list.innerHTML="";const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0));SHOP_ITEMS.forEach(it=>{const av=it.costType==="replies"?ar:ac;const owned=it.give&&it.give.bgSkin&&ownsBgSkin(it.give.bgSkin);const can=av>=it.cost&&!owned;const d=document.createElement("div");d.className="shop-item"+(owned?" owned":"");if(owned){d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:#94a3b8'>已拥有</div></div><button class='btn' disabled>已拥有</button>";}else{d.innerHTML="<div style='flex:1'><b>"+it.name+"</b><div style='font-size:.72rem;color:rgba(255,255,255,.6)'>花费 "+it.cost+" "+(it.costType==="replies"?"回复":"被引用")+"</div></div><button class='btn' "+(can?"":"disabled")+">购买</button>";d.querySelector("button").onclick=()=>buyItemDirect(it.id);}list.appendChild(d);});}function buyItemDirect(id){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;if(it.give&&it.give.bgSkin){if(ownsBgSkin(it.give.bgSkin)){alert("您已拥有该皮肤");return;}return buyItem(id,1);}return buyItemPrompt(id);}function buyItemPrompt(id){const it=SHOP_ITEMS.find(x=>x.id===id);if(it&&it.give&&it.give.bgSkin)return buyItemDirect(id);const q=prompt("数量","1");if(q===null)return;buyItem(id,Math.max(1,Math.min(99,parseInt(q,10)||1)));}
 function buyItem(id,qty){const it=SHOP_ITEMS.find(x=>x.id===id);if(!it)return;const ar=Math.max(0,(G.replies||0)-(G.repliesSpent||0)),ac=Math.max(0,(G.citations||0)-(G.citationsSpent||0)),av=it.costType==="replies"?ar:ac,cost=it.cost*qty;if(av<cost){alert("数量不足");return;}if(it.costType==="replies")G.repliesSpent=(G.repliesSpent||0)+cost;else G.citationsSpent=(G.citationsSpent||0)+cost;if(it.give.undo)G.boosters.undo+=it.give.undo*qty;if(it.give.hint)G.boosters.hint+=it.give.hint*qty;if(it.give.add)G.boosters.add+=it.give.add*qty;if(it.give.reveal)G.boosters.reveal+=it.give.reveal*qty;if(it.give.ticket)G.tickets=(G.tickets||0)+it.give.ticket*qty;if(it.give.bgSkin){for(var _bi=0;_bi<qty;_bi++)grantBgSkin(it.give.bgSkin);if(!qs("ov-skin").classList.contains("hidden"))openSkin();}save();cloudSave();renderShop();updateShopCurrency();updateMenuStat();if(!qs("game").classList.contains("hidden"))renderAll();gasBeacon({sheet:SHEET,action:"shop_buy",id:G.id,itemId:id,cost:String(cost),costType:it.costType,date:todayISO()});}
-window.addEventListener("DOMContentLoaded",()=>{load();normalize();const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;renderIdHistory();const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;});
+window.addEventListener("DOMContentLoaded",()=>{load();normalize();const id=localStorage.getItem(KEY_ID)||"",uid=localStorage.getItem(KEY_UID)||"";if(id)qs("inp-id").value=id;if(uid)qs("inp-uid").value=uid;setTimeout(fffAutoLogin,200);renderIdHistory();const d=todayISO();qs("forum-start-date").value=d;qs("forum-end-date").value=d;});
+/** 从论坛首页自动获取ID+UID */
+async function fffAutoLogin(){
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(!idEl||!uidEl) return;
+  if(idEl.value.trim()&&uidEl.value.trim()) return;
+  try{
+    var html=await fffProxyGet('https://sstm.moe/');
+    var doc=new DOMParser().parseFromString(html,'text/html');
+    var userLink=doc.getElementById('cUserLink');
+    if(!userLink) return;
+    var profileLink=userLink.querySelector('a[href*="/profile/"]');
+    if(!profileLink) return;
+    var href=profileLink.getAttribute('href')||'';
+    var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+    if(!m) return;
+    if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
+    if(!uidEl.value.trim()) uidEl.value=m[1];
+  }catch(e){}
+}
 </script>
 <script>
 // ===== Skewer mode override (container-to-container) =====

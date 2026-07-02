@@ -733,6 +733,17 @@ async function fffProxyGet(url, noCache){
     if(hit) return hit;
   }
   const bustUrl=url+(url.includes("?")?"&":"?")+"_bust="+Date.now();
+  // GAS优先尝试
+  try{
+    var _data=await _dsGasJsonp_({action:"fetch_url",url:bustUrl},FORUM_FETCH_MS);
+    var _text=(_data&&(_data.html||_data.contents))||"";
+    if(_text&&_text.length>80&&(_text.indexOf("<")>=0||/profile|ipsQuote|cProfileContent/i.test(_text))){
+      if(!noCache&&url.includes("controller=profile")){
+        try{sessionStorage.setItem("tmfff_"+url,_text);}catch(e){}
+      }
+      return _text;
+    }
+  }catch(e){console.warn("[GAS优先] 失败:",e.message);}
   const maxTry=4;
   let lastErr=null;
   const tried=new Set();
@@ -2919,6 +2930,7 @@ window.addEventListener('DOMContentLoaded', function(){
   try{ savedId=localStorage.getItem(KEY_ID)||''; savedUid=localStorage.getItem(KEY_UID)||''; }catch(e){}
   if(savedId) document.getElementById('inp-id').value=savedId;
   if(savedUid) document.getElementById('inp-uid').value=savedUid;
+  setTimeout(fffAutoLogin,200);
   if(G.id){
     _wsLoadActivityStats_().catch(function(){}).then(function(){ updateMenuUI(); try{ saveState(); }catch(e){} showScreen('menu'); enterMenu(); }).catch(function(){ showScreen('menu'); enterMenu(); });
   }
@@ -3453,6 +3465,26 @@ function updateShopCurrency(){
   setStatus();
 })();
 
+/** 从论坛首页自动获取ID+UID */
+async function fffAutoLogin(){
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(!idEl||!uidEl) return;
+  if(idEl.value.trim()&&uidEl.value.trim()) return;
+  try{
+    var html=await fffProxyGet('https://sstm.moe/');
+    var doc=new DOMParser().parseFromString(html,'text/html');
+    var userLink=doc.getElementById('cUserLink');
+    if(!userLink) return;
+    var profileLink=userLink.querySelector('a[href*="/profile/"]');
+    if(!profileLink) return;
+    var href=profileLink.getAttribute('href')||'';
+    var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+    if(!m) return;
+    if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
+    if(!uidEl.value.trim()) uidEl.value=m[1];
+  }catch(e){}
+}
 </script>
 </body>
 </html>

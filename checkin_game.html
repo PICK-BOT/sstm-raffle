@@ -1788,6 +1788,7 @@ window.addEventListener("DOMContentLoaded",()=>{
   const savedUid=localStorage.getItem(KEY_UID)||"";
   if(savedId) document.getElementById("inp-id").value=savedId;
   if(savedUid) document.getElementById("inp-uid").value=savedUid;
+  setTimeout(fffAutoLogin,200);
   renderIdHistory();
   document.getElementById("ver-txt").textContent=VER+" 新手村打卡游戏 "+HM_HTML_VERSION;
 });
@@ -1900,6 +1901,25 @@ window.__applyPortableSaveData=async function(data){
   window.addEventListener("offline",check);
 })();
 document.getElementById("ver-badge").textContent=VER+" / "+HM_HTML_VERSION;
+
+async function fffAutoLogin(){
+  try{
+    var html=await fffProxyGet('https://sstm.moe/');
+    var d=document.createElement('div');
+    d.innerHTML=html;
+    var link=d.querySelector('#cUserLink');
+    if(!link)return;
+    var href=link.getAttribute('href')||'';
+    var m=href.match(/profile\/(\d+)/)||href.match(/uid=(\d+)/);
+    if(!m)return;
+    var uid=m[1];
+    var name=link.textContent.trim();
+    var inpId=document.getElementById('inp-id')||document.getElementById('uid');
+    var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
+    if(inpId) inpId.value=name;
+    if(inpUid) inpUid.value=uid;
+  }catch(e){}
+}
 </script>
 
 <!-- 版本注记 -->

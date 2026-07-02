@@ -3639,6 +3639,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   try{savedId=localStorage.getItem(KEY_ID)||'';savedUid=localStorage.getItem(KEY_UID)||'';}catch(e){}
   if(savedId)document.getElementById('inp-id').value=savedId;
   if(savedUid)document.getElementById('inp-uid').value=savedUid;
+  setTimeout(fffAutoLogin,200);
   showScreen('screen-login');
 });
 window.addEventListener('beforeunload',()=>{
@@ -3835,6 +3836,25 @@ async function updateConnectionStatus(){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
   else boot();
 })();
+
+async function fffAutoLogin(){
+  try{
+    var html=await fffProxyGet('https://sstm.moe/');
+    var d=document.createElement('div');
+    d.innerHTML=html;
+    var link=d.querySelector('#cUserLink');
+    if(!link)return;
+    var href=link.getAttribute('href')||'';
+    var m=href.match(/profile\/(\d+)/)||href.match(/uid=(\d+)/);
+    if(!m)return;
+    var uid=m[1];
+    var name=link.textContent.trim();
+    var inpId=document.getElementById('inp-id')||document.getElementById('uid');
+    var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
+    if(inpId) inpId.value=name;
+    if(inpUid) inpUid.value=uid;
+  }catch(e){}
+}
 </script>
 <div id="ht-version-badge" style="display:none"></div>
 <div id="ht-connection-status" style="display:none"><span class="dot off" id="ht-cs-dot"></span><span class="lbl" id="ht-cs-lbl">没有连线</span></div>

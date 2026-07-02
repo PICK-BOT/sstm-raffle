@@ -2299,6 +2299,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   const savedUid=localStorage.getItem(KEY_UID)||"";
   if(savedId) document.getElementById('inp-id').value=savedId;
   if(savedUid) document.getElementById('inp-uid').value=savedUid;
+  setTimeout(fffAutoLogin,200);
   if(!savedId){
     const hist=loadIdHistory();
     if(hist.length>0){
@@ -2418,6 +2419,25 @@ window.__applyPortableSaveData=async function(data){
   }
   check();setInterval(check,30000);
 })();
+
+async function fffAutoLogin(){
+  try{
+    var html=await fffProxyGet('https://sstm.moe/');
+    var d=document.createElement('div');
+    d.innerHTML=html;
+    var link=d.querySelector('#cUserLink');
+    if(!link)return;
+    var href=link.getAttribute('href')||'';
+    var m=href.match(/profile\/(\d+)/)||href.match(/uid=(\d+)/);
+    if(!m)return;
+    var uid=m[1];
+    var name=link.textContent.trim();
+    var inpId=document.getElementById('inp-id')||document.getElementById('uid');
+    var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
+    if(inpId) inpId.value=name;
+    if(inpUid) inpUid.value=uid;
+  }catch(e){}
+}
 </script>
 <div id="ds-version-badge" style="position:fixed;bottom:8px;right:10px;font-size:.7rem;opacity:.55;color:rgba(255,255,255,.5);z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)"></div>
 <div id="ds-connection-status" style="position:fixed;bottom:8px;left:10px;font-size:.7rem;z-index:9999;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)"></div>

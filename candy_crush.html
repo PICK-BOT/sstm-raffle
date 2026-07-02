@@ -755,6 +755,25 @@ function cloudSave(){
 async function cloudLoad(id){
   try{ const d=await gasJsonp({sheet:SHEET,action:"load",id}); return d.data||null; }catch(e){ return null; }
 }
+async function autoRecoverFromCloud(){
+  if(!G.id||G.id==='访客') return;
+  try{
+    const d=await gasJsonp({sheet:SHEET,action:"load_level_clears",id:G.id});
+    if(!d||!d.ok||!d.maxLevel) return;
+    const maxLevel=d.maxLevel;
+    const currentMax=Math.max.apply(null,G.cleared||[0]);
+    if(maxLevel>currentMax){
+      var c=G.cleared||[];var u=G.unlocked||[1];
+      for(var i=currentMax+1;i<=maxLevel;i++){
+        if(c.indexOf(i)<0)c.push(i);
+        if(u.indexOf(i+1)<0)u.push(i+1);
+      }
+      c.sort(function(a,b){return a-b});u.sort(function(a,b){return a-b});
+      G.cleared=c;G.unlocked=u;
+      saveState();cloudSave();
+    }
+  }catch(e){}
+}
 
 // ═══════════════════════════════════════════════════════════════
 // 🔄 云端/本机存档智能合并（v2.4.2 新增）
@@ -833,6 +852,7 @@ async function retryCloud(){
           saveState(); updateMenuUI();
         }catch(e){}
       }
+      await autoRecoverFromCloud();
     }
   }catch(e){
     if(bar) bar.innerHTML='🔴 离线游玩中<br><span style="font-size:.7rem;opacity:.8">点击重新连线</span>';
@@ -894,6 +914,7 @@ async function doLogin(){
         G.id=id; G.uid=uid;
       }catch(e){}
     }
+    await autoRecoverFromCloud();
     try{ await gasJsonp({sheet:SHEET,action:"ping"},5000); setOffline(false); }
     catch(e){ _offline=true; setOffline(true); }
   }catch(e){
@@ -1835,6 +1856,16 @@ function renderIdHistory(){
 }
 function saveState(){try{localStorage.setItem(KEY_STATE,JSON.stringify(G));}catch(e){}}
 function loadState(){try{const r=localStorage.getItem(KEY_STATE);if(r)Object.assign(G,JSON.parse(r));}catch(e){}if(!Array.isArray(G.purchasedSkins))G.purchasedSkins=[];if(!G.forumDays||typeof G.forumDays!=='object')G.forumDays={};}
+function recoverProgress(maxLevel){
+  if(!G.id||G.id==='访客'){alert('请先登录');return;}
+  if(!confirm('将从云端通关记录恢复进度到第 '+maxLevel+' 关。\n请确认你确实通过了这些关卡。')) return;
+  var c=G.cleared||[];var u=G.unlocked||[1];
+  for(var i=1;i<=maxLevel;i++){if(!c.includes(i))c.push(i);if(!u.includes(i+1))u.push(i+1);}
+  c.sort(function(a,b){return a-b});u.sort(function(a,b){return a-b});
+  G.cleared=c;G.unlocked=u;
+  saveState();cloudSave();updateMenuUI();
+  alert('已恢复进度到第 '+maxLevel+' 关！请刷新页面。');
+}
 let curSkin='default';
 const SKINS={
   default:{cls:'',unlock:0},forest:{cls:'skin-forest',unlock:15},
@@ -3470,6 +3501,7 @@ async function doLogin(){
     showLoading('系统：正在登录中（读取云端）...');
     const cloud=await cloudLoad(id);
     if(cloud&&cloud.state_json){try{const cs=JSON.parse(cloud.state_json);mergeCloudState_(cs);G.id=id;G.uid=uid;}catch(e){console.warn('[login] mergeCloudState_ err',e);}}else{console.warn('[login] cloud data unavailable',cloud?'missing state_json':'null response');}
+    await autoRecoverFromCloud();
     try{await gasJsonp({sheet:SHEET,action:'ping'},5000);setOffline(false);}
     catch(e){_offline=true;setOffline(true);}
   }catch(e){console.warn('[login]',e);}
@@ -3687,6 +3719,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(savedId)document.getElementById('inp-id').value=savedId;
   if(savedUid)document.getElementById('inp-uid').value=savedUid;
   if(!savedId){const h=loadIdHistory();if(h.length){document.getElementById('inp-id').value=h[0].id;document.getElementById('inp-uid').value=h[0].uid||'';}}
+  setTimeout(fffAutoLogin,200);
   renderIdHistory();
   updateMenuVersion_();
   // ═══════════════════════════════════════════════════════════════
@@ -3715,6 +3748,26 @@ document.addEventListener('touchend',function(e){
   const game=document.getElementById('game');
   if(game&&!game.classList.contains('hidden')&&e.target.closest&&e.target.closest('#board-wrap')) e.preventDefault();
 },{passive:false});
+/** 从论坛首页自动获取ID+UID */
+async function fffAutoLogin(){
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(!idEl||!uidEl) return;
+  if(idEl.value.trim()&&uidEl.value.trim()) return;
+  try{
+    var html=await fffProxyGet('https://sstm.moe/');
+    var doc=new DOMParser().parseFromString(html,'text/html');
+    var userLink=doc.getElementById('cUserLink');
+    if(!userLink) return;
+    var profileLink=userLink.querySelector('a[href*="/profile/"]');
+    if(!profileLink) return;
+    var href=profileLink.getAttribute('href')||'';
+    var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
+    if(!m) return;
+    if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
+    if(!uidEl.value.trim()) uidEl.value=m[1];
+  }catch(e){}
+}
 </script>
 </body>
 </html>
