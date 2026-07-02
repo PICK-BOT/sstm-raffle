@@ -585,17 +585,6 @@ body.fullbleed-view #app {
 }
 .chosen-msg.show { display: block; }
 
-.btn-restart {
-  background: transparent;
-  border: 1px solid rgba(201,168,76,0.3);
-  color: var(--gold);
-  font-family: inherit; font-size: 0.82rem;
-  padding: 9px 18px; border-radius: 8px;
-  cursor: pointer; transition: all 0.2s;
-  align-self: center;
-}
-.btn-restart:hover { background: rgba(201,168,76,0.1); }
-
 /* ===== CHARACTER SVG ILLUSTRATIONS ===== */
 /* Mitsuha (stories 0-9): purple traditional */
 .char-mitsuha { position: relative; width: 90px; height: 160px; }
@@ -1428,8 +1417,7 @@ body.has-offline-warn #diceVersionBadge { bottom: 56px; }
     </div>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">
-      <button id="s5NextBtn" class="btn btn-primary hidden" onclick="goScreen6()" style="margin-top:8px;flex:2;">翻开命运之书 →</button>
-      <button id="s5BackBtn" class="btn btn-ghost hidden" onclick="goProgressFromGame()" style="margin-top:8px;flex:1;font-size:0.85rem;">← 返回记录</button>
+      <button id="s5NextBtn" class="btn btn-primary hidden" onclick="goScreen6()" style="margin-top:8px;width:100%;">翻开命运之书 →</button>
     </div>
   </div>
 
@@ -1452,7 +1440,6 @@ body.has-offline-warn #diceVersionBadge { bottom: 56px; }
           <div class="choices-list" id="choicesList"></div>
 
           <div class="chosen-msg" id="chosenMsg">✓ 你的选择已记录</div>
-          <button class="btn-restart" onclick="restart()">再来一次 ↩</button>
         </div>
       </div>
     </div>
@@ -2997,7 +2984,6 @@ function goScreen5Core_() {
   document.getElementById('s5ResultBox').classList.add('hidden');
   document.getElementById('s5NegSection').classList.add('hidden');
   document.getElementById('s5NextBtn').classList.add('hidden');
-  document.getElementById('s5BackBtn').classList.add('hidden');
   document.getElementById('s5RollBtn').disabled = false;
   document.getElementById('s5InstantBtn').disabled = false;
 
@@ -3142,7 +3128,6 @@ async function rollDice() {
   }
 
   document.getElementById('s5NextBtn').classList.remove('hidden');
-  document.getElementById('s5BackBtn').classList.remove('hidden');
 }
 
 // ===== 一次投完（跳过动画，直接显示结果）=====
@@ -3185,15 +3170,6 @@ function rollAllAtOnce() {
   }
 
   document.getElementById('s5NextBtn').classList.remove('hidden');
-  document.getElementById('s5BackBtn').classList.remove('hidden');
-}
-
-// ===== 从投骰画面/奖励画面返回记录 =====
-function goProgressFromGame() {
-  if (_rewardTimer) { clearTimeout(_rewardTimer); _rewardTimer = null; }
-  const cached = getCachedProgress(state.id);
-  if (cached) showProgressScreen(cached);
-  else showScreen('screen1b');
 }
 
 function claimAndViewProgress() {
@@ -3253,7 +3229,7 @@ function goScreen6() {
     },
     {
       title: '✦ 如何做出选择',
-      body: '<p>系统将依骰子结果翻开 <strong>20 则故事</strong>中的一则。请阅读正文后，从 <strong>四个选项</strong>中择一；每次选择都会写入云端与本地记录。已选过的选项会反灰，重复选择前会再次确认。</p><p>领奖后若想查看总进度，可在投骰页点 <strong>「← 返回记录」</strong> 回到主画面，查看故事格子与剩余骰子。</p>',
+      body: '<p>系统将依骰子结果翻开 <strong>20 则故事</strong>中的一则。请阅读正文后，从 <strong>四个选项</strong>中择一；每次选择都会写入云端与本地记录。已选过的选项会反灰，重复选择前会再次确认。</p><p>领奖后返回主画面，可查看故事格子与剩余骰子。</p>',
       btn: '翻开命运之书'
     }
   ], () => renderScreen6Story_());
@@ -3346,10 +3322,6 @@ function selectChoice(idx, text, btn) {
   // 检查里程碑（结果入队，在领奖后弹出）
   checkMilestones_();
 
-  // 选择后立即禁用「再来一次」，防止在 1500ms 内误触导致状态被 restart() 清空
-  const restartBtn = document.querySelector('.btn-restart');
-  if (restartBtn) restartBtn.disabled = true;
-
   // 延迟 1500ms 让玩家读完描述后弹出奖励
   if (_rewardTimer) clearTimeout(_rewardTimer);
   _rewardTimer = setTimeout(showReward, 1500);
@@ -3360,10 +3332,6 @@ function showReward() {
 
   // 安全检查：若玩家已离开 screen6（例如点了其他按钮），不弹出遮罩
   if (!document.getElementById('screen6').classList.contains('active')) return;
-
-  // 恢复「再来一次」按钮（弹出奖励后它已被遮罩覆盖，领取后才真正可用）
-  const restartBtn = document.querySelector('.btn-restart');
-  if (restartBtn) restartBtn.disabled = false;
 
   const r = pickRandomStoryReward_();
   _currentReward = r;
@@ -3530,21 +3498,6 @@ function goToMainScreen_() {
   const cached = getCachedProgress(state.id);
   if (cached) showProgressScreen(cached);
   else showScreen('screen1b');
-}
-
-// ===== 再来一次（继续投骰，不登出） =====
-function restart() {
-  if (_rewardTimer) { clearTimeout(_rewardTimer); _rewardTimer = null; }
-  const restartBtn = document.querySelector('.btn-restart');
-  if (restartBtn) restartBtn.disabled = false;
-  state.chosen = null;
-  state.rolled = 0;
-  state.diceResults = [];
-  state.raw_result = 0;
-  state.neg_used = 0;
-  state.final_result = 0;
-  if (state.pos_dice > 0) goScreen5Core_();
-  else goToMainScreen_();
 }
 
 // ===== DYNAMIC REWARD POOL =====
