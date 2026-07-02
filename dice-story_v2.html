@@ -1,9 +1,25 @@
 <!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════════════════
+【强制维护清单 — 任何 AI 或人工修改本文件 dice-story_v2.html 时必须执行】
+═══════════════════════════════════════════════════════════════════════════════
+每次提交改动前，逐项完成（不可跳过）：
+
+  □ 1. 递增 DICE_GAME_VERSION（搜索该常量，例 v2.8 → v2.9）
+  □ 2. 在 DICE_CHANGELOG 新增【当前版本】条目，写明本次更新内容（支持 <br>）
+         → 玩家进入主画面时会弹出 #version-changelog-overlay 更新说明视窗（仅弹一次）
+  □ 3. 同步 <title> 中的版本号
+  □ 4. 保留 DICE_CHANGELOG 历史条目，勿删旧版本
+
+未完成以上步骤则视为本次编辑未完成。
+相关代码位置：搜索「DICE_GAME_VERSION」与「version-changelog-overlay」。
+═══════════════════════════════════════════════════════════════════════════════
+-->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>十年后重逢 — 命运的骰子 v2.6</title>
+<title>十年后重逢 — 命运的骰子 v2.9</title>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -1464,7 +1480,7 @@ body.has-offline-warn #diceVersionBadge { bottom: 56px; }
     <div class="reward-remain" id="rewardRemain"></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
       <button class="btn btn-primary" onclick="claimReward()" style="flex:2;max-width:200px;">领取奖励 ✓</button>
-      <button class="btn btn-ghost" onclick="claimAndViewProgress()" style="flex:1;max-width:140px;font-size:0.85rem;">查看记录 →</button>
+      <button id="rewardContinueBtn" class="btn btn-ghost" onclick="claimAndContinueRoll_()" style="flex:1;max-width:140px;font-size:0.85rem;">继续投掷 →</button>
     </div>
   </div>
 </div>
@@ -1696,11 +1712,17 @@ const REWARDS = [
 
 // ===== GAS CONFIG =====
 const GAS_URL = 'https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec';
-// ═══ 版本与更新说明（每次编辑本 HTML 请务必更新以下两项）═══
-// 1. 递增 DICE_GAME_VERSION
-// 2. 在 DICE_CHANGELOG 写入该版本更新说明（玩家主画面会弹一次，看过不再显示直到下次改版）
-const DICE_GAME_VERSION = 'v2.8';
+// ═══════════════════════════════════════════════════════════════════════════
+// 【AI / 维护者必读 — 每次编辑本 HTML 必须执行，不可跳过】
+//   1. 递增 DICE_GAME_VERSION（如 v2.9 → v2.10）
+//   2. 在 DICE_CHANGELOG 添加当前版本条目（HTML 字符串，可用 <br>）
+//      → maybeShowVersionChangelog_() 会在主画面弹出 #version-changelog-overlay
+//   3. 同步 <title> 版本号；保留历史 changelog 条目
+// 搜索本段标题或 DICE_GAME_VERSION 即可定位。
+// ═══════════════════════════════════════════════════════════════════════════
+const DICE_GAME_VERSION = 'v2.9';
 const DICE_CHANGELOG = {
+  'v2.9': '• 故事领奖视窗「查看记录」改为「继续投掷」，领取后回到投骰画面<br>• 投骰页移除「返回记录」；故事选择页移除「再来一次」',
   'v2.8': '• 永久进阶勋章改为：持神社徽章后，每次故事发奖 50% 抽取<br>• 右下角版本号可见度提高',
   'v2.7': '• 主画面移除「重新输入」，请改用「📡 论坛更新」读取骰子<br>• 玩法介绍补充：选项反灰、全选目标、永久进阶勋章说明<br>• 右下角显示版本号；有更新时主画面会弹出更新说明'
 };
@@ -3172,9 +3194,13 @@ function rollAllAtOnce() {
   document.getElementById('s5NextBtn').classList.remove('hidden');
 }
 
-function claimAndViewProgress() {
+function syncRewardOverlayButtons_(canContinueRoll) {
+  const btn = document.getElementById('rewardContinueBtn');
+  if (btn) btn.style.display = canContinueRoll ? '' : 'none';
+}
+
+function finishClaimReward_(thenNavigate) {
   document.getElementById('rewardOverlay').classList.add('hidden');
-  // 记录奖励 + 更新总量
   if (_currentReward) { updateRewardTotal_(_currentReward); logDiceRewardToGAS_(_currentReward); _currentReward = null; }
   state.pos_dice -= state.rolled;
   state.rolled = 0;
@@ -3185,9 +3211,14 @@ function claimAndViewProgress() {
   state.chosen = null;
   saveProgressToStorage();
   if (_milestoneQueue.length > 0) { showNextMilestone_(); return; }
-  const cached = getCachedProgress(state.id);
-  if (cached) showProgressScreen(cached);
-  else showScreen('screen1b');
+  thenNavigate();
+}
+
+function claimAndContinueRoll_() {
+  finishClaimReward_(function() {
+    if (state.pos_dice > 0) goScreen5Core_();
+    else goToMainScreen_();
+  });
 }
 
 // ===== SCREEN 5 → 6 =====
@@ -3243,6 +3274,7 @@ function grantAutoRewardForFullStory_() {
   document.getElementById('rewardName').textContent = r.name;
   document.getElementById('rewardDesc').textContent = r.desc;
   document.getElementById('rewardRemain').textContent = '此故事四个选项均已体验，领取后返回主画面。';
+  syncRewardOverlayButtons_(false);
   const spark = document.getElementById('rewardSpark');
   spark.style.animation = 'none';
   spark.offsetHeight;
@@ -3343,6 +3375,7 @@ function showReward() {
     remaining > 0
       ? `还剩 ${remaining} 个骰子，可继续投掷！`
       : '骰子已全部使用，本轮游戏结束。';
+  syncRewardOverlayButtons_(remaining > 0);
   // re-trigger spark animation
   const spark = document.getElementById('rewardSpark');
   spark.style.animation = 'none';
@@ -3352,22 +3385,7 @@ function showReward() {
 }
 
 function claimReward() {
-  document.getElementById('rewardOverlay').classList.add('hidden');
-  // 记录奖励 + 更新总量
-  if (_currentReward) { updateRewardTotal_(_currentReward); logDiceRewardToGAS_(_currentReward); _currentReward = null; }
-  // 扣除本次已使用的骰子
-  state.pos_dice -= state.rolled;
-  state.rolled = 0;
-  state.diceResults = [];
-  state.raw_result = 0;
-  state.neg_used = 0;
-  state.final_result = 0;
-  state.chosen = null;
-
-  saveProgressToStorage();
-
-  if (_milestoneQueue.length > 0) { showNextMilestone_(); return; }
-  goToMainScreen_();
+  finishClaimReward_(goToMainScreen_);
 }
 
 // ===== CHARACTER ART SVG =====
@@ -4941,6 +4959,7 @@ window.__applyPortableSaveData=async function(data){
 <!-- v2.1 2026-06-06 书本封面全屏；论坛抓取逐日写入「骰子故事返乡活跃度记录」并跳过云端已有日期 -->
 <!-- v2.2 2026-06-06 登入封面全屏自适应；云端逐日可补差额更新；回复余数(localStorage)凑满5换正骰，显示于混合骰面板 -->
 <!-- v2.4 2026-06-20 触手勋章~5%无限重复；奖池：本期本地用户牌×1（抽后开启三叶/泷各自×1）、往期本地用户牌×1（可重复最多5次） -->
+<!-- v2.9 2026-06-12 领奖视窗「继续投掷」回投骰页；强化 AI 维护清单（版本号+changelog 视窗） -->
 <div id="version-changelog-overlay" class="ds-guide-overlay">
   <div class="ds-guide-box" style="max-width:420px;text-align:left;">
     <h3 style="text-align:center;">📋 版本更新 <span id="version-changelog-ver"></span></h3>
