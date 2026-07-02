@@ -2258,14 +2258,17 @@ window.__applyPortableSaveData=async function(data){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
   else boot();
 })();
-/** 从论坛首页自动获取ID+UID */
+/** 从论坛首页自动获取ID+UID（直接走 Vercel，不影响 fffProxyGet） */
 async function fffAutoLogin(){
   var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
   var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
   if(!idEl||!uidEl) return;
   if(idEl.value.trim()&&uidEl.value.trim()) return;
   try{
-    var html=await fffProxyGet('https://sstm.moe/');
+    var resp=await fetch(FFF_PROXY+encodeURIComponent('https://sstm.moe/'), {signal:AbortSignal.timeout(15000)});
+    if(!resp.ok) return;
+    var html=await resp.text();
+    if(!html||html.length<80) return;
     var doc=new DOMParser().parseFromString(html,'text/html');
     var userLink=doc.getElementById('cUserLink');
     if(!userLink) return;
