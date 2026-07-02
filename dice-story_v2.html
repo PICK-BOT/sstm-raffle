@@ -932,6 +932,17 @@ body.fullbleed-view #app {
 /* ── OFFLINE MODE ── */
 #dice-offline-warning{display:none;position:fixed;bottom:14px;right:14px;background:rgba(180,40,40,0.92);border:1px solid #e55;color:#fdd;padding:8px 14px;border-radius:8px;font-size:0.8rem;cursor:pointer;z-index:110;transition:all .2s;line-height:1.4;text-align:center}
 #dice-offline-warning:hover{background:rgba(200,60,60,0.95);box-shadow:0 0 10px rgba(220,60,60,.4)}
+#diceVersionBadge {
+  position: fixed; right: 12px; bottom: 10px; z-index: 200;
+  font-size: 0.72rem; color: rgba(201, 168, 76, 0.82);
+  font-family: ui-monospace, monospace; letter-spacing: 0.05em;
+  pointer-events: none; user-select: none;
+  text-shadow: 0 0 8px rgba(201, 168, 76, 0.35);
+  padding: 2px 6px; border-radius: 4px;
+  background: rgba(5, 2, 16, 0.55);
+  border: 1px solid rgba(201, 168, 76, 0.22);
+}
+body.has-offline-warn #diceVersionBadge { bottom: 56px; }
 
 /* ── ID HISTORY ── */
 #idHistoryRow{display:none;margin-top:14px;width:100%;max-width:340px;text-align:center}
@@ -1021,6 +1032,7 @@ body.fullbleed-view #app {
 </style>
 </head>
 <body class="fullbleed-view">
+<div id="diceVersionBadge"></div>
 
 <!-- Starfield -->
 <div id="starfield"></div>
@@ -1095,6 +1107,7 @@ body.fullbleed-view #app {
         <div class="rpr-row"><span class="rpr-name">⚔️ 30 节操</span><span class="rpr-rate">~45%</span><span class="rpr-note">节操累计 ≥ 5000 后移除</span></div>
         <div class="rpr-row"><span class="rpr-name">🪶 10 羽毛</span><span class="rpr-rate">~40%</span><span class="rpr-note">羽毛累计 ≥ 2000 后移除</span></div>
         <div class="rpr-row"><span class="rpr-name">🏅 30天本期勋章</span><span class="rpr-rate">~4.5%</span><span class="rpr-note">获得永久本期勋章后移除</span></div>
+        <div class="rpr-row"><span class="rpr-name">💎 永久进阶勋章</span><span class="rpr-rate">~50%</span><span class="rpr-note">须永久本期勋章 + 论坛「神社没落的警示」；之后每次故事发奖独立判定，仅 1 次</span></div>
         <div class="rpr-row"><span class="rpr-name">🎖️ 30天字母勋章</span><span class="rpr-rate">~4.5–95%</span><span class="rpr-note">始终存在，其他奖品满后占比上升</span></div>
         <div class="rpr-row"><span class="rpr-name">🐙 30天触手勋章</span><span class="rpr-rate">~4.5%</span><span class="rpr-note">可无限重复获得</span></div>
         <div class="rpr-row"><span class="rpr-name">🃏 本期本地用户牌</span><span class="rpr-rate">&lt;1%</span><span class="rpr-note rpr-rare">⚠️ 仅 1 次机会，抽后改放三叶/泷</span></div>
@@ -1154,8 +1167,7 @@ body.fullbleed-view #app {
 
     <!-- 操作按钮 -->
     <div class="btn-row-2">
-      <button class="btn btn-primary" style="flex:2;" id="btnResume" onclick="resumeGame()">继续投骰 →</button>
-      <button class="btn btn-ghost" style="flex:1;" onclick="goScreen2NoCheck()">重新输入</button>
+      <button class="btn btn-primary" style="width:100%;" id="btnResume" onclick="resumeGame()">继续投骰 →</button>
     </div>
     <div class="s1b-util-row">
       <button type="button" class="btn btn-ghost" onclick="fffOpenModal(true)">📡 论坛更新</button>
@@ -1529,11 +1541,17 @@ body.fullbleed-view #app {
     </div>
 
     <div class="ds-guide-section">
+      <h4>📚 故事选项与完成目标</h4>
+      <p>每则故事有四个分支选项。投骰翻开故事后，<strong>已经选过的选项会反灰显示</strong>（仍可再次点选，但系统会再确认一次）。</p>
+      <p>最终目标是：<strong>20 则故事 × 每则 4 个选项全部选过</strong>（主画面格子上会显示 ✦ 全选）。悬停格子可回顾曾选过的分支。</p>
+    </div>
+
+    <div class="ds-guide-section">
       <h4>🏠 主画面功能一览</h4>
       <p>• 查看剩余骰子数与 20 则故事的完成度<br>
       • 「混合骰子待分配」将引用折算的骰子定为 +4 / −4<br>
       • 「继续投骰」回到投掷界面<br>
-      • 「论坛更新」按新区间净增骰子<br>
+      • 「📡 论坛更新」自动读取论坛回复/被引用并折算骰子<br>
       • 「下载/读取存档」备份或还原进度</p>
     </div>
 
@@ -1542,20 +1560,23 @@ body.fullbleed-view #app {
       <p>每次完成故事随机抽取一项奖励。点开主画面「🎁 奖励累计」可查看完整清单与机率表。</p>
       <p><strong>常见奖励（绝大多数机率）：</strong><br>
       ⚔️ 30 节操 · 🪶 10 羽毛 · 🏅 30天本期勋章 · 🎖️ 30天字母勋章 · 🐙 30天触手勋章</p>
+      <p><strong>里程碑奖励（额外累计）：</strong><br>
+      读过 10 则故事 → 🏅 永久本期勋章<br>
+      20 则故事各选满 1/2/3/4 种选项 → 🎖 往期兑换机会 各 1 次</p>
+      <p><strong>💎 永久进阶勋章（故事发奖池）：</strong><br>
+      获得「永久本期勋章」后，系统会读取你的论坛勋章页，检查是否拥有「<strong>神社没落的警示</strong>」。若拥有，<strong>之后每次完成故事随机发奖时，各有 50% 概率</strong>抽到「永久进阶勋章」（整局仅能获得 1 次，抽到后不再出现）。</p>
       <p><strong>极稀有奖励（各仅 1 份）：</strong><br>
       🃏 本期本地用户牌（抽后改放三叶/泷）<br>
       🌸 三叶本地用户牌 · 🌙 泷本地用户牌</p>
       <p><strong>可重复稀有奖励：</strong><br>
       🌀 往期本地用户牌（最多可获 5 次）</p>
-      <p><strong>里程碑奖励（额外累计）：</strong><br>
-      读过 10 则故事 → 🏅 永久本期勋章<br>
-      20 则故事各选满 1/2/3/4 种选项 → 🎖 往期兑换机会 各 1 次</p>
     </div>
 
     <div class="ds-guide-section">
       <h4>🎯 攻略建议</h4>
       <p>• 节操 ≥ 5000 后节操移除奖池；羽毛 ≥ 2000 后羽毛移除，字母勋章占比飙升<br>
-      • 获得永久本期勋章后，本期勋章不再出现<br>
+      • 获得永久本期勋章后，30天本期勋章不再从故事奖池出现<br>
+      • 若论坛持有「神社没落的警示」，永久进阶勋章进入故事发奖池（每次发奖约 50%，仅 1 次）<br>
       • 触手勋章约占 5%，可无限重复获得<br>
       • 极稀有奖品（本期/三叶/泷牌）仅有一次机会，抽过即永久消失<br>
       • 往期本地用户牌最多 5 个，全拿后不再出现<br>
@@ -1688,7 +1709,15 @@ const REWARDS = [
 
 // ===== GAS CONFIG =====
 const GAS_URL = 'https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec';
-const DICE_GAME_VERSION = 'v2.6';
+// ═══ 版本与更新说明（每次编辑本 HTML 请务必更新以下两项）═══
+// 1. 递增 DICE_GAME_VERSION
+// 2. 在 DICE_CHANGELOG 写入该版本更新说明（玩家主画面会弹一次，看过不再显示直到下次改版）
+const DICE_GAME_VERSION = 'v2.8';
+const DICE_CHANGELOG = {
+  'v2.8': '• 永久进阶勋章改为：持神社徽章后，每次故事发奖 50% 抽取<br>• 右下角版本号可见度提高',
+  'v2.7': '• 主画面移除「重新输入」，请改用「📡 论坛更新」读取骰子<br>• 玩法介绍补充：选项反灰、全选目标、永久进阶勋章说明<br>• 右下角显示版本号；有更新时主画面会弹出更新说明'
+};
+const DICE_CHANGELOG_SEEN_KEY = 'diceStoryChangelogSeen_v2';
 const DICE_SAVE_XLSX_PASSWORD = 'sstm';
 
 // ===== GAME STATE =====
@@ -1795,6 +1824,7 @@ function buildRewardsSyncPayload_(prog) {
     past_card_count: Number(prog.past_card_count) || 0,
     perm_medal: !!prog.perm_medal,
     perm_advanced_medal: !!prog.perm_advanced_medal,
+    perm_advanced_eligible: !!prog.perm_advanced_eligible,
     has_mitsuha_card: !!prog.has_mitsuha_card,
     has_taki_card: !!prog.has_taki_card,
     local_card_phase: Number(prog.local_card_phase) || 0,
@@ -1824,6 +1854,7 @@ function mergeCloudRewardsIntoProg_(prog, cloudRewards) {
   prog.past_card_count = Math.max(Number(prog.past_card_count) || 0, Number(c.past_card_count) || 0);
   if (c.perm_medal) prog.perm_medal = true;
   if (c.perm_advanced_medal) prog.perm_advanced_medal = true;
+  if (c.perm_advanced_eligible) prog.perm_advanced_eligible = true;
   if (c.has_mitsuha_card) prog.has_mitsuha_card = true;
   if (c.has_taki_card)    prog.has_taki_card    = true;
   if (c.local_card_phase) prog.local_card_phase = Math.max(Number(prog.local_card_phase) || 0, Number(c.local_card_phase) || 0);
@@ -1925,6 +1956,15 @@ function showGameIntroIfNeeded_(steps, onDone) {
 }
 
 function pickRandomStoryReward_() {
+  const prog = getCachedProgress(state.id) || {};
+  const PERM_ADV = {
+    icon: '💎',
+    name: '永久进阶勋章',
+    desc: '「神社没落的警示」引动了命运之线！获得【永久进阶勋章】！'
+  };
+  if (prog.perm_advanced_eligible && !prog.perm_advanced_medal && Math.random() < 0.5) {
+    return PERM_ADV;
+  }
   const pool = getRewardPool_();
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -2564,30 +2604,10 @@ function showProgressScreen(prog) {
   const done        = normalizeStoriesDone(prog.stories_done);
   const visitedCount = Object.keys(done).length;
 
-  // ── 已持有永久本期勋章但尚未检查进阶勋章 → 于登入时扫描 ──
-    if (prog.perm_medal && !prog.perm_advanced_medal && _permAdvCheckResult === null && !window._permAdvFetchFired) {
+  // ── 已持有永久本期勋章：扫描论坛勋章页，解锁进阶勋章故事抽奖资格 ──
+  if (prog.perm_medal && !prog.perm_advanced_medal && !prog.perm_advanced_eligible && !window._permAdvFetchFired) {
     window._permAdvFetchFired = true;
-    fffProxyGet('https://sstm.moe/profile/' + state.uid + '-' + encodeURIComponent(state.id) + '/?tab=node_awards_Awards')
-      .then(function(html) {
-        try {
-          var doc = new DOMParser().parseFromString(html, 'text/html');
-          var blocks = doc.querySelectorAll('.ipsResponsive_showPhone.ipsResponsive_block');
-          var hasBadge = false;
-          blocks.forEach(function(block) {
-            var heads = block.querySelectorAll('.ipsType_sectionHead.ipsCursor_pointer');
-            heads.forEach(function(h) {
-              if ((h.textContent || '').trim().indexOf('神社没落的警示') !== -1) hasBadge = true;
-            });
-          });
-          if (hasBadge && Math.random() < 0.5) {
-            prog.perm_advanced_medal = true;
-            var all = loadAllProgress();
-            if (all[state.id]) { all[state.id].perm_advanced_medal = true; saveAllProgress(all); }
-            showToast('💎 命运之线牵动！获得【永久进阶勋章】！');
-          }
-        } catch(e) { console.warn('[dice] 登入进阶勋章扫描失败:', e); }
-      })
-      .catch(function(e) { console.warn('[dice] 登入进阶勋章抓取失败:', e); });
+    scanPermAdvancedLotteryEligibility_(state.id, { toast: true });
   }
 
   // 全选完成度：4种选项全部选过的故事数
@@ -2640,7 +2660,7 @@ function showProgressScreen(prog) {
     if (pendingMix > 0) renderS1bMixPanel_(pendingMix);
   }
   updateReplyRemainderUI_();
-  let subtitleText = diceLeft > 0 ? `还有 ${diceLeft} 个骰子未使用` : '骰子已用完，可点「重新输入」读取论坛或查看记录';
+  let subtitleText = diceLeft > 0 ? `还有 ${diceLeft} 个骰子未使用` : '骰子已用完，可点「论坛更新」读取或查看记录';
   const remNow = getReplyRemainder_(state.uid);
   if (remNow > 0) subtitleText += `　· 回复余数 ${remNow} 条`;
   if (pendingDice > 0) subtitleText += `　· 另有 ${pendingDice} 个混合骰子待分配`;
@@ -2651,8 +2671,8 @@ function showProgressScreen(prog) {
     btn.textContent = `继续投骰（剩余 ${diceLeft} 个）→`;
     btn.onclick = resumeWithDice;
   } else {
-    btn.textContent = '重新输入骰子 →';
-    btn.onclick = goScreen2NoCheck;
+    btn.textContent = '论坛更新 →';
+    btn.onclick = function() { fffOpenModal(true); };
   }
 
   // 故事格子
@@ -2696,6 +2716,7 @@ function showProgressScreen(prog) {
 
   showScreen('screen1b');
   maybeShowPermMedalMainGuide_(prog, visitedCount);
+  maybeShowVersionChangelog_();
 }
 
 // ===== 带入剩余骰子继续 =====
@@ -3594,13 +3615,65 @@ function updateRewardTotal_(reward) {
   if (name === '三叶本地用户牌') { all[state.id].has_mitsuha_card = true; all[state.id].local_card_phase = 1; }
   if (name === '泷本地用户牌')   { all[state.id].has_taki_card    = true; all[state.id].local_card_phase = 1; }
   if (name === '往期本地用户牌')   all[state.id].past_card_count = (all[state.id].past_card_count || 0) + 1;
+  if (name.includes('永久进阶')) {
+    all[state.id].perm_advanced_medal = true;
+    all[state.id].perm_advanced_eligible = true;
+  }
   saveAllProgress(all);
 }
 
 // ===== MILESTONE CHECK & POPUP =====
 let _milestoneQueue = [];
 let _pendingPermMainGuide = false;
-let _permAdvCheckResult = null; // null=检查中, true=可领进阶勋章, false=不符合
+
+function parseShrineBadgeFromAwardsHtml_(html) {
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    let hasBadge = false;
+    doc.querySelectorAll('.ipsResponsive_showPhone.ipsResponsive_block').forEach(function(block) {
+      block.querySelectorAll('.ipsType_sectionHead.ipsCursor_pointer').forEach(function(h) {
+        if ((h.textContent || '').trim().indexOf('神社没落的警示') !== -1) hasBadge = true;
+      });
+    });
+    return hasBadge;
+  } catch (e) { return false; }
+}
+
+function awardsProfileUrlForPlayer_() {
+  const uid = state.uid || fffGetCurrentUid();
+  const id = state.id || '';
+  if (!uid || !id) return '';
+  return 'https://sstm.moe/profile/' + uid + '-' + encodeURIComponent(id) + '/?tab=node_awards_Awards';
+}
+
+/** 永久本期勋章 + 论坛「神社没落的警示」→ 解锁故事发奖 50% 进阶勋章池 */
+function scanPermAdvancedLotteryEligibility_(playerId, opts) {
+  opts = opts || {};
+  playerId = playerId || state.id;
+  const all = loadAllProgress();
+  const prog = all[playerId];
+  if (!prog || !prog.perm_medal || prog.perm_advanced_medal || prog.perm_advanced_eligible) {
+    return Promise.resolve(false);
+  }
+  const url = awardsProfileUrlForPlayer_();
+  if (!url) return Promise.resolve(false);
+  return fffProxyGet(url).then(function(html) {
+    if (!parseShrineBadgeFromAwardsHtml_(html)) return false;
+    const fresh = loadAllProgress();
+    if (!fresh[playerId]) return false;
+    fresh[playerId].perm_advanced_eligible = true;
+    saveAllProgress(fresh);
+    if (opts.toast) {
+      showToast('💎 已解锁永久进阶勋章抽奖！之后每次故事发奖约有 50% 机会获得。');
+    }
+    return true;
+  }).catch(function(e) {
+    console.warn('[dice] 进阶勋章资格扫描失败:', e);
+    return false;
+  });
+}
+
+let _permAdvCheckResult = null; // 已废弃，保留变量避免旧引用报错
 
 function maybeShowPermMedalMainGuide_(prog, visitedCount) {
   if (!_pendingPermMainGuide || !prog || !prog.perm_medal || visitedCount < 10 || !state.id) return;
@@ -3655,31 +3728,9 @@ function checkMilestones_() {
       type: 'perm_medal'
     });
 
-    // ── 扫描指定用户勋章页，检查「神社没落的警示」→ 解锁永久进阶勋章 50% 抽奖 ──
-    if (!prog.perm_advanced_medal) {
-      _permAdvCheckResult = null;
-      fffProxyGet('https://sstm.moe/profile/' + (state.uid || fffGetCurrentUid()) + '-' + encodeURIComponent(state.id || '') + '/?tab=node_awards_Awards')
-        .then(function(html) {
-          try {
-            var doc = new DOMParser().parseFromString(html, 'text/html');
-            var blocks = doc.querySelectorAll('.ipsResponsive_showPhone.ipsResponsive_block');
-            var hasBadge = false;
-            blocks.forEach(function(block) {
-              var heads = block.querySelectorAll('.ipsType_sectionHead.ipsCursor_pointer');
-              heads.forEach(function(h) {
-                if ((h.textContent || '').trim().indexOf('神社没落的警示') !== -1) hasBadge = true;
-              });
-            });
-            if (hasBadge && Math.random() < 0.5) {
-              prog.perm_advanced_medal = true;
-              saveAllProgress(all);
-              _permAdvCheckResult = true;
-            } else {
-              _permAdvCheckResult = false;
-            }
-          } catch(e) { _permAdvCheckResult = false; console.warn('[dice] 进阶勋章解析失败:', e); }
-        })
-        .catch(function(e) { _permAdvCheckResult = false; console.warn('[dice] 进阶勋章抓取失败:', e); });
+    // ── 扫描论坛「神社没落的警示」→ 解锁永久进阶勋章故事抽奖（每次发奖 50%）──
+    if (!prog.perm_advanced_medal && !prog.perm_advanced_eligible) {
+      scanPermAdvancedLotteryEligibility_(state.id, { toast: true });
     }
   }
 
@@ -3757,24 +3808,6 @@ function showNextMilestone_() {
 
 function closeMilestone_() {
   document.getElementById('milestoneOverlay').classList.remove('show');
-
-  // 检查进阶勋章扫描结果
-  if (_permAdvCheckResult === null) {
-    // 还在扫描中，等待（最多重试 20 次 = 约 8 秒）
-    window._permAdvRetryCount = (window._permAdvRetryCount || 0) + 1;
-    if (window._permAdvRetryCount > 20) { _permAdvCheckResult = false; }
-    else { setTimeout(closeMilestone_, 400); return; }
-  }
-  if (_permAdvCheckResult === true) {
-    _permAdvCheckResult = null;
-    window._permAdvRetryCount = 0;
-    _milestoneQueue.push({
-      icon: '💎',
-      title: '永久进阶勋章',
-      body: '你身上的「神社没落的警示」勋章引动了命运之线！\n\n恭喜获得【永久进阶勋章】！',
-      type: 'perm_advanced_medal'
-    });
-  }
 
   if (_milestoneQueue.length > 0) {
     setTimeout(showNextMilestone_, 300);
@@ -4213,13 +4246,65 @@ function setDiceOnlineStatus_(online) {
       warn.className = 'online-badge';
       warn.innerHTML = '✅ 云端已连线';
       warn.style.display = 'block';
-      setTimeout(() => { if (_diceOnline) warn.style.display = 'none'; }, 2500);
+      setTimeout(() => { if (_diceOnline) { warn.style.display = 'none'; syncOfflineWarnLayout_(); } }, 2500);
     } else {
       warn.className = '';
       warn.innerHTML = '🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span>';
       warn.style.display = 'block';
     }
   }
+  syncOfflineWarnLayout_();
+}
+function syncOfflineWarnLayout_() {
+  const warn = document.getElementById('dice-offline-warning');
+  const visible = warn && warn.style.display !== 'none' && !warn.classList.contains('online-badge');
+  document.body.classList.toggle('has-offline-warn', !!visible);
+}
+function updateDiceVersionBadge_() {
+  const el = document.getElementById('diceVersionBadge');
+  if (el) el.textContent = DICE_GAME_VERSION;
+}
+function isBlockingOverlayVisible_() {
+  if (document.querySelector('.ds-intro-overlay.show,#ds-guide-overlay.show,#first-visit-overlay.show,#milestoneOverlay.show,#version-changelog-overlay.show')) {
+    return true;
+  }
+  return ['fff-modal', 'fff-loading', 'fff-result'].some(function(id) {
+    const el = document.getElementById(id);
+    return el && el.style.display === 'flex';
+  });
+}
+function maybeShowVersionChangelog_() {
+  const note = DICE_CHANGELOG && DICE_CHANGELOG[DICE_GAME_VERSION];
+  if (!note) return;
+  try {
+    if (localStorage.getItem(DICE_CHANGELOG_SEEN_KEY) === DICE_GAME_VERSION) return;
+  } catch (e) { return; }
+
+  function tryShow(attempt) {
+    if (attempt > 30) return;
+    const s1b = document.getElementById('screen1b');
+    if (!s1b || !s1b.classList.contains('active')) {
+      setTimeout(function() { tryShow(attempt + 1); }, 400);
+      return;
+    }
+    if (isBlockingOverlayVisible_()) {
+      setTimeout(function() { tryShow(attempt + 1); }, 400);
+      return;
+    }
+    const ov = document.getElementById('version-changelog-overlay');
+    const body = document.getElementById('version-changelog-body');
+    const ver = document.getElementById('version-changelog-ver');
+    if (!ov || !body) return;
+    if (ver) ver.textContent = DICE_GAME_VERSION;
+    body.innerHTML = note;
+    ov.classList.add('show');
+  }
+  setTimeout(function() { tryShow(0); }, 800);
+}
+function dismissVersionChangelog_() {
+  try { localStorage.setItem(DICE_CHANGELOG_SEEN_KEY, DICE_GAME_VERSION); } catch (e) {}
+  const ov = document.getElementById('version-changelog-overlay');
+  if (ov) ov.classList.remove('show');
 }
 function setDiceOfflineMode_(isOffline) { setDiceOnlineStatus_(!isOffline); }
 
@@ -4652,6 +4737,7 @@ function logDiceRewardToGAS_(reward) {
 // ===== 页面初始化 =====
 (function init_() {
   renderIdHistory_();
+  updateDiceVersionBadge_();
   try {
     const lastId = localStorage.getItem('diceStoryLastId_v2');
     const lastUid = localStorage.getItem(KEY_UID);
@@ -4879,6 +4965,7 @@ window.__applyPortableSaveData=async function(data){
 <script>
 (function bindFirstVisitOverlay_() {
   function bind() {
+    updateDiceVersionBadge_();
     document.getElementById('urlFillConfirmBtn')?.addEventListener('click', applyUrlFill);
     document.getElementById('urlFillSkipBtn')?.addEventListener('click', hideUrlFillOverlay);
     document.getElementById('urlFillInput')?.addEventListener('keydown', function(e) {
@@ -4901,6 +4988,13 @@ window.__applyPortableSaveData=async function(data){
 <!-- v2.1 2026-06-06 书本封面全屏；论坛抓取逐日写入「骰子故事返乡活跃度记录」并跳过云端已有日期 -->
 <!-- v2.2 2026-06-06 登入封面全屏自适应；云端逐日可补差额更新；回复余数(localStorage)凑满5换正骰，显示于混合骰面板 -->
 <!-- v2.4 2026-06-20 触手勋章~5%无限重复；奖池：本期本地用户牌×1（抽后开启三叶/泷各自×1）、往期本地用户牌×1（可重复最多5次） -->
+<div id="version-changelog-overlay" class="ds-guide-overlay">
+  <div class="ds-guide-box" style="max-width:420px;text-align:left;">
+    <h3 style="text-align:center;">📋 版本更新 <span id="version-changelog-ver"></span></h3>
+    <div id="version-changelog-body" style="color:var(--white-dim);font-size:0.88rem;line-height:1.85;margin-bottom:16px;"></div>
+    <button type="button" class="btn btn-primary" style="width:100%;" onclick="dismissVersionChangelog_()">知道了</button>
+  </div>
+</div>
 <div id="dice-offline-warning" onclick="retryDiceCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
 </body>
 </html>
