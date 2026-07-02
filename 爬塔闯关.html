@@ -253,7 +253,7 @@ body:has(#loginCard:not(.hidden))::before{content:"";position:fixed;inset:0;z-in
 </div>
 
 <script>
-const VER="v1.5.2-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
+const VER="v1.5.3-tower", KID="tower_uid", KRUN="tower_run", KLOG="tower_log", KGAS="tower_gas";
 const SHEET="爬塔闯关";
 const USER_IMG_POOL=[
   "./assets/c__Users_Fish_Chen_AppData_Roaming_Cursor_User_workspaceStorage_e82a39d4f02dd167ea7d277ae174f65a_images_image-a0d6726b-fb23-4710-b309-567e9cf17bea.png",
@@ -2258,34 +2258,28 @@ window.__applyPortableSaveData=async function(data){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
   else boot();
 })();
-/** 从论坛首页自动获取ID+UID（直走 Vercel /gal-proxy，不影响 fffProxyGet） */
+/** 从论坛首页自动获取ID+UID（直抓 sstm.moe，需已在浏览器登入） */
 async function fffAutoLogin(){
   var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
   var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
   if(!idEl||!uidEl) return;
   if(idEl.value.trim()&&uidEl.value.trim()) return;
   try{
-    var resp=await fetch('https://sstm-raffle.vercel.app/gal-proxy?url='+encodeURIComponent('https://sstm.moe/')+'&_bust='+Date.now(), {signal:AbortSignal.timeout(15000)});
-    console.log('[auto-login] gal-proxy status:', resp.status);
+    var resp=await fetch('https://sstm.moe/', {credentials:'include', signal:AbortSignal.timeout(15000)});
     if(!resp.ok) return;
     var html=await resp.text();
-    console.log('[auto-login] html length:', html.length, 'has cUserLink:', html.indexOf('cUserLink')>=0);
     if(!html||html.length<80) return;
     var doc=new DOMParser().parseFromString(html,'text/html');
     var userLink=doc.getElementById('cUserLink');
-    console.log('[auto-login] cUserLink:', !!userLink);
     if(!userLink) return;
     var profileLink=userLink.querySelector('a[href*="/profile/"]');
-    console.log('[auto-login] profileLink:', !!profileLink);
     if(!profileLink) return;
     var href=profileLink.getAttribute('href')||'';
     var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
-    console.log('[auto-login] match:', m);
     if(!m) return;
     if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
     if(!uidEl.value.trim()) uidEl.value=m[1];
-    console.log('[auto-login] filled:', idEl.value, uidEl.value);
-  }catch(e){console.warn('[auto-login] error:', e);}
+  }catch(e){}
 }
 </script>
 
