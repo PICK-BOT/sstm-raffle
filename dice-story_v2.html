@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>十年后重逢 — 命运的骰子 v2.9</title>
+<title>十年后重逢 — 命运的骰子 v2.10</title>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -1720,8 +1720,9 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4B
 //   3. 同步 <title> 版本号；保留历史 changelog 条目
 // 搜索本段标题或 DICE_GAME_VERSION 即可定位。
 // ═══════════════════════════════════════════════════════════════════════════
-const DICE_GAME_VERSION = 'v2.9';
+const DICE_GAME_VERSION = 'v2.10';
 const DICE_CHANGELOG = {
+  'v2.10': '• 下载游玩存档补全所有奖励与游玩数值（含本期勋章累计、奖励明细）<br>• 修复 30天本期勋章未计入存档的问题',
   'v2.9': '• 故事领奖视窗「查看记录」改为「继续投掷」，领取后回到投骰画面<br>• 投骰页移除「返回记录」；故事选择页移除「再来一次」',
   'v2.8': '• 永久进阶勋章改为：持神社徽章后，每次故事发奖 50% 抽取<br>• 右下角版本号可见度提高',
   'v2.7': '• 主画面移除「重新输入」，请改用「📡 论坛更新」读取骰子<br>• 玩法介绍补充：选项反灰、全选目标、永久进阶勋章说明<br>• 右下角显示版本号；有更新时主画面会弹出更新说明'
@@ -1828,6 +1829,7 @@ function buildRewardsSyncPayload_(prog) {
     seiso_total: Number(prog.seiso_total) || 0,
     feather_total: Number(prog.feather_total) || 0,
     letter_total: Number(prog.letter_total) || 0,
+    period_medal_days: Number(prog.period_medal_days) || 0,
     legacy_chances: Number(prog.legacy_chances) || 0,
     tentacle_medal_days: Number(prog.tentacle_medal_days) || 0,
     past_card_count: Number(prog.past_card_count) || 0,
@@ -1858,6 +1860,7 @@ function mergeCloudRewardsIntoProg_(prog, cloudRewards) {
   prog.seiso_total = Math.max(Number(prog.seiso_total) || 0, Number(c.seiso_total) || 0);
   prog.feather_total = Math.max(Number(prog.feather_total) || 0, Number(c.feather_total) || 0);
   prog.letter_total = Math.max(Number(prog.letter_total) || 0, Number(c.letter_total) || 0);
+  prog.period_medal_days = Math.max(Number(prog.period_medal_days) || 0, Number(c.period_medal_days) || 0);
   prog.legacy_chances = Math.max(Number(prog.legacy_chances) || 0, Number(c.legacy_chances) || 0);
   prog.tentacle_medal_days = Math.max(Number(prog.tentacle_medal_days) || 0, Number(c.tentacle_medal_days) || 0);
   prog.past_card_count = Math.max(Number(prog.past_card_count) || 0, Number(c.past_card_count) || 0);
@@ -3201,7 +3204,12 @@ function syncRewardOverlayButtons_(canContinueRoll) {
 
 function finishClaimReward_(thenNavigate) {
   document.getElementById('rewardOverlay').classList.add('hidden');
-  if (_currentReward) { updateRewardTotal_(_currentReward); logDiceRewardToGAS_(_currentReward); _currentReward = null; }
+  if (_currentReward) {
+    updateRewardTotal_(_currentReward);
+    appendRewardHistory_(_currentReward, 'story');
+    logDiceRewardToGAS_(_currentReward);
+    _currentReward = null;
+  }
   state.pos_dice -= state.rolled;
   state.rolled = 0;
   state.diceResults = [];
@@ -3581,6 +3589,7 @@ function updateRewardTotal_(reward) {
   if (name.includes('节操'))    all[state.id].seiso_total   = (all[state.id].seiso_total   || 0) + 30;
   if (name.includes('羽毛'))    all[state.id].feather_total  = (all[state.id].feather_total  || 0) + 10;
   if (name.includes('字母勋章')) all[state.id].letter_total  = (all[state.id].letter_total  || 0) + 30;
+  if (name.includes('30天本期')) all[state.id].period_medal_days = (all[state.id].period_medal_days || 0) + 30;
   if (name.includes('触手勋章')) all[state.id].tentacle_medal_days = (all[state.id].tentacle_medal_days || 0) + 30;
   if (name === '本期本地用户牌')   all[state.id].local_card_phase = 1;
   if (name === '三叶本地用户牌') { all[state.id].has_mitsuha_card = true; all[state.id].local_card_phase = 1; }
@@ -3590,6 +3599,20 @@ function updateRewardTotal_(reward) {
     all[state.id].perm_advanced_medal = true;
     all[state.id].perm_advanced_eligible = true;
   }
+  saveAllProgress(all);
+}
+
+function appendRewardHistory_(reward, source) {
+  if (!state.id || !reward) return;
+  const all = loadAllProgress();
+  if (!all[state.id]) return;
+  if (!Array.isArray(all[state.id].reward_history)) all[state.id].reward_history = [];
+  all[state.id].reward_history.push({
+    at: new Date().toISOString(),
+    icon: reward.icon || '',
+    name: reward.name || '',
+    source: source || 'story'
+  });
   saveAllProgress(all);
 }
 
@@ -3758,7 +3781,10 @@ function checkMilestones_() {
     all[state.id] = prog;
     saveAllProgress(all);
     // 同步到 GAS（里程碑奖励）
-    pending.forEach(m => logDiceRewardToGAS_({ icon: m.icon, name: m.title }));
+    pending.forEach(m => {
+      logDiceRewardToGAS_({ icon: m.icon, name: m.title });
+      appendRewardHistory_({ icon: m.icon, name: m.title }, m.type || 'milestone');
+    });
     _milestoneQueue.push(...pending);
   }
 }
@@ -4599,34 +4625,104 @@ function enterScreen2_() {
 }
 
 // ===== 下载游玩存档（只读 Excel，含完整进度） =====
-function buildDiceExportRows_() {
-  const cached = getCachedProgress(state.id || '');
-  const id = state.id || '未知';
+function buildDiceExportSnapshot_() {
+  if (state.id) saveProgressToStorage();
+  const cached = getCachedProgress(state.id || '') || {};
+  const progress = JSON.parse(JSON.stringify(cached));
+  if (state.id) {
+    progress.pos_dice_left = state.pos_dice;
+    if (state.unassigned_dice != null) progress.pending_neg_dice = state.unassigned_dice;
+  }
+  const exportState = {
+    id: state.id || '',
+    uid: state.uid || 0,
+    replies: state.replies || 0,
+    citations: state.citations || 0,
+    pos_dice: state.pos_dice || 0,
+    neg_dice: state.neg_dice || 0,
+    plus_dice: state.plus_dice || 0,
+    minus_dice: state.minus_dice || 0,
+    unassigned_dice: state.unassigned_dice || 0,
+    rolled: state.rolled || 0,
+    diceResults: state.diceResults ? state.diceResults.slice() : [],
+    raw_result: state.raw_result || 0,
+    neg_used: state.neg_used || 0,
+    final_result: state.final_result || 0,
+    story_index: state.story_index || 0,
+    chosen: state.chosen || null,
+    reply_remainder: getReplyRemainder_(state.uid)
+  };
+  return { progress, state: exportState };
+}
+
+function appendDiceRewardExportRows_(rows, prog) {
+  const p = prog || {};
+  const ms = p.milestones || {};
+  const boolLabel = v => v ? '已获得' : '未获得';
+  rows.push(['奖励', '节操累计', p.seiso_total || 0]);
+  rows.push(['奖励', '羽毛累计', p.feather_total || 0]);
+  rows.push(['奖励', '字母勋章累计(天)', p.letter_total || 0]);
+  rows.push(['奖励', '本期勋章累计(天)', p.period_medal_days || 0]);
+  rows.push(['奖励', '触手勋章累计(天)', p.tentacle_medal_days || 0]);
+  rows.push(['奖励', '往期兑换机会', (p.legacy_chances || 0) + ' 次']);
+  rows.push(['奖励', '永久本期勋章', boolLabel(!!p.perm_medal)]);
+  rows.push(['奖励', '永久进阶勋章', boolLabel(!!p.perm_advanced_medal)]);
+  rows.push(['奖励', '进阶勋章抽奖资格', boolLabel(!!p.perm_advanced_eligible)]);
+  rows.push(['奖励', '本期本地用户牌', (p.local_card_phase || 0) > 0 ? '已获得' : '未获得']);
+  rows.push(['奖励', '三叶本地用户牌', boolLabel(!!p.has_mitsuha_card)]);
+  rows.push(['奖励', '泷本地用户牌', boolLabel(!!p.has_taki_card)]);
+  rows.push(['奖励', '往期本地用户牌', (p.past_card_count || 0) + ' / 5']);
+  rows.push(['里程碑', '20故事各选1种', ms.legacy1 ? '已达成' : '未达成']);
+  rows.push(['里程碑', '20故事各选2种', ms.legacy2 ? '已达成' : '未达成']);
+  rows.push(['里程碑', '20故事各选3种', ms.legacy3 ? '已达成' : '未达成']);
+  rows.push(['里程碑', '20故事四选项全选', ms.legacy4 ? '已达成' : '未达成']);
+  const hist = Array.isArray(p.reward_history) ? p.reward_history : [];
+  rows.push(['奖励记录', '条目数', hist.length]);
+  hist.forEach((h, i) => {
+    const when = h.at ? new Date(h.at).toLocaleString('zh-CN') : '';
+    rows.push(['奖励记录', '#' + (i + 1) + ' ' + (h.name || ''), (h.icon || '') + ' · ' + (h.source || '') + (when ? ' · ' + when : '')]);
+  });
+}
+
+function buildDiceExportRows_(snapshot) {
+  const snap = snapshot || buildDiceExportSnapshot_();
+  const cached = snap.progress || {};
+  const st = snap.state || {};
+  const id = st.id || state.id || '未知';
   const now = new Date().toLocaleString('zh-CN');
   const rows = [
     ['类别', '项目', '数值'],
     ['基本', '论坛ID', id],
-    ['基本', '论坛UID', state.uid || ''],
+    ['基本', '论坛UID', st.uid || ''],
     ['基本', '导出时间', now],
-    ['骰子', '剩余正骰', cached ? (cached.pos_dice_left || 0) : state.pos_dice],
-    ['骰子', '待分配混合骰', cached ? (cached.pending_neg_dice || 0) : 0],
-    ['骰子', '回复余数', getReplyRemainder_(state.uid)],
+    ['骰子', '剩余正骰', cached.pos_dice_left || 0],
+    ['骰子', '待分配混合骰', cached.pending_neg_dice || 0],
+    ['骰子', '回复余数', st.reply_remainder != null ? st.reply_remainder : getReplyRemainder_(state.uid)],
+    ['骰子', '本轮已分配负向骰', st.minus_dice || 0],
+    ['骰子', '本轮已分配正向加成', st.plus_dice || 0],
+    ['论坛', '最近读取回复数', st.replies || 0],
+    ['论坛', '最近读取被引用数', st.citations || 0],
+    ['进行中', '本次已投骰数', st.rolled || 0],
+    ['进行中', '本次骰点结果', (st.diceResults && st.diceResults.length) ? st.diceResults.join('+') : ''],
+    ['进行中', '本次原始合计', st.raw_result || 0],
+    ['进行中', '本次使用负向骰', st.neg_used || 0],
+    ['进行中', '本次最终点数', st.final_result || 0],
+    ['进行中', '当前故事序号', st.story_index != null ? st.story_index + 1 : ''],
+    ['进行中', '当前已选分支', st.chosen || '']
   ];
-  if (cached) {
-    rows.push(['奖励', '节操累计', cached.seiso_total || 0]);
-    rows.push(['奖励', '羽毛累计', cached.feather_total || 0]);
-    rows.push(['奖励', '字母勋章累计', cached.letter_total || 0]);
-    rows.push(['奖励', '往期兑换机会', cached.legacy_chances || 0]);
-    rows.push(['奖励', '永久本期勋章', cached.perm_medal ? '已获得' : '未获得']);
-  }
-  const done = normalizeStoriesDone((cached && cached.stories_done) || {});
+  appendDiceRewardExportRows_(rows, cached);
+  const done = normalizeStoriesDone(cached.stories_done || {});
   Object.keys(done).sort((a, b) => Number(a) - Number(b)).forEach(k => {
     const story = STORIES[Number(k) - 1];
     const title = story ? story.title : ('故事#' + k);
     const entry = done[k];
     let choiceStr = '';
     if (entry && Array.isArray(entry.choices)) {
-      choiceStr = entry.choices.map(c => (c && c.choice) || '').filter(Boolean).join('/');
+      choiceStr = entry.choices.map(c => {
+        if (!c) return '';
+        const idx = c.idx != null ? '选项' + (c.idx + 1) : '';
+        return [idx, c.choice].filter(Boolean).join(':');
+      }).filter(Boolean).join(' / ');
     } else if (entry && entry.choice) {
       choiceStr = String(entry.choice);
     }
@@ -4645,12 +4741,9 @@ async function downloadDiceSave_() {
     const wb = new ExcelJS.Workbook();
     wb.creator = '命运的骰子';
     const ws = wb.addWorksheet('游玩存档');
-    const rows = buildDiceExportRows_();
-    const cached = getCachedProgress(state.id || '');
-    __appendPortableSaveRows(rows, 'dice_story', {
-      state: Object.assign({}, state, { reply_remainder: getReplyRemainder_(state.uid) }),
-      progress: cached ? JSON.parse(JSON.stringify(cached)) : null
-    });
+    const snapshot = buildDiceExportSnapshot_();
+    const rows = buildDiceExportRows_(snapshot);
+    __appendPortableSaveRows(rows, 'dice_story', snapshot);
     rows.forEach(r => ws.addRow(r));
     ws.getColumn(1).width = 14;
     ws.getColumn(2).width = 22;
@@ -4959,6 +5052,7 @@ window.__applyPortableSaveData=async function(data){
 <!-- v2.1 2026-06-06 书本封面全屏；论坛抓取逐日写入「骰子故事返乡活跃度记录」并跳过云端已有日期 -->
 <!-- v2.2 2026-06-06 登入封面全屏自适应；云端逐日可补差额更新；回复余数(localStorage)凑满5换正骰，显示于混合骰面板 -->
 <!-- v2.4 2026-06-20 触手勋章~5%无限重复；奖池：本期本地用户牌×1（抽后开启三叶/泷各自×1）、往期本地用户牌×1（可重复最多5次） -->
+<!-- v2.10 2026-06-12 下载存档补全奖励/数值；修复30天本期勋章累计；奖励明细 reward_history -->
 <!-- v2.9 2026-06-12 领奖视窗「继续投掷」回投骰页；强化 AI 维护清单（版本号+changelog 视窗） -->
 <div id="version-changelog-overlay" class="ds-guide-overlay">
   <div class="ds-guide-box" style="max-width:420px;text-align:left;">
