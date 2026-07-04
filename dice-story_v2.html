@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>十年后重逢 — 命运的骰子 v2.10</title>
+<title>十年后重逢 — 命运的骰子 v2.11</title>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -1720,8 +1720,9 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4B
 //   3. 同步 <title> 版本号；保留历史 changelog 条目
 // 搜索本段标题或 DICE_GAME_VERSION 即可定位。
 // ═══════════════════════════════════════════════════════════════════════════
-const DICE_GAME_VERSION = 'v2.10';
+const DICE_GAME_VERSION = 'v2.11';
 const DICE_CHANGELOG = {
+  'v2.11': '• 论坛读取优化：记录读取时间，下次跳过已记录的旧日期，减少不必要抓取<br>• 修复混合骰子仅 1 颗时分配为负向可无限兑换的 BUG',
   'v2.10': '• 下载游玩存档补全所有奖励与游玩数值（含本期勋章累计、奖励明细）<br>• 修复 30天本期勋章未计入存档的问题',
   'v2.9': '• 故事领奖视窗「查看记录」改为「继续投掷」，领取后回到投骰画面<br>• 投骰页移除「返回记录」；故事选择页移除「再来一次」',
   'v2.8': '• 永久进阶勋章改为：持神社徽章后，每次故事发奖 50% 抽取<br>• 右下角版本号可见度提高',
@@ -1729,6 +1730,24 @@ const DICE_CHANGELOG = {
 };
 const DICE_CHANGELOG_SEEN_KEY = 'diceStoryChangelogSeen_v2';
 const DICE_SAVE_XLSX_PASSWORD = 'sstm';
+
+// ===== 论坛读取逐日记录时间戳（用于跳过已记录的旧日期） =====
+const DICE_LAST_FETCH_DATE_KEY = 'diceLastFetchDate_v2';
+function getLastFetchDate_(uid) {
+  if (!uid) return null;
+  try {
+    const map = JSON.parse(localStorage.getItem(DICE_LAST_FETCH_DATE_KEY) || '{}');
+    return map[String(uid)] || null;
+  } catch (e) { return null; }
+}
+function setLastFetchDate_(uid, date) {
+  if (!uid || !date) return;
+  try {
+    const map = JSON.parse(localStorage.getItem(DICE_LAST_FETCH_DATE_KEY) || '{}');
+    map[String(uid)] = String(date).slice(0, 10);
+    localStorage.setItem(DICE_LAST_FETCH_DATE_KEY, JSON.stringify(map));
+  } catch (e) {}
+}
 
 // ===== GAME STATE =====
 const KEY_UID = 'diceStoryForumUid_v2';
@@ -1839,6 +1858,7 @@ function buildRewardsSyncPayload_(prog) {
     has_mitsuha_card: !!prog.has_mitsuha_card,
     has_taki_card: !!prog.has_taki_card,
     local_card_phase: Number(prog.local_card_phase) || 0,
+    assigned_neg_dice: Number(prog.assigned_neg_dice) || 0,
     milestones: prog.milestones && typeof prog.milestones === 'object' ? prog.milestones : {}
   };
 }
@@ -1870,6 +1890,7 @@ function mergeCloudRewardsIntoProg_(prog, cloudRewards) {
   if (c.has_mitsuha_card) prog.has_mitsuha_card = true;
   if (c.has_taki_card)    prog.has_taki_card    = true;
   if (c.local_card_phase) prog.local_card_phase = Math.max(Number(prog.local_card_phase) || 0, Number(c.local_card_phase) || 0);
+  prog.assigned_neg_dice = Math.max(Number(prog.assigned_neg_dice) || 0, Number(c.assigned_neg_dice) || 0);
   prog.milestones = mergeMilestoneMaps_(prog.milestones, c.milestones);
 }
 
@@ -2353,7 +2374,8 @@ function fffCloseModal() {
 async function fffDoFetch() {
   const uid = parseInt((document.getElementById('fff-uid').value || '').trim(), 10);
   if (!uid || isNaN(uid)) { alert('请输入有效的论坛 UID（数字）'); return; }
-  const startDate = SCRAPE_DATE_MIN;
+  const lastFetch = getLastFetchDate_(uid);
+  const startDate = lastFetch || SCRAPE_DATE_MIN;
   const endDate = todayISO_();
   fffCloseModal();
   fffOpenLoading();
@@ -2479,6 +2501,7 @@ function fffConfirm() {
   const { uid, rawR, rawC, netR, netC, netByDay, startDate, endDate } = _fffResult;
   fffSaveImp(uid, (startDate||'')+'_'+(endDate||''), rawR, rawC);
   try { localStorage.setItem('diceStoryForumUid_v2', String(uid)); } catch (e) {}
+  setLastFetchDate_(uid, endDate);
   if (netByDay) logActivityByDayToGAS_(uid, netByDay || {});
   logForumFetchToGAS_({
     mode: _fffIsUpdate ? 'dicestory_v2_fetch_confirm_update' : 'dicestory_v2_fetch_confirm_menu',
@@ -2506,12 +2529,14 @@ function saveProgressToStorage(storyDone) {
   // 更新 localStorage 缓存
   const all = loadAllProgress();
   if (!all[state.id]) all[state.id] = { pos_dice_left: 0, stories_done: {} };
+  if (all[state.id].assigned_neg_dice == null) all[state.id].assigned_neg_dice = 0;
   if (!all[state.id].stories_done) all[state.id].stories_done = {};
 
   // 规范化已有格式（兼容旧版本数据）
   all[state.id].stories_done = normalizeStoriesDone(all[state.id].stories_done);
 
   all[state.id].pos_dice_left = state.pos_dice;
+  all[state.id].assigned_neg_dice = state.minus_dice || 0;
   all[state.id].pending_neg_dice = state.unassigned_dice || 0;
   if (storyDone) {
     const key = storyDone.idx;
@@ -2668,14 +2693,27 @@ function showProgressScreen(prog) {
   const pendingMix = prog.pending_neg_dice || 0;
   const mixDetails = document.getElementById('s1bMixDetails');
   if (mixDetails) {
-    mixDetails.style.display = (pendingMix > 0 || getReplyRemainder_(state.uid) > 0) ? 'block' : 'none';
-    if (pendingMix > 0) renderS1bMixPanel_(pendingMix);
+    const hasRemainder = getReplyRemainder_(state.uid) > 0;
+    mixDetails.style.display = (pendingMix > 0 || hasRemainder) ? 'block' : 'none';
+    if (pendingMix > 0) {
+      renderS1bMixPanel_(pendingMix);
+    }
+    document.getElementById('s1bSumPos').textContent = (prog.pos_dice_left || 0) + ' 个';
+    document.getElementById('s1bSumNeg').textContent = (prog.assigned_neg_dice || 0) + ' 个';
+    if (pendingMix === 0) {
+      const rows = document.getElementById('s1bMixRows');
+      if (rows) rows.innerHTML = '';
+      document.getElementById('s1bSumUnassigned').textContent = '0 个';
+      _s1bMixAssigns = [];
+    }
   }
   updateReplyRemainderUI_();
+  const assignedNeg = prog.assigned_neg_dice || 0;
   let subtitleText = diceLeft > 0 ? `还有 ${diceLeft} 个骰子未使用` : '骰子已用完，可点「论坛更新」读取或查看记录';
   const remNow = getReplyRemainder_(state.uid);
   if (remNow > 0) subtitleText += `　· 回复余数 ${remNow} 条`;
   if (pendingDice > 0) subtitleText += `　· 另有 ${pendingDice} 个混合骰子待分配`;
+  if (assignedNeg > 0) subtitleText += `　· 已分配 ${assignedNeg} 个负向骰(−4)`;
   document.getElementById('s1bSubtitle').textContent = subtitleText;
 
   const btn = document.getElementById('btnResume');
@@ -2739,7 +2777,8 @@ function resumeWithDice() {
 
   state.pos_dice = diceLeft;
   state.neg_dice = 0; state.mixAssignments = [];
-  state.plus_dice = 0; state.minus_dice = 0;
+  state.plus_dice = 0;
+  state.minus_dice = (cached && cached.assigned_neg_dice) || 0;
   state.unassigned_dice = (cached && cached.pending_neg_dice) || 0;
   state.rolled = 0; state.diceResults = [];
   state.raw_result = 0; state.neg_used = 0;
@@ -3046,7 +3085,9 @@ function s5UpdateNeg() {
   const adj = state.raw_result - clamped * 4;
   document.getElementById('s5ResultAdj').textContent = `减去 ${clamped} × 4 = −${clamped*4}`;
   document.getElementById('s5ResultAdj').style.display = clamped > 0 ? 'block' : 'none';
-  document.getElementById('s5ResultFinal').textContent = `最终结果：${adj}`;
+  const display = adj < 1 ? 1 : adj;
+  const note = adj < 1 ? '（负数无对应故事编号，已调整为最低值）' : '';
+  document.getElementById('s5ResultFinal').textContent = `最终结果：${display} ${note}`;
   document.getElementById('s5ResultFinal').style.display = 'block';
   state.final_result = adj;
 }
@@ -3211,6 +3252,7 @@ function finishClaimReward_(thenNavigate) {
     _currentReward = null;
   }
   state.pos_dice -= state.rolled;
+  state.minus_dice = Math.max(0, (state.minus_dice || 0) - (state.neg_used || 0));
   state.rolled = 0;
   state.diceResults = [];
   state.raw_result = 0;
@@ -3234,6 +3276,12 @@ function goScreen6() {
   const negUsedEl = document.getElementById('s5NegUse');
   if (state.minus_dice > 0 && negUsedEl) {
     state.neg_used = parseInt(negUsedEl.value) || 0;
+    if (state.neg_used > 0 && state.raw_result - state.neg_used * 4 < 1) {
+      if (!confirm('命运之骰已投出点数 ' + state.raw_result + '，使用负向骰子将使结果变成负数。确认使用混合骰子？')) {
+        state.neg_used = 0;
+        negUsedEl.value = 0;
+      }
+    }
     state.final_result = state.raw_result - state.neg_used * 4;
   }
 
@@ -3907,12 +3955,26 @@ function assignMixedDiceS1b_() {
   const neg = _s1bMixAssigns.filter(x => x === 'neg').length;
   const unassigned = _s1bMixAssigns.filter(x => x === null).length;
 
+  if (pos === 0 && neg === 0) {
+    if (unassigned > 0) { alert('请先为混合骰子选择方向（+4 正向或 −4 负向）再确认分配。'); return; }
+    return;
+  }
+
   const all = loadAllProgress();
   if (!all[state.id]) return;
-  all[state.id].pos_dice_left    = (all[state.id].pos_dice_left || 0) + pos;
-  all[state.id].pending_neg_dice = neg + unassigned; // 负向+未分配均保留为混合骰
+  all[state.id].pos_dice_left      = (all[state.id].pos_dice_left || 0) + pos;
+  all[state.id].assigned_neg_dice  = (all[state.id].assigned_neg_dice || 0) + neg;
+  all[state.id].pending_neg_dice   = unassigned;
   saveAllProgress(all);
   pushDiceToGAS(all[state.id].pos_dice_left, all[state.id].pending_neg_dice, all[state.id].stories_done || {});
+  _s1bMixAssigns = [];
+  const mixRows = document.getElementById('s1bMixRows');
+  if (mixRows) mixRows.innerHTML = '';
+  const mixCount = document.getElementById('s1bMixCount');
+  if (mixCount) mixCount.textContent = '0';
+  document.getElementById('s1bDiceLeft').textContent = all[state.id].pos_dice_left;
+  const btn = document.getElementById('btnResume');
+  if (all[state.id].pos_dice_left > 0) { btn.textContent = `继续投骰（剩余 ${all[state.id].pos_dice_left} 个）→`; btn.onclick = resumeWithDice; }
   showProgressScreen(all[state.id]);
 }
 
@@ -4519,7 +4581,8 @@ async function beginScreen2ForumFetch_(retryLeft) {
     return Promise.resolve();
   }
   const token = ++_s2FetchToken;
-  const startDate = SCRAPE_DATE_MIN;
+  const lastFetch = getLastFetchDate_(state.uid);
+  const startDate = lastFetch || SCRAPE_DATE_MIN;
   const endDate = todayISO_();
   const statusEl = document.getElementById('screen2FetchStatus');
   const btnManual = document.getElementById('btnS2Manual');
@@ -4573,6 +4636,7 @@ function applyScreen2FetchAndContinue_(rawR, rawC, netR, netC, startDate, endDat
   const uid = state.uid;
   const dateKey = (startDate || '') + '_' + (endDate || '');
   fffSaveImp(uid, dateKey, rawR, rawC);
+  setLastFetchDate_(uid, endDate);
   logActivityByDayToGAS_(uid, netByDay || {});
   logForumFetchToGAS_({
     mode: 'dicestory_v2_auto_screen2',
@@ -5052,6 +5116,7 @@ window.__applyPortableSaveData=async function(data){
 <!-- v2.1 2026-06-06 书本封面全屏；论坛抓取逐日写入「骰子故事返乡活跃度记录」并跳过云端已有日期 -->
 <!-- v2.2 2026-06-06 登入封面全屏自适应；云端逐日可补差额更新；回复余数(localStorage)凑满5换正骰，显示于混合骰面板 -->
 <!-- v2.4 2026-06-20 触手勋章~5%无限重复；奖池：本期本地用户牌×1（抽后开启三叶/泷各自×1）、往期本地用户牌×1（可重复最多5次） -->
+<!-- v2.11 2026-07-04 论坛读取优化(跳过已记录旧日期)+混合骰分配负向时待分配量正确扣除 -->
 <!-- v2.10 2026-06-12 下载存档补全奖励/数值；修复30天本期勋章累计；奖励明细 reward_history -->
 <!-- v2.9 2026-06-12 领奖视窗「继续投掷」回投骰页；强化 AI 维护清单（版本号+changelog 视窗） -->
 <div id="version-changelog-overlay" class="ds-guide-overlay">
