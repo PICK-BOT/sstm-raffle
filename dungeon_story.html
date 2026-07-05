@@ -4471,21 +4471,15 @@ window.addEventListener("DOMContentLoaded",()=>{
     document.getElementById("loginNotice").textContent="请以 ?record=你的GAS_URL 打开，否则无法云端游玩。";
   }
   renderDungeonIdHistory_();
-  // 自动登入：恢复上次的 ID 和 forumUid
+  // 自动登入：恢复上次的 ID 和 forumUid（不自动进入游戏，停在登入页）
   (function(){
     var _savedId=localStorage.getItem(KID)||'';
     var _savedFUid=localStorage.getItem('dg_uid_forum')||'';
-    if(_savedId&&_savedFUid){
+    if(_savedId||_savedFUid){
       var _el=document.getElementById('uid');
       var _el2=document.getElementById('forum-uid-num');
-      if(_el) _el.value=_savedId;
-      if(_el2) _el2.value=_savedFUid;
-      G.uid=_savedId; G.forumUid=parseInt(_savedFUid,10);
-      enterGame();
-    } else if(_savedId){
-      var _el=document.getElementById('uid');
-      if(_el) _el.value=_savedId;
-      G.uid=_savedId;
+      if(_savedId&&_el) _el.value=_savedId;
+      if(_savedFUid&&_el2) _el2.value=_savedFUid;
     }
   })();
   setTimeout(fffAutoLogin,200);
@@ -4816,7 +4810,7 @@ function _normDate_(v){
   return s;
 }
 function _dateRange_(sd,ed){
-  var days=[],cur=new Date(sd+'T12:00:00'),end=new Date(ed+'T12:00:00');
+  var days=[],cur=new Date(sd+'T12:00:00Z'),end=new Date(ed+'T12:00:00Z');
   while(cur<=end){days.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}
   return days;
 }
@@ -4894,10 +4888,19 @@ async function fffDoFetch(){
   try{
     fffSetStatus('正在获取用户资料...');
     const slug=await fffGetUsername(uid);
+    // 先做云端读取
+    var cloudRows=[];
+    if(!_dgOfflineMode&&gasUrl()){
+      fffSetStatus('正在查询云端逐日记录…');
+      cloudRows=await _fetchActivityCloud_(uid,'地下城返乡活跃度',startDate,endDate);
+    }
+    // 计算优化抓取起点（仅抓取上次之后的新数据）
+    var scrapeFrom=startDate;
+    var lastFetch=getLastFetchDate_?getLastFetchDate_(uid):null;
+    if(lastFetch&&lastFetch>startDate) scrapeFrom=lastFetch;
     fffSetStatus('开始统计回复...');
-    const raw=await fffScrape(uid,slug,startDate,endDate);
-    fffSetStatus('正在查询云端逐日记录…');
-    const cloudRows=await _fetchActivityCloud_(uid,'地下城返乡活跃度',startDate,endDate);
+    const raw=await fffScrape(uid,slug,scrapeFrom,endDate);
+    fffSetStatus('正在比对云端记录…');
     const deduped=_mergeByDayCloud_(raw.byDay||{},cloudRows,startDate,endDate);
     fffCloseLoading();
     fffSaveImp(uid,dateKey,raw.replies,raw.citations);
@@ -5190,8 +5193,12 @@ function applyUrlFill(){
   if(err) err.style.display='none';
   hideUrlFillOverlay();
 }
+/** 从URL hash自动填入ID+UID（不自动登入） */
 async function fffAutoLogin(){
-  // 1) URL hash
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(!idEl||!uidEl) return;
+  // 1) URL hash (bookmarklet / 油猴跳转)
   var hash=location.hash||'';
   if(hash.indexOf('auto-id=')>=0){
     try{
@@ -5199,35 +5206,15 @@ async function fffAutoLogin(){
       var hid=sp.get('auto-id');
       var huid=sp.get('auto-uid');
       if(hid&&huid){
-        var inpId=document.getElementById('inp-id')||document.getElementById('uid');
-        var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
-        if(inpId) inpId.value=decodeURIComponent(hid);
-        if(inpUid) inpUid.value=huid;
+        if(!idEl.value.trim()) idEl.value=decodeURIComponent(hid);
+        if(!uidEl.value.trim()) uidEl.value=huid;
         history.replaceState(null,'',location.pathname+location.search);
         return;
       }
     }catch(e){}
   }
-  // 2) proxy
-  try{
-    var html=await fffProxyGet('https://sstm.moe/');
-    var d=document.createElement('div');
-    d.innerHTML=html;
-    var link=d.querySelector('#cUserLink');
-    if(!link)return;
-    var href=link.getAttribute('href')||'';
-    var m=href.match(/profile\/(\d+)/)||href.match(/uid=(\d+)/);
-    if(!m)return;
-    var uid=m[1];
-    var name=link.textContent.trim();
-    var inpId=document.getElementById('inp-id')||document.getElementById('uid');
-    var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
-    if(inpId) inpId.value=name;
-    if(inpUid) inpUid.value=uid;
-    return;
-  }catch(e){}
-  // 3) first visit popup
-  if(!localStorage.getItem('_urlFillShown')){
+  // 2) 首次使用 + 两栏都空白 → 弹窗教学
+  if(!idEl.value.trim() && !uidEl.value.trim() && !localStorage.getItem('_urlFillShown')){
     localStorage.setItem('_urlFillShown','1');
     setTimeout(showUrlFillOverlay, 500);
   }

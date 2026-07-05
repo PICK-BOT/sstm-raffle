@@ -483,8 +483,7 @@ async function cloudLoadAll() {
 
 // ── Login helpers ──
 function today() {
-  const d = new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return new Date().toISOString().slice(0,10);
 }
 
 function getLoginHistory() {
@@ -1351,8 +1350,8 @@ async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
   if(opts.maxCitationChecks===0) citeBudget=0;
   else if(opts.maxCitationChecks==null) citeBudget=Number.POSITIVE_INFINITY;
   else citeBudget=Number.isFinite(Number(opts.maxCitationChecks))?Number(opts.maxCitationChecks):16;
-  const sTs=startDate?new Date(startDate+"T00:00:00").getTime():0;
-  const eTs=endDate?new Date(endDate+"T23:59:59").getTime():Date.now();
+  const sTs=startDate?new Date(startDate+"T00:00:00Z").getTime():0;
+  const eTs=endDate?new Date(endDate+"T23:59:59Z").getTime():Date.now();
   const prev=loadInc_(uid,startDate,keySuffix);
   const lastTs=prev?(prev.lastTs||0):0;
   let replies=prev?(prev.replies||0):0;
@@ -1456,8 +1455,8 @@ async function fffScrapeByDay_(uid,slug,startDate,endDate,scrapeOpts){
   else if(opts.maxCitationChecks==null) citeBudget=Number.POSITIVE_INFINITY;
   else citeBudget=Number.isFinite(Number(opts.maxCitationChecks))?Number(opts.maxCitationChecks):16;
 
-  const sTs=startDate?new Date(startDate+'T00:00:00').getTime():0;
-  const eTs=endDate  ?new Date(endDate  +'T23:59:59').getTime():Date.now();
+const sTs=startDate?new Date(startDate+'T00:00:00Z').getTime():0;
+   const eTs=endDate  ?new Date(endDate  +'T23:59:59Z').getTime():Date.now();
 
   let replies=0;
   const citedIds=new Set();
@@ -1557,7 +1556,7 @@ async function fffScrapeByDay_(uid,slug,startDate,endDate,scrapeOpts){
 }
 
 // ── Helper functions ──
-function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
 function normDateISO_(v){
   if(!v) return '';
   const s=String(v).trim();
@@ -1568,7 +1567,7 @@ function normDateISO_(v){
 }
 function _dateRange_(sd,ed){
   const days=[];
-  const cur=new Date(sd+'T12:00:00'); const end=new Date(ed+'T12:00:00');
+  const cur=new Date(sd+'T12:00:00Z'); const end=new Date(ed+'T12:00:00Z');
   while(cur<=end){ days.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
   return days;
 }
@@ -1662,8 +1661,15 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
   if(typeof G.boosters!=='object'||!G.boosters) G.boosters={hammer:0,lollipop:0,fish:0};
     _migrateToForumDays_();
 
-    showLoading('正在抓取 '+sd+' ~ '+ed+'...');
-    const raw=await fffScrapeByDay_(uid,slug,sd,ed,{
+    // 先查云端已有记录，优化抓取范围
+    var cloudRows=[];
+    if(G.uid&&GAS_URL){
+      cloudRows=await _fetchActivityFromCloud_(uid,sd,ed);
+    }
+    var scrapeFrom=sd;
+    if(G.lastFetch&&G.lastFetch>sd) scrapeFrom=G.lastFetch;
+    showLoading('正在抓取 '+scrapeFrom+' ~ '+ed+'...');
+    const raw=await fffScrapeByDay_(uid,slug,scrapeFrom,ed,{
       onProgress:(msg)=>showLoading(msg),
       maxPages     :Number(opt&&opt.maxPages)||60,
       maxCitationChecks:(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:16
@@ -1683,6 +1689,20 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
 
     // Persist to cloud
     _logActivityByDayToCloud_(uid,raw.byDay);
+
+    // 合并云端预取数据（补齐未抓取区间的记录）
+    if(cloudRows&&cloudRows.length){
+      cloudRows.forEach(function(r){
+        var day=r.date;
+        if(!day)return;
+        var old=G.forumDays[day]||{replies:0,citedIds:[]};
+        G.forumDays[day]={
+          replies  :Math.max(parseInt(r.replies,10)||0,old.replies),
+          citedIds :old.citedIds||[],
+          fetchedAt:new Date().toISOString()
+        };
+      });
+    }
 
     // Sync G.replies / G.citations
     const av=_calcForumAvail();
@@ -2080,13 +2100,12 @@ function applyUrlFill(){
   if(err) err.style.display='none';
   hideUrlFillOverlay();
 }
-/** 从论坛首页自动获取ID+UID */
+/** 从URL hash自动填入ID+UID（不自动登入） */
 async function fffAutoLogin(){
   var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
   var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
   if(!idEl||!uidEl) return;
-  if(idEl.value.trim()&&uidEl.value.trim()) return;
-  // 1) URL hash
+  // 1) URL hash (bookmarklet / 油猴跳转)
   var hash=location.hash||'';
   if(hash.indexOf('auto-id=')>=0){
     try{
@@ -2101,23 +2120,8 @@ async function fffAutoLogin(){
       }
     }catch(e){}
   }
-  // 2) proxy
-  try{
-    var html=await fffProxyGet('https://sstm.moe/');
-    var doc=new DOMParser().parseFromString(html,'text/html');
-    var userLink=doc.getElementById('cUserLink');
-    if(!userLink) return;
-    var profileLink=userLink.querySelector('a[href*="/profile/"]');
-    if(!profileLink) return;
-    var href=profileLink.getAttribute('href')||'';
-    var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
-    if(!m) return;
-    if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
-    if(!uidEl.value.trim()) uidEl.value=m[1];
-    return;
-  }catch(e){}
-  // 3) first visit popup
-  if(!localStorage.getItem('_urlFillShown')){
+  // 2) 首次使用 + 两栏都空白 → 弹窗教学
+  if(!idEl.value.trim() && !uidEl.value.trim() && !localStorage.getItem('_urlFillShown')){
     localStorage.setItem('_urlFillShown','1');
     setTimeout(showUrlFillOverlay, 500);
   }

@@ -935,12 +935,63 @@ async function fetchActivityFromTripleMatch_(uid, startDate, endDate) {
 function logActivityByDayToTripleMatch_(uid, netByDay) {
   if (!uid || !netByDay || typeof netByDay !== 'object') return;
   Object.keys(netByDay).forEach(function (d) {
-    gasBeacon({ sheet: SHEET, action: "activity_log", uid: String(uid), date: d, replies: String(netByDay[d] || 0), citations: '0' });
+    var v = netByDay[d];
+    var r = typeof v === 'object' && v !== null ? (parseInt(v.replies, 10) || 0) : (parseInt(v, 10) || 0);
+    gasBeacon({ sheet: SHEET, action: "activity_log", uid: String(uid), date: d, replies: String(r), citations: '0' });
   });
 }
 function logForumFetchToTripleMatch_(info) {
   if (!info || !info.forum_uid) return;
   gasBeacon({ sheet: SHEET, action: "forum_fetch_log", uid: info.forum_uid, replies: String(info.reply_count || 0), citations: String(info.citation_count || 0), startDate: String(info.startDate || ''), endDate: String(info.endDate || ''), date: todayISO() });
+}
+function normalizeDateISO_(d) {
+  if (!d) return '';
+  var s = String(d).replace(/[年月]/g, '/').replace(/日/g, '').replace(/[.\-]/g, '/');
+  var m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (m) return [m[1], ('0'+m[2]).slice(-2), ('0'+m[3]).slice(-2)].join('-');
+  return d;
+}
+function mergeByDayWithCloud_(scrapedByDay, cloudRows, startDate, endDate) {
+  var existing = {};
+  (cloudRows || []).forEach(function(r) {
+    var d = normalizeDateISO_(r.date);
+    if (d) existing[d] = { replies: parseInt(r.replies, 10) || 0, citations: parseInt(r.citations, 10) || 0 };
+  });
+  var dateSet = {};
+  Object.keys(scrapedByDay || {}).forEach(function(d) {
+    var nd = normalizeDateISO_(d);
+    if (!nd) return;
+    if (startDate && nd < startDate) return;
+    if (endDate && nd > endDate) return;
+    dateSet[nd] = 1;
+  });
+  Object.keys(existing).forEach(function(d) {
+    if (startDate && d < startDate) return;
+    if (endDate && d > endDate) return;
+    dateSet[d] = 1;
+  });
+  var netByDay = {}, skippedDates = [], updatedDates = [];
+  var netR = 0, netC = 0;
+  Object.keys(dateSet).sort().forEach(function(d) {
+    var src = scrapedByDay && scrapedByDay[d];
+    var scraped = {
+      replies: src ? (parseInt(src.replies, 10) || 0) : 0,
+      citations: src ? (parseInt(src.citations, 10) || 0) : 0
+    };
+    var cloud = existing[d];
+    if (!cloud) {
+      if (scraped.replies <= 0 && scraped.citations <= 0) return;
+      netByDay[d] = { replies: scraped.replies, citations: scraped.citations };
+      netR += scraped.replies; netC += scraped.citations;
+      return;
+    }
+    var dR = Math.max(0, scraped.replies - cloud.replies);
+    var dC = Math.max(0, scraped.citations - cloud.citations);
+    if (dR <= 0 && dC <= 0) { skippedDates.push(d); return; }
+    netByDay[d] = { replies: Math.max(scraped.replies, cloud.replies), citations: Math.max(scraped.citations, cloud.citations) };
+    netR += dR; netC += dC; updatedDates.push(d);
+  });
+  return { netByDay: netByDay, netR: netR, netC: netC, skippedDates: skippedDates, updatedDates: updatedDates };
 }
 
 function openSkinPanel(){ensureOwnedBgSkins();if(G.bgSkin)curBgSkin=G.bgSkin;else curBgSkin='default';renderBgSkinPanel();applyBgTheme();updateSkinUI();var el=document.getElementById('skin-overlay');if(el){el.classList.remove('hidden');el.style.display='flex';}}
@@ -1045,7 +1096,7 @@ async function downloadGameData() {
 // ══════════════════════════════════════════
 // UTIL
 // ══════════════════════════════════════════
-function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
 function showLoading(msg){ document.getElementById("loading-text").textContent=msg||"读取中..."; document.getElementById("loading-mask").style.display="flex"; }
 function hideLoading(){ document.getElementById("loading-mask").style.display="none"; }
 function showScreen(id){
@@ -1353,12 +1404,34 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
       hideLoading();
       return false;
     }
-    const result=await fffScrapeRange_(G.uid,slug,sd,ed,"_tm_"+sd+"_"+ed,{
+    // ① 预读云端该区间活跃度，用于后续按日去重
+    var cloudRows = [];
+    try { cloudRows = await fetchActivityFromTripleMatch_(G.uid, sd, ed) || []; } catch (e) {}
+    // ② 计算增量起始：若上次有抓取记录则只抓增量区间
+    var scrapeFrom = sd;
+    if (G.lastFetchTime) { try { var _ft = new Date(G.lastFetchTime); if (!isNaN(_ft.getTime())) scrapeFrom = _ft.toISOString().slice(0,10); } catch (e) {} }
+    const result=await fffScrapeRange_(G.uid,slug,scrapeFrom,ed,"_tm_"+scrapeFrom+"_"+ed,{
       onProgress:(msg)=>showLoading(msg),
       maxPages:Number(opt&&opt.maxPages)||60,
       maxCitationChecks:(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:16
     });
-    // 从云端获取全部记录，修正历史膨胀
+    // ③ 将 pageDayMap 转为 byDay，与云端合并去重
+    var byDay = {};
+    if (result.pageDayMap) {
+      Object.keys(result.pageDayMap).forEach(function (p) {
+        (result.pageDayMap[p] || []).forEach(function (d) {
+          if (!byDay[d]) byDay[d] = { replies: 0, citations: 0 };
+          byDay[d].replies += 1;
+        });
+      });
+    }
+    var merged = mergeByDayWithCloud_(byDay, cloudRows, sd, ed);
+    G.lastFetchTime = Date.now();
+    // ④ 活跃度打点（仅向云端发送增量）
+    if (merged.netByDay && Object.keys(merged.netByDay).length) {
+      logActivityByDayToTripleMatch_(G.uid, merged.netByDay);
+    }
+    // ⑤ 从云端获取全部记录，修正历史膨胀
     try {
       var _fit = await fetchActivityFromTripleMatch_(G.uid, '', '');
       var _csR = 0, _csC = 0;
@@ -1380,9 +1453,6 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
     });
     updateMenuUI();
     if(showAlert) alert("✅ 抓取完成！\n区间: "+sd+" ~ "+ed+"\n页数: "+(result.pageCount||1)+" 页\n回复: "+G.replies+" · 被引用: "+G.citations);
-    // 活跃度打点
-    var _nb = {}; _nb[sd] = _nb[ed] = 1;
-    logActivityByDayToTripleMatch_(G.uid, _nb);
     logForumFetchToTripleMatch_({ mode: 'fetch', forum_uid: String(G.uid), reply_count: result.replies || 0, citation_count: result.citations || 0, startDate: sd, endDate: ed });
     return true;
   }catch(e){
@@ -2466,8 +2536,12 @@ function applyUrlFill(){
   if(err) err.style.display='none';
   hideUrlFillOverlay();
 }
+/** 从URL hash自动填入ID+UID（不自动登入） */
 async function fffAutoLogin(){
-  // 1) URL hash
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(!idEl||!uidEl) return;
+  // 1) URL hash (bookmarklet / 油猴跳转)
   var hash=location.hash||'';
   if(hash.indexOf('auto-id=')>=0){
     try{
@@ -2475,35 +2549,15 @@ async function fffAutoLogin(){
       var hid=sp.get('auto-id');
       var huid=sp.get('auto-uid');
       if(hid&&huid){
-        var inpId=document.getElementById('inp-id')||document.getElementById('uid');
-        var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
-        if(inpId) inpId.value=decodeURIComponent(hid);
-        if(inpUid) inpUid.value=huid;
+        if(!idEl.value.trim()) idEl.value=decodeURIComponent(hid);
+        if(!uidEl.value.trim()) uidEl.value=huid;
         history.replaceState(null,'',location.pathname+location.search);
         return;
       }
     }catch(e){}
   }
-  // 2) proxy
-  try{
-    var html=await fffProxyGet('https://sstm.moe/');
-    var d=document.createElement('div');
-    d.innerHTML=html;
-    var link=d.querySelector('#cUserLink');
-    if(!link)return;
-    var href=link.getAttribute('href')||'';
-    var m=href.match(/profile\/(\d+)/)||href.match(/uid=(\d+)/);
-    if(!m)return;
-    var uid=m[1];
-    var name=link.textContent.trim();
-    var inpId=document.getElementById('inp-id')||document.getElementById('uid');
-    var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
-    if(inpId) inpId.value=name;
-    if(inpUid) inpUid.value=uid;
-    return;
-  }catch(e){}
-  // 3) first visit popup
-  if(!localStorage.getItem('_urlFillShown')){
+  // 2) 首次使用 + 两栏都空白 → 弹窗教学
+  if(!idEl.value.trim() && !uidEl.value.trim() && !localStorage.getItem('_urlFillShown')){
     localStorage.setItem('_urlFillShown','1');
     setTimeout(showUrlFillOverlay, 500);
   }

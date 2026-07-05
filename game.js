@@ -8,10 +8,12 @@ const CLOUD_GAS_URL = "https://script.google.com/macros/s/AKfycbwTvyIn6UZE16aCfl
 const CLOUD_META_KEY = "frost_frontier_cloud_last_meta_v1";
 const CLOUD_ACTIVITY_FP_KEY = "frost_frontier_cloud_activity_fp_v1";
 const LOGIN_HISTORY_KEY = "frost_frontier_login_history_v1";
-const FS_HTML_VERSION =
+const LOGIN_ID_KEY = "frost_frontier_login_id_v1";
+const LOGIN_UID_KEY = "frost_frontier_login_uid_v1";
+var FS_HTML_VERSION =
   typeof window !== "undefined" && window.FS_HTML_VERSION
     ? window.FS_HTML_VERSION
-    : "frost-survival-v1.0.0-2026-06-12";
+    : "frost-survival-v1.0.2-2026-06-12";
 const FS_ACTIVITY_SHEET = "冰霜返乡活跃度记录";
 const FROST_FORUM_PROXY = "https://sstm-raffle.vercel.app/Frost-Survival-proxy?url=";
 const FS_SAVE_PASSWORD = "sstm";
@@ -19,6 +21,7 @@ const FS_SAVE_MARK = "__FROST_SAVE_JSON__";
 
 /** GAS 连线状态（论坛去重 / 活跃度写入） */
 let _frostGasOnline_ = false;
+let _frostLoginEntered_ = false;
 let forumSyncInProgress_ = false;
 let forumSyncLiveMsg_ = "";
 let activityHubTab_ = "checkin";
@@ -1580,7 +1583,15 @@ function isUsableSave_(raw) {
   if (!raw || typeof raw !== "object") return false;
   const r = raw.resources;
   if (!r || typeof r !== "object") return false;
-  return Number.isFinite(Number(r.wood)) && Number.isFinite(Number(r.food));
+  if (!Number.isFinite(Number(r.wood)) || !Number.isFinite(Number(r.food))) return false;
+  const sum =
+    Number(r.wood || 0) +
+    Number(r.steel || 0) +
+    Number(r.food || 0) +
+    Number(r.fuel || 0);
+  const pop = Number(raw.pop);
+  if (sum <= 0 && (!Number.isFinite(pop) || pop <= 0)) return false;
+  return true;
 }
 
 const _loadedSave = load();
@@ -1592,7 +1603,18 @@ try {
   /* ignore backup failures */
 }
 const state = isUsableSave_(_loadedSave) ? _loadedSave : createDefaultState_();
-normalizeState_();
+try {
+  normalizeState_();
+} catch (bootNormErr) {
+  console.error("[Frost] normalizeState_ failed on boot, resetting to default save:", bootNormErr);
+  Object.assign(state, createDefaultState_());
+  try {
+    normalizeState_();
+  } catch (_) {
+    /* ignore */
+  }
+}
+applyLoginProfileToState_();
 
 function syncWildDay_() {
   const d = state.day || 1;
@@ -2743,7 +2765,32 @@ function installAchievementUi_() {
   ensureAchievementModal_();
 }
 
-init();
+function frostStartBoot_() {
+  try {
+    bindLoginUi_();
+  } catch (_) {
+    /* init will retry */
+  }
+  try {
+    init();
+  } catch (bootErr) {
+    console.error("[Frost] init() crashed:", bootErr);
+    try {
+      normalizeState_();
+      renderCity();
+    } catch (_) {
+      /* ignore */
+    }
+    frostBootComplete_();
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", frostStartBoot_, { once: true });
+} else {
+  frostStartBoot_();
+}
+
 setTimeout(() => {
   try {
     installAchievementUi_();
@@ -2770,7 +2817,7 @@ function normalizeState_() {
     Number(state.resources.steel || 0) +
     Number(state.resources.food || 0) +
     Number(state.resources.fuel || 0);
-  if (resSum <= 0 && (!Number.isFinite(state.day) || state.day <= 1)) {
+  if (resSum <= 0 && ((!Number.isFinite(state.day) || state.day <= 1) || (state.pop || 0) <= 0)) {
     state.resources = { ...coreRes, fireCrystal: Number(state.resources?.fireCrystal) || 0 };
   }
   if (!Number.isFinite(state.resources.fireCrystal)) state.resources.fireCrystal = 0;
@@ -3125,6 +3172,42 @@ function applyGameplayToState_(forceRebuild = false) {
   });
 }
 
+function frostBootComplete_() {
+  window.__FROST_BOOT_OK__ = true;
+  try {
+    bindLoginUi_();
+  } catch (e) {
+    console.error("[Frost] bindLoginUi_ failed:", e);
+  }
+  try {
+    applyLoginProfileToState_();
+    const prof = readLoginProfile_();
+    const needLogin = !(Number(prof.uid) > 0) || !String(prof.id || "").trim();
+    if (needLogin && !_frostLoginEntered_) byId("screen-login")?.classList.remove("hidden");
+    else {
+      byId("screen-login")?.classList.add("hidden");
+      byId("urlFillOverlay")?.style.setProperty('display', 'none');
+      byId("fs-boot-fail")?.remove();
+      if (Number(prof.uid) > 0) startAutoSaveReminder_();
+    }
+  } catch (e) {
+    console.error("[Frost] login overlay setup failed:", e);
+    byId("screen-login")?.classList.remove("hidden");
+  }
+  try {
+    renderLoginHistory_();
+  } catch (e) {
+    console.error("[Frost] renderLoginHistory_ failed:", e);
+  }
+  try {
+    installFrostGameHud_();
+    updateFrostVersionHud_();
+    updateFrostConnectionHud_();
+  } catch (e) {
+    console.error("[Frost] HUD setup failed:", e);
+  }
+}
+
 function init() {
   // 启动自愈：避免旧坏档导致整页功能空白
   try {
@@ -3137,43 +3220,69 @@ function init() {
     // ignore and continue
   }
   try {
+    bindLoginUi_();
+    window.__FROST_BOOT_OK__ = true;
+  } catch (e) {
+    console.error("[Frost] bindLoginUi_ failed:", e);
+  }
+  try {
     bind();
   } catch (e) {
     console.error("[Frost] bind() 失败，部分按钮可能无响应：", e);
   }
-  applyAssetTheme();
-  renderAll();
+  try {
+    applyAssetTheme();
+  } catch (e) {
+    console.error("[Frost] applyAssetTheme failed:", e);
+  }
+  try {
+    renderAll();
+  } catch (e) {
+    console.error("[Frost] renderAll failed:", e);
+  }
+  try {
+    installFrostGameHud_();
+    updateFrostVersionHud_();
+    updateFrostConnectionHud_();
+  } catch (_) {
+    /* bootstrap finally will retry */
+  }
 
   bootstrapAsync()
     .catch(() => {})
     .finally(() => {
-      applyAssetTheme();
-      renderAll();
-      ensureStoryIndex();
-      renderStory();
-      logEvent("系统", "已载入存档。");
-      logAsset("素材包已就绪，可导入 JSON 替换素材。");
-      if (!gatherTickerStarted_) {
-        gatherTickerStarted_ = true;
-        startGatherTicker();
-      }
       try {
-        tickBuildQueue_();
-        save();
-      } catch (_) {
-        /* ignore */
+        applyAssetTheme();
+        renderAll();
+        try {
+          ensureStoryIndex();
+          renderStory();
+        } catch (storyErr) {
+          console.error("[Frost] renderStory failed:", storyErr);
+        }
+        logEvent("系统", "已载入存档。");
+        logAsset("素材包已就绪，可导入 JSON 替换素材。");
+        if (!gatherTickerStarted_) {
+          gatherTickerStarted_ = true;
+          startGatherTicker();
+        }
+        try {
+          tickBuildQueue_();
+          save();
+        } catch (_) {
+          /* ignore */
+        }
+        if (!state.introSeen) {
+          try {
+            playIntroCutscene();
+          } catch (introErr) {
+            console.error("[Frost] playIntroCutscene failed:", introErr);
+          }
+        }
+      } catch (bootErr) {
+        console.error("[Frost] bootstrap finally failed:", bootErr);
       }
-      if (!state.introSeen) playIntroCutscene();
-      const needLogin = !(Number(state?.profile?.uid || 0) > 0) || !String(state?.profile?.id || "").trim();
-      if (needLogin) byId("screen-login")?.classList.remove("hidden");
-      else {
-        byId("screen-login")?.classList.add("hidden");
-        startAutoSaveReminder_();
-      }
-      renderLoginHistory_();
-      installFrostGameHud_();
-      updateFrostVersionHud_();
-      updateFrostConnectionHud_();
+      frostBootComplete_();
     });
 }
 
@@ -3259,13 +3368,7 @@ function bind() {
   byId("btn-logout-account")?.addEventListener("click", () => logoutAccount_());
   updateCloudMetaUi_();
   installAchievementUi_();
-  byId("btn-login-enter")?.addEventListener("click", submitLogin_);
-  byId("login-id")?.addEventListener("keydown", (ev) => {
-    if (ev.key === "Enter") byId("login-uid")?.focus();
-  });
-  byId("login-uid")?.addEventListener("keydown", (ev) => {
-    if (ev.key === "Enter") submitLogin_();
-  });
+  bindLoginUi_();
   renderLoginHistory_();
   syncLoginUi_();
   byId("btn-import-gameplay-key")?.addEventListener("click", () => byId("gameplay-key-file")?.click());
@@ -4912,27 +5015,6 @@ function ensureStoryIndex() {
 }
 
 function renderCity() {
-  byId("v-day").textContent = state.day;
-  byId("v-pop").textContent = state.pop;
-  byId("v-morale").textContent = state.morale;
-  byId("v-cold").textContent = state.cold;
-  const heat = clamp(Math.round((state.morale * 0.7) + (100 - state.cold * 2.2)), 0, 100);
-  const heatText = byId("v-furnace-heat");
-  const heatRing = byId("furnace-heat-ring");
-  if (heatText) heatText.textContent = `${heat}%`;
-  if (heatRing) {
-    heatRing.style.background = `conic-gradient(rgba(251,146,60,.95) ${heat}%, rgba(30,41,59,.9) ${heat}% 100%)`;
-  }
-  byId("r-wood").innerHTML = `${iconHtml("resource", "wood", "icon16")} ${state.resources.wood}`;
-  byId("r-steel").innerHTML = `${iconHtml("resource", "steel", "icon16")} ${state.resources.steel}`;
-  byId("r-food").innerHTML = `${iconHtml("resource", "food", "icon16")} ${state.resources.food}`;
-  byId("r-fuel").innerHTML = `${iconHtml("resource", "fuel", "icon16")} ${state.resources.fuel}`;
-  byId("v-speedup").textContent = state.items.speedup || 0;
-  const hudMeta = byId("hud-meta");
-  const hudRes = byId("hud-resources");
-  if (hudMeta) hudMeta.textContent = `Day ${state.day} · Pop ${state.pop} · Morale ${state.morale} · Cold ${state.cold}`;
-  if (hudRes) hudRes.textContent = `木 ${state.resources.wood} · 钢 ${state.resources.steel} · 粮 ${state.resources.food} · 燃 ${state.resources.fuel} · 法典 ${state.policyPoints || 0}`;
-  renderForumSyncFloat_();
   const pVal = byId("slg-power-val");
   if (pVal) pVal.textContent = String(Math.floor(calcBattlePowerDisplay_())).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   const tVal = byId("slg-temp-val");
@@ -4940,9 +5022,9 @@ function renderCity() {
     const tc = -4.2 - (state.cold || 0) * 0.38 - (100 - clamp(state.morale, 0, 100)) * 0.028;
     tVal.textContent = `${tc.toFixed(1)}℃`;
   }
-  const popCap = Math.max(state.pop, 8 + (state.buildings.camp || 1) * 12);
+  const popCap = Math.max(state.pop || 0, 8 + (state.buildings?.camp || 1) * 12);
   const slgPop = byId("slg-pop-cap");
-  if (slgPop) slgPop.textContent = `${state.pop}/${popCap}`;
+  if (slgPop) slgPop.textContent = `${state.pop || 0}/${popCap}`;
   const ft = byId("slg-food-timer");
   if (ft) {
     const tick = ((state.day || 1) * 47 + (state.pop || 0) * 19) % 3600;
@@ -4955,13 +5037,11 @@ function renderCity() {
   const rf = byId("slg-r-fire");
   const rfw = byId("slg-fire-wrap");
   const rg = byId("slg-r-gems");
-  if (rw) rw.textContent = fmtCompact_(state.resources.wood);
-  if (rs) rs.textContent = fmtCompact_(state.resources.steel);
-  if (rf) rf.textContent = fmtCompact_(state.resources.fireCrystal || 0);
-  if (rfw) {
-    rfw.hidden = !fireCrystalUnlocked_();
-  }
-  if (rg) rg.textContent = fmtCompact_(state.items.gems || 0);
+  if (rw) rw.textContent = fmtCompact_(state.resources?.wood || 0);
+  if (rs) rs.textContent = fmtCompact_(state.resources?.steel || 0);
+  if (rf) rf.textContent = fmtCompact_(state.resources?.fireCrystal || 0);
+  if (rfw) rfw.hidden = !fireCrystalUnlocked_();
+  if (rg) rg.textContent = fmtCompact_(state.items?.gems || 0);
   const av = byId("slg-avatar");
   if (av) {
     const url = getCommanderPortraitUrl_();
@@ -4969,6 +5049,37 @@ function renderCity() {
     const pid = String(state?.profile?.id || "").trim();
     if (pid) av.title = `指挥官：${pid}（UID ${Number(state?.profile?.uid || 0) || "-"})`;
   }
+
+  const vDay = byId("v-day");
+  if (vDay) vDay.textContent = state.day;
+  const vPop = byId("v-pop");
+  if (vPop) vPop.textContent = state.pop;
+  const vMorale = byId("v-morale");
+  if (vMorale) vMorale.textContent = state.morale;
+  const vCold = byId("v-cold");
+  if (vCold) vCold.textContent = state.cold;
+  const heat = clamp(Math.round((state.morale * 0.7) + (100 - state.cold * 2.2)), 0, 100);
+  const heatText = byId("v-furnace-heat");
+  const heatRing = byId("furnace-heat-ring");
+  if (heatText) heatText.textContent = `${heat}%`;
+  if (heatRing) {
+    heatRing.style.background = `conic-gradient(rgba(251,146,60,.95) ${heat}%, rgba(30,41,59,.9) ${heat}% 100%)`;
+  }
+  const rWood = byId("r-wood");
+  if (rWood) rWood.innerHTML = `${iconHtml("resource", "wood", "icon16")} ${state.resources.wood}`;
+  const rSteel = byId("r-steel");
+  if (rSteel) rSteel.innerHTML = `${iconHtml("resource", "steel", "icon16")} ${state.resources.steel}`;
+  const rFood = byId("r-food");
+  if (rFood) rFood.innerHTML = `${iconHtml("resource", "food", "icon16")} ${state.resources.food}`;
+  const rFuel = byId("r-fuel");
+  if (rFuel) rFuel.innerHTML = `${iconHtml("resource", "fuel", "icon16")} ${state.resources.fuel}`;
+  const vSpeed = byId("v-speedup");
+  if (vSpeed) vSpeed.textContent = state.items.speedup || 0;
+  const hudMeta = byId("hud-meta");
+  const hudRes = byId("hud-resources");
+  if (hudMeta) hudMeta.textContent = `Day ${state.day} · Pop ${state.pop} · Morale ${state.morale} · Cold ${state.cold}`;
+  if (hudRes) hudRes.textContent = `木 ${state.resources.wood} · 钢 ${state.resources.steel} · 粮 ${state.resources.food} · 燃 ${state.resources.fuel} · 法典 ${state.policyPoints || 0}`;
+  renderForumSyncFloat_();
   const qk = byId("slg-quest-track");
   if (qk) {
     let track = state.missions.find((x) => x.category === "chapter" && x.unlocked && !x.done);
@@ -7313,7 +7424,21 @@ function renderShopForum_() {
     const fast = !!byId("forum-sync-fast")?.checked;
     state.forumShop.fastSyncNoCite = fast;
     try {
-      const r = await api.scrapeRange(uid, state.forumShop.startDate, state.forumShop.endDate, "_ffshop", {
+      // Cloud pre-fetch: determine last fetch day before scraping
+      setSt("正在查询云端逐日记录…");
+      var _cloudRows_ = [];
+      if (_frostGasOnline_ && CLOUD_GAS_URL) {
+        _cloudRows_ = await fetchActivityFromGAS_(String(uid), state.forumShop.startDate, state.forumShop.endDate);
+      }
+      var _scrapeFrom_ = state.forumShop.startDate;
+      var _lastFetchDay_ = '';
+      (_cloudRows_ || []).forEach(function(r){
+        var d = normalizeDateISO_(r.date);
+        if (d && d > _lastFetchDay_) _lastFetchDay_ = d;
+      });
+      if (_lastFetchDay_ && _lastFetchDay_ > _scrapeFrom_) _scrapeFrom_ = _lastFetchDay_;
+
+      const r = await api.scrapeRange(uid, _scrapeFrom_, state.forumShop.endDate, "_ffshop", {
         onProgress: (msg) => {
           const t = typeof msg === "string" ? msg : String(msg?.message || msg);
           forumSyncLiveMsg_ = t;
@@ -7323,13 +7448,10 @@ function renderShopForum_() {
         maxPages: fast ? 60 : 260,
         overallMs: fast ? 120000 : 420000,
       });
-      setSt("正在查询云端逐日记录…");
-      const dedupHint = await resolveForumFetchDedup_(
-        String(uid),
-        buildForumByDayFromBuckets_(r.repliesByDay, r.citesByDay, state.forumShop.startDate, state.forumShop.endDate),
-        state.forumShop.startDate,
-        state.forumShop.endDate
-      );
+      // Merge with pre-fetched cloud rows directly
+      var _scrapedByDay_ = buildForumByDayFromBuckets_(r.repliesByDay, r.citesByDay, state.forumShop.startDate, state.forumShop.endDate);
+      var _fullByDay_ = expandByDayRange_(_scrapedByDay_, state.forumShop.startDate, state.forumShop.endDate);
+      const dedupHint = mergeByDayWithCloud_(_fullByDay_, _cloudRows_, state.forumShop.startDate, state.forumShop.endDate);
       const nr = Number(r.replies || 0);
       const nc = Number(r.citations || 0);
       if (!state.forumShop.liveByFp || typeof state.forumShop.liveByFp !== "object") state.forumShop.liveByFp = {};
@@ -8351,16 +8473,138 @@ function renderLoginHistory_() {
   });
 }
 
-function syncLoginUi_() {
+function readLoginProfile_() {
+  let id = String(state?.profile?.id || "").trim();
+  let uid = Number(state?.profile?.uid || 0);
+  if (!id || !(uid > 0)) {
+    try {
+      const sid = String(localStorage.getItem(LOGIN_ID_KEY) || "").trim();
+      const suid = Number(localStorage.getItem(LOGIN_UID_KEY) || 0);
+      if (sid) id = sid;
+      if (suid > 0) uid = suid;
+    } catch (_) {
+      /* ignore */
+    }
+  }
+  return { id, uid };
+}
+
+function writeLoginProfile_(id, uid) {
+  const pid = String(id || "").trim();
+  const puid = Number(uid || 0);
+  if (!state.profile || typeof state.profile !== "object") state.profile = { id: "", uid: 0 };
+  state.profile.id = pid;
+  state.profile.uid = puid;
+  enforceUidBinding_();
+  try {
+    if (pid) localStorage.setItem(LOGIN_ID_KEY, pid);
+    else localStorage.removeItem(LOGIN_ID_KEY);
+    if (puid > 0) localStorage.setItem(LOGIN_UID_KEY, String(puid));
+    else localStorage.removeItem(LOGIN_UID_KEY);
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function applyLoginProfileToState_() {
+  const prof = readLoginProfile_();
+  if (!prof.id && !(prof.uid > 0)) return;
+  if (!state.profile || typeof state.profile !== "object") state.profile = { id: "", uid: 0 };
+  if (!state.profile.id && prof.id) state.profile.id = prof.id;
+  if (!(Number(state.profile.uid) > 0) && prof.uid > 0) state.profile.uid = prof.uid;
+  enforceUidBinding_();
+}
+
+function bindLoginUi_() {
+  const btn = byId("btn-login-enter");
+  if (btn && btn.dataset.fsBound !== "1") {
+    btn.dataset.fsBound = "1";
+    btn.onclick = (ev) => {
+      ev.preventDefault();
+      submitLogin_();
+    };
+  }
   const idEl = byId("login-id");
   const uidEl = byId("login-uid");
-  if (idEl) idEl.value = String(state?.profile?.id || "");
-  if (uidEl) uidEl.value = String(state?.profile?.uid || "");
+  if (idEl && idEl.dataset.fsBound !== "1") {
+    idEl.dataset.fsBound = "1";
+    idEl.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") byId("login-uid")?.focus();
+    });
+  }
+  if (uidEl && uidEl.dataset.fsBound !== "1") {
+    uidEl.dataset.fsBound = "1";
+    uidEl.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") submitLogin_();
+    });
+  }
+}
+
+function setLoginErr_(msg) {
+  const el = byId("login-err");
+  if (el) el.textContent = String(msg || "");
+}
+
+function enterGameAfterLogin_() {
+  _frostLoginEntered_ = true;
+  byId("screen-login")?.classList.add("hidden");
+  byId("urlFillOverlay")?.style.setProperty('display', 'none');
+  byId("fs-boot-fail")?.remove();
+  renderLoginHistory_();
+  updateFrostVersionHud_();
+  updateFrostConnectionHud_();
+  try {
+    renderAll();
+  } catch (e) {
+    console.error("[Frost] renderAll after login failed:", e);
+    try {
+      renderCity();
+    } catch (_) {
+      /* ignore */
+    }
+  }
+  startAutoSaveReminder_();
+}
+
+async function importCloudSaveOnLogin_(id, uid) {
+  try {
+    const ret = await cloudRequestRead_("load_full", { uid: cloudUid_() });
+    const row = ret?.data || null;
+    if (!row?.save_json) return;
+    const parsedSave = JSON.parse(String(row.save_json || "{}"));
+    if (!isUsableSave_(parsedSave)) return;
+    parsedSave.profile = { id, uid };
+    if (!parsedSave.forumShop || typeof parsedSave.forumShop !== "object") parsedSave.forumShop = {};
+    parsedSave.forumShop.uid = uid;
+    const parsedAssets = JSON.parse(String(row.assets_json || "{}"));
+    const parsedGameplay = JSON.parse(String(row.gameplay_json || "{}"));
+    const parsedStory = JSON.parse(String(row.story_json || "{}"));
+    localStorage.setItem(SAVE_KEY, JSON.stringify(parsedSave));
+    localStorage.setItem(ASSET_KEY, JSON.stringify(parsedAssets));
+    localStorage.setItem(GAMEPLAY_KEY, JSON.stringify(parsedGameplay));
+    localStorage.setItem(STORY_KEY, JSON.stringify(parsedStory));
+    writeCloudMeta_(cloudUid_(), Number(row.ts || Date.now()));
+    logSave_("已同步 UID 云端记录，即将重新载入。");
+    location.reload();
+  } catch (_) {
+    /* 云端无档或暂时不可达：继续本地游玩 */
+  }
+}
+
+function syncLoginUi_() {
+  const prof = readLoginProfile_();
+  const idEl = byId("login-id");
+  const uidEl = byId("login-uid");
+  if (idEl) idEl.value = String(prof.id || "");
+  if (uidEl) uidEl.value = prof.uid > 0 ? String(prof.uid) : "";
 }
 
 function enforceUidBinding_() {
   const uid = Number(state?.profile?.uid || 0);
-  if (uid > 0) state.forumShop.uid = uid;
+  if (uid > 0) {
+    if (!state.forumShop || typeof state.forumShop !== "object") state.forumShop = {};
+    state.forumShop.uid = uid;
+  }
 }
 
 function startAutoSaveReminder_() {
@@ -8386,8 +8630,15 @@ function openLoginOverlayForSwitch_() {
 
 function logoutAccount_() {
   if (!confirm("确定登出当前帐号？")) return;
+  _frostLoginEntered_ = false;
   state.profile = { id: "", uid: 0 };
   if (state.forumShop) state.forumShop.uid = 0;
+  try {
+    localStorage.removeItem(LOGIN_ID_KEY);
+    localStorage.removeItem(LOGIN_UID_KEY);
+  } catch (_) {
+    /* ignore */
+  }
   if (autoSaveReminderTimer_) {
     clearInterval(autoSaveReminderTimer_);
     autoSaveReminderTimer_ = null;
@@ -8401,50 +8652,44 @@ function logoutAccount_() {
 }
 
 async function submitLogin_() {
+  const btn = byId("btn-login-enter");
   const id = String(byId("login-id")?.value || "").trim();
   const uid = Number(byId("login-uid")?.value || 0);
-  if (!id) return alert("请输入论坛 ID");
-  if (!Number.isFinite(uid) || uid < 1) return alert("请输入有效的数字 UID");
-  state.profile = { id, uid };
-  enforceUidBinding_();
-  pushLoginHistory_(id, uid);
-  save();
-  setCloudSavingUi_(true, "正在登入并读取该 UID 的云端记录…", "系统登入中");
-  try {
-    const ret = await cloudRequestRead_("load_full", { uid: cloudUid_() });
-    const row = ret?.data || null;
-    if (row?.save_json) {
-      const parsedSave = JSON.parse(String(row.save_json || "{}"));
-      if (isUsableSave_(parsedSave)) {
-        // 兼容旧云端档：强制注入当前登入身份，避免重载后被判定未登入。
-        parsedSave.profile = { id, uid };
-        if (!parsedSave.forumShop || typeof parsedSave.forumShop !== "object") parsedSave.forumShop = {};
-        parsedSave.forumShop.uid = uid;
-        const parsedAssets = JSON.parse(String(row.assets_json || "{}"));
-        const parsedGameplay = JSON.parse(String(row.gameplay_json || "{}"));
-        const parsedStory = JSON.parse(String(row.story_json || "{}"));
-        localStorage.setItem(SAVE_KEY, JSON.stringify(parsedSave));
-        localStorage.setItem(ASSET_KEY, JSON.stringify(parsedAssets));
-        localStorage.setItem(GAMEPLAY_KEY, JSON.stringify(parsedGameplay));
-        localStorage.setItem(STORY_KEY, JSON.stringify(parsedStory));
-        writeCloudMeta_(cloudUid_(), Number(row.ts || Date.now()));
-        logSave_("登入成功，已自动导入对应 UID 云端记录。");
-        location.reload();
-        return;
-      }
-    }
-  } catch (_) {
-    // 云端没有记录或暂时不可达时，继续本地游玩
-  } finally {
-    setCloudSavingUi_(false, "", "云端存档");
+  if (!id) {
+    setLoginErr_("请输入论坛 ID");
+    return;
   }
-  byId("screen-login")?.classList.add("hidden");
-  renderLoginHistory_();
-  updateFrostVersionHud_();
-  updateFrostConnectionHud_();
-  renderAll();
-  startAutoSaveReminder_();
+  if (!Number.isFinite(uid) || uid < 1) {
+    setLoginErr_("请输入有效的数字 UID");
+    return;
+  }
+  setLoginErr_("");
+  const oldTxt = btn?.textContent || "进入游戏";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "进入中…";
+  }
+  try {
+    writeLoginProfile_(id, uid);
+    pushLoginHistory_(id, uid);
+    try {
+      save();
+    } catch (saveErr) {
+      console.warn("[Frost] save after login failed:", saveErr);
+    }
+    enterGameAfterLogin_();
+    importCloudSaveOnLogin_(id, uid);
+  } catch (e) {
+    console.error("[Frost] submitLogin_ failed:", e);
+    setLoginErr_("登入失败，请重试或查看控制台。");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = oldTxt;
+    }
+  }
 }
+window.submitLogin_ = submitLogin_;
 
 function updateCloudMetaUi_() {
   const el = byId("cloud-last-meta");
@@ -8521,8 +8766,8 @@ function normalizeDateISO_(s) {
 function enumerateDates_(startDate, endDate) {
   const out = [];
   if (!startDate || !endDate) return out;
-  const d = new Date(startDate + "T12:00:00");
-  const end = new Date(endDate + "T12:00:00");
+const d = new Date(startDate + "T12:00:00Z");
+    const end = new Date(endDate + "T12:00:00Z");
   if (isNaN(d.getTime()) || isNaN(end.getTime())) return out;
   while (d <= end) {
     out.push(d.toISOString().slice(0, 10));
@@ -8832,17 +9077,15 @@ function installFrostGameHud_() {
 function updateFrostVersionHud_() {
   const vb = byId("fs-version-badge");
   if (vb) vb.textContent = FS_HTML_VERSION;
-  const loggedIn = Number(state?.profile?.uid || 0) > 0 && String(state?.profile?.id || "").trim();
   const loginOpen = !byId("screen-login")?.classList.contains("hidden");
-  vb?.classList.toggle("hidden", !loggedIn || loginOpen);
+  vb?.classList.toggle("hidden", !!loginOpen);
 }
 
 function updateFrostConnectionHud_() {
   const cs = byId("fs-connection-status");
   if (!cs) return;
-  const loggedIn = Number(state?.profile?.uid || 0) > 0 && String(state?.profile?.id || "").trim();
   const loginOpen = !byId("screen-login")?.classList.contains("hidden");
-  if (!loggedIn || loginOpen) {
+  if (loginOpen) {
     cs.classList.add("hidden");
     return;
   }
@@ -9613,7 +9856,14 @@ function loadStoryPack() {
   try {
     const raw = localStorage.getItem(STORY_KEY);
     if (!raw) return normalizeStoryPack(DEFAULT_STORY_PACK);
-    return normalizeStoryPack(JSON.parse(raw));
+    const parsed = JSON.parse(raw);
+    const normalized = normalizeStoryPack(parsed);
+    if (!Array.isArray(parsed?.chapters) || parsed.chapters.length === 0) {
+      const fallback = normalizeStoryPack(DEFAULT_STORY_PACK);
+      localStorage.setItem(STORY_KEY, JSON.stringify(fallback));
+      return fallback;
+    }
+    return normalized;
   } catch {
     return normalizeStoryPack(DEFAULT_STORY_PACK);
   }

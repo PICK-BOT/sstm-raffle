@@ -836,7 +836,7 @@ function gasPost(body){
 // v3.3.0：日期区间生成（含首尾），用于逐日记录比对
 function dateRangeISO_(startDate, endDate){
   const out = [];
-  const d = new Date(startDate+"T00:00:00"), end = new Date(endDate+"T00:00:00");
+  const d = new Date(startDate+"T00:00:00Z"), end = new Date(endDate+"T00:00:00Z");
   if(isNaN(d) || isNaN(end)) return out;
   while(d <= end){
     out.push(d.toISOString().slice(0,10));
@@ -1747,9 +1747,13 @@ async function fetchForumDataCustom(show,opt){
   // 确保 G.uid 有值
   if(!G.uid) G.uid = parseInt(_guid, 10);
   const sd=qs("forum-start-date").value||todayISO(), ed=qs("forum-end-date").value||sd;
-  const startD=new Date(sd+"T00:00:00"), endD=new Date(ed+"T23:59:59");
+  var scrapeFrom = sd;
+  var cloudRows = [];
+  var lastFetch = G.lastFetchTime ? G.lastFetchTime.slice(0, 10) : null;
+  if (lastFetch && lastFetch > sd) scrapeFrom = lastFetch;
+  const startD=new Date(scrapeFrom+"T00:00:00Z"), endD=new Date(ed+"T23:59:59Z");
   function inRange_(d){return d instanceof Date&&!isNaN(d)&&d>=startD&&d<=endD;}
-  function parseItemDate_(it){const t=it.querySelector("time[datetime]")||it.querySelector("time");const dt=t&&(t.getAttribute("datetime")||t.textContent||"");const m=String(dt).match(/(\d{4})-(\d{2})-(\d{2})/);return m?new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00"):null;}
+  function parseItemDate_(it){const t=it.querySelector("time[datetime]")||it.querySelector("time");const dt=t&&(t.getAttribute("datetime")||t.textContent||"");const m=String(dt).match(/(\d{4})-(\d{2})-(\d{2})/);return m?new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00Z"):null;}
   // v3.5.0：完整比照 candy_crush.html 的 slug 获取方式 ——
   // 正则要求 \d+-用户名 格式，且必须验证 slug 以 "UID-" 开头才采用，
   // 否则改用 DOM 遍历所有 <a> 连结逐一验证，避免抓到页面上其他用户/广告连结导致的错误 slug
@@ -1776,6 +1780,9 @@ async function fetchForumDataCustom(show,opt){
 
   try{
     const slug = await getProfileSlug_(String(G.uid));
+    if (gasReady()) {
+      cloudRows = await fetchActivityFromCloud_(G.uid, sd, ed);
+    }
     let page=1,replies=0,cites=0,budget=(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:20,maxPages=(opt&&opt.maxPages)||60;
     const byDay = {}; // v3.3.0：逐日累计 {date: {replies, citations}}
     function addByDay_(date, r, c){
@@ -1816,6 +1823,7 @@ async function fetchForumDataCustom(show,opt){
     }
     setForumStatus("☁️ 抓取完成，共 "+(page)+" 页，累计 📝"+replies+" 回复 / 💬"+cites+" 被引用");
     G.replies=(Number(G.replies)||0)+replies; G.citations=(Number(G.citations)||0)+cites;
+    G.lastFetchTime = new Date().toISOString();
     save(); cloudSave(); updateShopCurrency(); updateMenuStat();
     gasJsonp({sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(G.uid),
       replies:String(replies),citations:String(cites),
@@ -1823,7 +1831,6 @@ async function fetchForumDataCustom(show,opt){
 
     // v3.3.0：与云端逐日记录去重合并后，把净增量逐日写入「活跃度记录」分页
     setForumStatus("正在同步云端逐日活跃度记录…");
-    const cloudRows = await fetchActivityFromCloud_(G.uid, sd, ed);
     const {netByDay} = mergeByDayWithCloud_(byDay, cloudRows, sd, ed);
     logActivityByDayToCloud_(G.uid, netByDay);
 

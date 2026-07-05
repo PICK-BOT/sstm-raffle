@@ -75,7 +75,7 @@
         <input id="login-id" class="inp" type="text" placeholder="论坛 ID（显示名）" />
       </div>
       <div class="row">
-        <input id="login-uid" class="inp" type="number" min="1" step="1" placeholder="论坛数字 UID" />
+        <input id="login-uid" class="inp" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="论坛数字 UID" />
       </div>
       <div style="margin-top:8px"><a href="#" id="autoFillByUrlLink" style="color:#7eb8ff;font-size:13px;text-decoration:none">📋 从个人页面网址自动填入</a></div>
       <div id="login-history-row">
@@ -601,11 +601,11 @@
   }
   function showUrlFillOverlay(){
     var ov=document.getElementById('urlFillOverlay');
-    if(ov) ov.classList.remove('hidden');
+    if(ov) ov.style.display = 'flex';
   }
   function hideUrlFillOverlay(){
     var ov=document.getElementById('urlFillOverlay');
-    if(ov) ov.classList.add('hidden');
+    if(ov) ov.style.display = 'none';
   }
   function applyUrlFill(){
     var inp=document.getElementById('urlFillInput');
@@ -628,13 +628,12 @@
     if(err) err.style.display='none';
     hideUrlFillOverlay();
   }
-  /** 从论坛首页自动获取ID+UID */
+  /** 从URL hash自动填入ID+UID（不自动登入） */
   async function fffAutoLogin(){
     var idEl=document.getElementById('inp-id')||document.getElementById('login-id')||document.getElementById('inputId')||document.getElementById('uid');
     var uidEl=document.getElementById('inp-uid')||document.getElementById('login-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
     if(!idEl||!uidEl) return;
-    if(idEl.value.trim()&&uidEl.value.trim()) return;
-    // 1) URL hash
+    // 1) URL hash (bookmarklet / 油猴跳转)
     var hash=location.hash||'';
     if(hash.indexOf('auto-id=')>=0){
       try{
@@ -649,23 +648,8 @@
         }
       }catch(e){}
     }
-    // 2) proxy
-    try{
-      var html=await window.SstmForumScrape.ffProxyGet('https://sstm.moe/');
-      var doc=new DOMParser().parseFromString(html,'text/html');
-      var userLink=doc.getElementById('cUserLink');
-      if(!userLink) return;
-      var profileLink=userLink.querySelector('a[href*="/profile/"]');
-      if(!profileLink) return;
-      var href=profileLink.getAttribute('href')||'';
-      var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
-      if(!m) return;
-      if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
-      if(!uidEl.value.trim()) uidEl.value=m[1];
-      return;
-    }catch(e){}
-    // 3) first visit popup
-    if(!localStorage.getItem('_urlFillShown')){
+    // 2) 首次使用 + 两栏都空白 → 弹窗教学
+    if(!idEl.value.trim() && !uidEl.value.trim() && !localStorage.getItem('_urlFillShown')){
       localStorage.setItem('_urlFillShown','1');
       setTimeout(showUrlFillOverlay, 500);
     }
@@ -683,7 +667,7 @@
     if(e.key==='Enter') applyUrlFill();
   });
   </script>
-  <div id="urlFillOverlay" class="hidden" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center">
+  <div id="urlFillOverlay" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center">
     <div style="background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:24px;max-width:420px;width:90%;box-sizing:border-box">
       <h3 style="margin:0 0 12px;color:#fff">自动填入账号</h3>
       <p style="margin:0 0 12px;font-size:14px;color:#b0c4de;line-height:1.6">

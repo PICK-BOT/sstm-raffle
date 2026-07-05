@@ -1148,9 +1148,9 @@ async function refreshForumDataFast(){setForumStatus("正在快速抓取中...")
 async function fetchForumDataCustom(show,opt){
   if(!G.uid){alert("先登入");return false;}
   const sd=qs("forum-start-date").value||todayISO(),ed=qs("forum-end-date").value||sd;
-  const startD=new Date(sd+"T00:00:00"),endD=new Date(ed+"T23:59:59");
+  const startD=new Date(sd+"T00:00:00Z"),endD=new Date(ed+"T23:59:59Z");
   function inRange_(d){return d instanceof Date&&!isNaN(d)&&d>=startD&&d<=endD;}
-  function parseItemDate_(it){const t=it.querySelector("time[datetime]")||it.querySelector("time");const dt=t&&(t.getAttribute("datetime")||t.textContent||"");const m=String(dt).match(/(\d{4})-(\d{2})-(\d{2})/);return m?new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00"):null;}
+  function parseItemDate_(it){const t=it.querySelector("time[datetime]")||it.querySelector("time");const dt=t&&(t.getAttribute("datetime")||t.textContent||"");const m=String(dt).match(/(\d{4})-(\d{2})-(\d{2})/);return m?new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00Z"):null;}
   try{
     const sh=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+G.uid);
     const slug=(()=>{const doc_=new DOMParser().parseFromString(sh,"text/html");for(const a of doc_.querySelectorAll("a[href]")){const m=(a.getAttribute("href")||"").match(/\/profile\/(\d+-[^\/\?#"]+)/);if(m&&m[1].startsWith(G.uid+"-"))return m[1];}return null;})();if(!slug)throw new Error("slug失败，请确认 UID 正确");
@@ -1609,7 +1609,7 @@ function normalizeDateISO_(s){
 function enumerateDates_(startDate,endDate){
   const out=[];
   if(!startDate||!endDate)return out;
-  const d=new Date(startDate+'T12:00:00'),end=new Date(endDate+'T12:00:00');
+  const d=new Date(startDate+'T12:00:00Z'),end=new Date(endDate+'T12:00:00Z');
   if(isNaN(d.getTime())||isNaN(end.getTime()))return out;
   while(d<=end){out.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}
   return out;
@@ -1791,10 +1791,20 @@ async function fffExecuteFetch(uid,startDate,endDate){
   try{
     fffSetStatus('正在获取用户资料...');
     const slug=await fffGetUsername(uid);
+    // 先做云端读取
+    var cloudRows = [];
+    if (_diceOnline_ds && GAS_URL) {
+      fffSetStatus('正在查询云端逐日记录…');
+      cloudRows = await fetchActivityFromGAS_(uid, sd, ed);
+    }
+    // 计算优化抓取起点
+    var scrapeFrom = sd;
+    var lastFetch = getLastFetchDate_ ? getLastFetchDate_(uid) : null;
+    if (lastFetch && lastFetch > sd) scrapeFrom = lastFetch;
     fffSetStatus('开始统计回复...');
-    const raw=await fffScrape(uid,slug,sd,ed);
-    fffSetStatus('正在查询云端逐日记录…');
-    const deduped=await resolveForumFetchDedup_(uid,raw.byDay,sd,ed,fffSetStatus);
+    const raw=await fffScrape(uid,slug,scrapeFrom,ed);
+    fffSetStatus('正在比对云端记录…');
+    var deduped=mergeByDayWithCloud_(raw.byDay || {}, cloudRows, sd, ed);
     fffCloseLoading();
     const {netByDay,netR,netC,skippedDates,updatedDates}=deduped;
     _fffResult={uid,dateKey,rawR:raw.replies,rawC:raw.citations,netR,netC,startDate:sd,endDate:ed,netByDay,skippedDates,updatedDates};

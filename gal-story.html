@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>星落食堂・彼岸之約</title>
+<title>星落食堂·彼岸之约</title>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -12,8 +13,32 @@
   --lily-filter:sepia(0.3) saturate(2) hue-rotate(260deg) brightness(0.95);
   --snow-filter:sepia(0.1) saturate(1.3) hue-rotate(170deg) brightness(1.15);
 }
-body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;color:#fff;overflow:hidden;width:100vw;height:100vh;user-select:none}
+body{font-family:'Noto Serif SC','Source Han Serif SC',serif;background:#0d0221;color:#fff;overflow:hidden;width:100vw;height:100vh;user-select:none}
+body.gal-fullbleed-active{overflow:hidden;height:100dvh}
+body.gal-fullbleed-active #app{width:100%;height:100dvh;min-height:100dvh}
 #app{position:relative;width:100%;height:100%;display:flex;flex-direction:column}
+.gal-cover-bg{
+  background-image:linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)),url(https://s.sstmlt.com/img/2026/03/26/e689480a8a31baea5a6e0aaa9b84ddcdf771f1222b716f7e.md.jpeg);
+  background-size:cover;background-position:center center;background-repeat:no-repeat;
+}
+#screen-login.gal-fullbleed,#screen-title.gal-fullbleed{
+  position:absolute;inset:0;width:100%;max-width:none;min-height:100dvh;height:100dvh;
+  box-sizing:border-box;overflow-y:auto;overflow-x:hidden;
+}
+#screen-login{padding:clamp(20px,4vh,48px) clamp(16px,4vw,32px);justify-content:center;align-items:center}
+#screen-login .login-card{
+  width:100%;max-width:420px;background:rgba(13,2,33,0.82);border:1px solid rgba(155,89,182,0.35);
+  border-radius:14px;padding:24px 22px;position:relative;z-index:2;
+}
+#screen-login h1{font-size:clamp(1.6rem,5vw,2.2rem);color:#f0c040;text-shadow:0 0 24px rgba(155,89,182,0.5);margin-bottom:6px}
+#screen-login .login-sub{color:#d7bde2;font-size:0.92rem;margin-bottom:18px;letter-spacing:0.08em}
+.conn-row{display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 0;font-size:0.82rem;color:#b39ddb}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:#ef4444}
+.conn-dot.online{background:#22c55e}
+#login-err{min-height:18px;color:#ff8899;font-size:0.8rem;text-align:center;margin-bottom:8px}
+.gal-ih-label{font-size:0.72rem;color:#888;margin-bottom:6px}
+#gal-login-history-row{margin-top:14px;width:100%;text-align:center}
+#menu-version{position:fixed;left:10px;bottom:8px;font-size:0.68rem;color:#666;z-index:5;pointer-events:none}
 
 /* ── SCREENS ── */
 .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center}
@@ -41,13 +66,12 @@ body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;
   position:fixed;
   inset:0;
   width:100%;
-  height:100%;
   height:100dvh;
   background-image:url(https://s.sstmlt.com/img/2026/03/26/e689480a8a31baea5a6e0aaa9b84ddcdf771f1222b716f7e.md.jpeg);
   background-size:cover;
-  background-position:center;
+  background-position:center center;
   background-repeat:no-repeat;
-  opacity:0.3;
+  opacity:1;
   z-index:0;
   pointer-events:none
 }
@@ -56,9 +80,8 @@ body{font-family:'Noto Serif TC','Source Han Serif TC',serif;background:#0d0221;
   position:fixed;
   inset:0;
   width:100%;
-  height:100%;
   height:100dvh;
-  background:linear-gradient(160deg,rgba(13,2,33,0.92),rgba(26,5,51,0.88) 40%,rgba(45,16,85,0.9) 70%,rgba(13,2,33,0.92));
+  background:linear-gradient(160deg,rgba(13,2,33,0.55),rgba(26,5,51,0.45) 40%,rgba(45,16,85,0.5) 70%,rgba(13,2,33,0.6));
   z-index:0;
   pointer-events:none
 }
@@ -279,6 +302,9 @@ details[open].fd-detail summary::before{transform:rotate(90deg)}
 /* ── OFFLINE MODE ── */
 #offline-warning{display:none;position:fixed;bottom:14px;right:14px;background:rgba(180,40,40,0.92);border:1px solid #e55;color:#fdd;padding:8px 14px;border-radius:8px;font-size:0.8rem;cursor:pointer;z-index:110;transition:all .2s;line-height:1.4;text-align:center}
 #offline-warning:hover{background:rgba(200,60,60,0.95);box-shadow:0 0 10px rgba(220,60,60,.4)}
+#gal-game-conn-bar{display:none;position:fixed;left:12px;bottom:12px;z-index:95;align-items:center;gap:6px;background:rgba(13,2,33,.88);border:1px solid rgba(155,89,182,.45);padding:6px 12px;border-radius:8px;font-size:0.75rem;color:#b39ddb;pointer-events:none}
+#gal-game-conn-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0}
+#gal-game-conn-bar.online #gal-game-conn-dot{background:#22c55e}
 
 /* ── CG GALLERY ── */
 #overlay-cg{position:absolute;inset:0;background:rgba(0,0,0,0.9);z-index:130;display:none;flex-direction:column;padding:20px;overflow-y:auto}
@@ -308,19 +334,43 @@ details[open].fd-detail summary::before{transform:rotate(90deg)}
 }
 </style>
 </head>
-<body>
+<body class="gal-fullbleed-active">
 <div id="app">
+<div id="menu-version"></div>
+
+<!-- LOGIN（与 dice-story 同款：ID+UID+连线+历史） -->
+<div id="screen-login" class="screen gal-fullbleed gal-cover-bg active">
+  <div class="login-card">
+    <h1>星落食堂</h1>
+    <p class="login-sub">彼岸之约 · 请先登入</p>
+    <label style="display:block;color:#d7bde2;font-size:0.85rem;margin-bottom:6px">论坛 ID</label>
+    <input id="gal-login-id" type="text" placeholder="例如：三叶_1234" maxlength="50" style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.08);border:1px solid #6c3483;border-radius:6px;color:#fff;font-family:inherit;font-size:1rem;margin-bottom:12px;box-sizing:border-box">
+    <label style="display:block;color:#d7bde2;font-size:0.85rem;margin-bottom:6px">论坛 UID（数字）</label>
+    <input id="gal-login-uid" type="number" placeholder="个人资料页 URL 中的数字 UID" inputmode="numeric" style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.08);border:1px solid #6c3483;border-radius:6px;color:#fff;font-family:inherit;font-size:1rem;margin-bottom:12px;box-sizing:border-box">
+    <div class="conn-row">
+      <div id="gal-conn-dot" class="conn-dot"></div>
+      <div id="gal-conn-label">未连线</div>
+    </div>
+    <div id="login-err"></div>
+    <button class="btn gold" id="btn-gal-login" style="width:100%" onclick="doGalLogin_()">登入 →</button>
+    <div id="gal-login-history-row" style="display:none">
+      <div class="gal-ih-label">最近使用的 ID</div>
+      <div class="gal-ih-chips" id="gal-login-history-chips"></div>
+    </div>
+  </div>
+</div>
 
 <!-- TITLE -->
-<div id="screen-title" class="screen active">
+<div id="screen-title" class="screen gal-fullbleed">
   <div class="stars" id="star-field"></div>
   <h1>星落食堂</h1>
-  <h2>彼岸之約</h2>
+  <h2>彼岸之约</h2>
   <div class="title-btns">
     <button class="btn gold" onclick="startNewGame()">开始新游戏</button>
     <button class="btn" id="btn-continue" onclick="openSaveloadFromTitle()">继续游戏</button>
     <button class="btn" onclick="loadQuickResume_()">读取即时存档</button>
     <button class="btn" id="btn-title-stats" style="display:none" onclick="openStats()">📊 玩家面板</button>
+    <button class="btn" onclick="openGalGuide_()">📖 玩法说明</button>
     <button class="btn" onclick="openCGGalleryFromTitle()">🖼 CG图鉴 / 剧情回放</button>
   </div>
   <div class="title-footer">BGM: 无　图源: OpenGameArt (CC-BY)</div>
@@ -356,8 +406,8 @@ details[open].fd-detail summary::before{transform:rotate(90deg)}
     <h2>论坛档案</h2>
     <div class="form-group">
       <label>论坛 UID（数字）</label>
-      <input id="input-id" type="text" placeholder="例：340824" maxlength="12" inputmode="numeric">
-      <div class="form-hint">输入你在 sstm.moe 的数字 UID，可从个人资料页网址中查看</div>
+      <input id="input-id" type="text" placeholder="例：340824" maxlength="12" inputmode="numeric" readonly>
+      <div class="form-hint">与登入时相同；若要更改请点下方「返回登入」重新登入</div>
     </div>
     <div class="form-group">
       <label>统计区间</label>
@@ -370,6 +420,7 @@ details[open].fd-detail summary::before{transform:rotate(90deg)}
     </div>
     <div class="form-actions">
       <button class="btn" onclick="showScreen('setup')">返回</button>
+      <button class="btn" onclick="goGalRelogin_()">返回登入</button>
       <button class="btn gold" onclick="startFetchForumData()">🔍 自动读取</button>
     </div>
     <div style="margin-top:10px;text-align:center">
@@ -499,10 +550,19 @@ details[open].fd-detail summary::before{transform:rotate(90deg)}
       <div id="menu-save-list"></div>
     </div>
   </div>
+  <div class="menu-section">
+    <button class="btn" onclick="toggleMenuSection_('misc')">⚙ 其余选项</button>
+    <div id="menu-misc-panel" class="menu-section-panel">
+      <div class="menu-btns" style="margin-top:0">
+        <button class="btn" onclick="openStats();closeMenu()">查看玩家面板</button>
+        <button class="btn" onclick="openGalGuide_();closeMenu()">📖 玩法说明</button>
+        <button class="btn" onclick="downloadGalSaveWithIntro_();closeMenu()">📥 下载游玩存档</button>
+        <button class="btn" onclick="importGalSaveWithIntro_();closeMenu()">📤 读取存档</button>
+        <button class="btn" onclick="closeMenu();showScreen('title')">返回标题</button>
+      </div>
+    </div>
+  </div>
   <div class="menu-btns">
-    <button class="btn" onclick="openStats();closeMenu()">查看玩家面板</button>
-    <button class="btn" onclick="downloadGameData_();closeMenu()">📥 下载游玩数据</button>
-    <button class="btn" onclick="closeMenu();showScreen('title')">返回标题</button>
     <button class="btn" onclick="closeMenu()">继续游戏</button>
   </div>
   <div class="menu-hotkeys-panel">
@@ -568,32 +628,37 @@ details[open].fd-detail summary::before{transform:rotate(90deg)}
 </div>
 
 <!-- UPDATE STATS OVERLAY -->
-<div id="overlay-update-stats" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;display:none;align-items:center;justify-content:center">
-  <div style="background:#1a0533;border:1px solid #6c3483;border-radius:12px;padding:28px 32px;width:90%;max-width:380px;text-align:center">
+<div id="overlay-update-stats" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;align-items:center;justify-content:center">
+  <div id="overlay-update-stats-inner" style="position:relative;background:#1a0533;border:1px solid #6c3483;border-radius:12px;padding:28px 32px;width:90%;max-width:380px;text-align:center">
+    <div id="upd-cloud-loading" style="display:none;position:absolute;inset:0;background:rgba(13,2,33,0.92);border-radius:12px;z-index:5;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+      <div class="fetch-spinner"></div>
+      <div id="upd-cloud-loading-msg" style="color:#d7bde2;font-size:0.88rem">正在读取云端记录…</div>
+    </div>
     <h3 style="color:#f0c040;margin:0 0 18px">📝 更新回复／引用数</h3>
-    <p style="color:#aaa;font-size:0.85rem;margin:0 0 18px">可用于解锁新选项或番外，填入最新数字后点确认。</p>
-    <div style="display:flex;flex-direction:column;gap:12px;text-align:left">
-      <label style="color:#d7bde2;font-size:0.9rem">论坛 UID（自动抓取用）
-        <input id="upd-uid" type="text" inputmode="numeric" placeholder="例：340824" style="width:100%;margin-top:4px;padding:8px 10px;background:#0d0221;border:1px solid #6c3483;color:#f0c040;border-radius:6px;font-size:1rem;box-sizing:border-box">
+    <p style="color:#aaa;font-size:0.85rem;margin:0 0 10px">下方数值＝该 UID 云端<strong>全部日期</strong>累计 − 已消耗；日期区间仅用于自动抓取。</p>
+    <p id="upd-cloud-hint" style="color:#888;font-size:0.78rem;margin:0 0 14px;line-height:1.6">正在读取云端…</p>
+    <div id="upd-form-fields" style="display:flex;flex-direction:column;gap:12px;text-align:left">
+      <label style="color:#d7bde2;font-size:0.9rem">论坛 UID（与登入相同）
+        <input id="upd-uid" type="text" inputmode="numeric" placeholder="例：340824" readonly onclick="warnGalUidChange_()" style="width:100%;margin-top:4px;padding:8px 10px;background:#0d0221;border:1px solid #6c3483;color:#f0c040;border-radius:6px;font-size:1rem;box-sizing:border-box;opacity:0.85;cursor:not-allowed">
       </label>
       <div style="display:flex;gap:8px">
-        <label style="color:#d7bde2;font-size:0.9rem;flex:1">起始日期
+        <label style="color:#d7bde2;font-size:0.9rem;flex:1">抓取起始日期
           <input id="upd-start" type="date" style="width:100%;margin-top:4px;padding:8px 10px;background:#0d0221;border:1px solid #6c3483;color:#f0c040;border-radius:6px;font-size:0.9rem;box-sizing:border-box">
         </label>
-        <label style="color:#d7bde2;font-size:0.9rem;flex:1">结束日期
+        <label style="color:#d7bde2;font-size:0.9rem;flex:1">抓取结束日期
           <input id="upd-end" type="date" style="width:100%;margin-top:4px;padding:8px 10px;background:#0d0221;border:1px solid #6c3483;color:#f0c040;border-radius:6px;font-size:0.9rem;box-sizing:border-box">
         </label>
       </div>
-      <label style="color:#d7bde2;font-size:0.9rem">累计回复数
+      <label style="color:#d7bde2;font-size:0.9rem">可用回复数（剩余）
         <input id="upd-replies" type="number" min="0" style="width:100%;margin-top:4px;padding:8px 10px;background:#0d0221;border:1px solid #6c3483;color:#f0c040;border-radius:6px;font-size:1rem;box-sizing:border-box">
       </label>
-      <label style="color:#d7bde2;font-size:0.9rem">累计被引用数
+      <label style="color:#d7bde2;font-size:0.9rem">可用被引用数（剩余）
         <input id="upd-citations" type="number" min="0" style="width:100%;margin-top:4px;padding:8px 10px;background:#0d0221;border:1px solid #6c3483;color:#f0c040;border-radius:6px;font-size:1rem;box-sizing:border-box">
       </label>
     </div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
-      <button class="btn gold" onclick="startUpdateFetchFromOverlay()">自动抓取</button>
-      <button class="btn" onclick="confirmUpdateStats()">确认</button>
+      <button class="btn gold" id="upd-btn-fetch" onclick="startUpdateFetchFromOverlay()">自动抓取</button>
+      <button class="btn" id="upd-btn-confirm" onclick="confirmUpdateStats()">确认</button>
       <button class="btn" style="background:rgba(255,255,255,0.07);border-color:#555;color:#aaa" onclick="closeUpdateStats()">取消</button>
     </div>
   </div>
@@ -636,7 +701,35 @@ details[open].fd-detail summary::before{transform:rotate(90deg)}
 <div id="toast"></div>
 
 <!-- OFFLINE WARNING -->
+<div id="gal-game-conn-bar"><div id="gal-game-conn-dot"></div><span id="gal-game-conn-text">未连线</span></div>
 <div id="offline-warning" onclick="retryCloudConnection_()">🔴 离线游玩中<br><span style="font-size:0.72rem;opacity:.8">点击尝试重新连线</span></div>
+
+<!-- 玩法说明 -->
+<div id="overlay-gal-guide" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:450;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#1a0533;border:1px solid #6c3483;border-radius:12px;padding:24px;max-width:420px;width:92%;max-height:80vh;overflow-y:auto">
+    <h3 style="color:#f0c040;margin:0 0 14px">📖 玩法说明</h3>
+    <div id="gal-guide-body" style="color:#d7bde2;font-size:0.88rem;line-height:1.85;text-align:left"></div>
+    <button class="btn gold" style="width:100%;margin-top:16px" onclick="closeGalGuide_()">知道了</button>
+  </div>
+</div>
+
+<!-- 首次菜单引导 -->
+<div id="overlay-menu-intro" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:460;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#1a0533;border:1px solid #f0c040;border-radius:12px;padding:24px;max-width:400px;width:92%">
+    <h3 style="color:#f0c040;margin:0 0 12px">☰ 菜单使用说明</h3>
+    <p style="color:#d7bde2;font-size:0.88rem;line-height:1.8;margin:0 0 16px">首次打开菜单：「游戏功能」可更新论坛数据；「存读档」管理存档；「其余选项」含玩家面板、玩法说明与存档下载。论坛 UID 与登入相同，更改请重新登入。</p>
+    <button class="btn gold" style="width:100%" onclick="closeMenuIntro_()">开始游玩</button>
+  </div>
+</div>
+
+<!-- 存档功能说明（首次下载/读档） -->
+<div id="overlay-save-intro" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:460;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#1a0533;border:1px solid #9b59b6;border-radius:12px;padding:24px;max-width:400px;width:92%">
+    <h3 id="save-intro-title" style="color:#f0c040;margin:0 0 12px">存档说明</h3>
+    <p id="save-intro-body" style="color:#d7bde2;font-size:0.88rem;line-height:1.8;margin:0 0 16px"></p>
+    <button class="btn gold" style="width:100%" onclick="confirmSaveIntro_()">继续</button>
+  </div>
+</div>
 
 </div><!-- #app -->
 
@@ -646,7 +739,21 @@ details[open].fd-detail summary::before{transform:rotate(90deg)}
 //  CONFIG
 // ══════════════════════════════════════════════
 const GAS_URL = 'https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4BbxBLkXhd1IyHURZf8_NzZCf_dDf_Q9JHVo6kvJxY36OF/exec';
+const GAME_VERSION = 'v3.6';
+const GAL_ACTIVITY_SHEET = 'GAL返乡活跃度记录';
+const GAL_SAVE_XLSX_PASSWORD = 'sstm';
+const GAL_LOGIN_UID_KEY_ = 'galStoryLastUid_v1';
+const GAL_LOGIN_ID_UID_MAP_ = 'galStoryIdUidMap_v1';
+const GAL_LOGIN_HISTORY_KEY_ = 'galStoryLoginHistory_v1';
+const GAL_LOGIN_HISTORY_MAX_ = 5;
+let _galLoggedIn = false;
+let _galOnline = false;
+let _saveIntroAction = null;
 
+function updateMenuVersion_(){
+  const el = document.getElementById('menu-version');
+  if(el) el.textContent = GAME_VERSION;
+}
 const GAL_ID_HISTORY_KEY_ = 'galStoryIdHistory_v1';
 const GAL_ID_HISTORY_MAX_ = 5;
 function loadGalIdHistory_(){
@@ -681,9 +788,388 @@ function renderGalIdHistory_(){
   });
 }
 
-// ══════════════════════════════════════════════
-//  GAME STATE
-// ══════════════════════════════════════════════
+// ── 登入（对齐 dice-story_v2） ──
+function setGalOnlineStatus_(online){
+  _galOnline = !!online;
+  const dot = document.getElementById('gal-conn-dot');
+  const lbl = document.getElementById('gal-conn-label');
+  if(dot) dot.classList.toggle('online', online);
+  if(lbl) lbl.textContent = online ? '云端已连线' : '离线模式';
+  updateGalGameConnBar_();
+}
+function updateGalGameConnBar_(){
+  const bar = document.getElementById('gal-game-conn-bar');
+  if(!bar) return;
+  const storyActive = document.getElementById('screen-story')?.classList.contains('active');
+  const menuOpen = document.getElementById('overlay-menu')?.classList.contains('open');
+  const inPlay = ['story','choice','fd','ending'].some(s => document.getElementById('screen-'+s)?.classList.contains('active'));
+  const show = inPlay && (!storyActive || menuOpen);
+  bar.style.display = show ? 'flex' : 'none';
+  const online = _galOnline && !_offlineMode;
+  bar.classList.toggle('online', online);
+  const txt = document.getElementById('gal-game-conn-text');
+  if(txt) txt.textContent = online ? '云端已连线' : '离线游玩';
+}
+function saveGalLoginMap_(id, uid){
+  if(!id || !uid) return;
+  try{
+    const map = JSON.parse(localStorage.getItem(GAL_LOGIN_ID_UID_MAP_) || '{}');
+    map[id] = String(uid);
+    localStorage.setItem(GAL_LOGIN_ID_UID_MAP_, JSON.stringify(map));
+    localStorage.setItem(GAL_LOGIN_UID_KEY_, String(uid));
+  }catch(e){}
+}
+function getUidForGalId_(id){
+  try{
+    const map = JSON.parse(localStorage.getItem(GAL_LOGIN_ID_UID_MAP_) || '{}');
+    if(map[id]) return String(map[id]);
+    return localStorage.getItem(GAL_LOGIN_UID_KEY_) || '';
+  }catch(e){ return ''; }
+}
+function saveGalLoginHistory_(id, uid){
+  if(!id) return;
+  saveGalLoginMap_(id, uid);
+  let hist = loadGalLoginHistory_().filter(x => (typeof x === 'string' ? x : x.id) !== id);
+  hist.unshift(uid ? { id, uid: String(uid) } : id);
+  if(hist.length > GAL_LOGIN_HISTORY_MAX_) hist = hist.slice(0, GAL_LOGIN_HISTORY_MAX_);
+  try{ localStorage.setItem(GAL_LOGIN_HISTORY_KEY_, JSON.stringify(hist)); }catch(e){}
+  renderGalLoginHistory_();
+}
+function loadGalLoginHistory_(){
+  try{ return JSON.parse(localStorage.getItem(GAL_LOGIN_HISTORY_KEY_) || '[]'); }catch(e){ return []; }
+}
+function renderGalLoginHistory_(){
+  const hist = loadGalLoginHistory_();
+  const row = document.getElementById('gal-login-history-row');
+  const chips = document.getElementById('gal-login-history-chips');
+  if(!row || !chips) return;
+  if(!hist.length){ row.style.display = 'none'; return; }
+  row.style.display = 'block';
+  chips.innerHTML = '';
+  hist.forEach(entry => {
+    const id = typeof entry === 'string' ? entry : entry.id;
+    const uid = typeof entry === 'object' ? entry.uid : getUidForGalId_(id);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'gal-ih-chip';
+    btn.textContent = id;
+    btn.onclick = () => {
+      const idEl = document.getElementById('gal-login-id');
+      const uidEl = document.getElementById('gal-login-uid');
+      if(idEl) idEl.value = id;
+      if(uidEl && uid) uidEl.value = uid;
+      doGalLogin_();
+    };
+    chips.appendChild(btn);
+  });
+}
+async function doGalLogin_(){
+  const id = (document.getElementById('gal-login-id').value || '').trim();
+  const uid = (document.getElementById('gal-login-uid').value || '').trim();
+  const errEl = document.getElementById('login-err');
+  const btn = document.getElementById('btn-gal-login');
+  if(!id || !uid || isNaN(parseInt(uid, 10))){
+    if(errEl) errEl.textContent = '请输入论坛 ID 与有效 UID（数字）';
+    return;
+  }
+  if(errEl) errEl.textContent = '连线测试中…';
+  const oldTxt = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = '连线中…'; }
+  setGalOnlineStatus_(false);
+  try{
+    G.id = uid;
+    G.forumLabel = id;
+    saveGalLoginHistory_(id, uid);
+    saveGalIdHistory_(uid);
+    const ok = await checkCloudConnection_();
+    setGalOnlineStatus_(ok);
+    _galLoggedIn = true;
+    if(errEl) errEl.textContent = ok ? '' : '⚠ 云端无法连线，以离线模式进入';
+    mergeLocalProfileIntoG_(uid);
+    showScreen('title');
+    const statsBtn = document.getElementById('btn-title-stats');
+    if(statsBtn) statsBtn.style.display = '';
+  }catch(e){
+    if(errEl) errEl.textContent = '登入错误：' + e.message;
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = oldTxt || '登入 →'; }
+  }
+}
+
+// ── 登入 UID（论坛抓取唯一来源） ──
+function getGalLoginUid_(){
+  return String(localStorage.getItem(GAL_LOGIN_UID_KEY_) || G.id || '').trim();
+}
+function goGalRelogin_(){
+  showScreen('login');
+  showToast('请重新登入以更改论坛 UID');
+}
+function warnGalUidChange_(){
+  showToast('要更改论坛 UID，请关闭菜单后返回标题 → 重新登入');
+}
+function initGalIdScreen_(){
+  const loginUid = getGalLoginUid_();
+  if(loginUid) G.id = loginUid;
+  const idIn = document.getElementById('input-id');
+  if(idIn){
+    idIn.value = loginUid;
+    idIn.readOnly = true;
+  }
+  const histRow = document.getElementById('gal-id-history-row');
+  if(histRow) histRow.style.display = 'none';
+  initFetchDatesOnIdScreen_();
+}
+function isGalActivityDayKey_(d){
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(d || ''));
+}
+function sumGalActivityRows_(rows){
+  let sumR = 0, sumC = 0, dayCount = 0;
+  let manualR = null, manualC = null;
+  (rows || []).forEach(r => {
+    const d = normalizeDateISO_Gal_(r.date);
+    if(d === '__manual__'){
+      const mr = parseInt(r.replies, 10) || 0;
+      const mc = parseInt(r.citations, 10) || 0;
+      if(manualR == null || mr > manualR) manualR = mr;
+      if(manualC == null || mc > manualC) manualC = mc;
+      return;
+    }
+    if(!isGalActivityDayKey_(d)) return;
+    sumR += parseInt(r.replies, 10) || 0;
+    sumC += parseInt(r.citations, 10) || 0;
+    dayCount++;
+  });
+  if(manualR != null){
+    return { sumR: manualR, sumC: manualC ?? 0, dayCount, hasManualBaseline: true };
+  }
+  return { sumR, sumC, dayCount, hasManualBaseline: false };
+}
+async function fetchActivitySumAll_Gal_(uid){
+  const rows = await fetchActivityFromGAS_Gal_(uid, '', '');
+  return Object.assign({ rows }, sumGalActivityRows_(rows));
+}
+function computeGalEarnedTotals_(cloudSum, manualSnap){
+  const baseR = cloudSum.sumR || 0;
+  const baseC = cloudSum.sumC || 0;
+  if(cloudSum.hasManualBaseline){
+    if(!manualSnap || manualSnap.earnedR == null){
+      return { earnedR: baseR, earnedC: baseC, cloudSumR: baseR, cloudSumC: baseC };
+    }
+    return {
+      earnedR: Math.max(Number(manualSnap.earnedR || 0), baseR),
+      earnedC: Math.max(Number(manualSnap.earnedC || 0), baseC),
+      cloudSumR: baseR,
+      cloudSumC: baseC
+    };
+  }
+  if(!manualSnap || manualSnap.earnedR == null) return { earnedR: baseR, earnedC: baseC, cloudSumR: baseR, cloudSumC: baseC };
+  const snapR = Number(manualSnap.cloudSnapR || 0);
+  const snapC = Number(manualSnap.cloudSnapC || 0);
+  return {
+    earnedR: Number(manualSnap.earnedR || 0) + Math.max(0, baseR - snapR),
+    earnedC: Number(manualSnap.earnedC || 0) + Math.max(0, baseC - snapC),
+    cloudSumR: baseR,
+    cloudSumC: baseC
+  };
+}
+async function syncGalStatsFromCloud_(){
+  const uid = getGalLoginUid_();
+  if(!uid || !_galOnline) return null;
+  const cloud = await fetchActivitySumAll_Gal_(uid);
+  const earned = computeGalEarnedTotals_(cloud, G.manualEarnedSnap);
+  const usedR = Number(G.usedReplies || 0);
+  const usedC = Number(G.usedCitations || 0);
+  G.replies = Math.max(0, earned.earnedR - usedR);
+  G.citations = Math.max(0, earned.earnedC - usedC);
+  return { cloud, earned, usedR, usedC };
+}
+function logManualBaselineToGAS_Gal_(uid, totalR, totalC){
+  logGalActivityToGAS_(uid, '__manual__', totalR, totalC);
+}
+let _updCloudLoading = false;
+let _updCloudLoadToken = 0;
+function setUpdateStatsCloudLoading_(on, msg){
+  _updCloudLoading = !!on;
+  const layer = document.getElementById('upd-cloud-loading');
+  const msgEl = document.getElementById('upd-cloud-loading-msg');
+  const fields = document.getElementById('upd-form-fields');
+  const bf = document.getElementById('upd-btn-fetch');
+  const bc = document.getElementById('upd-btn-confirm');
+  if(msgEl && msg) msgEl.textContent = msg;
+  if(layer) layer.style.display = on ? 'flex' : 'none';
+  if(fields) fields.style.pointerEvents = on ? 'none' : '';
+  if(fields) fields.style.opacity = on ? '0.45' : '1';
+  if(bf) bf.disabled = on;
+  if(bc) bc.disabled = on;
+}
+
+// ── 云端逐日活跃度（GAL返乡活跃度记录） ──
+function normalizeDateISO_Gal_(s){
+  const raw = String(s || '').trim();
+  if(!raw) return '';
+  const m = raw.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if(m) return m[1] + '-' + String(m[2]).padStart(2,'0') + '-' + String(m[3]).padStart(2,'0');
+  const d = new Date(raw);
+  if(!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return raw;
+}
+function enumerateDates_Gal_(startDate, endDate){
+  const out = [];
+  if(!startDate || !endDate) return out;
+const d = new Date(startDate + 'T12:00:00Z');
+    const end = new Date(endDate + 'T12:00:00Z');
+  while(d <= end){
+    out.push(d.toISOString().slice(0, 10));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+function expandByDayRange_Gal_(byDay, startDate, endDate){
+  const full = {};
+  enumerateDates_Gal_(startDate, endDate).forEach(d => {
+    const src = byDay && byDay[d];
+    full[d] = { replies: src ? (parseInt(src.replies, 10) || 0) : 0, citations: src ? (parseInt(src.citations, 10) || 0) : 0 };
+  });
+  return full;
+}
+async function fetchActivityFromGAS_Gal_(uid, startDate, endDate){
+  if(!GAS_URL || !uid) return [];
+  try{
+    const data = await _galGasJsonp_({
+      action: 'activity_fetch', uid: String(uid),
+      startDate: String(startDate || ''), endDate: String(endDate || ''),
+      sheet: GAL_ACTIVITY_SHEET
+    }, FORUM_FETCH_MS_GAL);
+    return (data && data.ok && data.rows) ? data.rows : [];
+  }catch(e){ console.warn('fetchActivityFromGAS_Gal_', e); return []; }
+}
+function mergeByDayWithCloud_Gal_(fullByDay, cloudRows, startDate, endDate){
+  const existing = {};
+  (cloudRows || []).forEach(r => {
+    const d = normalizeDateISO_Gal_(r.date);
+    if(d) existing[d] = { replies: parseInt(r.replies, 10) || 0, citations: parseInt(r.citations, 10) || 0 };
+  });
+  const netByDay = {}, skippedDates = [], updatedDates = [];
+  let netR = 0, netC = 0;
+  enumerateDates_Gal_(startDate, endDate).forEach(d => {
+    const scraped = fullByDay[d] || { replies: 0, citations: 0 };
+    const cloud = existing[d];
+    if(!cloud){
+      netByDay[d] = { replies: scraped.replies, citations: scraped.citations };
+      netR += scraped.replies; netC += scraped.citations; return;
+    }
+    const dR = Math.max(0, scraped.replies - cloud.replies);
+    const dC = Math.max(0, scraped.citations - cloud.citations);
+    if(dR <= 0 && dC <= 0){ skippedDates.push(d); return; }
+    netByDay[d] = { replies: Math.max(scraped.replies, cloud.replies), citations: Math.max(scraped.citations, cloud.citations) };
+    netR += dR; netC += dC; updatedDates.push(d);
+  });
+  return { netByDay, netR, netC, skippedDates, updatedDates };
+}
+async function resolveForumFetchDedup_Gal_(uid, byDay, startDate, endDate, onStatus){
+  const full = expandByDayRange_Gal_(byDay || {}, startDate, endDate);
+  let cloudRows = [];
+  if(_galOnline && GAS_URL){
+    if(typeof onStatus === 'function') onStatus('正在查询云端逐日记录…');
+    cloudRows = await fetchActivityFromGAS_Gal_(uid, startDate, endDate);
+  }
+  return mergeByDayWithCloud_Gal_(full, cloudRows, startDate, endDate);
+}
+function formatGalDatesMsg_(dates){
+  if(!dates || !dates.length) return '';
+  return dates.slice(0, 8).map(d => d.slice(5).replace('-', '/')).join('、') + (dates.length > 8 ? ' 等' + dates.length + '天' : '');
+}
+function logActivityByDayToGAS_Gal_(uid, netByDay){
+  Object.entries(netByDay || {}).forEach(([date, c]) => logGalActivityToGAS_(uid, date, c.replies, c.citations));
+}
+function initUpdateStatsDates_(){
+  const now = new Date();
+  const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const today = now.toISOString().slice(0, 10);
+  const fs = document.getElementById('upd-start');
+  const fe = document.getElementById('upd-end');
+  if(fs) fs.value = ym + '-01';
+  if(fe) fe.value = today;
+}
+async function refreshUpdateStatsFromCloud_(){
+  const hint = document.getElementById('upd-cloud-hint');
+  const uid = getGalLoginUid_();
+  const ir = document.getElementById('upd-replies');
+  const ic = document.getElementById('upd-citations');
+  const uidEl = document.getElementById('upd-uid');
+  if(uidEl) uidEl.value = uid;
+  if(!ir || !ic) return;
+  const token = ++_updCloudLoadToken;
+  setUpdateStatsCloudLoading_(true, '正在读取云端记录…');
+  if(hint) hint.textContent = '正在读取云端…';
+  try{
+    if(!uid || !_galOnline){
+      ir.value = G.replies || 0;
+      ic.value = G.citations || 0;
+      if(hint) hint.textContent = '离线：显示本机剩余数量';
+      return;
+    }
+    const cloud = await fetchActivitySumAll_Gal_(uid);
+    if(token !== _updCloudLoadToken) return;
+    const earned = computeGalEarnedTotals_(cloud, G.manualEarnedSnap);
+    const usedR = Number(G.usedReplies || 0);
+    const usedC = Number(G.usedCitations || 0);
+    const availR = Math.max(0, earned.earnedR - usedR);
+    const availC = Math.max(0, earned.earnedC - usedC);
+    ir.value = availR;
+    ic.value = availC;
+    let hintTxt = '云端累计（全部 ' + (cloud.dayCount || 0) + ' 天）' + earned.earnedR + '/' + earned.earnedC;
+    hintTxt += '，已消耗 ' + usedR + '/' + usedC + '，可用 ' + availR + '/' + availC;
+    if(G.manualEarnedSnap && G.manualEarnedSnap.earnedR != null) hintTxt += '（含手动校正）';
+    if(hint) hint.textContent = hintTxt;
+  }catch(e){
+    if(token !== _updCloudLoadToken) return;
+    ir.value = G.replies || 0;
+    ic.value = G.citations || 0;
+    if(hint) hint.textContent = '云端读取失败，显示本机剩余';
+  }finally{
+    if(token === _updCloudLoadToken) setUpdateStatsCloudLoading_(false);
+  }
+}
+
+// ── 玩法 / 菜单 / 存档引导 ──
+function openGalGuide_(){
+  const body = document.getElementById('gal-guide-body');
+  if(body) body.innerHTML = '<p><b>基本流程</b>：登入 → 新游戏设定名字 → 论坛档案自动抓取 → 阅读剧情、在选项处消耗回复或引用解锁分支。</p><p><b>论坛 UID</b>：与登入时相同；要更换请返回标题重新登入。</p><p><b>论坛抓取</b>：按日期区间统计；云端按<strong>每天一行</strong>记录并<strong>全部加总</strong>；重复日期不重复计入。</p><p><b>存档</b>：菜单「其余选项」可下载/读取游玩存档。</p><p><b>番外</b>：累计回复满 50 可在结局后解锁番外。</p>';
+  const ov = document.getElementById('overlay-gal-guide');
+  if(ov){ ov.style.display = 'flex'; ov.style.flexDirection = 'column'; }
+}
+function closeGalGuide_(){
+  const ov = document.getElementById('overlay-gal-guide');
+  if(ov) ov.style.display = 'none';
+}
+function closeMenuIntro_(){
+  try{ localStorage.setItem('galMenuIntroSeen_v1', '1'); }catch(e){}
+  const ov = document.getElementById('overlay-menu-intro');
+  if(ov) ov.style.display = 'none';
+}
+function maybeShowMenuIntro_(){
+  try{ if(localStorage.getItem('galMenuIntroSeen_v1')) return; }catch(e){}
+  const ov = document.getElementById('overlay-menu-intro');
+  if(ov){ ov.style.display = 'flex'; ov.style.flexDirection = 'column'; }
+}
+function showSaveIntro_(title, body, action){
+  _saveIntroAction = action;
+  const t = document.getElementById('save-intro-title');
+  const b = document.getElementById('save-intro-body');
+  if(t) t.textContent = title;
+  if(b) b.textContent = body;
+  const ov = document.getElementById('overlay-save-intro');
+  if(ov){ ov.style.display = 'flex'; ov.style.flexDirection = 'column'; }
+}
+function confirmSaveIntro_(){
+  const ov = document.getElementById('overlay-save-intro');
+  if(ov) ov.style.display = 'none';
+  const fn = _saveIntroAction;
+  _saveIntroAction = null;
+  if(typeof fn === 'function') fn();
+}
+
 let G = {
   id: '',
   name: '旅人',
@@ -708,6 +1194,10 @@ let G = {
   fetchUsername: '',   // cached slug e.g. "340824-攸薩"
   fetchRangeHistory: {}, // key: uid|start|end => last accepted/attempt time
   fetchAudit: [],        // recent fetch attempts for cloud record
+  forumLabel: '',
+  usedReplies: 0,
+  usedCitations: 0,
+  manualEarnedSnap: null,
   // runtime only
   _saveloadMode: 'load',
   _currentRoute: null,
@@ -1538,6 +2028,7 @@ function showScreen(name, mode) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   const el = document.getElementById('screen-'+name);
   if(el) el.classList.add('active');
+  document.body.classList.toggle('gal-fullbleed-active', name === 'login' || name === 'title');
   if(name==='saveload'){
     saveloadMode = mode || 'load';
     renderSaveSlots();
@@ -1547,7 +2038,19 @@ function showScreen(name, mode) {
     const statsBtn = document.getElementById('btn-title-stats');
     if(statsBtn) statsBtn.style.display = G.id ? '' : 'none';
   }
-  if(name==='id') renderGalIdHistory_();
+  if(name==='id') {
+    initGalIdScreen_();
+  }
+  updateGalGameConnBar_();
+}
+function initFetchDatesOnIdScreen_(){
+  const now = new Date();
+  const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const today = now.toISOString().slice(0, 10);
+  const fs = document.getElementById('fetch-start');
+  const fe = document.getElementById('fetch-end');
+  if(fs) fs.value = ym + '-01';
+  if(fe) fe.value = today;
 }
 
 function openSaveloadFromTitle(){
@@ -1606,6 +2109,8 @@ function startNewGame(){
   G.savedAt=''; G.trueUnlocked=false;
   G.lastFetchTime=''; G.fetchUsername='';
   G.fetchRangeHistory={}; G.fetchAudit=[];
+  G.usedReplies=0; G.usedCitations=0;
+  G.manualEarnedSnap=null;
   G.storyLog=[];
   G._skipMode=false; G._replayMode=false;
   G._dlgParts=null; G._dlgBindKey=''; G._dlgPartIdx=0;
@@ -1613,9 +2118,8 @@ function startNewGame(){
   G.forceSkipAll=false; G.autoSkipSeen=false;
   // 清除输入框
   const nameIn=document.getElementById('input-name');
-  const idIn=document.getElementById('input-id');
   if(nameIn) nameIn.value='';
-  if(idIn) idIn.value='';
+  G.id = getGalLoginUid_();
   showScreen('setup');
 }
 
@@ -1643,15 +2147,19 @@ function hideProfileLoading_(){
 }
 
 function confirmIdAndStart(){
-  const uid = document.getElementById('input-id').value.trim();
+  const uid = getGalLoginUid_();
   if(!uid || isNaN(parseInt(uid))){
-    showToast('进入游戏前必须输入有效 UID（数字）');
+    showToast('请先返回登入画面输入有效 UID');
     return;
   }
   G.id = uid;
   saveGalIdHistory_(uid);
   G.replies = parseInt(document.getElementById('input-replies').value)||0;
   G.citations = parseInt(document.getElementById('input-citations').value)||0;
+  if(G.replies > 0 || G.citations > 0){
+    G.manualEarnedSnap = { earnedR: G.replies, earnedC: G.citations, cloudSnapR: 0, cloudSnapC: 0, at: new Date().toISOString() };
+    logManualBaselineToGAS_Gal_(uid, G.replies, G.citations);
+  }
   // 先套用本地账号档（避免联网失败时图鉴/结局记录消失）
   if(G.id){
     mergeProfileIntoState_(loadLocalProfile_(G.id));
@@ -1700,6 +2208,7 @@ function beginGame(){
     showKanataDialog_();
     return; // 待玩家选择后再进入
   }
+  updateGalGameConnBar_();
   showScreen('story');
   playScene();
 }
@@ -2461,8 +2970,12 @@ function makeChoice(choiceData, opt, idx){
   try{
     const needR=Math.max(0, Number(opt.needReplies||0));
     const needC=Math.max(0, Number(opt.needCite||0));
-    if(needR>0) G.replies=Math.max(0, Number(G.replies||0)-needR);
-    if(needC>0) G.citations=Math.max(0, Number(G.citations||0)-needC);
+    if(needR>0){ G.usedReplies = Number(G.usedReplies||0) + needR; G.replies=Math.max(0, Number(G.replies||0)-needR); }
+    if(needC>0){ G.usedCitations = Number(G.usedCitations||0) + needC; G.citations=Math.max(0, Number(G.citations||0)-needC); }
+    try{
+      const ov=document.getElementById('overlay-update-stats');
+      if(ov && ov.style.display==='flex') refreshUpdateStatsFromCloud_();
+    }catch(e2){}
   }catch(e){}
 
   // 选项后独立过场：延长铺陈，减少“直接跳章”的突兀
@@ -4431,12 +4944,17 @@ function openMenu(){
   updateForceSkipBtn_();
   const fp=document.getElementById('menu-features-panel');
   const sp=document.getElementById('menu-save-panel');
+  const mp=document.getElementById('menu-misc-panel');
   if(fp) fp.classList.remove('open');
   if(sp) sp.classList.remove('open');
+  if(mp) mp.classList.remove('open');
   document.getElementById('overlay-menu').classList.add('open');
+  updateGalGameConnBar_();
+  if(_galLoggedIn) maybeShowMenuIntro_();
 }
 function closeMenu(){
   document.getElementById('overlay-menu').classList.remove('open');
+  updateGalGameConnBar_();
 }
 function openCGGalleryUI_(){
   const ov=document.getElementById('overlay-cg');
@@ -4520,8 +5038,10 @@ function toggleForceSkipAll(){
 function toggleMenuSection_(k){
   const fp=document.getElementById('menu-features-panel');
   const sp=document.getElementById('menu-save-panel');
+  const mp=document.getElementById('menu-misc-panel');
   if(k==='features' && fp) fp.classList.toggle('open');
   if(k==='save' && sp) sp.classList.toggle('open');
+  if(k==='misc' && mp) mp.classList.toggle('open');
 }
 function updateCGFilterBtn_(){
   const b=document.getElementById('cg-filter-btn');
@@ -4646,6 +5166,13 @@ function mergeProfileIntoState_(profile){
       if(typeof _skipTimer!=='undefined' && _skipTimer){ clearTimeout(_skipTimer); _skipTimer=null; }
     }
   }
+  const pu = Number(profile.usedReplies);
+  const puc = Number(profile.usedCitations);
+  if(!Number.isNaN(pu)) G.usedReplies = Math.max(Number(G.usedReplies||0), pu);
+  if(!Number.isNaN(puc)) G.usedCitations = Math.max(Number(G.usedCitations||0), puc);
+  if(profile.manualEarnedSnap && typeof profile.manualEarnedSnap === 'object'){
+    G.manualEarnedSnap = profile.manualEarnedSnap;
+  }
 }
 function profileLsKey_(uid){ return 'gal_profile_'+String(uid||'').trim(); }
 function mergeLocalProfileIntoG_(uid){
@@ -4658,6 +5185,9 @@ function buildProfileData_(){
     type:'profile',
     replies:Number(G.replies||0),
     citations:Number(G.citations||0),
+    usedReplies:Number(G.usedReplies||0),
+    usedCitations:Number(G.usedCitations||0),
+    manualEarnedSnap: G.manualEarnedSnap ? Object.assign({}, G.manualEarnedSnap) : null,
     cgUnlocked:G.cgUnlocked||{},
     endingsUnlocked:G.endingsUnlocked||[],
     fdProgress:G.fdProgress||{},
@@ -4819,14 +5349,13 @@ function endReplayNow(){
   showToast('已结束回放');
 }
 function openUpdateStats(){
-  // 手动输入弹窗（无 UID 或自动失败时的备用）
   closeMenu();
-  document.getElementById('upd-uid').value = G.id||'';
-  document.getElementById('upd-start').value = G.lastFetchTime ? String(G.lastFetchTime).slice(0,10) : '';
-  document.getElementById('upd-end').value = new Date().toISOString().slice(0,10);
-  document.getElementById('upd-replies').value = G.replies||0;
-  document.getElementById('upd-citations').value = G.citations||0;
+  const uid = getGalLoginUid_();
+  if(uid) G.id = uid;
+  document.getElementById('upd-uid').value = uid;
+  initUpdateStatsDates_();
   document.getElementById('overlay-update-stats').style.display='flex';
+  refreshUpdateStatsFromCloud_();
 }
 function renderChoiceStatsBar_(){
   const el=document.getElementById('choice-stats-bar');
@@ -4849,11 +5378,12 @@ function refreshChoiceScreenAfterStats_(){
   }catch(e){}
 }
 function startUpdateFetchFromOverlay(){
-  const uid=String(document.getElementById('upd-uid').value||'').trim();
+  if(_updCloudLoading){ showToast('云端读取中，请稍候…'); return; }
+  const uid=getGalLoginUid_();
   const startDate=String(document.getElementById('upd-start').value||'').trim();
   const endDate=String(document.getElementById('upd-end').value||'').trim();
   if(!uid || isNaN(parseInt(uid))){
-    showToast('请先输入有效 UID（数字）');
+    showToast('登入 UID 无效，请重新登入');
     return;
   }
   G.id = uid;
@@ -4868,18 +5398,44 @@ function openUpdateStatsFromEnding(){
   _updateStatsFromEnding = true;
   openUpdateStats();
 }
-function confirmUpdateStats(){
+async function confirmUpdateStats(){
+  if(_updCloudLoading){ showToast('云端读取中，请稍候…'); return; }
   const r = parseInt(document.getElementById('upd-replies').value)||0;
   const c = parseInt(document.getElementById('upd-citations').value)||0;
-  const uidManual=String(document.getElementById('upd-uid').value||G.id||'').trim();
+  const uid=getGalLoginUid_();
   const sd=String(document.getElementById('upd-start').value||'').trim();
   const ed=String(document.getElementById('upd-end').value||'').trim();
+  const usedR = Number(G.usedReplies || 0);
+  const usedC = Number(G.usedCitations || 0);
+  const totalEarnedR = r + usedR;
+  const totalEarnedC = c + usedC;
+  setUpdateStatsCloudLoading_(true, '正在同步云端…');
+  try{
+    if(uid){
+      let cloud = { sumR: 0, sumC: 0 };
+      if(_galOnline) cloud = await fetchActivitySumAll_Gal_(uid);
+      const cur = computeGalEarnedTotals_(cloud, G.manualEarnedSnap);
+      G.manualEarnedSnap = {
+        earnedR: totalEarnedR, earnedC: totalEarnedC,
+        cloudSnapR: totalEarnedR, cloudSnapC: totalEarnedC,
+        at: new Date().toISOString()
+      };
+      logManualBaselineToGAS_Gal_(uid, totalEarnedR, totalEarnedC);
+      pushFetchAudit_({
+        mode:'manual_override', uid, accepted:true,
+        addedReplies: Math.max(0, totalEarnedR - cur.earnedR),
+        addedCitations: Math.max(0, totalEarnedC - cur.earnedC),
+        reason:'manual_confirm'
+      });
+    }
+  }catch(e){ console.warn('confirmUpdateStats cloud', e); }
+  finally{ setUpdateStatsCloudLoading_(false); }
   G.replies = r;
   G.citations = c;
-  if(uidManual) G.id = uidManual;
+  if(uid) G.id = uid;
   logForumFetchToGAS_({
     mode:'manual_key',
-    forum_uid: uidManual,
+    forum_uid: uid,
     reply_count: r,
     citation_count: c,
     timestamp: new Date().toISOString(),
@@ -4998,13 +5554,22 @@ function showFetchResultOverlay(replies, citations) {
   closeFetchOverlay();
   const el = document.getElementById('fetch-result-text');
   const btn = document.getElementById('fetch-confirm-btn');
-  if (_fetchIsUpdate) {
-    el.innerHTML = `本次新增回复：<b style="color:#f0c040">${replies}</b> 次<br>本次新增被引用：<b style="color:#f0c040">${citations}</b> 次`;
-    btn.textContent = '确认添加';
-  } else {
-    el.innerHTML = `导入回复数：<b style="color:#f0c040">${replies}</b> 次<br>导入被引用数：<b style="color:#f0c040">${citations}</b> 次`;
-    btn.textContent = '确认并进入游戏';
+  let html = `本次新增回复：<b style="color:#f0c040">${replies}</b> 次<br>本次新增被引用：<b style="color:#f0c040">${citations}</b> 次`;
+  const fr = _fetchResult || {};
+  if(fr.rawR != null && fr.rawC != null){
+    html += `<br><small style="opacity:.65">论坛区间总计 ${fr.rawR} / ${fr.rawC}</small>`;
   }
+  if(fr.updatedDates && fr.updatedDates.length){
+    html += `<br><small style="color:#7dd3fc">以下日期云端已更新（补差额）：${formatGalDatesMsg_(fr.updatedDates)}</small>`;
+  }
+  if(fr.skippedDates && fr.skippedDates.length){
+    html += `<br><small style="color:#ffb347">以下日期无新增（云端已有记录）：${formatGalDatesMsg_(fr.skippedDates)}</small>`;
+  }
+  if(replies <= 0 && citations <= 0 && ((fr.skippedDates && fr.skippedDates.length) || (fr.updatedDates && fr.updatedDates.length))){
+    html += `<br><small style="opacity:.75">本次区间内没有可新增的回复/被引用。</small>`;
+  }
+  if(el) el.innerHTML = html;
+  if(btn) btn.textContent = '确认添加';
   document.getElementById('overlay-fetch-result').style.display = 'flex';
 }
 function closeFetchResultOverlay() {
@@ -5014,14 +5579,14 @@ function confirmFetchResult() {
   closeFetchResultOverlay();
   if (_fetchIsUpdate) {
     const meta=_fetchMeta||{};
-    const uid=String(meta.uid||G.id||'').trim();
+    const uid=String(getGalLoginUid_() || meta.uid || G.id || '').trim();
+    const netR = Number(_fetchResult && _fetchResult.replies || 0);
+    const netC = Number(_fetchResult && _fetchResult.citations || 0);
+    const skippedDates = (_fetchResult && _fetchResult.skippedDates) || [];
+    const updatedDates = (_fetchResult && _fetchResult.updatedDates) || [];
+    const invalid = netR <= 0 && netC <= 0;
     const k=fetchRangeKey_(uid, meta.startDate||'', meta.endDate||'');
     if(!G.fetchRangeHistory || typeof G.fetchRangeHistory!=='object') G.fetchRangeHistory={};
-    const duplicateByRange=!!G.fetchRangeHistory[k];
-    const prevTs=G.lastFetchTime?new Date(G.lastFetchTime).getTime():0;
-    const nowTs=_fetchResult&&_fetchResult.lastTime?new Date(_fetchResult.lastTime).getTime():0;
-    const duplicateByTime=(!!prevTs && !!nowTs && nowTs<=prevTs);
-    const invalid=duplicateByRange || duplicateByTime;
     pushFetchAudit_({
       mode:'update_auto',
       uid,
@@ -5029,34 +5594,47 @@ function confirmFetchResult() {
       endDate:meta.endDate||'',
       key:k,
       accepted:!invalid,
-      addedReplies: invalid ? 0 : Number(_fetchResult.replies||0),
-      addedCitations: invalid ? 0 : Number(_fetchResult.citations||0),
-      reason: invalid ? (duplicateByRange?'duplicate_range':'duplicate_time') : 'ok'
+      addedReplies: invalid ? 0 : netR,
+      addedCitations: invalid ? 0 : netC,
+      skippedDates: skippedDates.slice(0, 20),
+      reason: invalid ? (skippedDates.length ? 'cloud_dedup_all' : 'no_new') : 'ok'
     });
     if(!invalid){
-      G.replies += _fetchResult.replies;
-      G.citations += _fetchResult.citations;
-      G.lastFetchTime = _fetchResult.lastTime;
+      if(_fetchResult && _fetchResult.lastTime) G.lastFetchTime = _fetchResult.lastTime;
       G.fetchRangeHistory[k]=new Date().toISOString();
       logForumFetchToGAS_({
         mode:'update_auto',
         forum_uid: uid,
-        reply_count: Number(_fetchResult.replies||0),
-        citation_count: Number(_fetchResult.citations||0),
+        reply_count: netR,
+        citation_count: netC,
         timestamp: new Date().toISOString(),
         startDate: String(meta.startDate||''),
         endDate: String(meta.endDate||''),
       });
-      const byDayU = _fetchResult.byDay || {};
-      Object.entries(byDayU).forEach(([date, counts]) => {
-        logGalActivityToGAS_(uid, date, counts.replies, counts.citations);
-      });
+      logActivityByDayToGAS_Gal_(uid, (_fetchResult && _fetchResult.byDay) || {});
+      G.replies = Number(G.replies||0) + netR;
+      G.citations = Number(G.citations||0) + netC;
       refreshChoiceScreenAfterStats_();
+      renderChoiceStatsBar_();
       scheduleProfileSave_();
-      showToast(`已更新：+${_fetchResult.replies} 回复 / +${_fetchResult.citations} 被引用`);
+      let msg = `已更新：+${netR} 回复 / +${netC} 被引用`;
+      if(skippedDates.length) msg += `（${formatGalDatesMsg_(skippedDates)} 无新增）`;
+      showToast(msg);
+      (async function(){
+        await new Promise(r=>setTimeout(r,1500));
+        try{
+          if(_galOnline && uid){
+            await syncGalStatsFromCloud_();
+            refreshChoiceScreenAfterStats_();
+            renderChoiceStatsBar_();
+          }
+        }catch(e){ console.warn('post-fetch cloud sync', e); }
+      })();
     }else{
       scheduleProfileSave_();
-      showToast('检测到重复抓取区间，本次更新无效（不增加）');
+      let msg = '本次区间内没有可新增的回复/被引用';
+      if(skippedDates.length) msg += '（' + formatGalDatesMsg_(skippedDates) + ' 云端已有记录）';
+      showToast(msg);
     }
     if (_updateStatsFromEnding && G._currentRoute) triggerEndingRefreshFD(G._currentRoute);
     _updateStatsFromEnding = false;
@@ -5064,14 +5642,11 @@ function confirmFetchResult() {
     G.replies = _fetchResult.replies;
     G.citations = _fetchResult.citations;
     G.lastFetchTime = _fetchResult.lastTime;
-    G.id = document.getElementById('input-id').value.trim();
+    G.id = getGalLoginUid_();
     const uid0 = String(G.id||'').trim();
     if (uid0) {
       saveGalIdHistory_(uid0);
-      const byDay0 = _fetchResult.byDay || {};
-      Object.entries(byDay0).forEach(([date, counts]) => {
-        logGalActivityToGAS_(uid0, date, counts.replies, counts.citations);
-      });
+      logActivityByDayToGAS_Gal_(uid0, (_fetchResult && _fetchResult.byDay) || {});
     }
     enterGameAfterFetch_();
   }
@@ -5119,11 +5694,14 @@ function toggleManualInput() {
 }
 
 async function startFetchForumData() {
-  const uid = document.getElementById('input-id').value.trim();
+  const uid = getGalLoginUid_();
   if (!uid || isNaN(parseInt(uid))) {
-    showToast('请输入有效的论坛 UID（数字）');
+    showToast('请先返回登入画面输入有效 UID');
     return;
   }
+  const idIn = document.getElementById('input-id');
+  if(idIn) idIn.value = uid;
+  G.id = uid;
   const startDate = document.getElementById('fetch-start').value;
   const endDate   = document.getElementById('fetch-end').value;
   _fetchIsUpdate = false;
@@ -5131,34 +5709,57 @@ async function startFetchForumData() {
   _fetchMeta = {uid,startDate,endDate,mode:'start_auto'};
   openFetchOverlay();
   try {
+    // 先做云端读取
+    let cloudRows = [];
+    if(_galOnline && GAS_URL){
+      setFetchStatus('正在查询云端逐日记录…');
+      cloudRows = await fetchActivityFromGAS_Gal_(uid, startDate, endDate);
+      if(_fetchAborted){ closeFetchOverlay(); return; }
+    }
+    // 计算优化抓取起点：上一次抓取日期及之后才抓论坛，更早的日期直接读云端
+    let scrapeFrom = startDate;
+    if (G.lastFetchTime) {
+      const lastFetchDay = G.lastFetchTime.slice(0, 10);
+      if (lastFetchDay > startDate) scrapeFrom = lastFetchDay;
+    }
     setFetchStatus('正在获取用户资料...');
     const slug = await getForumUsername(parseInt(uid));
     if(_fetchAborted){ closeFetchOverlay(); return; }
     G.fetchUsername = slug;
-    setFetchStatus('找到用户档案，开始统计回复...');
-    const result = await scrapeForumPosts(parseInt(uid), slug, startDate, endDate);
+    setFetchStatus('正在统计回复与被引用...');
+    const result = await scrapeForumPosts(parseInt(uid), slug, scrapeFrom, endDate);
     if(_fetchAborted){ closeFetchOverlay(); return; }
-    _fetchResult = result;
-    // 开局读取：抓取成功后自动进入，不要求再点确认
-    G.replies = result.replies;
-    G.citations = result.citations;
+    setFetchStatus('正在比对云端记录…');
+    const fullByDay = expandByDayRange_Gal_(result.byDay, startDate, endDate);
+    const deduped = mergeByDayWithCloud_Gal_(fullByDay, cloudRows, startDate, endDate);
+    if(_fetchAborted){ closeFetchOverlay(); return; }
+    // 移除去重结果中早于优化区间的日期（云端已有记录属正常，无需提示）
+    if (scrapeFrom > startDate) {
+      deduped.skippedDates = deduped.skippedDates.filter(d => d >= scrapeFrom);
+    }
     G.lastFetchTime = result.lastTime;
-    G.id = uid;
     saveGalIdHistory_(uid);
     logForumFetchToGAS_({
       mode:'start_auto',
       forum_uid: String(uid),
-      reply_count: Number(result.replies||0),
-      citation_count: Number(result.citations||0),
+      reply_count: deduped.netR,
+      citation_count: deduped.netC,
       timestamp: new Date().toISOString(),
       startDate: String(startDate||''),
       endDate: String(endDate||''),
     });
-    const byDayS = result.byDay || {};
-    Object.entries(byDayS).forEach(([date, counts]) => {
-      logGalActivityToGAS_(uid, date, counts.replies, counts.citations);
-    });
+    logActivityByDayToGAS_Gal_(uid, deduped.netByDay);
+    await new Promise(r=>setTimeout(r,700));
+    if(_galOnline){
+      await syncGalStatsFromCloud_();
+    }else{
+      G.replies = deduped.netR;
+      G.citations = deduped.netC;
+    }
     closeFetchOverlay();
+    if(deduped.skippedDates.length){
+      showToast('部分日期云端已有记录未重复计入：' + formatGalDatesMsg_(deduped.skippedDates));
+    }
     enterGameAfterFetch_();
   } catch(err) {
     if(_fetchAborted){ closeFetchOverlay(); return; }
@@ -5170,7 +5771,7 @@ async function startFetchForumData() {
 
 async function startUpdateFetch() {
   const opts = arguments[0] || {};
-  const uid = String(opts.uid || G.id || '').trim();
+  const uid = String(getGalLoginUid_() || opts.uid || G.id || '').trim();
   if (!uid) { openUpdateStats(); return; }
   const startDate = String(opts.startDate || (G.lastFetchTime ? G.lastFetchTime.slice(0, 10) : ''));
   const endDate   = String(opts.endDate || new Date().toISOString().slice(0, 10));
@@ -5180,13 +5781,43 @@ async function startUpdateFetch() {
   _fetchMeta = {uid,startDate,endDate,mode:'update_auto'};
   openFetchOverlay();
   try {
+    // 先做云端读取
+    let cloudRows = [];
+    if(_galOnline && GAS_URL){
+      setFetchStatus('正在查询云端逐日记录…');
+      cloudRows = await fetchActivityFromGAS_Gal_(uid, startDate, endDate);
+      if(_fetchAborted){ closeFetchOverlay(); return; }
+    }
+    // 计算优化抓取起点：上一次抓取日期及之后才抓论坛，更早的日期直接读云端
+    let scrapeFrom = startDate;
+    if (G.lastFetchTime) {
+      const lastFetchDay = G.lastFetchTime.slice(0, 10);
+      if (lastFetchDay > startDate) scrapeFrom = lastFetchDay;
+    }
     setFetchStatus('正在获取用户资料...');
     const slug = G.fetchUsername || await getForumUsername(parseInt(uid));
     if (!G.fetchUsername) G.fetchUsername = slug;
-    setFetchStatus(`正在统计${startDate ? startDate + ' 至今' : '全部'}的回复...`);
-    const result = await scrapeForumPosts(parseInt(uid), slug, startDate, endDate);
-    _fetchResult = result;
-    showFetchResultOverlay(result.replies, result.citations);
+    setFetchStatus(`正在统计${scrapeFrom ? scrapeFrom + ' 至今' : '全部'}的回复...`);
+    const result = await scrapeForumPosts(parseInt(uid), slug, scrapeFrom, endDate);
+    if(_fetchAborted){ closeFetchOverlay(); return; }
+    setFetchStatus('正在比对云端记录…');
+    const fullByDay = expandByDayRange_Gal_(result.byDay, startDate, endDate);
+    const deduped = mergeByDayWithCloud_Gal_(fullByDay, cloudRows, startDate, endDate);
+    if(_fetchAborted){ closeFetchOverlay(); return; }
+    // 移除去重结果中早于优化区间的日期（云端已有记录属正常，无需提示）
+    if (scrapeFrom > startDate) {
+      deduped.skippedDates = deduped.skippedDates.filter(d => d >= scrapeFrom);
+    }
+    _fetchResult = Object.assign({}, result, {
+      replies: deduped.netR,
+      citations: deduped.netC,
+      byDay: deduped.netByDay,
+      rawR: result.replies,
+      rawC: result.citations,
+      skippedDates: deduped.skippedDates,
+      updatedDates: deduped.updatedDates
+    });
+    showFetchResultOverlay(deduped.netR, deduped.netC);
   } catch(err) {
     closeFetchOverlay();
     openUpdateStats();
@@ -5766,6 +6397,9 @@ function buildSaveData(){
   return {
     id: G.id, name: G.name, gender: G.gender,
     replies: G.replies, citations: G.citations,
+    usedReplies: Number(G.usedReplies||0),
+    usedCitations: Number(G.usedCitations||0),
+    manualEarnedSnap: G.manualEarnedSnap ? Object.assign({}, G.manualEarnedSnap) : null,
     chapter: G.chapter, sceneIdx: G.sceneIdx,
     choices: G.choices,
     affinity: G.affinity,
@@ -5814,6 +6448,9 @@ function loadSaveData(data){
   if(typeof G.forceSkipAll!=='boolean') G.forceSkipAll=false;
   if(typeof G.cgUnlockedOnly!=='boolean') G.cgUnlockedOnly=false;
   if(typeof G.autoSkipSeen!=='boolean') G.autoSkipSeen=false;
+  if(typeof G.usedReplies!=='number') G.usedReplies=Number(G.usedReplies||0)||0;
+  if(typeof G.usedCitations!=='number') G.usedCitations=Number(G.usedCitations||0)||0;
+  if(G.manualEarnedSnap && typeof G.manualEarnedSnap!=='object') G.manualEarnedSnap=null;
   // 旧档迁移：bool 解锁升级为对象结构
   try{
     Object.keys(G.cgUnlocked).forEach(k=>{
@@ -6042,19 +6679,18 @@ async function logForumFetchToGAS_(opts){
 
 function logGalActivityToGAS_(uid, date, replies, citations){
   if (!GAS_URL || !uid || !date) return;
-  fetch(GAS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sheet: '返乡活跃度',
+  try{
+    const pairs = {
+      sheet: GAL_ACTIVITY_SHEET,
       type: 'activity_log',
       uid: String(uid),
       date: String(date),
-      replies: parseInt(replies, 10) || 0,
-      citations: parseInt(citations, 10) || 0
-    })
-  }).catch(e => console.warn('GAS activity log failed', e));
+      replies: String(parseInt(replies, 10) || 0),
+      citations: String(parseInt(citations, 10) || 0)
+    };
+    const qs = Object.keys(pairs).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(pairs[k])).join('&');
+    (new Image()).src = GAS_URL + '?' + qs + '&_t=' + Date.now();
+  }catch(e){ console.warn('GAS activity log failed', e); }
 }
 
 // ══════════════════════════════════════════════
@@ -6068,6 +6704,7 @@ function setOfflineMode_(isOffline){
   const menuRow = document.getElementById('menu-offline-row');
   if(el) el.style.display = isOffline ? 'block' : 'none';
   if(menuRow) menuRow.style.display = isOffline ? 'block' : 'none';
+  updateGalGameConnBar_();
   if(isOffline){
     showToast('⚠ 无法连线云端，正在离线游玩（数据暂存本机）');
   }
@@ -6079,9 +6716,11 @@ async function checkCloudConnection_(){
     await fetch(GAS_URL+'?ping=1', {signal:ctrl.signal, mode:'no-cors'});
     clearTimeout(tid);
     setOfflineMode_(false);
+    setGalOnlineStatus_(true);
     return true;
   }catch(e){
     setOfflineMode_(true);
+    setGalOnlineStatus_(false);
     return false;
   }
 }
@@ -6096,15 +6735,18 @@ async function retryCloudConnection_(){
     showToast('仍无法连线，继续离线游玩，可稍后再试');
   }
 }
-function downloadGameData_(){
-  const now = new Date().toLocaleString('zh-TW');
+function buildGalExportRows_(){
+  const now = new Date().toLocaleString('zh-CN');
   const rows = [
     ['类别','项目','数值'],
     ['基本信息','论坛ID', G.id||''],
+    ['基本信息','论坛显示名', G.forumLabel||''],
     ['基本信息','玩家名称', G.name||''],
     ['基本信息','性别', {male:'男',female:'女',other:'其他'}[G.gender]||G.gender||''],
     ['游戏进度','累计回复数', G.replies||0],
     ['游戏进度','累计被引用数', G.citations||0],
+    ['游戏进度','已消耗回复数', G.usedReplies||0],
+    ['游戏进度','已消耗被引用数', G.usedCitations||0],
     ['奖励','本期返乡勋章', (G.rewards&&G.rewards.returnMedal)||0],
     ['奖励','往期返乡勋章兑换机会', (G.rewards&&G.rewards.legacyMedalChances)||0],
     ['奖励','节操', (G.rewards&&G.rewards.seiso)||0],
@@ -6125,17 +6767,79 @@ function downloadGameData_(){
       main_ending_reward:'本期返乡勋章',fd_ending_reward:'往期兑换机会'}[r.type||r.rewardType]||(r.type||r.rewardType||'');
     rows.push(['奖励记录','#'+(i+1)+' '+lab,'数量：'+(r.amount||1)+'　时间：'+(r.at||'')]);
   });
+  rows.push(['导出信息','游戏版本', GAME_VERSION]);
   rows.push(['导出信息','导出时间', now]);
-  __appendPortableSaveRows(rows,'gal_story',{saveData:buildSaveData()});
-  const csv = '\uFEFF' + rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href=url;
-  a.download='gal-story-数据_'+(G.id||'未知')+'_'+new Date().toISOString().slice(0,10)+'.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('📥 游玩数据已下载（CSV格式，Excel可直接开启）');
+  return rows;
+}
+
+function downloadGalSaveWithIntro_(){
+  const run = () => _downloadGalSaveCore_();
+  try{
+    if(!localStorage.getItem('galSaveDownloadIntro_v1')){
+      showSaveIntro_('下载游玩存档', '将导出完整游玩数据为 Excel 存档，可用本游戏「读取存档」还原进度。', run);
+      localStorage.setItem('galSaveDownloadIntro_v1','1');
+      return;
+    }
+  }catch(e){}
+  run();
+}
+function importGalSaveWithIntro_(){
+  const run = () => window.importGameSaveData_();
+  try{
+    if(!localStorage.getItem('galSaveImportIntro_v1')){
+      showSaveIntro_('读取存档', '请选择本游戏「下载游玩存档」导出的 Excel 文件；读取后将覆盖本机进度并尝试同步云端。', run);
+      localStorage.setItem('galSaveImportIntro_v1','1');
+      return;
+    }
+  }catch(e){}
+  run();
+}
+async function _downloadGalSaveCore_(){
+  if(typeof ExcelJS === 'undefined'){
+    showToast('Excel 组件未加载，请刷新页面后重试');
+    return;
+  }
+  try{
+    const wb = new ExcelJS.Workbook();
+    wb.creator = '星落食堂';
+    const ws = wb.addWorksheet('游玩存档');
+    const rows = buildGalExportRows_();
+    __appendPortableSaveRows(rows,'gal_story',{saveData:buildSaveData(),profile:buildProfileData_()});
+    rows.forEach(r => ws.addRow(r));
+    ws.getColumn(1).width = 14;
+    ws.getColumn(2).width = 22;
+    ws.getColumn(3).width = 52;
+    ws.eachRow(row => { row.eachCell(cell => { cell.protection = { locked: true }; }); });
+    await ws.protect(GAL_SAVE_XLSX_PASSWORD, {
+      selectLockedCells: true,
+      selectUnlockedCells: false,
+      formatCells: false,
+      formatColumns: false,
+      formatRows: false,
+      insertColumns: false,
+      insertRows: false,
+      insertHyperlinks: false,
+      deleteColumns: false,
+      deleteRows: false,
+      sort: false,
+      autoFilter: false,
+      pivotTables: false
+    });
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gal-story-存档_' + (G.id || '未知') + '_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('📥 游玩存档已下载');
+  }catch(e){
+    console.error(e);
+    showToast('存档导出失败：' + (e.message || e));
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -6223,6 +6927,24 @@ document.addEventListener('visibilitychange', ()=>{
 //  INIT
 // ══════════════════════════════════════════════
 initStars();
+(async function bootGal_(){
+  updateMenuVersion_();
+  renderGalLoginHistory_();
+  try{
+    const uid = localStorage.getItem(GAL_LOGIN_UID_KEY_);
+    const uidEl = document.getElementById('gal-login-uid');
+    if(uidEl && uid) uidEl.value = uid;
+    const hist = loadGalLoginHistory_();
+    if(hist.length){
+      const last = hist[0];
+      const idEl = document.getElementById('gal-login-id');
+      if(idEl && !idEl.value){
+        idEl.value = typeof last === 'string' ? last : (last.id || '');
+      }
+    }
+  }catch(e){}
+  await checkCloudConnection_();
+})();
 
 // ══════════════════════════════════════════════
 //  FIX: template literal error in renderMenuSaveSlots
@@ -6235,6 +6957,7 @@ initStars();
 window.__applyPortableSaveData=async function(data){
   if(!data||typeof data!=='object') throw new Error('bad_save');
   var saveData=data.saveData||data;
+  if(data.profile && typeof data.profile==='object') mergeProfileIntoState_(data.profile);
   loadSaveData(saveData);
   try{ SCENES=buildScenes(); }catch(e){}
   try{ saveProfileNow_(); }catch(e){ console.warn('cloud profile save after import failed',e); }
@@ -6291,46 +7014,58 @@ window.__applyPortableSaveData=async function(data){
   window.importGameSaveData_=function(){
     var input=document.createElement('input');
     input.type='file';
-    input.accept='.csv,.json,text/csv,application/json';
+    input.accept='.csv,.json,.xlsx,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     input.onchange=function(){
       var file=input.files&&input.files[0];
       if(!file) return;
+      var name=String(file.name||'').toLowerCase();
+      if(name.endsWith('.xlsx')){
+        if(typeof ExcelJS==='undefined'){ alert('Excel 组件未加载，无法读取 xlsx 存档'); return; }
+        var reader=new FileReader();
+        reader.onload=function(){
+          Promise.resolve().then(async function(){
+            if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
+            var wb=new ExcelJS.Workbook();
+            await wb.xlsx.load(reader.result);
+            var ws=wb.worksheets[0];
+            if(!ws) throw new Error('xlsx_empty');
+            var data=null;
+            ws.eachRow(function(row){
+              if(row.getCell(1).value==='__HTML_GAME_SAVE__' && row.getCell(2).value==='state_json'){
+                data=JSON.parse(String(row.getCell(3).value||'{}'));
+              }
+            });
+            if(!data) throw new Error('save_json_not_found');
+            return window.__applyPortableSaveData(data.saveData||data);
+          }).then(function(){
+            alert('读档完成：本机记录已复原，并已尝试同步到云端。');
+          }).catch(function(e){
+            console.error(e);
+            alert('读档失败：请选择由本游戏「下载游玩存档」导出的 Excel 文件。');
+          });
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+      }
       var reader=new FileReader();
       reader.onload=function(){
         Promise.resolve().then(function(){
           if(!window.__applyPortableSaveData) throw new Error('import_adapter_missing');
           var data=readPayload(reader.result);
-          return window.__applyPortableSaveData(data);
+          return window.__applyPortableSaveData(data.saveData||data);
         }).then(function(){
           alert('读档完成：本机记录已复原，并已尝试同步到云端。');
         }).catch(function(e){
           console.error(e);
-          alert('读档失败：请选择由本游戏「下载游玩数据/存档」导出的 CSV。');
+          alert('读档失败：请选择由本游戏「下载游玩存档」导出的 Excel 文件。');
         });
       };
       reader.readAsText(file,'utf-8');
     };
     input.click();
   };
-  window.__installPortableSaveImport=function(){
-    var found=false;
-    Array.prototype.forEach.call(document.querySelectorAll('button'),function(btn){
-      var oc=btn.getAttribute('onclick')||'';
-      if(oc.indexOf('download')<0 || btn.getAttribute('data-import-save-bound')) return;
-      btn.setAttribute('data-import-save-bound','1');
-      var b=document.createElement('button');
-      b.type='button';
-      b.className=btn.className||'';
-      b.style.cssText=btn.style.cssText||'';
-      b.textContent='📤 读取存档';
-      b.title='读取先前下载的存档 CSV';
-      b.onclick=window.importGameSaveData_;
-      btn.insertAdjacentElement('afterend',b);
-      found=true;
-    });
-    return found;
-  };
-  function boot(){ window.__installPortableSaveImport(); }
+  window.__installPortableSaveImport=function(){ return false; };
+  function boot(){}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
   else boot();
 })();
@@ -6446,5 +7181,9 @@ function doPost(e) {
 <!-- v3.0 2026-04-02 修复番外结局CG解锁；修复多周目结局计算（每次重置选择历史）；玩家面板3分区（本篇/番外/奖励）；番外结局可折叠展示；本期/往期返乡勋章；随机道具奖励（节操/羽毛/30天字母勋章）；游戏内奖励弹窗；GAS新增GAL奖励分页；彼岸回響特殊路线（集齐全9番外结局解锁） -->
 <!-- v3.1 2026-04-03 修复GAS奖励type字段被覆盖导致云端不记录的bug；修复不同UID间游戏数据继承问题（新游戏重置G）；自动读取中途改手动可暂停抓取并直接进游戏；番外旁白"X说。"改为动作描述；加入离线模式提示（菜单红色警告+下方浮动提示）；可下载游玩数据CSV（Excel可直接开启）；菜单加"下载游玩数据"按钮 -->
 <!-- v3.2 2026-04-04 GAL奖励云端记录道具类型改为中文（节操/羽毛/30天字母勋章） -->
+<!-- v3.3 2026-06-06 登入画面（ID+UID+连线状态+历史）；封面全屏自适应；论坛抓取逐日写入GAL返乡活跃度记录并云端去重；更新面板自动带入UID/年月与云端可用数；玩法说明与首次菜单引导；只读Excel存档与读档 -->
+<!-- v3.4 2026-06-06 菜单仅保留「下载游玩存档」「读取存档」；存档含完整游玩数据；界面不显示保护密码 -->
+<!-- v3.5 2026-06-06 UID锁定登入值；云端全部日期加总；手动输入校正不被覆盖；开局抓取写入云端；更新面板读取中锁定；菜单「其余选项」 -->
+<!-- v3.6 2026-06-06 菜单抓取确认后立即更新游戏内可用数；云端同步改为后台补强 -->
 </body>
 </html>

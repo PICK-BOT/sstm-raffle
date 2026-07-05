@@ -864,7 +864,7 @@ async function retryCloud(){
 // ══════════════════════════════════════════
 // UTIL
 // ══════════════════════════════════════════
-function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
 function showLoading(msg){ document.getElementById("loading-text").textContent=msg||"读取中..."; document.getElementById("loading-mask").style.display="flex"; }
 function hideLoading(){ document.getElementById("loading-mask").style.display="none"; }
 function showScreen(id){
@@ -1112,8 +1112,8 @@ async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
   if(opts.maxCitationChecks===0) citeBudget=0;
   else if(opts.maxCitationChecks==null) citeBudget=Number.POSITIVE_INFINITY;
   else citeBudget=Number.isFinite(Number(opts.maxCitationChecks))?Number(opts.maxCitationChecks):16;
-  const sTs=startDate?new Date(startDate+"T00:00:00").getTime():0;
-  const eTs=endDate?new Date(endDate+"T23:59:59").getTime():Date.now();
+  const sTs=startDate?new Date(startDate+"T00:00:00Z").getTime():0;
+  const eTs=endDate?new Date(endDate+"T23:59:59Z").getTime():Date.now();
   const prev=loadInc_(uid,startDate,keySuffix);
   const lastTs=prev?(prev.lastTs||0):0;
   let replies=prev?(prev.replies||0):0;
@@ -1231,7 +1231,7 @@ async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
 
 function _dateRange_(sd,ed){
   const days=[];
-  const cur=new Date(sd+'T12:00:00'); const end=new Date(ed+'T12:00:00');
+  const cur=new Date(sd+'T12:00:00Z'); const end=new Date(ed+'T12:00:00Z');
   while(cur<=end){ days.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
   return days;
 }
@@ -1449,8 +1449,8 @@ async function fffScrapeByDay_(uid,slug,startDate,endDate,scrapeOpts){
   else if(opts.maxCitationChecks==null) citeBudget=Number.POSITIVE_INFINITY;
   else citeBudget=Number.isFinite(Number(opts.maxCitationChecks))?Number(opts.maxCitationChecks):16;
 
-  const sTs=startDate?new Date(startDate+'T00:00:00').getTime():0;
-  const eTs=endDate  ?new Date(endDate  +'T23:59:59').getTime():Date.now();
+const sTs=startDate?new Date(startDate+'T00:00:00Z').getTime():0;
+   const eTs=endDate  ?new Date(endDate  +'T23:59:59Z').getTime():Date.now();
 
   let replies=0;
   const citedIds=new Set();
@@ -1608,17 +1608,28 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
     if(!G.forumDays||typeof G.forumDays!=='object') G.forumDays={};
     _migrateToForumDays_();
 
-    // 1. 抓取（全区间，内部按天记录）
-    showLoading('正在抓取 '+sd+' ~ '+ed+'...');
-    const raw=await fffScrapeByDay_(uid,slug,sd,ed,{
+    // 先做云端读取
+    var cloudRows = [];
+    if (!_offline && GAS_URL) {
+      showLoading('正在查询云端逐日记录…');
+      cloudRows = await _fetchActivityFromCloud_(uid, sd, ed);
+    }
+    // 计算优化抓取起点
+    var scrapeFrom = sd;
+    var lastFetch = G.lastFetchTime ? G.lastFetchTime.slice(0, 10) : null;
+    if (lastFetch && lastFetch > sd) scrapeFrom = lastFetch;
+
+    // 1. 抓取（缩减区间，内部按天记录）
+    showLoading('正在抓取 '+scrapeFrom+' ~ '+ed+'...');
+    const raw=await fffScrapeByDay_(uid,slug,scrapeFrom,ed,{
       onProgress:(msg)=>showLoading(msg),
       maxPages     :Number(opt&&opt.maxPages)||60,
       maxCitationChecks:(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:16
     });
 
     // 2. 与云端比对去重（新日期全额，已有日期补差额）
-    showLoading('正在查询云端逐日记录…');
-    const deduped=await _resolveDedup_(uid,raw.byDay,sd,ed,(msg)=>showLoading(msg));
+    showLoading('正在比对云端记录…');
+    var deduped = _mergeByDayWithCloud_(raw.byDay || {}, cloudRows, sd, ed);
     const{netByDay,netR,netC,skippedDates,updatedDates}=deduped;
 
     // 3. 合并到 G.forumDays
@@ -1642,6 +1653,7 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
     _forumFetched=true;
     const av=_calcForumAvail();
     G.replies=av.rawReplies; G.citations=av.rawCitations;
+    G.lastFetchTime = new Date().toISOString();
     saveState(); cloudSave();
 
     gasBeacon({sheet:SHEET,action:'forum_fetch',id:G.id,uid:String(uid),
@@ -3740,9 +3752,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   // 走一遍完整登入流程（含云端同步），确保通关记录、金币、星级等
   // 与云端保持一致，玩家不需要每次手动点击登入按钮。
   // ═══════════════════════════════════════════════════════════════
-  if(savedId&&savedUid&&parseInt(savedUid,10)>0){
-    doLogin();
-  }
+  // 不自动登入，仅填入栏位
 });
 document.addEventListener('keydown',e=>{
   if((e.key||'').toLowerCase()==='x'){
@@ -3795,12 +3805,12 @@ function applyUrlFill(){
   hideUrlFillOverlay();
 }
 /** 从论坛首页自动获取ID+UID */
+/** 从URL hash自动填入ID+UID（不自动登入） */
 async function fffAutoLogin(){
   var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
   var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
   if(!idEl||!uidEl) return;
-  if(idEl.value.trim()&&uidEl.value.trim()) return;
-  // 1) URL hash
+  // 1) URL hash (bookmarklet / 油猴跳转)
   var hash=location.hash||'';
   if(hash.indexOf('auto-id=')>=0){
     try{
@@ -3815,23 +3825,8 @@ async function fffAutoLogin(){
       }
     }catch(e){}
   }
-  // 2) proxy
-  try{
-    var html=await fffProxyGet('https://sstm.moe/');
-    var doc=new DOMParser().parseFromString(html,'text/html');
-    var userLink=doc.getElementById('cUserLink');
-    if(!userLink) return;
-    var profileLink=userLink.querySelector('a[href*="/profile/"]');
-    if(!profileLink) return;
-    var href=profileLink.getAttribute('href')||'';
-    var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
-    if(!m) return;
-    if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
-    if(!uidEl.value.trim()) uidEl.value=m[1];
-    return;
-  }catch(e){}
-  // 3) first visit popup
-  if(!localStorage.getItem('_urlFillShown')){
+  // 2) 首次使用 + 两栏都空白 → 弹窗教学
+  if(!idEl.value.trim() && !uidEl.value.trim() && !localStorage.getItem('_urlFillShown')){
     localStorage.setItem('_urlFillShown','1');
     setTimeout(showUrlFillOverlay, 500);
   }

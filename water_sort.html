@@ -673,7 +673,7 @@ function downloadGameData(){
 // ══════════════════════════════════════════
 // UTIL
 // ══════════════════════════════════════════
-function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
 function showLoading(msg){ document.getElementById("loading-text").textContent=msg||"读取中..."; document.getElementById("loading-mask").style.display="flex"; }
 function hideLoading(){ document.getElementById("loading-mask").style.display="none"; }
 function showScreen(id){
@@ -809,7 +809,7 @@ async function fffScrapeRange_(uid,slug,startDate,endDate,keySuffix,scrapeOpts){
   else citeBudget=Number.isFinite(Number(opts.maxCitationChecks))?Number(opts.maxCitationChecks):16;
   const sTs=startDate?new Date(startDate).getTime():0;
   // 用本地日界线，避免跨时区导致“上月抓不到”
-  const eTs=endDate?new Date(endDate+"T23:59:59").getTime():Date.now();
+  const eTs=endDate?new Date(endDate+"T23:59:59Z").getTime():Date.now();
   const prev=loadInc_(uid,startDate,keySuffix);
   const lastTs=prev?(prev.lastTs||0):0;
   let replies=prev?(prev.replies||0):0;
@@ -2943,10 +2943,10 @@ window.addEventListener('DOMContentLoaded', function(){
   document.getElementById('urlFillInput')?.addEventListener('keydown',function(e){
     if(e.key==='Enter') applyUrlFill();
   });
+  showScreen('screen-login');
   if(G.id){
-    _wsLoadActivityStats_().catch(function(){}).then(function(){ updateMenuUI(); try{ saveState(); }catch(e){} showScreen('menu'); enterMenu(); }).catch(function(){ showScreen('menu'); enterMenu(); });
+    _wsLoadActivityStats_().catch(function(){});
   }
-  else { showScreen('screen-login'); }
 });
 document.addEventListener('touchend',function(e){e.preventDefault();},{passive:false});
 
@@ -3161,6 +3161,60 @@ async function _wsFetchLog(p){
   }catch(e){}
 }
 
+function normalizeDateISO_(d) {
+  if (!d) return '';
+  var s = String(d).replace(/[年月]/g, '/').replace(/日/g, '').replace(/[.\-]/g, '/');
+  var m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (m) return [m[1], ('0'+m[2]).slice(-2), ('0'+m[3]).slice(-2)].join('-');
+  return d;
+}
+function mergeByDayWithCloud_(scrapedByDay, cloudRows, startDate, endDate) {
+  var existing = {};
+  (cloudRows || []).forEach(function(r) {
+    var d = normalizeDateISO_(r.date);
+    if (d) existing[d] = { replies: parseInt(r.replies, 10) || 0, citations: parseInt(r.citations, 10) || 0 };
+  });
+  var dateSet = {};
+  Object.keys(scrapedByDay || {}).forEach(function(d) {
+    var nd = normalizeDateISO_(d);
+    if (!nd) return;
+    if (startDate && nd < startDate) return;
+    if (endDate && nd > endDate) return;
+    dateSet[nd] = 1;
+  });
+  Object.keys(existing).forEach(function(d) {
+    if (startDate && d < startDate) return;
+    if (endDate && d > endDate) return;
+    dateSet[d] = 1;
+  });
+  var netByDay = {}, skippedDates = [], updatedDates = [];
+  var netR = 0, netC = 0;
+  Object.keys(dateSet).sort().forEach(function(d) {
+    var src = scrapedByDay && scrapedByDay[d];
+    var scraped = {
+      replies: src ? (parseInt(src.replies, 10) || 0) : 0,
+      citations: src ? (parseInt(src.citations, 10) || 0) : 0
+    };
+    var cloud = existing[d];
+    if (!cloud) {
+      if (scraped.replies <= 0 && scraped.citations <= 0) return;
+      netByDay[d] = { replies: scraped.replies, citations: scraped.citations };
+      netR += scraped.replies; netC += scraped.citations;
+      return;
+    }
+    var dR = Math.max(0, scraped.replies - cloud.replies);
+    var dC = Math.max(0, scraped.citations - cloud.citations);
+    if (dR <= 0 && dC <= 0) { skippedDates.push(d); return; }
+    netByDay[d] = { replies: Math.max(scraped.replies, cloud.replies), citations: Math.max(scraped.citations, cloud.citations) };
+    netR += dR; netC += dC; updatedDates.push(d);
+  });
+  return { netByDay: netByDay, netR: netR, netC: netC, skippedDates: skippedDates, updatedDates: updatedDates };
+}
+
+function logActivityByDayToGAS_(uid, netByDay) {
+  Object.entries(netByDay || {}).forEach(function(e) { var date = e[0], c = e[1]; _wsActivityLog(uid, date, c.replies, c.citations); });
+}
+
 // --- Vercel proxy ---
 var WS_FETCH_MS=35000;
 var WS_PROXY_VERCEL='https://sstm-raffle.vercel.app/Domino-style-proxy?url=';
@@ -3226,7 +3280,7 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
     existing.forEach(function(r){existingMap[r.date]={replies:parseInt(r.replies,10)||0,citations:parseInt(r.citations,10)||0};});
     // 3. 抓取论坛
     _wsShowLoading("正在连接论坛…");
-    var startD=new Date(sd+"T00:00:00"),endD=new Date(ed+"T23:59:59");
+    var scrapeFrom=G.lastFetchTime?new Date(G.lastFetchTime):new Date(sd+"T00:00:00Z"),endD=new Date(ed+"T23:59:59Z");
     var slug=null;
     try{
       var sh=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+uid);
@@ -3246,9 +3300,9 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
         var t=it.querySelector("time[datetime]")||it.querySelector("time");
         var dt=t&&(t.getAttribute("datetime")||t.textContent||"");
         var m=String(dt).match(/(\d{4})-(\d{2})-(\d{2})/);
-        var dateObj=m?new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00"):null;
-        if(dateObj&&dateObj>=startD)allOlder=false;
-        if(!dateObj||dateObj<startD||dateObj>endD)return;
+        var dateObj=m?new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00Z"):null;
+        if(dateObj&&dateObj>=scrapeFrom)allOlder=false;
+        if(!dateObj||dateObj<scrapeFrom||dateObj>endD)return;
         anyIn=true;
         var ds2=dateObj.toISOString().slice(0,10);
         if(!byDay[ds2])byDay[ds2]={replies:0,citations:0,citationChecks:[]};
@@ -3274,22 +3328,14 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
       }));
       await new Promise(function(r){setTimeout(r,50);});
     }
-    // 4. 逐日比对：仅记录超过云端的净新增，云端写入 max(抓取,云端)
-    var netR=0,netC=0,skippedDates=[];
-    for(var dsKey2 in byDay){
-      var day=byDay[dsKey2];
-      var cloud=existingMap[dsKey2];
-      if(cloud){
-        var dR=Math.max(0,day.replies-cloud.replies);
-        var dC=Math.max(0,day.citations-cloud.citations);
-        if(dR===0&&dC===0){skippedDates.push(dsKey2);continue;}
-        netR+=dR;netC+=dC;
-        try{await _wsActivityLog(uid,dsKey2,Math.max(day.replies,cloud.replies),Math.max(day.citations,cloud.citations));}catch(e){}
-      }else{
-        netR+=day.replies;netC+=day.citations;
-        try{await _wsActivityLog(uid,dsKey2,day.replies,day.citations);}catch(e){}
-      }
-    }
+    // 4. 云比对合并：用 mergeByDayWithCloud_ 完成逐日去重
+    var scrapedByDay={};
+    Object.keys(byDay).forEach(function(d){scrapedByDay[d]={replies:byDay[d].replies,citations:byDay[d].citations};});
+    var merged=mergeByDayWithCloud_(scrapedByDay,existing,sd,ed);
+    await new Promise(function(r){setTimeout(r,1);});
+    logActivityByDayToGAS_(uid,merged.netByDay);
+    var netR=merged.netR,netC=merged.netC,skippedDates=merged.skippedDates;
+    G.lastFetchTime=new Date().toISOString();
     // 5. 增量累加
     G.replies=(Number(G.replies)||0)+netR;G.citations=(Number(G.citations)||0)+netC;
     G.fetchRangeHistory[rk]=new Date().toISOString();
@@ -3511,13 +3557,12 @@ function applyUrlFill(){
   if(err) err.style.display='none';
   hideUrlFillOverlay();
 }
-/** 从论坛首页自动获取ID+UID */
+/** 从URL hash自动填入ID+UID（不自动登入） */
 async function fffAutoLogin(){
   var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
   var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
   if(!idEl||!uidEl) return;
-  if(idEl.value.trim()&&uidEl.value.trim()) return;
-  // 1) URL hash
+  // 1) URL hash (bookmarklet / 油猴跳转)
   var hash=location.hash||'';
   if(hash.indexOf('auto-id=')>=0){
     try{
@@ -3532,23 +3577,8 @@ async function fffAutoLogin(){
       }
     }catch(e){}
   }
-  // 2) proxy
-  try{
-    var html=await fffProxyGet('https://sstm.moe/');
-    var doc=new DOMParser().parseFromString(html,'text/html');
-    var userLink=doc.getElementById('cUserLink');
-    if(!userLink) return;
-    var profileLink=userLink.querySelector('a[href*="/profile/"]');
-    if(!profileLink) return;
-    var href=profileLink.getAttribute('href')||'';
-    var m=href.match(/\/profile\/(\d+)-([^\/\?#"]+)/);
-    if(!m) return;
-    if(!idEl.value.trim()) idEl.value=decodeURIComponent(m[2]);
-    if(!uidEl.value.trim()) uidEl.value=m[1];
-    return;
-  }catch(e){}
-  // 3) first visit popup
-  if(!localStorage.getItem('_urlFillShown')){
+  // 2) 首次使用 + 两栏都空白 → 弹窗教学
+  if(!idEl.value.trim() && !uidEl.value.trim() && !localStorage.getItem('_urlFillShown')){
     localStorage.setItem('_urlFillShown','1');
     setTimeout(showUrlFillOverlay, 500);
   }

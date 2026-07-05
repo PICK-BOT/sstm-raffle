@@ -943,7 +943,7 @@ function downloadGameDataCSV_(rows){
 // ══════════════════════════════════════════
 // UTIL
 // ══════════════════════════════════════════
-function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
 function showLoading(msg){ document.getElementById("loading-text").textContent=msg||"读取中..."; document.getElementById("loading-mask").style.display="flex"; }
 function hideLoading(){ document.getElementById("loading-mask").style.display="none"; }
 function showScreen(id){
@@ -1332,7 +1332,7 @@ async function fffScrape(uid,slug,startDate,endDate,onProgress,scrapeOpts){
 function enumerateDates_(startDate,endDate){
   const out=[];
   if(!startDate||!endDate)return out;
-  const d=new Date(startDate+'T12:00:00'),end=new Date(endDate+'T12:00:00');
+  const d=new Date(startDate+'T12:00:00Z'),end=new Date(endDate+'T12:00:00Z');
   if(isNaN(d.getTime())||isNaN(end.getTime()))return out;
   while(d<=end){out.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}
   return out;
@@ -1428,9 +1428,19 @@ async function fetchForumDataCustom(showAlert,startDate,endDate,opt){
     const ed=endDate||sd;
     const rk=fetchRangeKey_(G.uid,sd,ed);
     if(!G.fetchRangeHistory||typeof G.fetchRangeHistory!=='object')G.fetchRangeHistory={};
-    const result=await fffScrape(G.uid,slug,sd,ed,(msg)=>showLoading(msg),opt||{});
-    showLoading('正在查询云端逐日记录…');
-    const deduped=await resolveForumFetchDedup_(G.uid,result.byDay||{},sd,ed,(msg)=>showLoading(msg));
+    // 先做云端读取
+    var cloudRows = [];
+    if (gasReady() && GAS_URL) {
+      showLoading('正在查询云端逐日记录…');
+      cloudRows = await fetchActivityFromGAS_(G.uid, sd, ed);
+    }
+    // 计算优化抓取起点
+    var scrapeFrom = sd;
+    var lastFetch = G.lastFetchTime ? G.lastFetchTime.slice(0, 10) : null;
+    if (lastFetch && lastFetch > sd) scrapeFrom = lastFetch;
+    const result=await fffScrape(G.uid,slug,scrapeFrom,ed,(msg)=>showLoading(msg),opt||{});
+    showLoading('正在比对云端记录…');
+    var deduped=mergeByDayWithCloud_(result.byDay || {}, cloudRows, sd, ed);
     const {netByDay,netR,netC,skippedDates,updatedDates}=deduped;
     G.replies=(Number(G.replies)||0)+netR;
     G.citations=(Number(G.citations)||0)+netC;

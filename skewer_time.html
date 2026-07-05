@@ -434,19 +434,24 @@ async function refreshForumDataFast(){setForumStatus("正在快速抓取中...")
 async function fetchForumDataCustom(show,opt){
   if(!G.uid){alert("先登入");return false;}
   const sd=qs("forum-start-date").value||todayISO(),ed=qs("forum-end-date").value||sd;
-  const startD=new Date(sd+"T00:00:00"),endD=new Date(ed+"T23:59:59");
+  const startD=new Date(sd+"T00:00:00Z"),endD=new Date(ed+"T23:59:59Z");
   function inRange_(d){ if(!(d instanceof Date)||isNaN(d)) return false; return d>=startD && d<=endD; }
   function parseItemDate_(it){
     const t=it.querySelector("time[datetime]")||it.querySelector("time");
     const dt=t && (t.getAttribute("datetime")||t.textContent||"");
     const m=String(dt).match(/(\d{4})-(\d{2})-(\d{2})/);
-    if(m) return new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00");
+    if(m) return new Date(m[1]+"-"+m[2]+"-"+m[3]+"T12:00:00Z");
     return null;
   }
   try{
     const sh=await fffProxyGet("https://sstm.moe/?app=core&module=members&controller=profile&id="+G.uid);
     const slug=(sh.match(/\/profile\/([^\/"?#]+)/)||[])[1];
     if(!slug)throw new Error("slug失败");
+    var _cloudRows;
+    try{_cloudRows=await fetchActivityFromGAS_(G.uid,sd,ed);}catch(e){}
+    var scrapeFrom=G.lastFetchTime?G.lastFetchTime.slice(0,10):sd;
+    var scrapeStartD=new Date(scrapeFrom+"T00:00:00Z");
+    var byDay={};
     let page=1,replies=0,cites=0,budget=(opt&&opt.maxCitationChecks!==undefined)?opt.maxCitationChecks:20,maxPages=(opt&&opt.maxPages)||60;
     while(page<=maxPages){
       setForumStatus("正在抓取中...第 "+page+" 页");
@@ -459,18 +464,20 @@ async function fetchForumDataCustom(show,opt){
       const arr=[];
       items.forEach(it=>{
         const d=parseItemDate_(it);
-        if(d && d>=startD) allOlder=false;
+        if(d && d>=scrapeStartD) allOlder=false;
         if(!d || !inRange_(d)) return;
         anyIn=true;
+        const dateStr=d.toISOString().slice(0,10);
+        if(!byDay[dateStr]) byDay[dateStr]={replies:0,citations:0};
         const a=it.querySelector("p.ipsType_light a[href]");
-        if(a&&/forum\/32[-\/]/.test(a.getAttribute("href")||"")) replies++;
+        if(a&&/forum\/32[-\/]/.test(a.getAttribute("href")||"")){replies++;byDay[dateStr].replies++;}
         const bq=it.querySelector(".ipsQuote");
         if(bq){
           const cid=bq.getAttribute("data-ipsquote-contentcommentid"),tid=bq.getAttribute("data-ipsquote-contentid");
-          if(cid&&tid) arr.push({cid,tid});
+          if(cid&&tid) arr.push({cid,tid,date:dateStr});
         }
       });
-      // 若该页全部都早于开始日期，直接早停（避免一直翻页）
+      // 若该页全部都早于增量起始日期，直接早停（避免重复抓取）
       if(allOlder && !anyIn) break;
       const chk=arr.slice(0,Math.max(0,budget));
       budget-=chk.length;
@@ -478,7 +485,7 @@ async function fetchForumDataCustom(show,opt){
         await Promise.all(chk.slice(i,i+10).map(async x=>{
           try{
             const q=await fffProxyGet("https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid);
-            if(/forum\/32[-\/]/.test(q)&&new RegExp('data-ipsquote-userid=\"'+G.uid+'\"').test(q)) cites++;
+            if(/forum\/32[-\/]/.test(q)&&new RegExp('data-ipsquote-userid=\"'+G.uid+'\"').test(q)){cites++;if(x.date&&byDay[x.date])byDay[x.date].citations++;}
           }catch(e){}
         }));
       }
@@ -486,26 +493,17 @@ async function fetchForumDataCustom(show,opt){
       page++;
       await new Promise(r=>setTimeout(r,24));
     }
-    // 从云端获取全部记录，修正历史膨胀
-    try{
-      var _fit=await fetchActivityFromGAS_(G.uid,'','');
-      var _csR=0,_csC=0;
-      (_fit||[]).forEach(function(r){_csR+=parseInt(r.replies,10)||0;_csC+=parseInt(r.citations,10)||0;});
-      if(_csR>0||_csC>0){G.replies=_csR+replies;G.citations=_csC+cites;}
-      else{G.replies=(Number(G.replies)||0)+replies;G.citations=(Number(G.citations)||0)+cites;}
-    }catch(e){
-      G.replies=(Number(G.replies)||0)+replies;
-      G.citations=(Number(G.citations)||0)+cites;
-    }
+    var merged=mergeByDayWithCloud_(byDay,_cloudRows,sd,ed);
+    G.lastFetchTime=new Date().toISOString();
+    G.replies=(Number(G.replies)||0)+merged.netR;
+    G.citations=(Number(G.citations)||0)+merged.netC;
+    try{var _sbd={};Object.keys(merged.netByDay).forEach(function(d){_sbd[d]=merged.netByDay[d].replies;});logActivityByDayToGAS_(G.uid,_sbd);}catch(e){}
     save();cloudSave();updateShopCurrency();updateMenuStat();
-    // 活跃度打点
-    var _netByDay={};_netByDay[sd]=_netByDay[ed]=1;
-    logActivityByDayToGAS_(G.uid,_netByDay);
-    logForumFetchToGAS_({mode:'fast_fetch',forum_uid:String(G.uid),reply_count:replies,citation_count:cites,startDate:sd,endDate:ed});
+    logForumFetchToGAS_({mode:'fast_fetch',forum_uid:String(G.uid),reply_count:merged.netR,citation_count:merged.netC,startDate:sd,endDate:ed});
     // 打点记录本次增量（避免与累计值混淆）
-    gasBeacon({sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(G.uid),replies:String(replies),citations:String(cites),startDate:sd,endDate:ed,date:todayISO()});
-    setForumStatus("抓取完成：回复 "+replies+" / 被引用 "+cites);
-    if(show) alert("抓取完成\n回复:"+replies+" 被引用:"+cites);
+    gasBeacon({sheet:SHEET,action:"forum_fetch",id:G.id,uid:String(G.uid),replies:String(merged.netR),citations:String(merged.netC),startDate:sd,endDate:ed,date:todayISO()});
+    setForumStatus("抓取完成：回复 "+merged.netR+" / 被引用 "+merged.netC);
+    if(show) alert("抓取完成\n回复:"+merged.netR+" 被引用:"+merged.netC);
     return true;
   }catch(e){
     setForumStatus("抓取失败："+e.message);
@@ -522,6 +520,55 @@ function logActivityByDayToGAS_(uid,netByDay){
   Object.keys(netByDay).forEach(function(d){
     gasBeacon({sheet:SHEET,action:"activity_log",uid:String(uid),date:d,replies:String(netByDay[d]||0),citations:'0'});
   });
+}
+function normalizeDateISO_(d) {
+  if (!d) return '';
+  var s = String(d).replace(/[年月]/g, '/').replace(/日/g, '').replace(/[.\-]/g, '/');
+  var m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (m) return [m[1], ('0'+m[2]).slice(-2), ('0'+m[3]).slice(-2)].join('-');
+  return d;
+}
+function mergeByDayWithCloud_(scrapedByDay, cloudRows, startDate, endDate) {
+  var existing = {};
+  (cloudRows || []).forEach(function(r) {
+    var d = normalizeDateISO_(r.date);
+    if (d) existing[d] = { replies: parseInt(r.replies, 10) || 0, citations: parseInt(r.citations, 10) || 0 };
+  });
+  var dateSet = {};
+  Object.keys(scrapedByDay || {}).forEach(function(d) {
+    var nd = normalizeDateISO_(d);
+    if (!nd) return;
+    if (startDate && nd < startDate) return;
+    if (endDate && nd > endDate) return;
+    dateSet[nd] = 1;
+  });
+  Object.keys(existing).forEach(function(d) {
+    if (startDate && d < startDate) return;
+    if (endDate && d > endDate) return;
+    dateSet[d] = 1;
+  });
+  var netByDay = {}, skippedDates = [], updatedDates = [];
+  var netR = 0, netC = 0;
+  Object.keys(dateSet).sort().forEach(function(d) {
+    var src = scrapedByDay && scrapedByDay[d];
+    var scraped = {
+      replies: src ? (parseInt(src.replies, 10) || 0) : 0,
+      citations: src ? (parseInt(src.citations, 10) || 0) : 0
+    };
+    var cloud = existing[d];
+    if (!cloud) {
+      if (scraped.replies <= 0 && scraped.citations <= 0) return;
+      netByDay[d] = { replies: scraped.replies, citations: scraped.citations };
+      netR += scraped.replies; netC += scraped.citations;
+      return;
+    }
+    var dR = Math.max(0, scraped.replies - cloud.replies);
+    var dC = Math.max(0, scraped.citations - cloud.citations);
+    if (dR <= 0 && dC <= 0) { skippedDates.push(d); return; }
+    netByDay[d] = { replies: Math.max(scraped.replies, cloud.replies), citations: Math.max(scraped.citations, cloud.citations) };
+    netR += dR; netC += dC; updatedDates.push(d);
+  });
+  return { netByDay: netByDay, netR: netR, netC: netC, skippedDates: skippedDates, updatedDates: updatedDates };
 }
 function logForumFetchToGAS_(info){
   if(!info||!info.forum_uid)return;

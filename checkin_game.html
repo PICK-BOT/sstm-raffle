@@ -529,7 +529,7 @@ let _offline = false;
 // UTIL
 // ================================================================
 function nowDate(){ return new Date().toLocaleDateString("zh-TW",{year:"numeric",month:"2-digit",day:"2-digit"}).replace(/\//g,"-"); }
-function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
 function weekKey(d){ // "YYYY-Wnn"
   const dt=d?new Date(d):new Date();
   const start=new Date(dt);
@@ -555,7 +555,7 @@ function weekStartFromKey_(wk){
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 }
 function addDays_(iso,days){
-  const d=new Date(iso+"T00:00:00");
+  const d=new Date(iso+"T00:00:00Z");
   d.setDate(d.getDate()+days);
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 }
@@ -664,6 +664,58 @@ function logActivityToCloud_(id, uid, date, replies, citations){
     replies: String(r),
     citations: String(c)
   });
+}
+function normalizeDateISO_(d) {
+  if (!d) return '';
+  var s = String(d).replace(/[年月]/g, '/').replace(/日/g, '').replace(/[.\-]/g, '/');
+  var m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (m) return [m[1], ('0'+m[2]).slice(-2), ('0'+m[3]).slice(-2)].join('-');
+  return d;
+}
+function mergeByDayWithCloud_(scrapedByDay, cloudRows, startDate, endDate) {
+  var existing = {};
+  (cloudRows || []).forEach(function(r) {
+    var d = normalizeDateISO_(r.date);
+    if (d) existing[d] = { replies: parseInt(r.replies, 10) || 0, citations: parseInt(r.citations, 10) || 0 };
+  });
+  var dateSet = {};
+  Object.keys(scrapedByDay || {}).forEach(function(d) {
+    var nd = normalizeDateISO_(d);
+    if (!nd) return;
+    if (startDate && nd < startDate) return;
+    if (endDate && nd > endDate) return;
+    dateSet[nd] = 1;
+  });
+  Object.keys(existing).forEach(function(d) {
+    if (startDate && d < startDate) return;
+    if (endDate && d > endDate) return;
+    dateSet[d] = 1;
+  });
+  var netByDay = {}, skippedDates = [], updatedDates = [];
+  var netR = 0, netC = 0;
+  Object.keys(dateSet).sort().forEach(function(d) {
+    var src = scrapedByDay && scrapedByDay[d];
+    var scraped = {
+      replies: src ? (parseInt(src.replies, 10) || 0) : 0,
+      citations: src ? (parseInt(src.citations, 10) || 0) : 0
+    };
+    var cloud = existing[d];
+    if (!cloud) {
+      if (scraped.replies <= 0 && scraped.citations <= 0) return;
+      netByDay[d] = { replies: scraped.replies, citations: scraped.citations };
+      netR += scraped.replies; netC += scraped.citations;
+      return;
+    }
+    var dR = Math.max(0, scraped.replies - cloud.replies);
+    var dC = Math.max(0, scraped.citations - cloud.citations);
+    if (dR <= 0 && dC <= 0) { skippedDates.push(d); return; }
+    netByDay[d] = { replies: Math.max(scraped.replies, cloud.replies), citations: Math.max(scraped.citations, cloud.citations) };
+    netR += dR; netC += dC; updatedDates.push(d);
+  });
+  return { netByDay: netByDay, netR: netR, netC: netC, skippedDates: skippedDates, updatedDates: updatedDates };
+}
+function logActivityByDayToGAS_(uid, netByDay) {
+  Object.entries(netByDay || {}).forEach(function(e) { var date = e[0], c = e[1]; logActivityToCloud_(G.id, uid, date, c.replies, c.citations); });
 }
 function gasJsonp(params, timeout=8000){
   return new Promise((resolve,reject)=>{
@@ -1611,6 +1663,8 @@ async function fffScrapeRange_(uid, slug, startDate, endDate, keySuffix){
   let replies     = prev ? (prev.replies||0)     : 0;
   let emojiReacts = prev ? (prev.emojiReacts||0) : 0;
   const citedIds  = new Set(prev ? (prev.citations||[]) : []);
+  var byDay = {};
+  var dayCitationMap = {};
 
   // 引用验证缓存（localStorage 跨次保留）
   const ccKey="cgcc_"+uid;
@@ -1645,6 +1699,9 @@ async function fffScrapeRange_(uid, slug, startDate, endDate, keySuffix){
       const fa=item.querySelector("p.ipsType_light a[href]");
       if(!fa||!NOVICE_FORUM_RE.test(fa.getAttribute("href")||"")) continue;
       replies++;
+      var postDate = new Date(ts).toISOString().slice(0, 10);
+      byDay[postDate] = byDay[postDate] || { replies: 0, citations: 0 };
+      byDay[postDate].replies++;
 
       // 表情反应
       item.querySelectorAll(".ipsReact_reactCount").forEach(el=>{
@@ -1660,13 +1717,13 @@ async function fffScrapeRange_(uid, slug, startDate, endDate, keySuffix){
       if(!bq) continue;
       const c2=bq.getAttribute("data-ipsquote-contentcommentid");
       const t2=bq.getAttribute("data-ipsquote-contentid");
-      if(c2&&t2) toCheck.push({cid:c2,tid:t2});
+      if(c2&&t2) toCheck.push({cid:c2,tid:t2,date:postDate});
     }
 
     if(toCheck.length){
       for(const x of toCheck){
         if(citedIds.has(x.cid)) continue; // 已计过的不重复
-        if(cache.has(x.cid)){ if(cache.get(x.cid)) citedIds.add(x.cid); continue; }
+        if(cache.has(x.cid)){ if(cache.get(x.cid)) { citedIds.add(x.cid); dayCitationMap[x.cid]=x.date; } continue; }
         try{
           const qUrl="https://sstm.moe/?app=core&module=system&controller=content&do=find&content_class=forums_Topic&content_id="+x.tid+"&content_commentid="+x.cid;
           const qHtml=await fffProxyGet(qUrl, true);
@@ -1676,7 +1733,7 @@ async function fffScrapeRange_(uid, slug, startDate, endDate, keySuffix){
           if(!el){cache.set(x.cid,false);continue;}
           const qs=el.querySelectorAll('.ipsQuote[data-ipsquote-userid="'+uid+'"]');
           const ok=Array.from(qs).some(q=>!q.parentElement.closest(".ipsQuote"));
-          cache.set(x.cid,ok); if(ok) citedIds.add(x.cid);
+          cache.set(x.cid,ok); if(ok) { citedIds.add(x.cid); dayCitationMap[x.cid]=x.date; }
         }catch(e){cache.set(x.cid,false);}
         await new Promise(r=>setTimeout(r,150));
       }
@@ -1690,6 +1747,13 @@ async function fffScrapeRange_(uid, slug, startDate, endDate, keySuffix){
     await new Promise(r=>setTimeout(r,300));
   }
 
+  // 按日累计引用数
+  Object.keys(dayCitationMap).forEach(function(cid) {
+    var d = dayCitationMap[cid];
+    if (!byDay[d]) byDay[d] = {replies: 0, citations: 0};
+    byDay[d].citations++;
+  });
+
   // 保存引用验证缓存
   try{localStorage.setItem(ccKey,JSON.stringify(Object.fromEntries(cache)));}catch(e){}
 
@@ -1701,7 +1765,7 @@ async function fffScrapeRange_(uid, slug, startDate, endDate, keySuffix){
     emojiReacts
   });
 
-  return{replies, citations:citedIds.size, emojiReacts};
+  return{replies, citations:citedIds.size, emojiReacts, byDay};
 }
 
 // 检查 Google Sheets 中的游戏记录
@@ -1731,8 +1795,8 @@ async function countGameSheetRecords_(sheetUrl, startDate, endDate, uid){
     if(!text||text.startsWith("<!DOCTYPE")||text.startsWith("<html")) return 0;
     const uidStr=String(uid||"").trim();
     const idStr=String((G&&G.id)||"").trim();
-    const sTs=new Date(startDate+"T00:00:00").getTime();
-    const eTs=new Date(endDate+"T23:59:59").getTime();
+    const sTs=new Date(startDate+"T00:00:00Z").getTime();
+    const eTs=new Date(endDate+"T23:59:59Z").getTime();
     const lines=text.split(/\r?\n/).filter(l=>l.trim());
     let cnt=0, cntDateOnly=0;
     const toLocalYmd_=(dt)=>{
@@ -1747,14 +1811,14 @@ async function countGameSheetRecords_(sheetUrl, startDate, endDate, uid){
       const isoMatch=ln.match(/(20\d{2}-\d{1,2}-\d{1,2}T\d{1,2}:\d{2}:\d{2}(?:\.\d+)?Z)/);
       if(isoMatch){
         const localYmd=toLocalYmd_(isoMatch[1]); // 按本地时区换算日界线
-        if(localYmd) ts=new Date(localYmd+"T12:00:00").getTime();
+        if(localYmd) ts=new Date(localYmd+"T12:00:00Z").getTime();
       }
       // 2) 退回普通日期格式
       if(isNaN(ts)){
         const m=ln.match(/(20\d{2})[-\/](\d{1,2})[-\/](\d{1,2})/);
         if(!m) continue;
         const dIso=m[1]+"-"+String(Number(m[2])).padStart(2,"0")+"-"+String(Number(m[3])).padStart(2,"0");
-        ts=new Date(dIso+"T12:00:00").getTime();
+        ts=new Date(dIso+"T12:00:00Z").getTime();
       }
       if(ts>=sTs && ts<=eTs){
         if(hasIdentity) cnt++;
@@ -1783,14 +1847,37 @@ function fffOpen(){
 function fffClose(){ document.getElementById("fff-modal").style.display="none"; }
 async function fffDoFetch(){
   const uid=parseInt(document.getElementById("fff-uid-inp").value.trim(),10);
-  const start=document.getElementById("fff-start").value;
-  const end=document.getElementById("fff-end").value;
+  var startDate=document.getElementById("fff-start").value;
+  var endDate=document.getElementById("fff-end").value;
   if(!uid){ document.getElementById("fff-status-text").textContent="请输入有效 UID"; return; }
   document.getElementById("fff-status-text").textContent="抓取中...";
   try{
-    const result=await fffScrapeRange(uid,start,end);
-    document.getElementById("fff-status-text").textContent=
-      "完成！回复："+result.replies+"　被引用："+result.citations+"　表情反应："+result.emojiReacts;
+    // 先做云端读取
+    var cloudRows = [];
+    if (typeof GAS_URL === 'string' && GAS_URL.indexOf('__') < 0 && GAS_URL.indexOf('PASTE') < 0) {
+      document.getElementById("fff-status-text").textContent = "正在查询云端逐日记录…";
+      var cd = await gasJsonp({ sheet: SHEET, action: 'activity_fetch', uid: String(uid), startDate: String(startDate || ''), endDate: String(endDate || '') }, 15000);
+      cloudRows = (cd && cd.rows) || [];
+    }
+    // 计算优化抓取起点：从上次抓取日期开始，避免重复抓取旧数据
+    var scrapeFrom = startDate;
+    var lastFetch = G.lastFetchTime ? G.lastFetchTime.slice(0, 10) : null;
+    if (lastFetch && lastFetch > startDate) scrapeFrom = lastFetch;
+
+    document.getElementById("fff-status-text").textContent = "正在获取论坛资料...";
+    const result = await fffScrapeRange(uid, scrapeFrom, endDate);
+
+    document.getElementById("fff-status-text").textContent = "正在比对云端记录…";
+    const deduped = mergeByDayWithCloud_(result.byDay || {}, cloudRows, startDate, endDate);
+    const { netByDay, netR, netC } = deduped;
+
+    G.lastFetchTime = new Date().toISOString();
+
+    // 仅将增量部分写回云端
+    logActivityByDayToGAS_(uid, netByDay);
+
+    document.getElementById("fff-status-text").textContent =
+      "完成！回复："+netR+"　被引用："+netC+"　表情反应："+(result.emojiReacts||0);
   }catch(e){
     document.getElementById("fff-status-text").textContent="抓取失败："+e.message;
   }
@@ -1964,8 +2051,12 @@ function applyUrlFill(){
   if(err) err.style.display='none';
   hideUrlFillOverlay();
 }
+/** 从URL hash自动填入ID+UID（不自动登入） */
 async function fffAutoLogin(){
-  // 1) URL hash
+  var idEl=document.getElementById('inp-id')||document.getElementById('inputId')||document.getElementById('uid');
+  var uidEl=document.getElementById('inp-uid')||document.getElementById('inputUid')||document.getElementById('forum-uid-num');
+  if(!idEl||!uidEl) return;
+  // 1) URL hash (bookmarklet / 油猴跳转)
   var hash=location.hash||'';
   if(hash.indexOf('auto-id=')>=0){
     try{
@@ -1973,35 +2064,15 @@ async function fffAutoLogin(){
       var hid=sp.get('auto-id');
       var huid=sp.get('auto-uid');
       if(hid&&huid){
-        var inpId=document.getElementById('inp-id')||document.getElementById('uid');
-        var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
-        if(inpId) inpId.value=decodeURIComponent(hid);
-        if(inpUid) inpUid.value=huid;
+        if(!idEl.value.trim()) idEl.value=decodeURIComponent(hid);
+        if(!uidEl.value.trim()) uidEl.value=huid;
         history.replaceState(null,'',location.pathname+location.search);
         return;
       }
     }catch(e){}
   }
-  // 2) proxy
-  try{
-    var html=await fffProxyGet('https://sstm.moe/');
-    var d=document.createElement('div');
-    d.innerHTML=html;
-    var link=d.querySelector('#cUserLink');
-    if(!link)return;
-    var href=link.getAttribute('href')||'';
-    var m=href.match(/profile\/(\d+)/)||href.match(/uid=(\d+)/);
-    if(!m)return;
-    var uid=m[1];
-    var name=link.textContent.trim();
-    var inpId=document.getElementById('inp-id')||document.getElementById('uid');
-    var inpUid=document.getElementById('inp-uid')||document.getElementById('forum-uid-num');
-    if(inpId) inpId.value=name;
-    if(inpUid) inpUid.value=uid;
-    return;
-  }catch(e){}
-  // 3) first visit popup
-  if(!localStorage.getItem('_urlFillShown')){
+  // 2) 首次使用 + 两栏都空白 → 弹窗教学
+  if(!idEl.value.trim() && !uidEl.value.trim() && !localStorage.getItem('_urlFillShown')){
     localStorage.setItem('_urlFillShown','1');
     setTimeout(showUrlFillOverlay, 500);
   }

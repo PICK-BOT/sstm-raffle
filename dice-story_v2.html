@@ -2380,11 +2380,20 @@ async function fffDoFetch() {
   fffCloseModal();
   fffOpenLoading();
   try {
+    // 先做云端读取
+    let cloudRows = [];
+    if (_diceOnline && GAS_URL) {
+      fffSetStatus('正在查询云端逐日记录…');
+      cloudRows = await fetchActivityFromGAS_(uid, startDate, endDate);
+    }
+    // 计算优化抓取起点：上一次抓取日期及之后才抓论坛，更早的日期直接读云端
+    let scrapeFrom = startDate;
+    if (lastFetch && lastFetch > startDate) scrapeFrom = lastFetch;
     fffSetStatus('正在获取论坛资料…');
     const slug = await fffGetUsername(uid);
-    const raw = await fffScrape(uid, slug, startDate, endDate);
-    fffSetStatus('正在查询云端逐日记录…');
-    const deduped = await resolveForumFetchDedup_(uid, raw.byDay, startDate, endDate);
+    const raw = await fffScrape(uid, slug, scrapeFrom, endDate);
+    fffSetStatus('正在比对云端记录…');
+    const deduped = mergeByDayWithCloud_(raw.byDay, cloudRows, startDate, endDate);
     fffCloseLoading();
     const { netByDay, netR, netC, skippedDates, updatedDates } = deduped;
     const r = netR, c = netC;
@@ -4051,8 +4060,8 @@ function normalizeDateISO_(s) {
 function enumerateDates_(startDate, endDate) {
   const out = [];
   if (!startDate || !endDate) return out;
-  const d = new Date(startDate + 'T12:00:00');
-  const end = new Date(endDate + 'T12:00:00');
+const d = new Date(startDate + 'T12:00:00Z');
+    const end = new Date(endDate + 'T12:00:00Z');
   if (isNaN(d.getTime()) || isNaN(end.getTime())) return out;
   while (d <= end) {
     out.push(d.toISOString().slice(0, 10));
@@ -4506,8 +4515,7 @@ let _s2FetchToken = 0;
 let _s2FetchTickId = null;
 
 function todayISO_() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  return new Date().toISOString().slice(0, 10);
 }
 // ══════════════════════════════════════════════════════════════
 
@@ -4593,13 +4601,23 @@ async function beginScreen2ForumFetch_(retryLeft) {
 
   try {
     const uid = state.uid;
+    // 先做云端读取
+    let cloudRows = [];
+    if (_diceOnline && GAS_URL) {
+      fffSetStatus('正在查询云端逐日记录…');
+      cloudRows = await fetchActivityFromGAS_(uid, startDate, endDate);
+    }
+    if (token !== _s2FetchToken) return;
+    // 计算优化抓取起点：上一次抓取日期及之后才抓论坛，更早的日期直接读云端
+    let scrapeFrom = startDate;
+    if (lastFetch && lastFetch > startDate) scrapeFrom = lastFetch;
     const slug = await fffGetUsername(uid);
     if (token !== _s2FetchToken) return;
-    const raw = await fffScrape(uid, slug, startDate, endDate);
+    const raw = await fffScrape(uid, slug, scrapeFrom, endDate);
     if (token !== _s2FetchToken) return;
 
-    fffSetStatus('正在查询云端逐日记录…');
-    const deduped = await resolveForumFetchDedup_(uid, raw.byDay, startDate, endDate);
+    fffSetStatus('正在比对云端记录…');
+    const deduped = mergeByDayWithCloud_(raw.byDay, cloudRows, startDate, endDate);
     if (token !== _s2FetchToken) return;
     const { netByDay, netR, netC, skippedDates, updatedDates } = deduped;
 
