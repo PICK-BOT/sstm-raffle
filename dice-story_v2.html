@@ -3877,15 +3877,17 @@ function closeMilestone_() {
 const PERM_MEDAL_ACTIVITY_DATES = ['2026-07-01', '2026-07-18', '2026-07-19'];
 const PERM_MEDAL_ACTIVITY_THRESHOLD = 15;
 function checkPermMedalByActivity_(netByDay, cloudRows) {
-  if (!state.id) return;
+  console.log('[MedalCheck] START', { id: state.id, cloudRowsCount: (cloudRows || []).length, netByDayKeys: Object.keys(netByDay || {}) });
+  if (!state.id) { console.log('[MedalCheck] SKIP: no state.id'); return; }
   const all = loadAllProgress();
   const prog = all[state.id];
-  if (!prog) return;
-  if (prog.perm_medal) return;
+  if (!prog) { console.log('[MedalCheck] SKIP: no prog for', state.id); return; }
+  if (prog.perm_medal) { console.log('[MedalCheck] SKIP: already has perm_medal'); return; }
   // 合并 netByDay 与 cloudRows，确保云端已有但非净增的日期也纳入检查
   const merged = {};
   (cloudRows || []).forEach(function(r) {
     const d = normalizeDateISO_(r.date);
+    console.log('[MedalCheck] cloudRow:', r, '→ normalized:', d);
     if (d && d !== '__manual__') {
       merged[d] = {
         replies: parseInt(r.replies, 10) || 0,
@@ -3905,17 +3907,21 @@ function checkPermMedalByActivity_(netByDay, cloudRows) {
       merged[nd].citations = Math.max(merged[nd].citations, c);
     }
   });
+  console.log('[MedalCheck] merged:', JSON.parse(JSON.stringify(merged)));
   let earned = false;
   let hitDate = '';
   for (const d of PERM_MEDAL_ACTIVITY_DATES) {
     const entry = merged[d];
-    if (entry && (parseInt(entry.replies, 10) || 0) >= PERM_MEDAL_ACTIVITY_THRESHOLD) {
+    const val = entry ? (parseInt(entry.replies, 10) || 0) : -1;
+    console.log('[MedalCheck] check', d, '=', val, val >= PERM_MEDAL_ACTIVITY_THRESHOLD ? '✅ HIT' : '');
+    if (entry && val >= PERM_MEDAL_ACTIVITY_THRESHOLD) {
       earned = true;
       hitDate = d;
       break;
     }
   }
-  if (!earned) return;
+  if (!earned) { console.log('[MedalCheck] END: no date met threshold'); return; }
+  console.log('[MedalCheck] GRANTING perm_medal for', hitDate);
   prog.perm_medal = true;
   all[state.id] = prog;
   saveAllProgress(all);
