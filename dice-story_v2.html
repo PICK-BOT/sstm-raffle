@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>十年后重逢 — 命运的骰子 v2.12</title>
+<title>十年后重逢 — 命运的骰子 v2.12.1</title>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -1721,8 +1721,9 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4B
 //   3. 同步 <title> 版本号；保留历史 changelog 条目
 // 搜索本段标题或 DICE_GAME_VERSION 即可定位。
 // ═══════════════════════════════════════════════════════════════════════════
-const DICE_GAME_VERSION = 'v2.12';
+const DICE_GAME_VERSION = 'v2.12.1';
 const DICE_CHANGELOG = {
+  'v2.12.1': '• 修复勋章判定仅查询增量范围导致云端已有数据无法比对的问题',
   'v2.12': '• 论坛活跃度达标可获永久本期勋章：特定日期回复数达到 15 条以上即可获得<br>• 勋章在论坛读取时自动判定，云端与论坛抓取均会检查',
   'v2.11': '• 论坛读取优化：记录读取时间，下次跳过已记录的旧日期，减少不必要抓取<br>• 修复混合骰子仅 1 颗时分配为负向可无限兑换的 BUG',
   'v2.10': '• 下载游玩存档补全所有奖励与游玩数值（含本期勋章累计、奖励明细）<br>• 修复 30天本期勋章未计入存档的问题',
@@ -2506,7 +2507,7 @@ function applyForumDeltaToDiceState_(netR, netC) {
   alert(msg + '\n请到进度页或投骰页使用「论坛更新」，或开局前在输入页确认读取。');
 }
 
-function fffConfirm() {
+async function fffConfirm() {
   fffCloseResult();
   if (!_fffResult) return;
   const { uid, rawR, rawC, netR, netC, netByDay, cloudRows, startDate, endDate } = _fffResult;
@@ -2522,7 +2523,7 @@ function fffConfirm() {
     startDate: String(startDate || ''),
     endDate: String(endDate || '')
   });
-  checkPermMedalByActivity_(netByDay, cloudRows);
+  await checkPermMedalByActivity_(netByDay, cloudRows);
   if (_fffIsUpdate) {
     applyForumDeltaToDiceState_(netR, netC);
   } else {
@@ -3876,18 +3877,16 @@ function closeMilestone_() {
 // ===== 论坛活跃度达标 → 永久本期勋章（特定日期回复 ≥15） =====
 const PERM_MEDAL_ACTIVITY_DATES = ['2026-07-01', '2026-07-18', '2026-07-19'];
 const PERM_MEDAL_ACTIVITY_THRESHOLD = 15;
-function checkPermMedalByActivity_(netByDay, cloudRows) {
+async function checkPermMedalByActivity_(netByDay, cloudRows) {
   console.log('[MedalCheck] START', { id: state.id, cloudRowsCount: (cloudRows || []).length, netByDayKeys: Object.keys(netByDay || {}) });
   if (!state.id) { console.log('[MedalCheck] SKIP: no state.id'); return; }
   const all = loadAllProgress();
   const prog = all[state.id];
   if (!prog) { console.log('[MedalCheck] SKIP: no prog for', state.id); return; }
   if (prog.perm_medal) { console.log('[MedalCheck] SKIP: already has perm_medal'); return; }
-  // 合并 netByDay 与 cloudRows，确保云端已有但非净增的日期也纳入检查
   const merged = {};
   (cloudRows || []).forEach(function(r) {
     const d = normalizeDateISO_(r.date);
-    console.log('[MedalCheck] cloudRow:', r, '→ normalized:', d);
     if (d && d !== '__manual__') {
       merged[d] = {
         replies: parseInt(r.replies, 10) || 0,
@@ -3907,7 +3906,23 @@ function checkPermMedalByActivity_(netByDay, cloudRows) {
       merged[nd].citations = Math.max(merged[nd].citations, c);
     }
   });
-  console.log('[MedalCheck] merged:', JSON.parse(JSON.stringify(merged)));
+  const missingDates = PERM_MEDAL_ACTIVITY_DATES.filter(d => !merged[d]);
+  if (missingDates.length > 0 && _diceOnline && GAS_URL) {
+    console.log('[MedalCheck] fetching cloud for missing dates:', missingDates);
+    const uid = state.uid || '';
+    const fullRows = await fetchActivityFromGAS_(uid, SCRAPE_DATE_MIN, todayISO_());
+    console.log('[MedalCheck] full cloud fetch returned', fullRows.length, 'rows');
+    (fullRows || []).forEach(function(r) {
+      const d = normalizeDateISO_(r.date);
+      if (d && d !== '__manual__' && !merged[d]) {
+        merged[d] = {
+          replies: parseInt(r.replies, 10) || 0,
+          citations: parseInt(r.citations, 10) || 0
+        };
+      }
+    });
+  }
+  console.log('[MedalCheck] merged final:', JSON.parse(JSON.stringify(merged)));
   let earned = false;
   let hitDate = '';
   for (const d of PERM_MEDAL_ACTIVITY_DATES) {
@@ -4712,7 +4727,7 @@ async function beginScreen2ForumFetch_(retryLeft) {
       }
       return;
     }
-    applyScreen2FetchAndContinue_(raw.replies, raw.citations, netR, netC, startDate, endDate, netByDay, skippedDates, updatedDates, cloudRows);
+    await applyScreen2FetchAndContinue_(raw.replies, raw.citations, netR, netC, startDate, endDate, netByDay, skippedDates, updatedDates, cloudRows);
   } catch (err) {
     if (token !== _s2FetchToken) return;
     if (retryLeft > 0) {
@@ -4728,7 +4743,7 @@ async function beginScreen2ForumFetch_(retryLeft) {
   }
 }
 
-function applyScreen2FetchAndContinue_(rawR, rawC, netR, netC, startDate, endDate, netByDay, skippedDates, updatedDates, cloudRows) {
+async function applyScreen2FetchAndContinue_(rawR, rawC, netR, netC, startDate, endDate, netByDay, skippedDates, updatedDates, cloudRows) {
   const uid = state.uid;
   const dateKey = (startDate || '') + '_' + (endDate || '');
   fffSaveImp(uid, dateKey, rawR, rawC);
@@ -4742,7 +4757,7 @@ function applyScreen2FetchAndContinue_(rawR, rawC, netR, netC, startDate, endDat
     startDate: String(startDate || ''),
     endDate: String(endDate || '')
   });
-  checkPermMedalByActivity_(netByDay, cloudRows);
+  await checkPermMedalByActivity_(netByDay, cloudRows);
   document.getElementById('inputReplies').value = String(netR);
   document.getElementById('inputCitations').value = String(netC);
   updateCalc();
