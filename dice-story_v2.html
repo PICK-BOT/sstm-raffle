@@ -2386,7 +2386,7 @@ async function fffDoFetch() {
     let cloudRows = [];
     if (_diceOnline && GAS_URL) {
       fffSetStatus('正在查询云端逐日记录…');
-      cloudRows = await fetchActivityFromGAS_(uid, startDate, endDate);
+      cloudRows = await fetchActivityFromGAS_(state.id, startDate, endDate);
     }
     // 计算优化抓取起点：上一次抓取日期及之后才抓论坛，更早的日期直接读云端
     let scrapeFrom = startDate;
@@ -2513,7 +2513,7 @@ function fffConfirm() {
   fffSaveImp(uid, (startDate||'')+'_'+(endDate||''), rawR, rawC);
   try { localStorage.setItem('diceStoryForumUid_v2', String(uid)); } catch (e) {}
   setLastFetchDate_(uid, endDate);
-  if (netByDay) logActivityByDayToGAS_(uid, netByDay || {});
+  if (netByDay) logActivityByDayToGAS_(state.id, netByDay || {});
   logForumFetchToGAS_({
     mode: _fffIsUpdate ? 'dicestory_v2_fetch_confirm_update' : 'dicestory_v2_fetch_confirm_menu',
     forum_uid: String(uid),
@@ -4257,7 +4257,7 @@ async function resolveForumFetchDedup_(uid, byDay, startDate, endDate, onStatus)
   let cloudRows = [];
   if (_diceOnline && GAS_URL) {
     if (onStatus) onStatus('正在查询云端逐日记录…');
-    cloudRows = await fetchActivityFromGAS_(uid, startDate, endDate);
+    cloudRows = await fetchActivityFromGAS_(state.id, startDate, endDate);
   }
   return mergeByDayWithCloud_(byDay || {}, cloudRows, startDate, endDate);
 }
@@ -4679,7 +4679,7 @@ async function beginScreen2ForumFetch_(retryLeft) {
     let cloudRows = [];
     if (_diceOnline && GAS_URL) {
       fffSetStatus('正在查询云端逐日记录…');
-      cloudRows = await fetchActivityFromGAS_(uid, startDate, endDate);
+      cloudRows = await fetchActivityFromGAS_(state.id, startDate, endDate);
     }
     if (token !== _s2FetchToken) return;
     // 计算优化抓取起点：上一次抓取日期及之后才抓论坛，更早的日期直接读云端
@@ -4729,7 +4729,7 @@ function applyScreen2FetchAndContinue_(rawR, rawC, netR, netC, startDate, endDat
   const dateKey = (startDate || '') + '_' + (endDate || '');
   fffSaveImp(uid, dateKey, rawR, rawC);
   setLastFetchDate_(uid, endDate);
-  logActivityByDayToGAS_(uid, netByDay || {});
+  logActivityByDayToGAS_(state.id, netByDay || {});
   logForumFetchToGAS_({
     mode: 'dicestory_v2_auto_screen2',
     forum_uid: String(uid),
