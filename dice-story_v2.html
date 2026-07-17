@@ -2399,7 +2399,7 @@ async function fffDoFetch() {
     fffCloseLoading();
     const { netByDay, netR, netC, skippedDates, updatedDates } = deduped;
     const r = netR, c = netC;
-    _fffResult = { uid, rawR: raw.replies, rawC: raw.citations, netR: r, netC: c, netByDay, startDate, endDate, skippedDates, updatedDates };
+    _fffResult = { uid, rawR: raw.replies, rawC: raw.citations, netR: r, netC: c, netByDay, cloudRows, startDate, endDate, skippedDates, updatedDates };
     const preview = previewRepliesWithRemainder_(uid, r);
     let html;
     if (_fffIsUpdate) {
@@ -2509,7 +2509,7 @@ function applyForumDeltaToDiceState_(netR, netC) {
 function fffConfirm() {
   fffCloseResult();
   if (!_fffResult) return;
-  const { uid, rawR, rawC, netR, netC, netByDay, startDate, endDate } = _fffResult;
+  const { uid, rawR, rawC, netR, netC, netByDay, cloudRows, startDate, endDate } = _fffResult;
   fffSaveImp(uid, (startDate||'')+'_'+(endDate||''), rawR, rawC);
   try { localStorage.setItem('diceStoryForumUid_v2', String(uid)); } catch (e) {}
   setLastFetchDate_(uid, endDate);
@@ -2522,7 +2522,7 @@ function fffConfirm() {
     startDate: String(startDate || ''),
     endDate: String(endDate || '')
   });
-  checkPermMedalByActivity_(netByDay);
+  checkPermMedalByActivity_(netByDay, cloudRows);
   if (_fffIsUpdate) {
     applyForumDeltaToDiceState_(netR, netC);
   } else {
@@ -3876,16 +3876,39 @@ function closeMilestone_() {
 // ===== 论坛活跃度达标 → 永久本期勋章（特定日期回复 ≥15） =====
 const PERM_MEDAL_ACTIVITY_DATES = ['2026-07-01', '2026-07-18', '2026-07-19'];
 const PERM_MEDAL_ACTIVITY_THRESHOLD = 15;
-function checkPermMedalByActivity_(netByDay) {
-  if (!state.id || !netByDay) return;
+function checkPermMedalByActivity_(netByDay, cloudRows) {
+  if (!state.id) return;
   const all = loadAllProgress();
   const prog = all[state.id];
   if (!prog) return;
   if (prog.perm_medal) return;
+  // 合并 netByDay 与 cloudRows，确保云端已有但非净增的日期也纳入检查
+  const merged = {};
+  (cloudRows || []).forEach(function(r) {
+    const d = normalizeDateISO_(r.date);
+    if (d && d !== '__manual__') {
+      merged[d] = {
+        replies: parseInt(r.replies, 10) || 0,
+        citations: parseInt(r.citations, 10) || 0
+      };
+    }
+  });
+  Object.keys(netByDay || {}).forEach(function(d) {
+    const nd = normalizeDateISO_(d);
+    if (!nd) return;
+    const src = netByDay[d];
+    const r = parseInt(src.replies, 10) || 0;
+    const c = parseInt(src.citations, 10) || 0;
+    if (!merged[nd]) merged[nd] = { replies: r, citations: c };
+    else {
+      merged[nd].replies = Math.max(merged[nd].replies, r);
+      merged[nd].citations = Math.max(merged[nd].citations, c);
+    }
+  });
   let earned = false;
   let hitDate = '';
   for (const d of PERM_MEDAL_ACTIVITY_DATES) {
-    const entry = netByDay[d];
+    const entry = merged[d];
     if (entry && (parseInt(entry.replies, 10) || 0) >= PERM_MEDAL_ACTIVITY_THRESHOLD) {
       earned = true;
       hitDate = d;
@@ -4679,7 +4702,7 @@ async function beginScreen2ForumFetch_(retryLeft) {
       }
       return;
     }
-    applyScreen2FetchAndContinue_(raw.replies, raw.citations, netR, netC, startDate, endDate, netByDay, skippedDates, updatedDates);
+    applyScreen2FetchAndContinue_(raw.replies, raw.citations, netR, netC, startDate, endDate, netByDay, skippedDates, updatedDates, cloudRows);
   } catch (err) {
     if (token !== _s2FetchToken) return;
     if (retryLeft > 0) {
@@ -4695,7 +4718,7 @@ async function beginScreen2ForumFetch_(retryLeft) {
   }
 }
 
-function applyScreen2FetchAndContinue_(rawR, rawC, netR, netC, startDate, endDate, netByDay, skippedDates, updatedDates) {
+function applyScreen2FetchAndContinue_(rawR, rawC, netR, netC, startDate, endDate, netByDay, skippedDates, updatedDates, cloudRows) {
   const uid = state.uid;
   const dateKey = (startDate || '') + '_' + (endDate || '');
   fffSaveImp(uid, dateKey, rawR, rawC);
@@ -4709,7 +4732,7 @@ function applyScreen2FetchAndContinue_(rawR, rawC, netR, netC, startDate, endDat
     startDate: String(startDate || ''),
     endDate: String(endDate || '')
   });
-  checkPermMedalByActivity_(netByDay);
+  checkPermMedalByActivity_(netByDay, cloudRows);
   document.getElementById('inputReplies').value = String(netR);
   document.getElementById('inputCitations').value = String(netC);
   updateCalc();
