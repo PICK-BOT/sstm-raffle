@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>十年后重逢 — 命运的骰子 v2.11</title>
+<title>十年后重逢 — 命运的骰子 v2.12</title>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -1060,6 +1060,7 @@ body.has-offline-warn #diceVersionBadge { bottom: 56px; }
       <div id="loginErr"></div>
       <div style="margin-top:8px"><a href="#" id="autoFillByUrlLink" style="color:#7eb8ff;font-size:13px;text-decoration:none">📋 从个人页面网址自动填入</a></div>
       <button class="btn btn-primary" id="btnDiceLogin" onclick="doDiceLogin()">登入 →</button>
+    <label style="font-size:13px;color:#b0c4de;margin-left:8px;cursor:pointer"><input type="checkbox" id="autoLoginCb"> 自动登录</label>
     </div>
     <div id="idHistoryRow">
       <div class="ih-label">最近使用的 ID</div>
@@ -1720,8 +1721,9 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycby0FF3vJ3kXcITjeZ0LLl4B
 //   3. 同步 <title> 版本号；保留历史 changelog 条目
 // 搜索本段标题或 DICE_GAME_VERSION 即可定位。
 // ═══════════════════════════════════════════════════════════════════════════
-const DICE_GAME_VERSION = 'v2.11';
+const DICE_GAME_VERSION = 'v2.12';
 const DICE_CHANGELOG = {
+  'v2.12': '• 论坛活跃度达标可获永久本期勋章：特定日期回复数达到 15 条以上即可获得<br>• 勋章在论坛读取时自动判定，云端与论坛抓取均会检查',
   'v2.11': '• 论坛读取优化：记录读取时间，下次跳过已记录的旧日期，减少不必要抓取<br>• 修复混合骰子仅 1 颗时分配为负向可无限兑换的 BUG',
   'v2.10': '• 下载游玩存档补全所有奖励与游玩数值（含本期勋章累计、奖励明细）<br>• 修复 30天本期勋章未计入存档的问题',
   'v2.9': '• 故事领奖视窗「查看记录」改为「继续投掷」，领取后回到投骰画面<br>• 投骰页移除「返回记录」；故事选择页移除「再来一次」',
@@ -2520,6 +2522,7 @@ function fffConfirm() {
     startDate: String(startDate || ''),
     endDate: String(endDate || '')
   });
+  checkPermMedalByActivity_(netByDay);
   if (_fffIsUpdate) {
     applyForumDeltaToDiceState_(netR, netC);
   } else {
@@ -3870,6 +3873,45 @@ function closeMilestone_() {
   goToMainScreen_();
 }
 
+// ===== 论坛活跃度达标 → 永久本期勋章（特定日期回复 ≥15） =====
+const PERM_MEDAL_ACTIVITY_DATES = ['2026-07-01', '2026-07-18', '2026-07-19'];
+const PERM_MEDAL_ACTIVITY_THRESHOLD = 15;
+function checkPermMedalByActivity_(netByDay) {
+  if (!state.id || !netByDay) return;
+  const all = loadAllProgress();
+  const prog = all[state.id];
+  if (!prog) return;
+  if (prog.perm_medal) return;
+  let earned = false;
+  let hitDate = '';
+  for (const d of PERM_MEDAL_ACTIVITY_DATES) {
+    const entry = netByDay[d];
+    if (entry && (parseInt(entry.replies, 10) || 0) >= PERM_MEDAL_ACTIVITY_THRESHOLD) {
+      earned = true;
+      hitDate = d;
+      break;
+    }
+  }
+  if (!earned) return;
+  prog.perm_medal = true;
+  all[state.id] = prog;
+  saveAllProgress(all);
+  pushDiceToGAS(prog.pos_dice_left || 0, prog.pending_neg_dice || 0, prog.stories_done || {});
+  logDiceRewardToGAS_({ icon: '🏅', name: '永久本期勋章' });
+  appendRewardHistory_({ icon: '🏅', name: '永久本期勋章' }, 'activity');
+  _milestoneQueue.push({
+    icon: '🏅',
+    title: '永久本期勋章',
+    body: '论坛活跃度达标！\n\n在 ' + hitDate.slice(5).replace('-', '/') + ' 的回复数达到 ' + PERM_MEDAL_ACTIVITY_THRESHOLD + ' 条以上，\n\n恭喜获得【永久本期勋章】！',
+    type: 'perm_medal'
+  });
+  if (_milestoneQueue.length === 1) showNextMilestone_();
+  if (!prog.perm_advanced_medal && !prog.perm_advanced_eligible) {
+    scanPermAdvancedLotteryEligibility_(state.id, { toast: true });
+  }
+  _pendingPermMainGuide = true;
+}
+
 // ===== SCREEN 1b 混合骰子分配 =====
 let _s1bMixAssigns = [];
 
@@ -4410,6 +4452,9 @@ function saveIdUidMap_(id, uid) {
     map[id] = String(uid);
     localStorage.setItem(KEY_ID_UID_MAP, JSON.stringify(map));
     localStorage.setItem(KEY_UID, String(uid));
+      var alCb=document.getElementById('autoLoginCb');
+      if(alCb&&alCb.checked) localStorage.setItem(AUTO_LOGIN_KEY,'1');
+      else localStorage.removeItem(AUTO_LOGIN_KEY);
   } catch (e) {}
 }
 
@@ -4664,6 +4709,7 @@ function applyScreen2FetchAndContinue_(rawR, rawC, netR, netC, startDate, endDat
     startDate: String(startDate || ''),
     endDate: String(endDate || '')
   });
+  checkPermMedalByActivity_(netByDay);
   document.getElementById('inputReplies').value = String(netR);
   document.getElementById('inputCitations').value = String(netC);
   updateCalc();
@@ -4892,7 +4938,7 @@ function logDiceRewardToGAS_(reward) {
   } catch (e) {}
   setDiceCloudChecking_();
   checkDiceCloudConnection_();
-  setTimeout(fffAutoLogin,200);
+  var alCb=document.getElementById('autoLoginCb');if(alCb&&localStorage.getItem(AUTO_LOGIN_KEY)=='1') alCb.checked=true;if(localStorage.getItem(AUTO_LOGIN_KEY)=='1'&&id&&uid){setTimeout(function(){doDiceLogin();},300);return;}setTimeout(fffAutoLogin,200);
   document.getElementById('autoFillByUrlLink')?.addEventListener('click',function(e){
     e.preventDefault();
     showUrlFillOverlay();
@@ -4951,8 +4997,8 @@ async function fffAutoLogin(){
       }
     }catch(e){}
   }
-  // 2) 首次使用 + 两栏都空白 → 合并引导弹窗（活动提醒 + UID 填入）
-  if(!idEl.value.trim() && !uidEl.value.trim() && !localStorage.getItem('_urlFillShown')){
+  // 2) 首次使用 + 两栏都空白 + 无记忆 → 合并引导弹窗
+  if(!idEl.value.trim() && !uidEl.value.trim() && !localStorage.getItem('_urlFillShown') && !localStorage.getItem(KEY_ID_UID_MAP)){
     localStorage.setItem('_urlFillShown','1');
     setTimeout(showFirstVisitOverlay_, 500);
   }
